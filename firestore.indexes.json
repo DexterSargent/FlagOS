@@ -1,0 +1,33 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "plays",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "matchId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "red_plays",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "matchId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

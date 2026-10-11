@@ -1,8 +1,40 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  /* League dynamic branding variables */
+  --league-primary: #06B6D4;
+  --league-accent: #3B82F6;
+  --league-primary-rgb: 6, 182, 212;
+  --league-accent-rgb: 59, 130, 246;
+
+  /* Default Primary Shade Palette (Cyan fallback) */
+  --league-primary-50: #ECFEFF;
+  --league-primary-100: #CFFAFE;
+  --league-primary-200: #A5F3FC;
+  --league-primary-300: #67E8F9;
+  --league-primary-400: #22D3EE;
+  --league-primary-500: #06B6D4;
+  --league-primary-600: #0891B2;
+  --league-primary-700: #0E7490;
+  --league-primary-800: #155E75;
+  --league-primary-900: #164E63;
+  --league-primary-950: #083344;
+
+  /* Default Accent Shade Palette (Blue fallback) */
+  --league-accent-50: #EFF6FF;
+  --league-accent-100: #DBEAFE;
+  --league-accent-200: #BFDBFE;
+  --league-accent-300: #93C5FD;
+  --league-accent-400: #60A5FA;
+  --league-accent-500: #3B82F6;
+  --league-accent-600: #2563EB;
+  --league-accent-700: #1D4ED8;
+  --league-accent-800: #1E40AF;
+  --league-accent-900: #1E3A8A;
+  --league-accent-950: #172554;
 }
 
 @theme inline {
@@ -10,17 +42,68 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Primary brand mapping: automatically connects all cyan utilities site-wide to the active league brand */
+  --color-cyan-50: var(--league-primary-50);
+  --color-cyan-100: var(--league-primary-100);
+  --color-cyan-200: var(--league-primary-200);
+  --color-cyan-300: var(--league-primary-300);
+  --color-cyan-400: var(--league-primary-400);
+  --color-cyan-500: var(--league-primary-500);
+  --color-cyan-600: var(--league-primary-600);
+  --color-cyan-700: var(--league-primary-700);
+  --color-cyan-800: var(--league-primary-800);
+  --color-cyan-900: var(--league-primary-900);
+  --color-cyan-950: var(--league-primary-950);
+
+  /* Accent brand mapping: automatically connects all blue utilities site-wide to the active league accent */
+  --color-blue-50: var(--league-accent-50);
+  --color-blue-100: var(--league-accent-100);
+  --color-blue-200: var(--league-accent-200);
+  --color-blue-300: var(--league-accent-300);
+  --color-blue-400: var(--league-accent-400);
+  --color-blue-500: var(--league-accent-500);
+  --color-blue-600: var(--league-accent-600);
+  --color-blue-700: var(--league-accent-700);
+  --color-blue-800: var(--league-accent-800);
+  --color-blue-900: var(--league-accent-900);
+  --color-blue-950: var(--league-accent-950);
+
+  /* Explicit brand color tokens */
+  --color-league-primary: var(--league-primary);
+  --color-league-accent: var(--league-accent);
 }
 
 body {
-  background: var(--background);
+  background: #000000;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Dynamic League Theme Utilities */
+.league-bg-gradient {
+  background: linear-gradient(135deg, var(--league-primary), var(--league-accent));
+}
+
+.league-text-gradient {
+  background: linear-gradient(135deg, var(--league-primary), var(--league-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.league-glow {
+  box-shadow: 0 0 25px rgba(var(--league-primary-rgb), 0.35);
+}
+
+.league-glow-lg {
+  box-shadow: 0 0 45px rgba(var(--league-primary-rgb), 0.4);
+}
+
+.league-border {
+  border-color: rgba(var(--league-primary-rgb), 0.3);
+}
+
+.league-border-hover:hover {
+  border-color: rgba(var(--league-primary-rgb), 0.6);
+}
+

@@ -1,6 +1,10 @@
 {
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "apphosting": {
-    "backendId": "yuwffl-backend",
+    "backendId": "flagos-backend",
     "rootDir": "/",
     "ignore": [
       "node_modules",

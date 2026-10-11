@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // League configurations & metadata
+    match /leagues/{leagueId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Teams
+    match /teams/{teamId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Players & Rosters
+    match /players/{playerId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Matches & Schedules
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Play-by-play events
+    match /plays/{playId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /red_plays/{playId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // User profiles & auth roles
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Registration submissions
+    match /registration_submissions/{subId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

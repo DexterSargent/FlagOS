@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/authContext";
+import { LeagueProvider } from "@/lib/leagueContext";
+import RoleSwitcherBar from "@/components/RoleSwitcherBar";
+import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,19 +17,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "YUWFFL",
-  description: "The official app for the YUWFFL",
+  title: "FlagOS | Operating System for Flag Football Leagues",
+  description: "The complete operating system for flag football leagues: schedules, live play-by-play scorekeeper, team portals, and automated stat leaderboards.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-black text-white" suppressHydrationWarning>
         <AuthProvider>
-          {children}
+          <LeagueProvider>
+            <RoleSwitcherBar />
+            {children}
+            <LeagueCustomizerModal />
+          </LeagueProvider>
         </AuthProvider>
       </body>
     </html>

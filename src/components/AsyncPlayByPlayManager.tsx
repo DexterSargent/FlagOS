@@ -1,0 +1,1391 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  ChevronLeft,
+  RotateCcw,
+  Maximize,
+  Minimize,
+  Play,
+  Save,
+  Plus,
+  X,
+  ChevronRight,
+  Undo,
+  Trophy,
+  Activity,
+  Calendar,
+  Sparkles,
+  Check,
+  Shield,
+  Clock,
+  Flag,
+} from "lucide-react";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  addDoc,
+  getDoc,
+  getDocs,
+  doc,
+  serverTimestamp,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+} from "firebase/firestore";
+import { useLeague } from "@/lib/leagueContext";
+import { TeamLogo } from "@/components/TeamAssets";
+import {
+  getSandboxMatches,
+  getSandboxPlayers,
+  getSandboxPlays,
+  addSandboxPlay,
+  updateSandboxMatch,
+  subscribeDemoSandbox,
+} from "@/lib/demoSandbox";
+
+interface AsyncPlayByPlayManagerProps {
+  matchId: string;
+  backUrl?: string;
+}
+
+export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayByPlayManagerProps) {
+  const router = useRouter();
+  const { settings, isDemoLeague } = useLeague();
+  const downsPerSeries = settings?.rules?.downsPerSeries || 4;
+
+  const [loadingData, setLoadingData] = useState(true);
+  const [matchStatus, setMatchStatus] = useState<string>("scheduled");
+  const [matchData, setMatchData] = useState<any>(null);
+
+  // Match Information
+  const [homeTeamName, setHomeTeamName] = useState("HOME");
+  const [awayTeamName, setAwayTeamName] = useState("AWAY");
+  const [homeTeamId, setHomeTeamId] = useState("");
+  const [awayTeamId, setAwayTeamId] = useState("");
+
+  // Players & Subs
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
+  const [subs, setSubs] = useState<string[]>([]);
+  const [homePlayers, setHomePlayers] = useState<string[]>([]);
+  const [awayPlayers, setAwayPlayers] = useState<string[]>([]);
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [subModalTeam, setSubModalTeam] = useState<"HOME" | "AWAY" | null>(null);
+  const [newSubInput, setNewSubInput] = useState("");
+
+  // Game State (Zero clocks, zero timeouts)
+  const [half, setHalf] = useState<1 | 2>(1); // 1 = First Half, 2 = Second Half
+  const [currentDown, setCurrentDown] = useState(1);
+  const [possession, setPossession] = useState("HOME");
+  const [firstHalfStartPossession, setFirstHalfStartPossession] = useState<string>("");
+  const [homeScore, setHomeScore] = useState(0);
+  const [awayScore, setAwayScore] = useState(0);
+
+  // Active Play Wizard State
+  // 'IDLE' = Waiting to start play (with prominent "START PLAY" button)
+  // 'PLAY_TYPE' = Pass / Run / Penalty selection
+  // 'DETAILS' = Select outcome, offense, defense
+  // 'CONVERSION' = 1PT / 2PT PAT
+  // 'GAME_OVER' = Match Final Confirmation
+  const [step, setStep] = useState<"IDLE" | "PLAY_TYPE" | "DETAILS" | "CONVERSION" | "GAME_OVER">("IDLE");
+  const [playType, setPlayType] = useState<"Pass" | "Run" | "Penalty" | null>(null);
+  const [outcome, setOutcome] = useState<"Complete" | "Incomplete" | "PBU" | "Interception" | "Sack" | "Gain" | "Loss" | "FFL" | null>(null);
+
+  const [qbRunner, setQbRunner] = useState<string>("");
+  const [receiver, setReceiver] = useState<string>("");
+  const [defenders, setDefenders] = useState<string[]>([]);
+  const [flaggers, setFlaggers] = useState<string[]>([]);
+
+  // QB Autofill Memory
+  const [lastHomeQB, setLastHomeQB] = useState<string>("");
+  const [lastAwayQB, setLastAwayQB] = useState<string>("");
+
+  // Conversion State
+  const [convPts, setConvPts] = useState<1 | 2 | null>(null);
+  const [convIsGood, setConvIsGood] = useState<boolean | null>(null);
+  const [convPasser, setConvPasser] = useState<string>("");
+  const [convReceiver, setConvReceiver] = useState<string>("");
+  const [playResult, setPlayResult] = useState<string>("");
+
+  // View tabs
+  const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score">("tracker");
+  const [boxScoreTab, setBoxScoreTab] = useState<"home" | "away">("home");
+  const [plays, setPlays] = useState<any[]>([]);
+
+  // Load Match Data & Plays
+  useEffect(() => {
+    const loadMatchData = async () => {
+      try {
+        let mData: any = null;
+        let allP: any[] = [];
+
+        if (isDemoLeague) {
+          mData = getSandboxMatches().find((m: any) => m.id === matchId);
+          if (!mData) return;
+          allP = getSandboxPlayers();
+        } else {
+          const matchDoc = await getDoc(doc(db, "matches", matchId));
+          if (!matchDoc.exists()) return;
+          mData = matchDoc.data() as any;
+          const playersSnap = await getDocs(collection(db, "players"));
+          allP = playersSnap.docs.map((d) => d.data());
+        }
+        setMatchData(mData);
+
+        const hName = mData.homeTeamName || "HOME";
+        const aName = mData.awayTeamName || "AWAY";
+        setHomeTeamName(hName);
+        setAwayTeamName(aName);
+        setHomeTeamId(mData.homeTeamId || "home_id");
+        setAwayTeamId(mData.awayTeamId || "away_id");
+        setMatchStatus(mData.status || "scheduled");
+
+        if (mData.status === "in_progress" && mData.matchState) {
+          const s = mData.matchState;
+          if (s.currentDown !== undefined) setCurrentDown(s.currentDown);
+          if (s.possession) setPossession(s.possession);
+          if (s.homeScore !== undefined) setHomeScore(s.homeScore);
+          else if (typeof mData.homeScore === "number") setHomeScore(mData.homeScore);
+          if (s.awayScore !== undefined) setAwayScore(s.awayScore);
+          else if (typeof mData.awayScore === "number") setAwayScore(mData.awayScore);
+          if (s.half !== undefined) setHalf(s.half as 1 | 2);
+          if (s.firstHalfStartPossession) setFirstHalfStartPossession(s.firstHalfStartPossession);
+          else setFirstHalfStartPossession(hName);
+        } else {
+          setPossession(hName);
+          setFirstHalfStartPossession(hName);
+          if (typeof mData.homeScore === "number") setHomeScore(mData.homeScore);
+          if (typeof mData.awayScore === "number") setAwayScore(mData.awayScore);
+        }
+
+        const matchSubs = mData.subs || [];
+        setSubs(matchSubs);
+
+        // players loaded above
+        setAllPlayers(allP);
+
+        const homeP = allP.filter((p: any) => p.teamId === mData.homeTeamId).map((p: any) => p.playerName || p.name);
+        const awayP = allP.filter((p: any) => p.teamId === mData.awayTeamId).map((p: any) => p.playerName || p.name);
+
+        setHomePlayers(Array.from(new Set([...homeP, ...(mData.homeRoster || []), ...matchSubs])).sort());
+        setAwayPlayers(Array.from(new Set([...awayP, ...(mData.awayRoster || []), ...matchSubs])).sort());
+      } catch (e) {
+        console.error("Error loading match data for async stat keeper:", e);
+      }
+      setLoadingData(false);
+    };
+
+    loadMatchData();
+    if (isDemoLeague) {
+      const unsub = subscribeDemoSandbox(() => loadMatchData());
+      return () => unsub();
+    }
+  }, [matchId, isDemoLeague]);
+
+  // Fetch plays feed
+  const loadPlays = async () => {
+    if (isDemoLeague) {
+      const pList = getSandboxPlays(matchId);
+      setPlays(pList);
+      return;
+    }
+    try {
+      const q = query(collection(db, "plays"), where("matchId", "==", matchId), orderBy("timestamp", "asc"));
+      const snap = await getDocs(q);
+      const pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setPlays(pList);
+    } catch (e) {
+      console.error("Error loading plays:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadPlays();
+  }, [matchId, step, homeScore, awayScore]);
+
+  // Autosave game state
+  useEffect(() => {
+    if (loadingData || matchStatus === "scheduled" && step === "IDLE" && homeScore === 0 && awayScore === 0 && half === 1 && currentDown === 1) return;
+    const saveState = setTimeout(() => {
+      if (isDemoLeague) {
+        updateSandboxMatch(matchId, {
+          status: matchStatus === "completed" ? "completed" : "in_progress",
+          homeScore,
+          awayScore,
+          matchState: {
+            currentDown,
+            possession,
+            homeScore,
+            awayScore,
+            half,
+            firstHalfStartPossession,
+            isAsyncStatKeeping: true,
+          },
+        });
+        return;
+      }
+      updateDoc(doc(db, "matches", matchId), {
+        status: matchStatus === "completed" ? "completed" : "in_progress",
+        homeScore,
+        awayScore,
+        matchState: {
+          currentDown,
+          possession,
+          homeScore,
+          awayScore,
+          half,
+          firstHalfStartPossession,
+          isAsyncStatKeeping: true,
+        },
+      }).catch(console.error);
+    }, 800);
+    return () => clearTimeout(saveState);
+  }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus]);
+
+  const handleAddSub = async (subName: string, teamToAdd: "HOME" | "AWAY") => {
+    if (!subName.trim()) return;
+    const name = subName.trim();
+    const newSubs = [...subs, name];
+    setSubs(newSubs);
+    if (teamToAdd === "HOME") {
+      setHomePlayers((prev) => Array.from(new Set([...prev, name])).sort());
+    } else {
+      setAwayPlayers((prev) => Array.from(new Set([...prev, name])).sort());
+    }
+    setNewSubInput("");
+    setIsSubModalOpen(false);
+    try {
+      await updateDoc(doc(db, "matches", matchId), { subs: newSubs });
+    } catch (e) {
+      console.error("Error saving sub to match:", e);
+    }
+  };
+
+  // ACTION: "Start Play" Button
+  const handleStartPlay = () => {
+    if (matchStatus === "scheduled") {
+      setMatchStatus("in_progress");
+    }
+    setStep("PLAY_TYPE");
+  };
+
+  // ACTION: "Halftime" Button
+  const handleHalftime = () => {
+    if (half === 2) {
+      alert("The match is already in the Second Half.");
+      return;
+    }
+    if (!confirm("Transition to SECOND HALF? This will flip possession and reset to 1st Down.")) return;
+    setHalf(2);
+    setCurrentDown(1);
+    // Flip possession from whoever started 1st half
+    const nextPoss = firstHalfStartPossession === homeTeamName ? awayTeamName : homeTeamName;
+    setPossession(nextPoss);
+    setStep("IDLE");
+  };
+
+  // ACTION: "Game Over" Button
+  const handleGameOver = () => {
+    setStep("GAME_OVER");
+  };
+
+  const finalizeGame = async () => {
+    try {
+      await updateDoc(doc(db, "matches", matchId), {
+        status: "completed",
+        homeScore,
+        awayScore,
+        completedAt: serverTimestamp(),
+        roster: {
+          home: homePlayers,
+          away: awayPlayers,
+        },
+      });
+      setMatchStatus("completed");
+      setActiveTab("play-by-play");
+      setStep("IDLE");
+      alert("Match finalized successfully!");
+    } catch (e) {
+      console.error("Error finalizing match:", e);
+      alert("Failed to finalize game.");
+    }
+  };
+
+  const resetPlayForm = () => {
+    setStep("IDLE");
+    setPlayType(null);
+    setOutcome(null);
+    setQbRunner("");
+    setReceiver("");
+    setDefenders([]);
+    setFlaggers([]);
+    setConvPts(null);
+    setConvIsGood(null);
+    setConvPasser("");
+    setConvReceiver("");
+    setPlayResult("");
+  };
+
+  const handlePlayTypeSelect = (type: "Pass" | "Run") => {
+    setPlayType(type);
+    setOutcome(type === "Pass" ? "Complete" : "Gain");
+    if (type === "Pass") {
+      setQbRunner(possession === homeTeamName ? lastHomeQB : lastAwayQB);
+    } else {
+      setQbRunner("");
+    }
+    setStep("DETAILS");
+  };
+
+  const handleDefenders = (player: string) => {
+    if (player === "TEAM") {
+      setDefenders(defenders.includes("TEAM") ? [] : ["TEAM"]);
+      return;
+    }
+    if (defenders.includes("TEAM")) {
+      setDefenders([player]);
+      return;
+    }
+    if (defenders.includes(player)) {
+      setDefenders(defenders.filter((d) => d !== player));
+    } else {
+      setDefenders([...defenders, player]);
+    }
+  };
+
+  const buildPlayData = (result: string) => {
+    return {
+      matchId,
+      possessionTeamId: possession === homeTeamName ? homeTeamId : awayTeamId,
+      down: currentDown,
+      playType,
+      firstDown: result === "First Down" || result === "Touchdown",
+      qbPlayerId: playType === "Pass" ? qbRunner : null,
+      runnerPlayerId: playType === "Run" ? qbRunner : null,
+      receiverPlayerId: receiver || null,
+      defenders,
+      flaggers,
+      passOutcome: outcome,
+      isTouchdown: result === "Touchdown",
+      isPick6: result === "Pick 6",
+      isSafety: result === "Safety",
+      turnover:
+        result === "Turnover" ||
+        result === "Pick 6" ||
+        (currentDown === downsPerSeries && result !== "First Down" && result !== "Repeat Down"),
+      result,
+      half,
+      gameClock: null, // Strictly clockless
+      isAsyncStatKeeping: true,
+    };
+  };
+
+  const logPlayToFirestore = async (playData: any) => {
+    if (isDemoLeague) {
+      addSandboxPlay({
+        ...playData,
+        matchId,
+        timestamp: new Date().toISOString(),
+      });
+      loadPlays();
+      return;
+    }
+    try {
+      await addDoc(collection(db, "plays"), {
+        ...playData,
+        timestamp: serverTimestamp(),
+      });
+      loadPlays();
+    } catch (e) {
+      console.error("Error logging play:", e);
+    }
+  };
+
+  const handleSavePlay = (result: "Touchdown" | "First Down" | "Short" | "Safety" | "Turnover" | "Next Down" | "Pick 6" | "Repeat Down") => {
+    setPlayResult(result);
+
+    if (playType === "Pass") {
+      if (possession === homeTeamName) setLastHomeQB(qbRunner);
+      else setLastAwayQB(qbRunner);
+    }
+
+    if (result === "Touchdown") {
+      if (possession === homeTeamName) setHomeScore((s) => s + 6);
+      else setAwayScore((s) => s + 6);
+      setStep("CONVERSION");
+      return;
+    }
+
+    if (result === "Pick 6") {
+      const newPoss = possession === homeTeamName ? awayTeamName : homeTeamName;
+      if (newPoss === homeTeamName) setHomeScore((s) => s + 6);
+      else setAwayScore((s) => s + 6);
+      setPossession(newPoss);
+      setStep("CONVERSION");
+      return;
+    }
+
+    logPlayToFirestore(buildPlayData(result));
+
+    if (result === "Safety") {
+      if (possession === homeTeamName) setAwayScore((s) => s + 2);
+      else setHomeScore((s) => s + 2);
+    }
+
+    // Turnover / Downs
+    if (
+      result === "Safety" ||
+      outcome === "Interception" ||
+      result === "Turnover" ||
+      (currentDown === downsPerSeries && result !== "First Down" && result !== "Repeat Down")
+    ) {
+      setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
+      setCurrentDown(1);
+    } else if (result === "First Down") {
+      setCurrentDown(1);
+    } else if (result === "Repeat Down") {
+      // keep same down
+    } else {
+      if (currentDown < downsPerSeries) setCurrentDown((d) => d + 1);
+    }
+
+    resetPlayForm();
+  };
+
+  const finalizeConversion = () => {
+    if (convIsGood && convPts) {
+      if (possession === homeTeamName) setHomeScore((s) => s + convPts);
+      else setAwayScore((s) => s + convPts);
+    }
+
+    const finalPlay = {
+      ...buildPlayData(playResult),
+      conversionAttempt: convPts,
+      conversionSuccess: convIsGood,
+      conversionPasser: convPasser,
+      conversionReceiver: convReceiver,
+      pointsScored: 6 + (convIsGood ? convPts! : 0),
+    };
+
+    logPlayToFirestore(finalPlay);
+
+    // Turnover possession to defense after conversion
+    setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
+    setCurrentDown(1);
+    resetPlayForm();
+  };
+
+  const handleUndoLastPlay = async () => {
+    if (!confirm("Are you sure you want to undo the last logged play?")) return;
+    try {
+      const q = query(
+        collection(db, "plays"),
+        where("matchId", "==", matchId),
+        orderBy("timestamp", "desc"),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const lastPlayDoc = snap.docs[0];
+        const lastPlay = lastPlayDoc.data();
+
+        setCurrentDown(lastPlay.down || 1);
+        const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
+        setPossession(wasHomePossession ? homeTeamName : awayTeamName);
+
+        const pts = lastPlay.pointsScored || (lastPlay.isTouchdown ? 6 : 0) || 0;
+        if (pts > 0) {
+          if (wasHomePossession) setHomeScore((s) => Math.max(0, s - pts));
+          else setAwayScore((s) => Math.max(0, s - pts));
+        }
+
+        await deleteDoc(lastPlayDoc.ref);
+        resetPlayForm();
+        loadPlays();
+        alert("Last play undone successfully.");
+      } else {
+        alert("No plays found to undo.");
+      }
+    } catch (e) {
+      console.error("Error undoing play:", e);
+      alert("Failed to undo play.");
+    }
+  };
+
+  const getOrdinal = (n: number) => {
+    if (n === 1) return "1st";
+    if (n === 2) return "2nd";
+    if (n === 3) return "3rd";
+    return `${n}th`;
+  };
+
+  // Box Score Calculations
+  const calculateBoxScore = () => {
+    const statsMap: Record<string, any> = {};
+    const initPlayer = (name: string) => {
+      if (!statsMap[name]) {
+        statsMap[name] = {
+          name,
+          inferredTeam: null,
+          passAtt: 0,
+          passComp: 0,
+          passTD: 0,
+          passInt: 0,
+          passFD: 0,
+          receptions: 0,
+          recTD: 0,
+          recFD: 0,
+          rushAtt: 0,
+          rushTD: 0,
+          convPass: 0,
+          convRec: 0,
+          flagPulls: 0,
+          sacks: 0,
+          ffl: 0,
+          int: 0,
+          defTD: 0,
+          pbu: 0,
+        };
+      }
+    };
+
+    plays.forEach((play) => {
+      const offTeam = play.possessionTeamId;
+      const defTeam = offTeam === homeTeamId ? awayTeamId : homeTeamId;
+
+      if (play.playType === "Pass" && play.qbPlayerId) {
+        initPlayer(play.qbPlayerId);
+        statsMap[play.qbPlayerId].inferredTeam = offTeam;
+        statsMap[play.qbPlayerId].passAtt += 1;
+        if (play.passOutcome === "Complete") statsMap[play.qbPlayerId].passComp += 1;
+        if (play.isTouchdown) statsMap[play.qbPlayerId].passTD += 1;
+        if (play.firstDown) statsMap[play.qbPlayerId].passFD += 1;
+        if (play.passOutcome === "Interception") statsMap[play.qbPlayerId].passInt += 1;
+      }
+
+      if (play.playType === "Pass" && play.passOutcome === "Complete" && play.receiverPlayerId) {
+        initPlayer(play.receiverPlayerId);
+        statsMap[play.receiverPlayerId].inferredTeam = offTeam;
+        statsMap[play.receiverPlayerId].receptions += 1;
+        if (play.isTouchdown) statsMap[play.receiverPlayerId].recTD += 1;
+        if (play.firstDown) statsMap[play.receiverPlayerId].recFD += 1;
+      }
+
+      if (play.playType === "Run" && play.runnerPlayerId) {
+        initPlayer(play.runnerPlayerId);
+        statsMap[play.runnerPlayerId].inferredTeam = offTeam;
+        statsMap[play.runnerPlayerId].rushAtt += 1;
+        if (play.isTouchdown) statsMap[play.runnerPlayerId].rushTD += 1;
+      }
+
+      if (play.conversionSuccess) {
+        if (play.conversionPasser) {
+          initPlayer(play.conversionPasser);
+          statsMap[play.conversionPasser].convPass += 1;
+        }
+        if (play.conversionReceiver) {
+          initPlayer(play.conversionReceiver);
+          statsMap[play.conversionReceiver].convRec += 1;
+        }
+      }
+
+      if (play.defenders && Array.isArray(play.defenders)) {
+        play.defenders.forEach((dName: string) => {
+          initPlayer(dName);
+          statsMap[dName].inferredTeam = defTeam;
+          if (play.passOutcome === "Interception") {
+            statsMap[dName].int += 1;
+            if (play.isPick6) statsMap[dName].defTD += 1;
+          } else if (play.passOutcome === "PBU") {
+            statsMap[dName].pbu += 1;
+          } else if (play.passOutcome === "Sack") {
+            statsMap[dName].sacks += 1;
+            statsMap[dName].flagPulls += 1;
+          } else {
+            statsMap[dName].flagPulls += 1;
+          }
+        });
+      }
+    });
+
+    return Object.values(statsMap);
+  };
+
+  const offensePlayers = possession === homeTeamName ? homePlayers : awayPlayers;
+  const defensePlayers = possession === homeTeamName ? awayPlayers : homePlayers;
+
+  if (loadingData) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
+        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden">
+      {/* Top Banner & Navigation */}
+      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <Link
+            href={backUrl || `/matches/${matchId}`}
+            className="flex items-center gap-1.5 text-neutral-400 hover:text-white text-xs font-bold bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Exit Stat Keeper</span>
+          </Link>
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Clockless Async Stat Keeper</span>
+            </span>
+            <span className="text-[10px] text-neutral-500 font-mono">
+              • {homeTeamName} vs {awayTeamName}
+            </span>
+          </div>
+        </div>
+
+        {/* View mode tabs */}
+        <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-bold">
+          <button
+            onClick={() => setActiveTab("tracker")}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              activeTab === "tracker" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Stat Keeper
+          </button>
+          <button
+            onClick={() => setActiveTab("play-by-play")}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              activeTab === "play-by-play" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Play Log ({plays.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("box-score")}
+            className={`px-3 py-1 rounded-lg transition-all ${
+              activeTab === "box-score" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Box Score
+          </button>
+        </div>
+      </header>
+
+      {/* CLOCKLESS SCOREBOARD HEADER (TIMERS & TIMEOUTS REMOVED) */}
+      <div className="bg-gradient-to-b from-neutral-950 to-neutral-900 border-b border-white/10 p-6 md:p-8 relative">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          {/* HOME TEAM */}
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="flex items-center gap-2">
+              <TeamLogo teamName={homeTeamName} className="w-7 h-7" />
+              <span className="text-sm md:text-xl font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none">
+                {homeTeamName}
+              </span>
+              {possession === homeTeamName && (
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Possession" />
+              )}
+            </div>
+            <span className="text-5xl md:text-7xl font-black tabular-nums tracking-tighter text-white">
+              {homeScore}
+            </span>
+          </div>
+
+          {/* PERIOD BADGE (FIRST HALF / SECOND HALF ONLY - NO TIMERS) */}
+          <div className="flex flex-col items-center justify-center gap-1.5 px-4 md:px-8 py-3 rounded-2xl bg-black/60 border border-white/10 shadow-inner">
+            <span className="text-[10px] md:text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+              Current Period
+            </span>
+            <span className="text-xl md:text-2xl font-black tracking-wider uppercase text-white">
+              {half === 1 ? "First Half" : "Second Half"}
+            </span>
+            <div className="px-3 py-0.5 rounded-full bg-white/10 text-[11px] font-bold text-neutral-300">
+              {getOrdinal(currentDown)} Down
+            </div>
+          </div>
+
+          {/* AWAY TEAM */}
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="flex items-center gap-2">
+              {possession === awayTeamName && (
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Possession" />
+              )}
+              <span className="text-sm md:text-xl font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none text-neutral-300">
+                {awayTeamName}
+              </span>
+              <TeamLogo teamName={awayTeamName} className="w-7 h-7" />
+            </div>
+            <span className="text-5xl md:text-7xl font-black tabular-nums tracking-tighter text-neutral-300">
+              {awayScore}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 max-w-4xl mx-auto w-full p-6 md:p-8">
+        {/* TAB 1: INTERACTIVE STAT KEEPER */}
+        {activeTab === "tracker" && (
+          <div className="space-y-6">
+            {/* MASTER PERIOD & ACTION CONTROLS */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-neutral-900/60 border border-white/10">
+              <div className="flex items-center gap-2 text-xs font-bold text-neutral-300">
+                <span>Possession:</span>
+                <button
+                  onClick={() => setPossession(homeTeamName)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                    possession === homeTeamName
+                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                      : "bg-white/5 border-white/10 text-neutral-400"
+                  }`}
+                >
+                  {homeTeamName}
+                </button>
+                <button
+                  onClick={() => setPossession(awayTeamName)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                    possession === awayTeamName
+                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                      : "bg-white/5 border-white/10 text-neutral-400"
+                  }`}
+                >
+                  {awayTeamName}
+                </button>
+              </div>
+
+              {/* ACTION BUTTONS: Halftime, Game Over, Undo, Add Sub */}
+              <div className="flex items-center gap-2">
+                {half === 1 && (
+                  <button
+                    onClick={handleHalftime}
+                    className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/40 transition-colors"
+                  >
+                    Halftime (2nd Half)
+                  </button>
+                )}
+
+                <button
+                  onClick={handleGameOver}
+                  className="px-3.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold border border-red-500/40 transition-colors"
+                >
+                  Game Over
+                </button>
+
+                <button
+                  onClick={handleUndoLastPlay}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold border border-white/10 transition-colors flex items-center gap-1"
+                  title="Undo Last Play"
+                >
+                  <Undo className="w-3.5 h-3.5" />
+                  <span>Undo</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSubModalTeam("HOME");
+                    setIsSubModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold border border-white/10 transition-colors flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Player</span>
+                </button>
+              </div>
+            </div>
+
+            {/* STEP: IDLE -> THE USER-REQUESTED "START PLAY" BUTTON */}
+            {step === "IDLE" && (
+              <div className="bg-neutral-900/80 border border-white/10 rounded-3xl p-10 md:p-14 text-center space-y-6 shadow-2xl backdrop-blur-xl">
+                <div className="space-y-2">
+                  <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+                    {half === 1 ? "First Half" : "Second Half"} • {getOrdinal(currentDown)} Down
+                  </span>
+                  <h2 className="text-3xl md:text-4xl font-black uppercase text-white">
+                    {possession} on Offense
+                  </h2>
+                  <p className="text-neutral-400 text-sm max-w-md mx-auto">
+                    Press the button below when ready to track the next play. Timing and timeouts are disabled.
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={handleStartPlay}
+                    className="w-full max-w-md py-5 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-lg uppercase tracking-wider transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:scale-102 active:scale-98 cursor-pointer flex items-center justify-center gap-3 mx-auto"
+                  >
+                    <Play className="w-6 h-6 fill-current" />
+                    <span>START NEXT PLAY</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP: PLAY_TYPE -> Choose Pass or Run */}
+            {step === "PLAY_TYPE" && (
+              <div className="bg-neutral-900 border border-white/10 rounded-3xl p-8 space-y-6 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <h3 className="text-xl font-black uppercase text-white">Select Play Type</h3>
+                    <p className="text-xs text-neutral-400">
+                      {possession} • {getOrdinal(currentDown)} Down
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setStep("IDLE")}
+                    className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handlePlayTypeSelect("Pass")}
+                    className="py-10 px-6 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500 text-white font-black text-2xl uppercase tracking-wider flex flex-col items-center gap-3 transition-all cursor-pointer group"
+                  >
+                    <span className="text-4xl group-hover:scale-110 transition-transform">🏈</span>
+                    <span>PASS PLAY</span>
+                  </button>
+
+                  <button
+                    onClick={() => handlePlayTypeSelect("Run")}
+                    className="py-10 px-6 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500 text-white font-black text-2xl uppercase tracking-wider flex flex-col items-center gap-3 transition-all cursor-pointer group"
+                  >
+                    <span className="text-4xl group-hover:scale-110 transition-transform">⚡</span>
+                    <span>RUN PLAY</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP: DETAILS -> Offense, Defense, Outcome */}
+            {step === "DETAILS" && (
+              <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <h3 className="text-xl font-black uppercase text-white">
+                      {playType} Play Details
+                    </h3>
+                    <p className="text-xs text-neutral-400">
+                      {possession} • {getOrdinal(currentDown)} Down
+                    </p>
+                  </div>
+                  <button
+                    onClick={resetPlayForm}
+                    className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Outcome Toggle */}
+                <div>
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                    Play Outcome
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {playType === "Pass" ? (
+                      <>
+                        {[
+                          { id: "Complete", label: "Complete" },
+                          { id: "Incomplete", label: "Incomplete" },
+                          { id: "PBU", label: "Pass Breakup (PBU)" },
+                          { id: "Interception", label: "Interception" },
+                          { id: "Sack", label: "Sack" },
+                          { id: "FFL", label: "Flag Guarding / FFL" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setOutcome(opt.id as any)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+                              outcome === opt.id
+                                ? "bg-emerald-500 text-black border-emerald-500 font-black"
+                                : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {[
+                          { id: "Gain", label: "Positive Gain" },
+                          { id: "Loss", label: "Loss of Yards" },
+                          { id: "FFL", label: "Flag Guarding / FFL" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setOutcome(opt.id as any)}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+                              outcome === opt.id
+                                ? "bg-cyan-500 text-black border-cyan-500 font-black"
+                                : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quarterback / Runner Selection */}
+                <div>
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                    {playType === "Pass" ? "Quarterback" : "Ball Carrier"}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {offensePlayers.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setQbRunner(p)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                          qbRunner === p
+                            ? "bg-white text-black font-black border-white"
+                            : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Receiver Selection (for Complete pass) */}
+                {playType === "Pass" && outcome === "Complete" && (
+                  <div>
+                    <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                      Target Receiver
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {offensePlayers.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setReceiver(p)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                            receiver === p
+                              ? "bg-emerald-400 text-black font-black border-emerald-400"
+                              : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Defenders / Flag Pullers */}
+                <div>
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                    Defenders Involved / Flag Pull
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDefenders("TEAM")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                        defenders.includes("TEAM")
+                          ? "bg-amber-400 text-black font-black border-amber-400"
+                          : "bg-neutral-800 border-white/10 text-neutral-300"
+                      }`}
+                    >
+                      Team Defense
+                    </button>
+                    {defensePlayers.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => handleDefenders(p)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                          defenders.includes(p)
+                            ? "bg-red-500 text-white font-black border-red-500"
+                            : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ACTION RESULTS BUTTONS */}
+                <div className="border-t border-white/10 pt-4 space-y-2">
+                  <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
+                    Save Play Result
+                  </span>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                    <button
+                      onClick={() => handleSavePlay("Touchdown")}
+                      className="py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-xs uppercase tracking-wider shadow-lg transition-all"
+                    >
+                      TOUCHDOWN (+6)
+                    </button>
+                    <button
+                      onClick={() => handleSavePlay("First Down")}
+                      className="py-3 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                      FIRST DOWN
+                    </button>
+                    <button
+                      onClick={() => handleSavePlay("Next Down")}
+                      className="py-3 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                      NEXT DOWN
+                    </button>
+                    {outcome === "Interception" && (
+                      <button
+                        onClick={() => handleSavePlay("Pick 6")}
+                        className="py-3 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider shadow-lg transition-all"
+                      >
+                        PICK 6 (+6)
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleSavePlay("Turnover")}
+                      className="py-3 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                      TURNOVER
+                    </button>
+                    <button
+                      onClick={() => handleSavePlay("Safety")}
+                      className="py-3 px-3 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-xs uppercase tracking-wider transition-all"
+                    >
+                      SAFETY (+2 DEF)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP: CONVERSION (PAT 1PT or 2PT) */}
+            {step === "CONVERSION" && (
+              <div className="bg-neutral-900 border border-emerald-500/40 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+                <div className="space-y-1 text-center">
+                  <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+                    Touchdown Scored!
+                  </span>
+                  <h3 className="text-2xl font-black uppercase text-white">Point After Conversion (PAT)</h3>
+                  <p className="text-xs text-neutral-400">Select attempt value and result</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setConvPts(1)}
+                    className={`py-6 px-4 rounded-2xl border text-center font-black transition-all ${
+                      convPts === 1
+                        ? "bg-emerald-500 text-black border-emerald-500 shadow-lg"
+                        : "bg-neutral-800 border-white/10 text-white"
+                    }`}
+                  >
+                    <div className="text-2xl">1 POINT</div>
+                    <div className="text-[11px] font-normal mt-1 opacity-80">5 Yard Line Attempt</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setConvPts(2)}
+                    className={`py-6 px-4 rounded-2xl border text-center font-black transition-all ${
+                      convPts === 2
+                        ? "bg-emerald-500 text-black border-emerald-500 shadow-lg"
+                        : "bg-neutral-800 border-white/10 text-white"
+                    }`}
+                  >
+                    <div className="text-2xl">2 POINTS</div>
+                    <div className="text-[11px] font-normal mt-1 opacity-80">10 Yard Line Attempt</div>
+                  </button>
+                </div>
+
+                {convPts && (
+                  <div className="space-y-4 pt-2">
+                    <div className="flex justify-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setConvIsGood(true)}
+                        className={`py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border ${
+                          convIsGood === true
+                            ? "bg-emerald-500 text-black border-emerald-500 font-black"
+                            : "bg-neutral-800 border-white/10 text-neutral-300"
+                        }`}
+                      >
+                        ✓ GOOD (+{convPts} PTS)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConvIsGood(false)}
+                        className={`py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border ${
+                          convIsGood === false
+                            ? "bg-red-500 text-white border-red-500 font-black"
+                            : "bg-neutral-800 border-white/10 text-neutral-300"
+                        }`}
+                      >
+                        ✗ NO GOOD (0 PTS)
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={finalizeConversion}
+                      disabled={convIsGood === null}
+                      className="w-full py-3.5 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                    >
+                      Confirm Conversion & Flip Possession
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP: GAME_OVER MODAL */}
+            {step === "GAME_OVER" && (
+              <div className="bg-neutral-900 border border-red-500/40 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl text-center">
+                <div className="space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto border border-red-500/30">
+                    <Trophy className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-black uppercase text-white">Finalize Match</h3>
+                  <p className="text-neutral-400 text-xs max-w-sm mx-auto">
+                    Are you ready to mark this match as completed? Final score will be recorded as:
+                  </p>
+                  <div className="text-3xl font-black text-white font-mono py-2">
+                    {homeTeamName} {homeScore} - {awayScore} {awayTeamName}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => setStep("IDLE")}
+                    className="py-3 px-6 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs uppercase tracking-wider transition-all"
+                  >
+                    Resume Match
+                  </button>
+                  <button
+                    onClick={finalizeGame}
+                    className="py-3 px-6 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg"
+                  >
+                    Confirm & Complete Match
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: PLAY-BY-PLAY FEED (ZERO TIMESTAMPS OTHER THAN FIRST HALF / SECOND HALF) */}
+        {activeTab === "play-by-play" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-black uppercase text-white">Match Play Log</h3>
+              <span className="text-xs text-neutral-400 font-mono">
+                {plays.length} Total Plays (Asynchronous)
+              </span>
+            </div>
+
+            {plays.length === 0 ? (
+              <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-8 text-center text-neutral-500 text-sm italic">
+                No plays recorded yet. Press "START PLAY" on the Stat Keeper tab to log plays.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {plays.map((p, idx) => (
+                  <div
+                    key={p.id || idx}
+                    className="bg-neutral-900/80 border border-white/5 rounded-2xl p-4 flex items-start justify-between gap-4 shadow-sm"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {/* ONLY FIRST HALF / SECOND HALF MARKER - NO TIMESTAMPS */}
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold uppercase">
+                          {p.half === 2 ? "Second Half" : "First Half"}
+                        </span>
+                        <span className="text-neutral-400 font-mono text-xs">
+                          {getOrdinal(p.down || 1)} Down
+                        </span>
+                        <span className="text-xs font-bold text-white">
+                          • {p.possessionTeamId === homeTeamId ? homeTeamName : awayTeamName}
+                        </span>
+                      </div>
+
+                      <p className="text-sm text-neutral-200">
+                        {p.playType} {p.passOutcome ? `(${p.passOutcome})` : ""}{" "}
+                        {p.qbPlayerId ? `by ${p.qbPlayerId}` : p.runnerPlayerId ? `by ${p.runnerPlayerId}` : ""}{" "}
+                        {p.receiverPlayerId ? `to ${p.receiverPlayerId}` : ""}
+                        {p.defenders && p.defenders.length > 0 ? ` • Def: ${p.defenders.join(", ")}` : ""}
+                      </p>
+
+                      {p.conversionAttempt && (
+                        <span className="text-xs text-emerald-400 font-bold block">
+                          PAT: {p.conversionAttempt} PT Attempt • {p.conversionSuccess ? "GOOD" : "FAILED"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-bold text-emerald-400">
+                        {p.result || "Play"}
+                      </span>
+                      {p.pointsScored > 0 && (
+                        <div className="text-[11px] font-mono text-emerald-300 font-bold">
+                          +{p.pointsScored} PTS
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: BOX SCORE */}
+        {activeTab === "box-score" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-black uppercase text-white">Player Box Score</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setBoxScoreTab("home")}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border ${
+                    boxScoreTab === "home"
+                      ? "bg-emerald-500 text-black border-emerald-500 font-black"
+                      : "bg-neutral-800 text-neutral-300 border-white/10"
+                  }`}
+                >
+                  {homeTeamName}
+                </button>
+                <button
+                  onClick={() => setBoxScoreTab("away")}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border ${
+                    boxScoreTab === "away"
+                      ? "bg-emerald-500 text-black border-emerald-500 font-black"
+                      : "bg-neutral-800 text-neutral-300 border-white/10"
+                  }`}
+                >
+                  {awayTeamName}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-neutral-900 border border-white/10 rounded-2xl p-4 overflow-x-auto shadow-xl">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-white/10 text-neutral-400 font-bold uppercase tracking-wider">
+                    <th className="pb-3 pr-4">Athlete</th>
+                    <th className="pb-3 px-3 text-center">C / ATT</th>
+                    <th className="pb-3 px-3 text-center">PASS TD</th>
+                    <th className="pb-3 px-3 text-center">INT</th>
+                    <th className="pb-3 px-3 text-center">REC</th>
+                    <th className="pb-3 px-3 text-center">REC TD</th>
+                    <th className="pb-3 px-3 text-center">RUSH</th>
+                    <th className="pb-3 px-3 text-center">RUSH TD</th>
+                    <th className="pb-3 px-3 text-center">FLAGS</th>
+                    <th className="pb-3 px-3 text-center">SACKS</th>
+                    <th className="pb-3 px-3 text-center">DEF INT</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {calculateBoxScore().map((stat: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-white/5 transition-colors">
+                      <td className="py-2.5 pr-4 font-bold text-white">{stat.name}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">
+                        {stat.passComp}/{stat.passAtt}
+                      </td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.passTD}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.passInt}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.receptions}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.recTD}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.rushAtt}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.rushTD}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.flagPulls}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.sacks}</td>
+                      <td className="py-2.5 px-3 text-center text-neutral-300">{stat.int}</td>
+                    </tr>
+                  ))}
+                  {calculateBoxScore().length === 0 && (
+                    <tr>
+                      <td colSpan={11} className="py-8 text-center text-neutral-500 italic">
+                        No player statistics recorded yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ADD SUB / CUSTOM PLAYER MODAL */}
+      {isSubModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-neutral-950 border border-white/20 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsSubModalOpen(false)}
+              className="absolute top-5 right-5 text-neutral-400 hover:text-white p-1 rounded-full hover:bg-white/5"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-lg font-black uppercase text-white mb-1">Add Player / Sub</h3>
+            <p className="text-xs text-neutral-400 mb-4">Add a roster player name for stat tracking</p>
+
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSubModalTeam("HOME")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold border ${
+                    subModalTeam === "HOME"
+                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                      : "bg-neutral-900 border-white/10 text-neutral-400"
+                  }`}
+                >
+                  {homeTeamName}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubModalTeam("AWAY")}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold border ${
+                    subModalTeam === "AWAY"
+                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                      : "bg-neutral-900 border-white/10 text-neutral-400"
+                  }`}
+                >
+                  {awayTeamName}
+                </button>
+              </div>
+
+              <input
+                type="text"
+                placeholder="Player Name (e.g. John Doe)"
+                value={newSubInput}
+                onChange={(e) => setNewSubInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500"
+              />
+
+              <button
+                onClick={() => handleAddSub(newSubInput, subModalTeam || "HOME")}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Add Player to Roster
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
