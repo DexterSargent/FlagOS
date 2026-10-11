@@ -2,15 +2,18 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ChevronLeft, Shield, MapPin } from "lucide-react";
+import { ChevronLeft, Shield, MapPin, Zap, RotateCcw } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
+import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import {
   getSandboxMatches,
   getSandboxPlays,
   getSandboxPlayers,
+  updateSandboxMatch,
+  deleteSandboxPlaysForMatch,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
 
@@ -18,6 +21,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague } = useLeague();
+  const { isLeagueAdmin } = useAuth();
 
   const [matchData, setMatchData] = useState<any>(null);
   const [plays, setPlays] = useState<any[]>([]);
@@ -120,9 +124,16 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       }
     });
 
+    const targetTeamId = boxScoreTab === 'home' ? matchData?.homeTeamId : matchData?.awayTeamId;
+
+    // Pre-populate roster players so every active player appears in the box score
+    players.filter(p => p.teamId === targetTeamId).forEach(p => {
+      initPlayer(p.playerName);
+      statsMap[p.playerName].inferredTeam = targetTeamId;
+    });
+
     const allStats = Object.values(statsMap);
     const filtered = allStats.filter(s => {
-      const targetTeamId = matchData?.homeTeamId;
       // If we inferred a team from their plays, use that. Otherwise, try to fall back to the player's DB team.
       if (s.inferredTeam) {
         return s.inferredTeam === targetTeamId;
@@ -353,6 +364,40 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-neutral-400">
+          {isDemoLeague && isLeagueAdmin && (
+            <div className="flex items-center gap-2 mr-2">
+              <button
+                onClick={() => {
+                  updateSandboxMatch(matchId, { status: "in_progress" });
+                  window.location.reload();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-bold border border-cyan-500/40 transition-colors flex items-center gap-1.5 shadow-sm"
+                title="Open live play-by-play tracker in demo sandbox"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Open Live Manager</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!confirm("Reset this demo match to pre-game state (0-0 score, all plays cleared)?")) return;
+                  deleteSandboxPlaysForMatch(matchId);
+                  updateSandboxMatch(matchId, {
+                    status: "scheduled",
+                    homeScore: 0,
+                    awayScore: 0,
+                    matchState: null,
+                    didNotPlay: [],
+                  });
+                  window.location.reload();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold border border-white/10 transition-colors flex items-center gap-1.5"
+                title="Reset demo match and purge sandbox plays"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reset Match</span>
+              </button>
+            </div>
+          )}
           <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             LIVE BROADCAST
@@ -447,7 +492,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                       {" • "}
                       {play.possessionTeamId === matchData.homeTeamId ? matchData.homeTeamName : matchData.awayTeamName} - {getOrdinal(play.down)} Down
                     </span>
-                    <span>{play.points > 0 ? `+${play.points} PTS` : ''}</span>
+                    <span>{(play.points || play.pointsScored) > 0 ? `+${play.points || play.pointsScored} PTS` : ''}</span>
                   </div>
                   <p className="text-xl text-white font-medium whitespace-pre-wrap">
                     {formatPlaySentence(play)}
@@ -459,6 +504,30 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
 
           {activeTab === 'box-score' && (
             <div className="flex flex-col gap-4">
+              {/* Team Selector Tabs for Box Score */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setBoxScoreTab('home')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                    boxScoreTab === 'home'
+                      ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-sm'
+                      : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {matchData.homeTeamName || "Home Team"}
+                </button>
+                <button
+                  onClick={() => setBoxScoreTab('away')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                    boxScoreTab === 'away'
+                      ? 'bg-blue-500/20 border-blue-500 text-blue-300 shadow-sm'
+                      : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {matchData.awayTeamName || "Away Team"}
+                </button>
+              </div>
+
               <div className="bg-neutral-900 border border-white/5 rounded-2xl p-6 shadow-lg overflow-x-auto">
                 <table className="w-full text-left text-sm whitespace-nowrap">
                   <thead>

@@ -51,7 +51,7 @@ export default function PricingPage() {
   // League Modal Form
   const [leagueName, setLeagueName] = useState("");
   const [leagueShortcode, setLeagueShortcode] = useState("");
-  const [leagueColor, setLeagueColor] = useState("#06B6D4");
+  const [leagueColor, setLeagueColor] = useState("#3ca505");
   const [isSubmittingLeague, setIsSubmittingLeague] = useState(false);
 
   // Team Modal Form
@@ -146,14 +146,41 @@ export default function PricingPage() {
             Choose Your Platform Tier
           </h1>
           <p className="text-neutral-400 text-base md:text-lg leading-relaxed">
-            Run an entire multi-team league with live countdown timers and custom rules, or manage an independent franchise with clockless asynchronous scorekeeping.
+            Run an independent team with in-depth stats &amp; playbook design, or scale an entire league where <strong className="text-white">every team gets those exact same features</strong> plus live gameday clocks and complete administrative infrastructure.
           </p>
+        </div>
+
+        {/* The Multiplier Architecture Banner */}
+        <div className="rounded-3xl bg-gradient-to-r from-emerald-500/10 via-cyan-500/15 to-blue-500/10 border border-cyan-500/30 p-6 md:p-8 text-neutral-200 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span>The Platform Multiplier</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-black uppercase text-white tracking-tight">
+              Leagues Include Full Team Plan Hubs For Every Team
+            </h2>
+            <p className="text-neutral-300 text-sm leading-relaxed">
+              When you subscribe to a League, you aren&apos;t just getting commissioner tools. <strong className="text-white">Every single team in your organization receives their own full Team Plan access</strong> — complete player stats, career records, and up to 5 custom playbooks — backed by live countdown clocks and automated league infrastructure.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="text-center px-4 py-3 rounded-2xl bg-black/60 border border-emerald-500/30">
+              <div className="text-[11px] text-emerald-400 font-mono font-bold uppercase">Team Side</div>
+              <div className="text-sm md:text-base font-black text-white">Stats + 5 Playbooks</div>
+            </div>
+            <div className="text-cyan-400 font-black text-lg">➕</div>
+            <div className="text-center px-4 py-3 rounded-2xl bg-black/60 border border-cyan-500/30">
+              <div className="text-[11px] text-cyan-400 font-mono font-bold uppercase">League Side</div>
+              <div className="text-sm md:text-base font-black text-white">Live Clocks + Infra</div>
+            </div>
+          </div>
         </div>
 
         {/* Pricing Cards Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
           {/* TIER 1: LEAGUE SUBSCRIPTION */}
-          <div className="relative rounded-[2.5rem] bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 p-8 md:p-10 flex flex-col justify-between shadow-[0_0_50px_rgba(6,182,212,0.15)] backdrop-blur-xl">
+          <div className="relative rounded-[2.5rem] bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 p-8 md:p-10 flex flex-col justify-between shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] backdrop-blur-xl">
             <div className="absolute -top-3.5 right-8 bg-gradient-to-r from-cyan-500 to-blue-600 text-black text-[11px] font-black uppercase tracking-widest px-4 py-1 rounded-full shadow-lg">
               Most Flexible • Multi-Tenant
             </div>
@@ -167,7 +194,7 @@ export default function PricingPage() {
                   <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
                     League Subscription
                   </h2>
-                  <p className="text-xs text-neutral-400">Dedicated Portal for Commissioners & Organizations</p>
+                  <p className="text-xs text-neutral-400">Everything in the Team Plan for Every Team + Full League Ops &amp; Live Clocks</p>
                 </div>
               </div>
 
@@ -224,36 +251,30 @@ export default function PricingPage() {
                 <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Complete League Infrastructure
+                    All Team Features For Every Team + League Ops
                   </span>
-                  <span className="text-neutral-500 text-[10px]">8 Core Systems</span>
+                  <span className="text-neutral-500 text-[10px]">The League Draws</span>
                 </div>
 
                 <div className="space-y-2.5">
                   {[
                     {
-                      icon: Building2,
-                      badge: "Branding",
-                      title: "White-Label League Portal",
-                      description: "Dedicated portal URL with your custom color palette, official logo, and tailored theme presets.",
+                      icon: Sparkles,
+                      badge: "All Teams",
+                      title: "All Team Features Included for Every Team",
+                      description: "Every team in your league automatically gets their private team portal, complete team and player stats, and up to 5 custom playbooks.",
                     },
                     {
                       icon: Timer,
                       badge: "Live Gameday",
-                      title: "Official Real-Time Game Clock & Console",
-                      description: "Synchronized 20-min half countdowns, 25s play clock buzzer, down & distance, and interactive timeouts.",
-                    },
-                    {
-                      icon: Users,
-                      badge: "Delegation",
-                      title: "Multi-Admin Delegation & Tenancy",
-                      description: "Invite unlimited Team Admins, grant scorekeeper access, and manage multiple divisions from one place.",
+                      title: "Official Game Management With Live Clocks",
+                      description: "Synchronized 20-min countdown clocks, 25s play clock buzzer, ball spot indicator, down & distance, and interactive timeouts.",
                     },
                     {
                       icon: Calendar,
                       badge: "Automation",
-                      title: "Dynamic Scheduler & Drag-and-Drop",
-                      description: "Generate balanced seasonal matchups, drag to reorder game slots, and assign turf fields automatically.",
+                      title: "Automated Seasonal Scheduler",
+                      description: "Generate balanced seasonal matchups, drag-and-drop to reorder game slots, and assign turf fields automatically.",
                     },
                     {
                       icon: Trophy,
@@ -262,16 +283,22 @@ export default function PricingPage() {
                       description: "Real-time win/loss/tie calculations, head-to-head tiebreakers, point differential, and playoff brackets.",
                     },
                     {
-                      icon: Activity,
-                      badge: "Broadcast",
-                      title: "Live Spectator Ticker & Box Scores",
-                      description: "Real-time play-by-play ticker, drive breakdowns, and instant shareable match links for fans and parents.",
+                      icon: Award,
+                      badge: "Leaderboards",
+                      title: "League-Wide Stat Leaderboards",
+                      description: "Automated league rankings for passing TDs, passer rating, defensive flag pulls, sacks, and INT pick-sixes across all teams.",
                     },
                     {
-                      icon: Award,
-                      badge: "Analytics",
-                      title: "Pro Leaderboards & Stat Engine",
-                      description: "Automated league-wide rankings for passing TDs, passer rating, defensive flag pulls, and INT pick-sixes.",
+                      icon: Users,
+                      badge: "Delegation",
+                      title: "Multi-Admin Delegation & Tenancy",
+                      description: "Invite unlimited Team Admins/Coaches, grant scorekeeper access, and manage multiple divisions from one central desk.",
+                    },
+                    {
+                      icon: Building2,
+                      badge: "Branding",
+                      title: "White-Label League Portal",
+                      description: "Dedicated portal URL with your custom color palette, official logo, season branding, and tailored theme presets.",
                     },
                     {
                       icon: Flame,
@@ -309,9 +336,9 @@ export default function PricingPage() {
             <div className="pt-8">
               <button
                 onClick={() => setIsLeagueModalOpen(true)}
-                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.4)] flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
-                <span>Launch & Subscribe League</span>
+                <span>Launch &amp; Subscribe League</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -328,7 +355,7 @@ export default function PricingPage() {
                   <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
                     Team Subscription
                   </h2>
-                  <p className="text-xs text-neutral-400">Single Team Portal with Asynchronous Scorekeeping</p>
+                  <p className="text-xs text-neutral-400">Independent Franchise Hub • Stats &amp; Playbook Studio</p>
                 </div>
               </div>
 
@@ -353,60 +380,48 @@ export default function PricingPage() {
                 <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
-                    Complete Team Infrastructure
+                    What You Get On The Team Side
                   </span>
-                  <span className="text-neutral-500 text-[10px]">8 Core Systems</span>
+                  <span className="text-neutral-500 text-[10px]">The Core Draws</span>
                 </div>
 
                 <div className="space-y-2.5">
                   {[
                     {
-                      icon: Shield,
-                      badge: "Command Center",
-                      title: "Private Franchise Headquarters",
-                      description: "Dedicated team portal (/teams/[id]) with official roster directory, player bios, jersey numbers, and depth charts.",
-                    },
-                    {
-                      icon: Calendar,
-                      badge: "Matchmaker",
-                      title: "Anytime Scrimmage & Match Scheduler",
-                      description: "Schedule exhibition games and tournament matches on your terms against custom-named opponents anytime.",
-                    },
-                    {
-                      icon: Zap,
-                      badge: "Stress-Free",
-                      title: "Clockless Asynchronous Stat Keeper",
-                      description: "Track stats without countdown timers or timeout pressure — log plays at your own pace during or after games.",
-                    },
-                    {
-                      icon: Play,
-                      badge: "Sideline Flow",
-                      title: "1-Click Sequential Play Wizard",
-                      description: "Streamlined single-operator flow with 'Start Play', Pass/Run/Penalty, passer/receiver tagging, and Halftime.",
-                    },
-                    {
                       icon: Activity,
-                      badge: "Pro Output",
-                      title: "NFL-Grade Box Scores & Drive Logs",
-                      description: "Generates complete drive-by-drive summaries, completion percentages, yards gained, and defensive stops.",
+                      badge: "Draw A",
+                      title: "Track & Manage Team & Individual Stats",
+                      description: "Full box scores with completion %, passing/receiving/rushing TDs, flag pulls, sacks, INTs, conversions, and cumulative career athlete game logs.",
                     },
                     {
                       icon: BookOpen,
-                      badge: "Playbook Studio",
-                      title: "Interactive Route & Scheme Builder",
-                      description: "Draw offensive pass routes with custom break points & scheme defensive coverages (Deep Half, Hook, Man, Rush).",
+                      badge: "Draw B",
+                      title: "Design & Build Up to 5 Custom Playbooks",
+                      description: "Interactive visual route drafting with custom break points, offensive pass/run concepts, and defensive coverage shells (Cover 2, Man, Blitz).",
+                    },
+                    {
+                      icon: Users,
+                      badge: "Roster Hub",
+                      title: "Private Franchise Roster & Depth Charts",
+                      description: "Dedicated team portal (/teams/[id]) with player bios, jersey numbers, positions, contact directory, and attendance tracking.",
+                    },
+                    {
+                      icon: Play,
+                      badge: "Match Tracker",
+                      title: "Standalone Match & Scrimmage Logging",
+                      description: "Log exhibition games, scrimmages, and tournament matches against custom-named opponents with streamlined single-operator stat entry.",
                     },
                     {
                       icon: Trophy,
-                      badge: "Player Growth",
+                      badge: "Career Records",
                       title: "Athlete Career Résumés & Game Logs",
-                      description: "Individual player stats compile automatically across all matches played into permanent career archives.",
+                      description: "Individual player stats follow athletes across every match played into permanent, verified digital career archives.",
                     },
                     {
                       icon: Sliders,
-                      badge: "Independence",
-                      title: "100% Standalone — Flat $30/mo",
-                      description: "Full club autonomy for travel squads and tournament teams — zero league dues or external dependencies.",
+                      badge: "100% Autonomy",
+                      title: "Full Independence — Flat $30/mo",
+                      description: "Full club autonomy for travel squads, intramural clubs, and tournament teams without needing a parent league.",
                     },
                   ].map((feat, idx) => (
                     <div
@@ -440,7 +455,7 @@ export default function PricingPage() {
                 onClick={() => setIsTeamModalOpen(true)}
                 className="w-full py-4 px-6 rounded-2xl bg-white hover:bg-neutral-200 text-black font-black text-sm uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-98"
               >
-                <span>Launch & Subscribe Team</span>
+                <span>Launch &amp; Subscribe Team</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -486,7 +501,7 @@ export default function PricingPage() {
               </div>
               <div>
                 <h3 className="text-xl font-black uppercase text-white">Subscribe League Portal</h3>
-                <p className="text-xs text-neutral-400">Baseline monthly fee + per-team scaling</p>
+                <p className="text-xs text-neutral-400">Baseline fee + per-team scaling • Includes full team hubs for every team</p>
               </div>
             </div>
 
@@ -533,7 +548,7 @@ export default function PricingPage() {
               <div>
                 <label className="text-xs font-bold text-neutral-300 block mb-1.5">Primary League Color</label>
                 <div className="flex items-center gap-2">
-                  {["#06B6D4", "#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"].map((c) => (
+                  {["#3ca505", "#22c55e", "#06B6D4", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444"].map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -591,7 +606,7 @@ export default function PricingPage() {
               </div>
               <div>
                 <h3 className="text-xl font-black uppercase text-white">Subscribe Team Portal</h3>
-                <p className="text-xs text-neutral-400">Single monthly fee for independent team tracking</p>
+                <p className="text-xs text-neutral-400">Single monthly fee • Full stats tracking, roster hub &amp; up to 5 playbooks</p>
               </div>
             </div>
 
@@ -627,7 +642,7 @@ export default function PricingPage() {
                   <span className="font-mono text-white">$30/mo</span>
                 </div>
                 <div className="flex justify-between text-neutral-400">
-                  <span>Independent Async Stat Keeper</span>
+                  <span>Full Stats &amp; Up to 5 Custom Playbooks</span>
                   <span className="font-mono text-emerald-400">Included</span>
                 </div>
                 <div className="border-t border-white/10 pt-2 flex justify-between font-bold text-white text-sm">

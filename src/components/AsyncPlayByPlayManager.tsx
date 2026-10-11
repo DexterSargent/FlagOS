@@ -46,6 +46,7 @@ import {
   getSandboxPlays,
   addSandboxPlay,
   updateSandboxMatch,
+  deleteSandboxPlay,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
 
@@ -181,10 +182,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     };
 
     loadMatchData();
-    if (isDemoLeague) {
-      const unsub = subscribeDemoSandbox(() => loadMatchData());
-      return () => unsub();
-    }
   }, [matchId, isDemoLeague]);
 
   // Fetch plays feed
@@ -259,6 +256,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     }
     setNewSubInput("");
     setIsSubModalOpen(false);
+    if (isDemoLeague) {
+      updateSandboxMatch(matchId, { subs: newSubs });
+      return;
+    }
     try {
       await updateDoc(doc(db, "matches", matchId), { subs: newSubs });
     } catch (e) {
@@ -296,6 +297,22 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const finalizeGame = async () => {
     try {
+      if (isDemoLeague) {
+        updateSandboxMatch(matchId, {
+          status: "completed",
+          homeScore,
+          awayScore,
+          roster: {
+            home: homePlayers,
+            away: awayPlayers,
+          },
+        });
+        setMatchStatus("completed");
+        setActiveTab("play-by-play");
+        setStep("IDLE");
+        alert("Match finalized successfully!");
+        return;
+      }
       await updateDoc(doc(db, "matches", matchId), {
         status: "completed",
         homeScore,
@@ -483,6 +500,30 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const handleUndoLastPlay = async () => {
     if (!confirm("Are you sure you want to undo the last logged play?")) return;
     try {
+      if (isDemoLeague) {
+        const demoPlays = getSandboxPlays(matchId);
+        if (demoPlays.length > 0) {
+          const lastPlay: any = demoPlays[demoPlays.length - 1];
+          setCurrentDown(lastPlay.down || 1);
+          const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
+          setPossession(wasHomePossession ? homeTeamName : awayTeamName);
+
+          const pts = lastPlay.pointsScored || (lastPlay.isTouchdown ? 6 : 0) || (lastPlay.points || 0);
+          if (pts > 0) {
+            if (wasHomePossession) setHomeScore((s) => Math.max(0, s - pts));
+            else setAwayScore((s) => Math.max(0, s - pts));
+          }
+
+          deleteSandboxPlay(lastPlay.id);
+          resetPlayForm();
+          loadPlays();
+          alert("Last play undone successfully.");
+        } else {
+          alert("No plays found to undo.");
+        }
+        return;
+      }
+
       const q = query(
         collection(db, "plays"),
         where("matchId", "==", matchId),

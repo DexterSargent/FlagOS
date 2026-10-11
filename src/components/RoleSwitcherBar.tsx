@@ -6,6 +6,7 @@ import { useAuth, UserRole } from "@/lib/authContext";
 import { Crown, Shield, User, X, Settings, RotateCcw, Sparkles } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RoleSwitcherBar() {
   const pathname = usePathname();
@@ -102,10 +103,11 @@ export default function RoleSwitcherBar() {
 
   if (isCollapsed) {
     return (
-      <aside aria-label="Demo Testing Role Switcher" className="fixed bottom-4 right-4 z-50">
+      <aside aria-label="Demo Testing Role Switcher" className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+        <ThemeToggle size="md" />
         <button
           onClick={() => setIsCollapsed(false)}
-          className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-neutral-900/95 border border-cyan-500/40 text-white shadow-[0_0_25px_rgba(6,182,212,0.35)] backdrop-blur-md hover:border-cyan-400 transition-all text-xs font-bold"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-neutral-900/95 border border-cyan-500/40 text-white shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.35)] backdrop-blur-md hover:border-cyan-400 transition-all text-xs font-bold"
         >
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
           <span className="text-[10px] uppercase font-mono tracking-widest text-cyan-300">Demo Role:</span>
@@ -269,6 +271,9 @@ export default function RoleSwitcherBar() {
             <Settings className="w-3.5 h-3.5 text-cyan-400" />
             <span className="hidden sm:inline">Settings</span>
           </button>
+
+          {/* Light / Dark Mode Toggle */}
+          <ThemeToggle size="sm" />
 
           {/* Reset Demo Session Button */}
           <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -31,14 +31,22 @@ import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
+import ThemeToggle from "@/components/ThemeToggle";
+import { useTheme } from "@/lib/themeContext";
 
 export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
   const { user, isLeagueAdmin, isTeamAdmin, role } = useAuth();
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Interactive preview tabs
-  const [activeFeatureTab, setActiveFeatureTab] = useState<"league-ops" | "async-keeper" | "playbook" | "standings">("league-ops");
+  const [activeFeatureTab, setActiveFeatureTab] = useState<"stats" | "playbook" | "live-clock" | "infrastructure">("stats");
 
   // League Finder search
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,6 +64,8 @@ export default function FlagOSPlatformLandingPage() {
       l.shortcode?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const logoColour = mounted && resolvedTheme === "light" ? "/flagos-logo-original.png" : "/flagos-logo.png";
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative overflow-hidden">
       {/* Dynamic Background Glows */}
@@ -67,11 +77,11 @@ export default function FlagOSPlatformLandingPage() {
       <header className="border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3.5 group">
-            <div className="w-11 h-11 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center p-1.5 shadow-[0_0_20px_rgba(60,165,5,0.25)] group-hover:scale-105 group-hover:border-emerald-500/40 transition-all">
+            <div className="w-15 h-15 rounded-2xl flex items-center justify-center">
               <img
                 src="/flagos-emblem.png"
                 alt="FlagOS"
-                className="w-full h-full object-contain drop-shadow-[0_2px_8px_rgba(60,165,5,0.4)]"
+                className="w-full h-full object-contain "
               />
             </div>
             <div>
@@ -106,6 +116,8 @@ export default function FlagOSPlatformLandingPage() {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-3">
+            <ThemeToggle size="md" />
+
             <Link
               href={`/league/${activeLeagueId || "default"}`}
               className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
@@ -144,15 +156,15 @@ export default function FlagOSPlatformLandingPage() {
         </div>
       </div>
 
+
       {/* HERO SECTION */}
       <main className="flex-1 w-full relative z-10">
         <section className="max-w-5xl mx-auto px-6 pt-12 pb-20 md:pt-16 md:pb-28 text-center space-y-8">
           {/* Official 3D Turf Gear Logo Showcase */}
           <div className="flex flex-col items-center justify-center pt-2 pb-1">
             <div className="relative group">
-              <div className="absolute -inset-6 bg-gradient-to-r from-emerald-500/25 via-cyan-500/20 to-emerald-500/25 rounded-full blur-3xl opacity-80 group-hover:opacity-100 transition-all pointer-events-none"></div>
               <img
-                src="/flagos-logo.png"
+                src={logoColour}
                 alt="FlagOS - The Flag Football Operating System"
                 className="relative w-56 sm:w-64 md:w-72 h-auto object-contain drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300"
               />
@@ -161,22 +173,22 @@ export default function FlagOSPlatformLandingPage() {
 
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold uppercase tracking-widest backdrop-blur-md shadow-2xl">
             <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Built For League Commissioners & Team Coaches</span>
+            <span>Built For Independent Teams & Full League Organizations</span>
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight text-white leading-none">
-            The Operating System for Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500">Flag Football</span>
+            The Operating System for Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500"><br></br>Flag Football</span>
           </h1>
 
-          <p className="text-neutral-400 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-light">
-            Everything needed to launch, scale, and manage a professional league or independent franchise. Live game clocks, clockless stat keeping, visual playbooks, and automated standings.
+          <p className="text-neutral-400 text-base sm:text-lg md:text-xl max-w-3xl mx-auto leading-relaxed font-light">
+            Everything needed to manage an independent franchise or operate an entire league. On the team side: track team &amp; individual player stats, and design up to 5 custom playbooks. On the league side: get all of that for every team in your organization, plus live gameday clock management and complete league handling infrastructure.
           </p>
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
             <Link
               href="/pricing"
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(6,182,212,0.4)] hover:scale-102 active:scale-98 flex items-center gap-2"
+              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.4)] hover:scale-102 active:scale-98 flex items-center gap-2"
             >
               <Crown className="w-4 h-4" />
               <span>Launch a League Portal</span>
@@ -207,174 +219,66 @@ export default function FlagOSPlatformLandingPage() {
               <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">IFAF Rules Ready</div>
             </div>
             <div>
-              <div className="text-2xl md:text-3xl font-black text-cyan-400 font-mono">100% Live</div>
-              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Real-Time Sync</div>
+              <div className="text-2xl md:text-3xl font-black text-emerald-400 font-mono">Full Stats</div>
+              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Team & Player Logs</div>
             </div>
             <div>
-              <div className="text-2xl md:text-3xl font-black text-emerald-400 font-mono">Clockless</div>
-              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Async Stat Keeper</div>
+              <div className="text-2xl md:text-3xl font-black text-blue-400 font-mono">5 Playbooks</div>
+              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Per Team Custom Schemer</div>
             </div>
             <div>
-              <div className="text-2xl md:text-3xl font-black text-amber-400 font-mono">Unlimited</div>
-              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Visual Playbooks</div>
+              <div className="text-2xl md:text-3xl font-black text-cyan-400 font-mono">Live Clocks</div>
+              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Full League Infrastructure</div>
             </div>
           </div>
         </section>
 
-        {/* TWO SUBSCRIPTION TIERS EXPLAINED */}
-        <section className="max-w-6xl mx-auto px-6 py-16 border-t border-white/10 space-y-12">
-          <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
-              Subscription Infrastructure
+        {/* THE TEAM SIDE VS THE LEAGUE SIDE */}
+        <section className="max-w-6xl mx-auto px-6 py-16 border-t border-white/10 space-y-10">
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+              Platform Architecture &amp; Tier Breakdown
             </span>
             <h2 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
-              Two Tailored Plans
+              The Team Side vs. The League Side
             </h2>
-            <p className="text-neutral-400 text-sm">
-              Whether you administer an entire organization with dozens of teams or manage a single competitive franchise, FlagOS has a dedicated tier.
+            <p className="text-neutral-400 text-sm md:text-base leading-relaxed">
+              On the <strong className="text-emerald-400">Team Side</strong>, you get comprehensive team and player stats, roster management, and up to 5 custom playbooks. On the <strong className="text-cyan-400">League Side</strong>, you get all that for <em>every team</em> in your league, <strong className="text-white">PLUS</strong> live gameday clock management and the entire league handling infrastructure.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-            {/* TIER 1: LEAGUE PLAN */}
-            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-8 space-y-6 relative shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-between backdrop-blur-xl">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
-                    <Crown className="w-6 h-6" />
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-mono font-bold border border-cyan-500/20">
-                    Commissioner & League Operator Tier
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-2xl font-black uppercase text-white tracking-tight">"League" Subscription</h3>
-                  <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                    The complete operating system to launch, brand, and scale multi-team flag football organizations with official live gameday clocks.
-                  </p>
-                </div>
-
-                <div className="bg-black/60 rounded-2xl p-4 border border-white/10 space-y-1">
-                  <div className="text-3xl font-black text-white font-mono">
-                    $40 <span className="text-xs text-neutral-400 font-normal">base monthly</span> + $15 <span className="text-xs text-neutral-400 font-normal">per team / mo</span>
-                  </div>
-                  <p className="text-[11px] text-cyan-400 font-medium">Scales dynamically as member teams register or retire</p>
-                </div>
-
-                <div className="space-y-3 pt-2">
-                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Complete League Infrastructure
-                    </span>
-                    <span className="text-neutral-500 text-[10px]">8 Core Systems</span>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {[
-                      {
-                        icon: Building2,
-                        badge: "Branding",
-                        title: "White-Label League Portal",
-                        description: "Dedicated portal URL with your custom color palette, official logo, and tailored theme presets.",
-                      },
-                      {
-                        icon: Timer,
-                        badge: "Live Gameday",
-                        title: "Official Real-Time Game Clock & Console",
-                        description: "Synchronized 20-min half countdowns, 25s play clock buzzer, down & distance, and interactive timeouts.",
-                      },
-                      {
-                        icon: Users,
-                        badge: "Delegation",
-                        title: "Multi-Admin Delegation & Tenancy",
-                        description: "Invite unlimited Team Admins, grant scorekeeper access, and manage multiple divisions from one place.",
-                      },
-                      {
-                        icon: Calendar,
-                        badge: "Automation",
-                        title: "Dynamic Scheduler & Drag-and-Drop",
-                        description: "Generate balanced seasonal matchups, drag to reorder game slots, and assign turf fields automatically.",
-                      },
-                      {
-                        icon: Trophy,
-                        badge: "Competition",
-                        title: "Automated Standings & Seeding",
-                        description: "Real-time win/loss/tie calculations, head-to-head tiebreakers, point differential, and playoff brackets.",
-                      },
-                      {
-                        icon: Activity,
-                        badge: "Broadcast",
-                        title: "Live Spectator Ticker & Box Scores",
-                        description: "Real-time play-by-play ticker, drive breakdowns, and instant shareable match links for fans and parents.",
-                      },
-                      {
-                        icon: Award,
-                        badge: "Analytics",
-                        title: "Pro Leaderboards & Stat Engine",
-                        description: "Automated league-wide rankings for passing TDs, passer rating, defensive flag pulls, and INT pick-sixes.",
-                      },
-                      {
-                        icon: Flame,
-                        badge: "Recruitment",
-                        title: "Team Signups & Free Agent Draft Board",
-                        description: "Public registration pipeline for incoming teams and an unattached free-agent draft pool with position filters.",
-                      },
-                    ].map((feat, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/[0.03] transition-all group"
-                      >
-                        <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-cyan-500/20 transition-all">
-                          <feat.icon className="w-4 h-4" />
-                        </div>
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap justify-between">
-                            <span className="text-xs font-bold text-white tracking-wide group-hover:text-cyan-300 transition-colors">
-                              {feat.title}
-                            </span>
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold shrink-0">
-                              {feat.badge}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-neutral-400 leading-relaxed group-hover:text-neutral-300 transition-colors">
-                            {feat.description}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-white/10 mt-6">
-                <Link
-                  href="/pricing"
-                  className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:scale-[1.01] active:scale-[0.99]"
-                >
-                  <span>Build League & View Pricing Calculator</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
+          {/* THE MULTIPLIER BANNER */}
+          <div className="max-w-4xl mx-auto p-4 md:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-cyan-500/15 to-blue-500/10 border border-cyan-500/30 text-neutral-200 text-xs md:text-sm flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left backdrop-blur-xl shadow-2xl">
+            <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-400 shrink-0 border border-cyan-500/30">
+              <Sparkles className="w-6 h-6" />
             </div>
+            <div className="space-y-1">
+              <span className="font-mono text-cyan-300 font-bold uppercase tracking-wider text-xs block">
+                The FlagOS Multiplier Effect
+              </span>
+              <p className="text-neutral-300 leading-relaxed">
+                Leagues include full Team Plan access for <strong>each registered team</strong> — giving every coach their own private hub, player stats, and up to 5 playbooks, backed by centralized gameday countdown clocks and automated league standings!
+              </p>
+            </div>
+          </div>
 
-            {/* TIER 2: TEAM PLAN */}
-            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-emerald-500/40 rounded-3xl p-8 space-y-6 relative shadow-[0_0_50px_rgba(16,185,129,0.12)] flex flex-col justify-between backdrop-blur-xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+            {/* TIER 1: THE TEAM PLAN (LEFT) */}
+            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-emerald-500/40 rounded-3xl p-8 space-y-6 relative shadow-[0_0_50px_rgba(16,185,129,0.12)] flex flex-col justify-between backdrop-blur-xl hover:border-emerald-500/60 transition-all">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
                     <Shield className="w-6 h-6" />
                   </div>
                   <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-mono font-bold border border-emerald-500/20">
-                    Club, Coach & Independent Franchise Tier
+                    Franchise, Coach &amp; Club Tier
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-2xl font-black uppercase text-white tracking-tight">"Team" Subscription</h3>
+                  <h3 className="text-2xl font-black uppercase text-white tracking-tight">The "Team" Subscription</h3>
                   <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                    A dedicated private headquarters for independent teams, tournament squads, and coaches with zero-pressure asynchronous stat keeping.
+                    A dedicated private headquarters for independent teams, tournament squads, and coaches with complete stat tracking and up to 5 custom playbooks.
                   </p>
                 </div>
 
@@ -382,67 +286,55 @@ export default function FlagOSPlatformLandingPage() {
                   <div className="text-3xl font-black text-white font-mono">
                     $30 <span className="text-xs text-neutral-400 font-normal">/ month flat fee</span>
                   </div>
-                  <p className="text-[11px] text-emerald-400 font-medium">Single flat monthly fee — full standalone access with no league required</p>
+                  <p className="text-[11px] text-emerald-400 font-medium">Single flat monthly fee — full standalone access with zero league dues required</p>
                 </div>
 
                 <div className="space-y-3 pt-2">
                   <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5" />
-                      Complete Team Infrastructure
+                      What You Get On The Team Side
                     </span>
-                    <span className="text-neutral-500 text-[10px]">8 Core Systems</span>
+                    <span className="text-neutral-500 text-[10px]">The Core Draws</span>
                   </div>
 
                   <div className="space-y-2.5">
                     {[
                       {
-                        icon: Shield,
-                        badge: "Command Center",
-                        title: "Private Franchise Headquarters",
-                        description: "Dedicated team portal (/teams/[id]) with official roster directory, player bios, jersey numbers, and depth charts.",
-                      },
-                      {
-                        icon: Calendar,
-                        badge: "Matchmaker",
-                        title: "Anytime Scrimmage & Match Scheduler",
-                        description: "Schedule exhibition games and tournament matches on your terms against custom-named opponents anytime.",
-                      },
-                      {
-                        icon: Zap,
-                        badge: "Stress-Free",
-                        title: "Clockless Asynchronous Stat Keeper",
-                        description: "Track stats without countdown timers or timeout pressure — log plays at your own pace during or after games.",
-                      },
-                      {
-                        icon: Play,
-                        badge: "Sideline Flow",
-                        title: "1-Click Sequential Play Wizard",
-                        description: "Streamlined single-operator flow with 'Start Play', Pass/Run/Penalty, passer/receiver tagging, and Halftime.",
-                      },
-                      {
                         icon: Activity,
-                        badge: "Pro Output",
-                        title: "NFL-Grade Box Scores & Drive Logs",
-                        description: "Generates complete drive-by-drive summaries, completion percentages, yards gained, and defensive stops.",
+                        badge: "Draw A",
+                        title: "Track & Manage Team & Individual Stats",
+                        description: "Full box scores with completion %, passing/receiving/rushing TDs, flag pulls, sacks, INTs, conversions, and cumulative career athlete game logs.",
                       },
                       {
                         icon: BookOpen,
-                        badge: "Playbook Studio",
-                        title: "Interactive Route & Scheme Builder",
-                        description: "Draw offensive pass routes with custom break points & scheme defensive coverages (Deep Half, Hook, Man, Rush).",
+                        badge: "Draw B",
+                        title: "Design & Build Up to 5 Custom Playbooks",
+                        description: "Interactive visual route drafting with custom break points, offensive pass/run concepts, and defensive coverage shells (Cover 2, Man, Blitz).",
+                      },
+                      {
+                        icon: Users,
+                        badge: "Roster Hub",
+                        title: "Private Franchise Roster & Depth Charts",
+                        description: "Dedicated team portal (/teams/[id]) with player bios, jersey numbers, positions, contact directory, and attendance tracking.",
+                      },
+                      {
+                        icon: Play,
+                        badge: "Match Tracker",
+                        title: "Standalone Match & Scrimmage Logging",
+                        description: "Log exhibition games, scrimmages, and tournament matches against custom-named opponents with streamlined single-operator stat entry.",
                       },
                       {
                         icon: Trophy,
-                        badge: "Player Growth",
+                        badge: "Career Records",
                         title: "Athlete Career Résumés & Game Logs",
-                        description: "Individual player stats compile automatically across all matches played into permanent career archives.",
+                        description: "Individual player stats follow athletes across every match played into permanent, verified digital career archives.",
                       },
                       {
                         icon: Sliders,
-                        badge: "Independence",
-                        title: "100% Standalone — Flat $30/mo",
-                        description: "Full club autonomy for travel squads and tournament teams — zero league dues or external dependencies.",
+                        badge: "100% Autonomy",
+                        title: "Full Independence — Flat $30/mo",
+                        description: "Full club autonomy for travel squads, intramural clubs, and tournament teams without needing a parent league.",
                       },
                     ].map((feat, idx) => (
                       <div
@@ -481,6 +373,129 @@ export default function FlagOSPlatformLandingPage() {
                 </Link>
               </div>
             </div>
+
+            {/* TIER 2: THE LEAGUE PLAN (RIGHT) */}
+            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-8 space-y-6 relative shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
+                    <Crown className="w-6 h-6" />
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-mono font-bold border border-cyan-500/20">
+                    Commissioner &amp; League Operator Tier
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-2xl font-black uppercase text-white tracking-tight">The "League" Subscription</h3>
+                  <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+                    Everything on the team side for <strong className="text-white">every team</strong> in your organization, PLUS official gameday clocks and complete league handling infrastructure.
+                  </p>
+                </div>
+
+                <div className="bg-black/60 rounded-2xl p-4 border border-white/10 space-y-1">
+                  <div className="text-3xl font-black text-white font-mono">
+                    $40 <span className="text-xs text-neutral-400 font-normal">base monthly</span> + $15 <span className="text-xs text-neutral-400 font-normal">per team / mo</span>
+                  </div>
+                  <p className="text-[11px] text-cyan-400 font-medium">Scales dynamically — every registered team gets full team hub &amp; playbooks</p>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      All Team Features For Every Team + League Ops
+                    </span>
+                    <span className="text-neutral-500 text-[10px]">The League Draws</span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {[
+                      {
+                        icon: Sparkles,
+                        badge: "All Teams",
+                        title: "All Team Features Included for Every Team",
+                        description: "Every team in your league automatically gets their private team portal, complete team and player stats, and up to 5 custom playbooks.",
+                      },
+                      {
+                        icon: Timer,
+                        badge: "Live Gameday",
+                        title: "Official Game Management With Live Clocks",
+                        description: "Synchronized 20-min countdown clocks, 25s play clock buzzer, ball spot indicator, down & distance, and interactive timeouts.",
+                      },
+                      {
+                        icon: Building2,
+                        badge: "Branding",
+                        title: "White-Label League Website & Portal",
+                        description: "Dedicated portal URL with your custom color palette, official logo, season title, and tailored theme presets.",
+                      },
+                      {
+                        icon: Calendar,
+                        badge: "Automation",
+                        title: "Automated Seasonal Scheduler",
+                        description: "Generate balanced seasonal matchups, drag-and-drop to reorder game slots, and assign turf fields automatically.",
+                      },
+                      {
+                        icon: Trophy,
+                        badge: "Competition",
+                        title: "Automated Standings & Seeding",
+                        description: "Real-time win/loss/tie calculations, head-to-head tiebreakers, point differential, and playoff brackets.",
+                      },
+                      {
+                        icon: Award,
+                        badge: "Analytics",
+                        title: "League-Wide Stat Leaderboards",
+                        description: "Automated league rankings for passing TDs, passer rating, defensive flag pulls, sacks, and INT pick-sixes across all teams.",
+                      },
+                      {
+                        icon: Users,
+                        badge: "Delegation",
+                        title: "Multi-Admin Delegation & Tenancy",
+                        description: "Invite Team Coaches, grant scorekeeper access, and manage multiple divisions from one central commissioner desk.",
+                      },
+                      {
+                        icon: Flame,
+                        badge: "Recruitment",
+                        title: "Team Signups & Free Agent Draft Board",
+                        description: "Public registration pipeline for incoming teams and an unattached free-agent draft pool with position filters.",
+                      },
+                    ].map((feat, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/[0.03] transition-all group"
+                      >
+                        <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-cyan-500/20 transition-all">
+                          <feat.icon className="w-4 h-4" />
+                        </div>
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap justify-between">
+                            <span className="text-xs font-bold text-white tracking-wide group-hover:text-cyan-300 transition-colors">
+                              {feat.title}
+                            </span>
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold shrink-0">
+                              {feat.badge}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-neutral-400 leading-relaxed group-hover:text-neutral-300 transition-colors">
+                            {feat.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-white/10 mt-6">
+                <Link
+                  href="/pricing"
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.3)] hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <span>Build League &amp; View Pricing Calculator</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -491,53 +506,166 @@ export default function FlagOSPlatformLandingPage() {
               Interactive Capabilities
             </span>
             <h2 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
-              Built Specifically for Flag Football
+              The FlagOS Powerhouse Features
             </h2>
+            <p className="text-neutral-400 text-sm max-w-2xl mx-auto">
+              Explore the core tools that empower coaches on the team side and commissioners on the league side.
+            </p>
           </div>
 
           {/* Feature selector tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-2xl mx-auto text-xs font-bold">
+          <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-3xl mx-auto text-xs font-bold">
             <button
-              onClick={() => setActiveFeatureTab("league-ops")}
-              className={`px-4 py-2.5 rounded-xl transition-all ${activeFeatureTab === "league-ops" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              onClick={() => setActiveFeatureTab("stats")}
+              className={`px-4 py-2.5 rounded-xl transition-all ${activeFeatureTab === "stats" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
-              Live Match Day Clocks
-            </button>
-            <button
-              onClick={() => setActiveFeatureTab("async-keeper")}
-              className={`px-4 py-2.5 rounded-xl transition-all ${activeFeatureTab === "async-keeper" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
-                }`}
-            >
-              Clockless Async Stat Keeper
+              Team &amp; Player Stats
             </button>
             <button
               onClick={() => setActiveFeatureTab("playbook")}
               className={`px-4 py-2.5 rounded-xl transition-all ${activeFeatureTab === "playbook" ? "bg-blue-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
-              Visual Playbooks
+              Playbook Studio (5 Playbooks)
             </button>
             <button
-              onClick={() => setActiveFeatureTab("standings")}
-              className={`px-4 py-2.5 rounded-xl transition-all ${activeFeatureTab === "standings" ? "bg-amber-400 text-black font-black" : "text-neutral-400 hover:text-white"
+              onClick={() => setActiveFeatureTab("live-clock")}
+              className={`px-4 py-2.5 rounded-xl transition-all ${activeFeatureTab === "live-clock" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
-              Automated Standings
+              Live Gameday Clocks
+            </button>
+            <button
+              onClick={() => setActiveFeatureTab("infrastructure")}
+              className={`px-4 py-2.5 rounded-xl transition-all ${activeFeatureTab === "infrastructure" ? "bg-amber-400 text-black font-black" : "text-neutral-400 hover:text-white"
+                }`}
+            >
+              Full League Infrastructure
             </button>
           </div>
 
           {/* Interactive display card */}
           <div className="bg-neutral-950 border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl">
-            {activeFeatureTab === "league-ops" && (
+            {activeFeatureTab === "stats" && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">
+                    <Activity className="w-3.5 h-3.5" /> Team Draw • Precision Analytics
+                  </div>
+                  <h3 className="text-3xl font-black uppercase text-white">Track &amp; Manage Team &amp; Player Stats</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed">
+                    Track every pass, rush, flag pull, sack, interception, and conversion. Real-time box scores automatically calculate completion percentages and passer ratings, while athlete career game logs compile across all matches into permanent player résumés.
+                  </p>
+                  <div className="pt-2">
+                    <Link
+                      href="/pricing"
+                      className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold text-xs"
+                    >
+                      <span>Get Team Portal ($30/mo)</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Team Box Score Mockup */}
+                <div className="bg-black border border-emerald-500/30 rounded-2xl p-5 text-left space-y-4 shadow-xl font-sans">
+                  <div className="flex justify-between items-center text-xs pb-3 border-b border-white/10">
+                    <span className="font-mono text-emerald-400 font-bold uppercase tracking-wider">APEX PREDATORS • GAME LOG</span>
+                    <span className="font-mono text-neutral-400">WEEK 2 BOX SCORE</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2.5 bg-white/5 rounded-xl border border-white/5">
+                      <div className="text-xl font-black text-white font-mono">18/24 (75%)</div>
+                      <div className="text-[10px] text-neutral-400 uppercase font-bold mt-0.5">Passing</div>
+                    </div>
+                    <div className="p-2.5 bg-white/5 rounded-xl border border-white/5">
+                      <div className="text-xl font-black text-emerald-400 font-mono">4 TDs</div>
+                      <div className="text-[10px] text-neutral-400 uppercase font-bold mt-0.5">Scoring</div>
+                    </div>
+                    <div className="p-2.5 bg-white/5 rounded-xl border border-white/5">
+                      <div className="text-xl font-black text-cyan-400 font-mono">8 Stops / 2 INT</div>
+                      <div className="text-[10px] text-neutral-400 uppercase font-bold mt-0.5">Defense</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-xs font-mono">
+                    <div className="flex justify-between p-2 rounded-lg bg-neutral-900 border border-white/5 items-center">
+                      <span className="font-bold text-white">Marcus Vance (QB)</span>
+                      <span className="text-neutral-300">18/24 • 4 TD • 0 INT • 28 PTS</span>
+                    </div>
+                    <div className="flex justify-between p-2 rounded-lg bg-neutral-900 border border-white/5 items-center">
+                      <span className="font-bold text-white">Jordan Reed (WR)</span>
+                      <span className="text-neutral-300">8 REC • 2 TD • 3 FLAGS • 14 PTS</span>
+                    </div>
+                    <div className="flex justify-between p-2 rounded-lg bg-neutral-900 border border-white/5 items-center">
+                      <span className="font-bold text-white">Devonte Cole (DB)</span>
+                      <span className="text-emerald-400">5 FLAGS • 2 INT • 1 PICK-6</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeFeatureTab === "playbook" && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <div className="space-y-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-mono font-bold">
+                    <BookOpen className="w-3.5 h-3.5" /> Team Draw • Up to 5 Playbooks
+                  </div>
+                  <h3 className="text-3xl font-black uppercase text-white">Design &amp; Build Up to 5 Playbooks</h3>
+                  <p className="text-neutral-400 text-sm leading-relaxed">
+                    Build and organize up to 5 custom playbooks per team. Design offensive route trees with custom break points (Slant, Post, Corner, Go, Out, Wheel) and scheme defensive coverages with zone bubbles, man-to-man locking lines, and bendable pass rush tracks. Keep situational packages ready for 2-minute drills, red zone trips, and tournament shootouts.
+                  </p>
+                  <div className="pt-2">
+                    <Link
+                      href="/pricing"
+                      className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 font-bold text-xs"
+                    >
+                      <span>Unlock 5 Playbooks with Team Hub</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+
+                {/* 5 Playbooks Mockup */}
+                <div className="bg-black border border-blue-500/30 rounded-2xl p-5 text-center space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between text-xs text-neutral-400 border-b border-white/10 pb-2">
+                    <span className="font-mono text-blue-400 font-bold uppercase">5 CUSTOM TEAM PLAYBOOKS</span>
+                    <span className="font-mono text-neutral-500">IFAF 5v5 &amp; 7v7</span>
+                  </div>
+                  {/* 5 Playbook tabs */}
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px] font-mono">
+                    <span className="p-1.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold truncate">1. Base (14)</span>
+                    <span className="p-1.5 rounded-lg bg-white/5 text-neutral-400 border border-white/5 truncate">2. Red Zone (8)</span>
+                    <span className="p-1.5 rounded-lg bg-white/5 text-neutral-400 border border-white/5 truncate">3. 2-Min (6)</span>
+                    <span className="p-1.5 rounded-lg bg-white/5 text-neutral-400 border border-white/5 truncate">4. Cover 2 (8)</span>
+                    <span className="p-1.5 rounded-lg bg-white/5 text-neutral-400 border border-white/5 truncate">5. Blitz (6)</span>
+                  </div>
+                  <div className="h-32 bg-neutral-900 rounded-xl flex flex-col items-center justify-center border border-white/5 relative overflow-hidden p-4">
+                    <div className="text-white font-bold text-xs uppercase tracking-wide">Trips Right • Post Wheel Flood</div>
+                    <div className="text-neutral-500 font-mono text-[11px] mt-1">Interactive Route Canvas with Customizable Break Points</div>
+                    <div className="flex gap-2 mt-2">
+                      <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 text-[9px] font-mono font-bold">X: Corner (12yd)</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 text-[9px] font-mono font-bold">Y: Wheel (Flat-Up)</span>
+                      <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 text-[9px] font-mono font-bold">Z: Post Break</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-neutral-400 text-left">
+                    Strictly confidential to team coaches and rostered athletes. Exportable to sideline wristband sheets.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeFeatureTab === "live-clock" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-mono font-bold">
-                    <Clock className="w-3.5 h-3.5" /> Official Live Manager
+                    <Clock className="w-3.5 h-3.5" /> League Draw • Official Gameday Console
                   </div>
-                  <h3 className="text-3xl font-black uppercase text-white">Full Game & Play Clocks</h3>
+                  <h3 className="text-3xl font-black uppercase text-white">Live Game Management With The Clock</h3>
                   <p className="text-neutral-400 text-sm leading-relaxed">
-                    Designed for official league game days. Features synchronized countdown clocks, automated 2-minute warning pauses, 30-second play clocks, timeout trackers, and real-time box score updates for spectators.
+                    Designed for official league game days. Features synchronized countdown clocks, automated 2-minute warning pauses, 25/30-second play clock countdown buzzer, ball spot indicator, down &amp; distance tracker, official timeouts, and live spectator broadcasts for fans and families.
                   </p>
                   <div className="pt-2">
                     <Link
@@ -577,98 +705,30 @@ export default function FlagOSPlatformLandingPage() {
               </div>
             )}
 
-            {activeFeatureTab === "async-keeper" && (
+            {activeFeatureTab === "infrastructure" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-mono font-bold">
-                    <Timer className="w-3.5 h-3.5" /> Clockless Stat Keeper
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-mono font-bold">
+                    <Building2 className="w-3.5 h-3.5" /> League Draw • Complete Organization Ops
                   </div>
-                  <h3 className="text-3xl font-black uppercase text-white">Asynchronous Scorekeeping</h3>
+                  <h3 className="text-3xl font-black uppercase text-white">The Entire League Handling Infrastructure</h3>
                   <p className="text-neutral-400 text-sm leading-relaxed">
-                    Built specifically for independent team portals and asynchronous games. All timers and timeouts are completely removed. Scorekeepers tap <strong>"Start Next Play"</strong>, log the pass or run, tap <strong>"Halftime"</strong> to switch periods, and <strong>"Game Over"</strong> to finalize box scores.
+                    Zero-spreadsheet league operations. Automated seasonal scheduler with field assignments, real-time standings and head-to-head tiebreakers, league-wide stat leaderboards (Passing, Receiving, Rushing, Flag Pulls, Sacks, INTs), multi-admin delegation (commissioners, coaches, scorekeepers), and free-agent draft boards.
                   </p>
                   <div className="pt-2">
                     <Link
                       href="/pricing"
-                      className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold text-xs"
+                      className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 font-bold text-xs"
                     >
-                      <span>Get Team Portal ($30/mo)</span>
+                      <span>Explore League Pricing Plans</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>
 
-                {/* Async Scoreboard Mockup */}
-                <div className="bg-black border border-emerald-500/30 rounded-2xl p-6 text-center space-y-4 shadow-xl">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-300 font-mono font-bold">
-                      FIRST HALF (NO CLOCKS)
-                    </span>
-                    <span className="text-neutral-400 font-mono">2nd Down</span>
-                  </div>
-                  <div className="flex justify-around items-center">
-                    <div>
-                      <div className="text-sm font-bold text-white">MY TEAM</div>
-                      <div className="text-5xl font-black text-emerald-400 font-mono">14</div>
-                    </div>
-                    <span className="text-neutral-600 font-bold">VS</span>
-                    <div>
-                      <div className="text-sm font-bold text-white">GOTHAM ROGUES</div>
-                      <div className="text-5xl font-black text-neutral-400 font-mono">6</div>
-                    </div>
-                  </div>
-                  <div className="border-t border-white/10 pt-3 flex gap-2 justify-center">
-                    <span className="px-4 py-2 rounded-xl bg-emerald-500 text-black font-black text-xs">
-                      ▶ START NEXT PLAY
-                    </span>
-                    <span className="px-3 py-2 rounded-xl bg-amber-500/20 text-amber-300 font-bold text-xs border border-amber-500/30">
-                      Halftime
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeFeatureTab === "playbook" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-mono font-bold">
-                    <BookOpen className="w-3.5 h-3.5" /> Confidential Team Playbooks
-                  </div>
-                  <h3 className="text-3xl font-black uppercase text-white">Interactive Visual Designer</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed">
-                    Design offensive route trees (Slant, Post, Corner, Go, Out, Wheel) and defensive schemes with zone bubbles, man-to-man locking lines, and bendable pass rush tracks. Strictly confidential to team admins and rostered players.
-                  </p>
-                </div>
-                <div className="bg-black border border-blue-500/30 rounded-2xl p-6 text-center space-y-4 shadow-xl">
-                  <div className="flex justify-between items-center text-xs text-neutral-400">
-                    <span className="font-mono text-blue-400">OFFENSIVE FORMATION: TRIPS RIGHT</span>
-                    <span className="font-mono text-emerald-400">5v5 SQUAD</span>
-                  </div>
-                  <div className="h-32 bg-neutral-900 rounded-xl flex items-center justify-center border border-white/5 relative overflow-hidden">
-                    <div className="text-neutral-600 font-mono text-xs">Visual Field Canvas • Draggable Waypoints</div>
-                  </div>
-                  <div className="text-xs text-neutral-400 text-left">
-                    Includes: Zone bubbles, Man Lock targeting, Rush line bending.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeFeatureTab === "standings" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-mono font-bold">
-                    <Trophy className="w-3.5 h-3.5" /> Automatic Calculations
-                  </div>
-                  <h3 className="text-3xl font-black uppercase text-white">Zero-Spreadsheet League Ops</h3>
-                  <p className="text-neutral-400 text-sm leading-relaxed">
-                    Standings, point differentials, offensive and defensive rankings, win streaks, and individual player stats (Passing, Receiving, Rushing, Flag Pulls, Sacks, INTs) calculate automatically the second a game ends.
-                  </p>
-                </div>
-                <div className="bg-black border border-amber-500/30 rounded-2xl p-4 text-xs font-mono space-y-2">
+                <div className="bg-black border border-amber-500/30 rounded-2xl p-4 text-xs font-mono space-y-3">
                   <div className="flex justify-between border-b border-white/10 pb-2 text-neutral-400 font-bold">
-                    <span>TEAM</span>
+                    <span>LEAGUE STANDINGS</span>
                     <span>W-L</span>
                     <span>DIFF</span>
                     <span>PTS</span>
@@ -690,6 +750,10 @@ export default function FlagOSPlatformLandingPage() {
                     <span>3-3</span>
                     <span>+2</span>
                     <span>6</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-2 flex justify-between text-[11px]">
+                    <span className="text-amber-400">★ Passing TD Leader: 24 TDs</span>
+                    <span className="text-cyan-400">★ Flag Stop Leader: 38 Flags</span>
                   </div>
                 </div>
               </div>
@@ -736,7 +800,7 @@ export default function FlagOSPlatformLandingPage() {
                   <div className="flex items-center justify-between">
                     <div
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-black"
-                      style={{ backgroundColor: l.primaryColor || "#06B6D4" }}
+                      style={{ backgroundColor: l.primaryColor || "#3ca505" }}
                     >
                       {l.shortcode?.slice(0, 2) || "LG"}
                     </div>

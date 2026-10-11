@@ -181,6 +181,8 @@ export interface PlayerNode {
   route?: RoutePoint[]; // path waypoints
   routeType?: RouteType;
   quickRouteName?: string; // "Slant", "Post", "Go", "Out", "Corner", "Curl", "Wheel", "Flat", "Drag"
+  breakYards?: number; // amount of yards before first break
+  routeDepth?: number; // total route depth in yards
   // Defensive Specific
   coverageType?: DefensiveCoverageType;
   manTargetId?: string; // id of offensive player to mirror / lock
@@ -198,6 +200,9 @@ export interface PlayDiagram {
   players: PlayerNode[];
   zones?: ZoneBubble[];
   losY: number; // Line of Scrimmage Y coordinate (default 65%)
+  fieldPosition?: string; // e.g. "Opp 20", "Midfield", "Own 20"
+  fieldYardLine?: number; // 1 to 50
+  fieldSide?: "own" | "opp" | "midfield";
   createdAt?: string;
   updatedAt?: string;
 }
@@ -241,8 +246,57 @@ export const FLAG_PLAYERS_PER_SIDE = 5;
 
 // Line of Scrimmage default in percentage
 export const DEFAULT_LOS_Y = 65;
-// In standard 50-yard flag field, 7 yards back is ~12% on the vertical axis
-export const RUSH_LINE_DISTANCE = 12;
+
+// Authentic game spacing: 1 yard = 1.75% of canvas height (e.g. in 700px height: 12.25px per yard)
+export const YARD_HEIGHT_PCT = 1.75;
+
+// In standard 50-yard flag field, 7 yards back is ~12.25% on the vertical axis
+export const RUSH_LINE_DISTANCE = 12.25;
+
+/**
+ * Snaps a vertical Y coordinate to the nearest yard line relative to the Line of Scrimmage (LOS).
+ */
+export function snapYToYard(y: number, losY = DEFAULT_LOS_Y, resolution = 1): number {
+  const rawYards = (losY - y) / YARD_HEIGHT_PCT;
+  const snappedYards = Math.round(rawYards / resolution) * resolution;
+  return Math.round((losY - snappedYards * YARD_HEIGHT_PCT) * 100) / 100;
+}
+
+/**
+ * Calculates the exact downfield yards from the Line of Scrimmage for a given Y coordinate.
+ * Positive = downfield toward defense/endzone. Negative = backfield toward offensive QB.
+ */
+export function getYardsFromLos(y: number, losY = DEFAULT_LOS_Y): number {
+  return Math.round(((losY - y) / YARD_HEIGHT_PCT) * 10) / 10;
+}
+
+/**
+ * Converts downfield yards from the Line of Scrimmage into a vertical Y percentage coordinate.
+ */
+export function getYFromYards(yards: number, losY = DEFAULT_LOS_Y): number {
+  return Math.round((losY - yards * YARD_HEIGHT_PCT) * 100) / 100;
+}
+
+export interface FieldPositionPreset {
+  id: string;
+  label: string;
+  shortLabel: string;
+  yardLine: number;
+  side: "own" | "opp" | "midfield";
+  description: string;
+}
+
+export const FIELD_POSITION_PRESETS: FieldPositionPreset[] = [
+  { id: "own-5", label: "Own 5 (Backed Up)", shortLabel: "Own 5", yardLine: 5, side: "own", description: "Deep in own territory against the goal line" },
+  { id: "own-20", label: "Own 20 (Standard Start)", shortLabel: "Own 20", yardLine: 20, side: "own", description: "Standard starting drive spot after touchback" },
+  { id: "own-35", label: "Own 35", shortLabel: "Own 35", yardLine: 35, side: "own", description: "Approaching midfield" },
+  { id: "midfield", label: "Midfield (50 Yd Line)", shortLabel: "50", yardLine: 50, side: "midfield", description: "Center of the field / 1st down to-gain line" },
+  { id: "opp-30", label: "Opponent 30", shortLabel: "Opp 30", yardLine: 30, side: "opp", description: "Opponent territory" },
+  { id: "opp-20", label: "Opponent 20 (Red Zone)", shortLabel: "Opp 20", yardLine: 20, side: "opp", description: "High red zone scoring territory" },
+  { id: "opp-10", label: "Opponent 10 (Low Red Zone)", shortLabel: "Opp 10", yardLine: 10, side: "opp", description: "Inside the 10-yard line" },
+  { id: "opp-5", label: "Opponent 5 (Goal Line)", shortLabel: "Opp 5", yardLine: 5, side: "opp", description: "Goal-to-go situation" },
+  { id: "opp-2", label: "Opponent 2 (Extra Point / 2-Pt)", shortLabel: "Opp 2", yardLine: 2, side: "opp", description: "Point after attempt" },
+];
 
 export interface LegalPositionCheck {
   isLegal: boolean;
@@ -348,88 +402,316 @@ export function checkLegalPosition(player: PlayerNode, losY = DEFAULT_LOS_Y): Le
   }
 }
 
-/**
- * Route generator presets: calculates waypoints relative to a player's starting (x, y)
- */
-export function generateRoutePreset(routeName: string, startX: number, startY: number): RoutePoint[] {
-  // smaller Y goes downfield
-  const isLeftSide = startX < 50;
+export interface RoutePresetDefinition {
+  name: string;
+  shortName: string;
+  category: "Quick & Short" | "Intermediate" | "Deep" | "Cross & Motion";
+  defaultBreakYards: number;
+  minBreakYards: number;
+  maxBreakYards: number;
+  description: string;
+}
 
-  switch (routeName) {
+export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
+  {
+    name: "Slant",
+    shortName: "Slant",
+    category: "Quick & Short",
+    defaultBreakYards: 4,
+    minBreakYards: 2,
+    maxBreakYards: 10,
+    description: "Stems downfield then cuts 45° across the middle inside the hashes",
+  },
+  {
+    name: "Out",
+    shortName: "Out",
+    category: "Quick & Short",
+    defaultBreakYards: 5,
+    minBreakYards: 3,
+    maxBreakYards: 15,
+    description: "Vertical stem followed by a flat 90° break directly to the boundary",
+  },
+  {
+    name: "Dig / In",
+    shortName: "Dig",
+    category: "Intermediate",
+    defaultBreakYards: 10,
+    minBreakYards: 5,
+    maxBreakYards: 18,
+    description: "Intermediate square-in break 90° across the middle at 10-12 yards depth",
+  },
+  {
+    name: "Post",
+    shortName: "Post",
+    category: "Deep",
+    defaultBreakYards: 10,
+    minBreakYards: 6,
+    maxBreakYards: 18,
+    description: "Deep vertical stem then breaks 45° toward the goal post / center field",
+  },
+  {
+    name: "Corner",
+    shortName: "Corner",
+    category: "Deep",
+    defaultBreakYards: 10,
+    minBreakYards: 6,
+    maxBreakYards: 18,
+    description: "Deep vertical stem then breaks 45° toward the boundary pylon",
+  },
+  {
+    name: "Go / Streak",
+    shortName: "Go",
+    category: "Deep",
+    defaultBreakYards: 25,
+    minBreakYards: 10,
+    maxBreakYards: 35,
+    description: "Vertical burner straight downfield testing deep coverage",
+  },
+  {
+    name: "Curl / Hook",
+    shortName: "Curl",
+    category: "Intermediate",
+    defaultBreakYards: 8,
+    minBreakYards: 4,
+    maxBreakYards: 14,
+    description: "Hard stem downfield, plants outside foot and works 2 yards back toward QB",
+  },
+  {
+    name: "Hitch",
+    shortName: "Hitch",
+    category: "Quick & Short",
+    defaultBreakYards: 5,
+    minBreakYards: 3,
+    maxBreakYards: 8,
+    description: "Quick 5-yard stem, stops on a dime and squares up toward the ball",
+  },
+  {
+    name: "Comeback",
+    shortName: "Comeback",
+    category: "Intermediate",
+    defaultBreakYards: 12,
+    minBreakYards: 8,
+    maxBreakYards: 18,
+    description: "Sells vertical streak, then plants and cuts back 45° toward the sideline at 10 yards",
+  },
+  {
+    name: "Drag / Cross",
+    shortName: "Drag",
+    category: "Cross & Motion",
+    defaultBreakYards: 3,
+    minBreakYards: 1,
+    maxBreakYards: 7,
+    description: "Underneath shallow crossing route running horizontally across the formation",
+  },
+  {
+    name: "Flat",
+    shortName: "Flat",
+    category: "Quick & Short",
+    defaultBreakYards: 2,
+    minBreakYards: 1,
+    maxBreakYards: 6,
+    description: "Immediate quick release diagonally into the flat",
+  },
+  {
+    name: "Wheel",
+    shortName: "Wheel",
+    category: "Cross & Motion",
+    defaultBreakYards: 3,
+    minBreakYards: 2,
+    maxBreakYards: 8,
+    description: "Releases toward the flat, then plants and turns straight up the sideline",
+  },
+  {
+    name: "Whip / Pivot",
+    shortName: "Whip",
+    category: "Quick & Short",
+    defaultBreakYards: 4,
+    minBreakYards: 2,
+    maxBreakYards: 8,
+    description: "Fakes shallow cross inside, plants and whips back outside",
+  },
+  {
+    name: "Fade",
+    shortName: "Fade",
+    category: "Deep",
+    defaultBreakYards: 6,
+    minBreakYards: 3,
+    maxBreakYards: 14,
+    description: "Outside release fading toward the back corner pylon in the end zone",
+  },
+  {
+    name: "Block / Screen",
+    shortName: "Screen",
+    category: "Quick & Short",
+    defaultBreakYards: 1,
+    minBreakYards: 0,
+    maxBreakYards: 3,
+    description: "Sets up behind or at the scrimmage line for quick dump-off or lead block",
+  },
+];
+
+/**
+ * Route generator presets: calculates waypoints relative to a player's starting (x, y),
+ * strictly snapping vertical breaks to integer yard lines.
+ */
+export function generateRoutePreset(
+  routeName: string,
+  startX: number,
+  startY: number,
+  losY = DEFAULT_LOS_Y,
+  customBreakYards?: number
+): RoutePoint[] {
+  const isLeftSide = startX < 50;
+  const match = ROUTE_PRESETS_CATALOG.find(
+    (r) =>
+      r.name.toLowerCase() === routeName.toLowerCase() ||
+      r.shortName.toLowerCase() === routeName.toLowerCase() ||
+      routeName.toLowerCase().startsWith(r.shortName.toLowerCase())
+  );
+
+  const breakYards = Math.max(
+    0,
+    customBreakYards !== undefined ? customBreakYards : match?.defaultBreakYards ?? 5
+  );
+
+  // Exact vertical stem Y snapped to yard line
+  const breakY = snapYToYard(startY - breakYards * YARD_HEIGHT_PCT, losY);
+
+  switch (match?.shortName || routeName) {
     case "Slant": {
-      const cutDir = isLeftSide ? 12 : -12;
+      const cutDir = isLeftSide ? 14 : -14;
+      const endY = snapYToYard(breakY - 6 * YARD_HEIGHT_PCT, losY);
       return [
-        { x: startX, y: startY - 8 },
-        { x: startX + cutDir, y: startY - 18 },
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + cutDir)), y: endY },
       ];
     }
     case "Out": {
       const outDir = isLeftSide ? -14 : 14;
       return [
-        { x: startX, y: startY - 12 },
-        { x: startX + outDir, y: startY - 12 },
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + outDir)), y: breakY },
       ];
     }
+    case "Dig":
     case "Dig / In": {
       const inDir = isLeftSide ? 18 : -18;
       return [
-        { x: startX, y: startY - 18 },
-        { x: startX + inDir, y: startY - 18 },
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + inDir)), y: breakY },
       ];
     }
     case "Post": {
-      const postCut = (50 - startX) * 0.7; // angle towards middle goal post
+      const postCut = (50 - startX) * 0.7;
+      const endY = snapYToYard(breakY - 12 * YARD_HEIGHT_PCT, losY);
       return [
-        { x: startX, y: startY - 18 },
-        { x: startX + postCut, y: startY - 38 },
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + postCut)), y: endY },
       ];
     }
     case "Corner": {
-      const cornerCut = isLeftSide ? -16 : 16; // angle towards sideline
+      const cornerCut = isLeftSide ? -16 : 16;
+      const endY = snapYToYard(breakY - 10 * YARD_HEIGHT_PCT, losY);
       return [
-        { x: startX, y: startY - 18 },
-        { x: startX + cornerCut, y: startY - 36 },
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + cornerCut)), y: endY },
       ];
     }
+    case "Go":
     case "Go / Streak": {
+      return [{ x: startX, y: breakY }];
+    }
+    case "Curl":
+    case "Curl / Hook": {
+      const comebackY = snapYToYard(breakY + 2 * YARD_HEIGHT_PCT, losY);
       return [
-        { x: startX, y: startY - 42 },
+        { x: startX, y: breakY },
+        { x: startX + (isLeftSide ? 1.5 : -1.5), y: comebackY },
       ];
     }
-    case "Curl / Hook": {
+    case "Hitch": {
+      const hitchY = snapYToYard(breakY + 1 * YARD_HEIGHT_PCT, losY);
       return [
-        { x: startX, y: startY - 16 },
-        { x: startX, y: startY - 12 },
+        { x: startX, y: breakY },
+        { x: startX, y: hitchY },
+      ];
+    }
+    case "Comeback": {
+      const cutDir = isLeftSide ? -8 : 8;
+      const comebackY = snapYToYard(breakY + 2 * YARD_HEIGHT_PCT, losY);
+      return [
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + cutDir)), y: comebackY },
       ];
     }
     case "Wheel": {
-      const flatOut = isLeftSide ? -8 : 8;
+      const flatOut = isLeftSide ? -10 : 10;
+      const verticalY = snapYToYard(breakY - 16 * YARD_HEIGHT_PCT, losY);
       return [
-        { x: startX + flatOut, y: startY - 4 },
-        { x: startX + flatOut, y: startY - 38 },
+        { x: Math.max(4, Math.min(96, startX + flatOut)), y: breakY },
+        { x: Math.max(4, Math.min(96, startX + flatOut)), y: verticalY },
       ];
     }
     case "Flat": {
-      const flatDir = isLeftSide ? -12 : 12;
+      const flatDir = isLeftSide ? -14 : 14;
       return [
-        { x: startX + flatDir, y: startY - 3 },
+        { x: Math.max(4, Math.min(96, startX + flatDir)), y: breakY },
       ];
     }
+    case "Drag":
     case "Drag / Cross": {
       const crossDir = isLeftSide ? 35 : -35;
+      const crossEnd = snapYToYard(breakY - 1 * YARD_HEIGHT_PCT, losY);
       return [
-        { x: startX, y: startY - 4 },
-        { x: startX + crossDir, y: startY - 8 },
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + crossDir)), y: crossEnd },
       ];
     }
-    case "Block / Screen": {
+    case "Whip":
+    case "Whip / Pivot": {
+      const inFake = isLeftSide ? 6 : -6;
+      const outWhip = isLeftSide ? -10 : 10;
       return [
-        { x: startX, y: startY - 2 },
+        { x: startX + inFake, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + outWhip)), y: snapYToYard(breakY + 1 * YARD_HEIGHT_PCT, losY) },
       ];
+    }
+    case "Fade": {
+      const fadeDir = isLeftSide ? -12 : 12;
+      const endY = snapYToYard(breakY - 8 * YARD_HEIGHT_PCT, losY);
+      return [
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + fadeDir)), y: endY },
+      ];
+    }
+    case "Screen":
+    case "Block / Screen": {
+      return [{ x: startX, y: breakY }];
     }
     default:
-      return [{ x: startX, y: startY - 15 }];
+      return [{ x: startX, y: breakY }];
   }
+}
+
+export function generateRoutePresetDetails(
+  routeName: string,
+  startX: number,
+  startY: number,
+  losY = DEFAULT_LOS_Y,
+  customBreakYards?: number
+): { route: RoutePoint[]; breakYards: number } {
+  const match = ROUTE_PRESETS_CATALOG.find(
+    (r) =>
+      r.name.toLowerCase() === routeName.toLowerCase() ||
+      r.shortName.toLowerCase() === routeName.toLowerCase() ||
+      routeName.toLowerCase().startsWith(r.shortName.toLowerCase())
+  );
+  const breakYards = Math.max(
+    0,
+    customBreakYards !== undefined ? customBreakYards : match?.defaultBreakYards ?? 5
+  );
+  const route = generateRoutePreset(routeName, startX, startY, losY, breakYards);
+  return { route, breakYards };
 }
 
 // Standard Squad Offense Preset Lineup (Supports 4 to 8 players per side)

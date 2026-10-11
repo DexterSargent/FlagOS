@@ -16,6 +16,7 @@ import {
   Settings,
 } from "lucide-react";
 import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LeagueFooter() {
   const { settings, openCustomizer } = useLeague();
@@ -192,6 +193,7 @@ export default function LeagueFooter() {
           </div>
 
           <div className="flex items-center gap-4 text-[11px]">
+            <ThemeToggle size="sm" />
             <span>System: <FlagOSText /> Multi-Tenant v2.4</span>
             <span className="text-neutral-700">|</span>
             <span className="text-neutral-400">Real-Time Sync Active</span>

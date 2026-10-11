@@ -231,7 +231,7 @@ export default function LoginPage() {
             <div
               className={`p-3.5 rounded-xl border transition-all ${
                 isTeamAdmin()
-                  ? "bg-blue-500/10 border-blue-500/50 text-white shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                  ? "bg-blue-500/10 border-blue-500/50 text-white shadow-[0_0_15px_rgba(var(--league-accent-rgb),0.2)]"
                   : "bg-neutral-950/60 border-white/5 text-neutral-300"
               }`}
             >

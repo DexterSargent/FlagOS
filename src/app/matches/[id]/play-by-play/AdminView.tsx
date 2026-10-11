@@ -13,6 +13,7 @@ import {
   getSandboxPlays,
   addSandboxPlay,
   updateSandboxMatch,
+  deleteSandboxPlay,
   deleteSandboxPlaysForMatch,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
@@ -221,10 +222,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       setLoadingData(false);
     };
     loadMatchData();
-    if (isDemoLeague) {
-      const unsub = subscribeDemoSandbox(() => loadMatchData());
-      return () => unsub();
-    }
   }, [matchId, isDemoLeague]);
 
   // Game Clock
@@ -304,6 +301,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (loadingData || isResetting || matchStatus === 'scheduled') return;
     const saveState = setTimeout(() => {
+      if (isDemoLeague) {
+        updateSandboxMatch(matchId, {
+          status: 'in_progress',
+          homeScore,
+          awayScore,
+          matchState: {
+            currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession
+          }
+        });
+        return;
+      }
       updateDoc(doc(db, "matches", matchId), {
         status: 'in_progress',
         homeScore,
@@ -314,7 +322,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       }).catch(console.error);
     }, 1000);
     return () => clearTimeout(saveState);
-  }, [currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession, loadingData, isResetting, matchStatus]);
+  }, [currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession, loadingData, isResetting, matchStatus, isDemoLeague, matchId]);
 
   // Reset Game to Pre-Game State handler
   const handleResetGameToPreGame = async () => {
@@ -331,15 +339,32 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           homeScore: 0,
           awayScore: 0,
           matchState: null,
+          didNotPlay: [],
         });
+        setMatchStatus('scheduled');
+        setPossession(homeTeamName || "HOME");
+        setFirstHalfStartPossession(homeTeamName || "HOME");
+        setCurrentDown(1);
         setHomeScore(0);
         setAwayScore(0);
-        setCurrentDown(1);
         setHalf(1);
-        setPossession(homeTeamName);
-        setStep("PLAY_TYPE");
-        setIsResetting(false);
+        setGameClock(defaultDuration);
+        setHomeTimeouts(defaultTimeouts);
+        setAwayTimeouts(defaultTimeouts);
+        setIsGameClockRunning(false);
+        setIsPlayClockRunning(false);
+        setPlayClock(defaultPlayClock);
+        setIsBallSpotted(false);
+        setStep('PLAY_TYPE');
+        setOutcome(null);
+        setPlayType(null);
+        setQbRunner("");
+        setReceiver("");
+        setDefenders([]);
+        setFlaggers([]);
+        setDidNotPlay([]);
         setIsResetModalOpen(false);
+        setIsResetting(false);
         return;
       }
 
@@ -394,6 +419,20 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
   const finalizeGame = async () => {
     try {
+      if (isDemoLeague) {
+        updateSandboxMatch(matchId, {
+          status: 'completed',
+          homeScore,
+          awayScore,
+          didNotPlay,
+          roster: {
+            home: homePlayers,
+            away: awayPlayers
+          }
+        });
+        router.push(`/matches/${matchId}`);
+        return;
+      }
       await updateDoc(doc(db, "matches", matchId), {
         status: 'completed',
         homeScore,
@@ -484,6 +523,39 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const handleUndoLastPlay = async () => {
     if (!confirm("Are you sure you want to undo the last play?")) return;
     try {
+      if (isDemoLeague) {
+        const demoPlays = getSandboxPlays(matchId);
+        if (demoPlays.length > 0) {
+          const lastPlay: any = demoPlays[demoPlays.length - 1];
+
+          // Revert state
+          if (lastPlay.down !== undefined) setCurrentDown(lastPlay.down);
+          const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
+          setPossession(wasHomePossession ? (homeTeamName || "HOME") : (awayTeamName || "AWAY"));
+
+          const pts = lastPlay.points ?? lastPlay.pointsScored ?? 0;
+          if (pts > 0) {
+            const didOffenseScore = lastPlay.isTouchdown || lastPlay.result === "Conversion Good" || (lastPlay.pointsScored && !lastPlay.isPick6 && !lastPlay.isSafety);
+            const didDefenseScore = lastPlay.isPick6 || lastPlay.isSafety || lastPlay.result === "Defensive Conversion";
+
+            if (didOffenseScore) {
+              if (wasHomePossession) setHomeScore(s => Math.max(0, s - pts));
+              else setAwayScore(s => Math.max(0, s - pts));
+            } else if (didDefenseScore) {
+              if (wasHomePossession) setAwayScore(s => Math.max(0, s - pts));
+              else setHomeScore(s => Math.max(0, s - pts));
+            }
+          }
+
+          deleteSandboxPlay(lastPlay.id);
+          setStep("PLAY_TYPE");
+          alert("Last play undone successfully.");
+        } else {
+          alert("No plays found to undo.");
+        }
+        return;
+      }
+
       const q = query(
         collection(db, "plays"),
         where("matchId", "==", matchId),
@@ -751,7 +823,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 rounded-full ${i < homeTimeouts ? 'bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.6)]' : 'bg-neutral-800'}`}
+                    className={`w-8 h-8 rounded-full ${i < homeTimeouts ? 'bg-cyan-400 shadow-[0_0_15px_rgba(var(--league-primary-rgb),0.6)]' : 'bg-neutral-800'}`}
                   />
                 ))}
               </div>
@@ -772,7 +844,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 rounded-full ${i < awayTimeouts ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-neutral-800'}`}
+                    className={`w-8 h-8 rounded-full ${i < awayTimeouts ? 'bg-blue-500 shadow-[0_0_15px_rgba(var(--league-accent-rgb),0.6)]' : 'bg-neutral-800'}`}
                   />
                 ))}
               </div>
@@ -1085,7 +1157,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                     <div
                       key={i}
-                      className={`w-5 h-5 rounded-full ${i < homeTimeouts ? 'bg-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'bg-neutral-800'}`}
+                      className={`w-5 h-5 rounded-full ${i < homeTimeouts ? 'bg-cyan-400 shadow-[0_0_10px_rgba(var(--league-primary-rgb),0.5)]' : 'bg-neutral-800'}`}
                     />
                   ))}
                 </div>
@@ -1136,7 +1208,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                     <div
                       key={i}
-                      className={`w-5 h-5 rounded-full ${i < awayTimeouts ? 'bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-neutral-800'}`}
+                      className={`w-5 h-5 rounded-full ${i < awayTimeouts ? 'bg-blue-500 shadow-[0_0_10px_rgba(var(--league-accent-rgb),0.5)]' : 'bg-neutral-800'}`}
                     />
                   ))}
                 </div>

@@ -33,6 +33,7 @@ import { useLeague } from "@/lib/leagueContext";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
 import { getTeamShortcode } from "@/components/TeamAssets";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface PlayerStats {
   gamesPlayed: number;
@@ -51,10 +52,11 @@ interface PlayerStats {
 }
 
 const COLOR_PRESETS = [
+  { name: "Gridiron Turf (Default)", primary: "#3ca505", accent: "#22c55e" },
   { name: "Electric Cyan", primary: "#06B6D4", accent: "#3B82F6" },
   { name: "Championship Gold", primary: "#F59E0B", accent: "#EF4444" },
   { name: "Neon Violet", primary: "#8B5CF6", accent: "#EC4899" },
-  { name: "Emerald Grid", primary: "#10B981", accent: "#06B6D4" },
+  { name: "Emerald Grid", primary: "#10B981", accent: "#3ca505" },
   { name: "Sunset Blaze", primary: "#F97316", accent: "#E11D48" },
   { name: "Midnight Stealth", primary: "#38BDF8", accent: "#818CF8" },
 ];
@@ -111,10 +113,10 @@ export default function PlayerProfilePage() {
 
   // Color picker state
   const [primaryColor, setPrimaryColor] = useState<string>(
-    userThemeColors?.primary || settings?.primaryColor || "#06B6D4"
+    userThemeColors?.primary || settings?.primaryColor || "#3ca505"
   );
   const [accentColor, setAccentColor] = useState<string>(
-    userThemeColors?.accent || settings?.accentColor || "#3B82F6"
+    userThemeColors?.accent || settings?.accentColor || "#22c55e"
   );
   const [savedColorsSuccess, setSavedColorsSuccess] = useState(false);
 
@@ -124,8 +126,8 @@ export default function PlayerProfilePage() {
       setPrimaryColor(userThemeColors.primary);
       setAccentColor(userThemeColors.accent);
     } else if (settings) {
-      setPrimaryColor(settings.primaryColor || "#06B6D4");
-      setAccentColor(settings.accentColor || "#3B82F6");
+      setPrimaryColor(settings.primaryColor || "#3ca505");
+      setAccentColor(settings.accentColor || "#22c55e");
     }
   }, [userThemeColors, settings]);
 
@@ -313,8 +315,8 @@ export default function PlayerProfilePage() {
   const handleResetColors = () => {
     resetToLeagueColors();
     if (settings) {
-      setPrimaryColor(settings.primaryColor || "#06B6D4");
-      setAccentColor(settings.accentColor || "#3B82F6");
+      setPrimaryColor(settings.primaryColor || "#3ca505");
+      setAccentColor(settings.accentColor || "#22c55e");
     }
   };
 
@@ -718,6 +720,19 @@ export default function PlayerProfilePage() {
               <p className="text-xs text-neutral-400 leading-relaxed">
                 Choose your own personal primary and accent colors. These colors will restyle your entire client experience across buttons, badges, navigation, and gradients, while persisting securely on your device.
               </p>
+            </div>
+
+            {/* Appearance Mode Selection */}
+            <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+                  Appearance Mode
+                </h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Toggle between Dark gridiron mode, Light daylight mode, or device system defaults.
+                </p>
+              </div>
+              <ThemeToggle variant="segmented" />
             </div>
 
             {/* Presets */}

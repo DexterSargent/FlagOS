@@ -10,10 +10,19 @@ import {
   Playbook,
   DEFAULT_LOS_Y,
   RUSH_LINE_DISTANCE,
+  YARD_HEIGHT_PCT,
+  snapYToYard,
+  getYardsFromLos,
+  getYFromYards,
+  FieldPositionPreset,
+  FIELD_POSITION_PRESETS,
+  RoutePresetDefinition,
+  ROUTE_PRESETS_CATALOG,
+  generateRoutePreset,
+  generateRoutePresetDetails,
   FLAG_PLAYERS_PER_SIDE,
   checkLegalPosition,
   clampLegalPosition,
-  generateRoutePreset,
   LegalPositionCheck,
   ensureSquadMatchup,
   ensure5v5Matchup,
@@ -45,7 +54,14 @@ import {
   Maximize2,
   Minimize2,
   Sliders,
-  Users
+  Users,
+  MapPin,
+  Magnet,
+  ChevronDown,
+  SlidersHorizontal,
+  Hash,
+  Ruler,
+  Compass,
 } from "lucide-react";
 
 interface PlayCanvasProps {
@@ -109,6 +125,51 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   const [activeSquadSize, setActiveSquadSize] = useState<number>(initialSquad);
   const rushLineDistanceYards = settings?.rules?.rushLineDistance || 7;
 
+  // Routes snap to yard lines vertically (ON by default as requested)
+  const [snapToYardLines, setSnapToYardLines] = useState<boolean>(true);
+  const [draggedWaypointYards, setDraggedWaypointYards] = useState<number | null>(null);
+  const [isFieldPositionMenuOpen, setIsFieldPositionMenuOpen] = useState<boolean>(false);
+
+  // Field Position helper (calculates current yardLine and territory)
+  const getPlayFieldPosition = useCallback((p: PlayDiagram) => {
+    let yardLine = p.fieldYardLine;
+    let side = p.fieldSide;
+    if (yardLine === undefined || side === undefined) {
+      if (p.situation === "Red Zone") {
+        yardLine = 20;
+        side = "opp";
+      } else if (p.situation === "Extra Point") {
+        yardLine = 5;
+        side = "opp";
+      } else {
+        yardLine = 20;
+        side = "own";
+      }
+    }
+    const label =
+      p.fieldPosition ||
+      (side === "midfield" ? "Midfield (50)" : `${side === "opp" ? "Opp" : "Own"} ${yardLine}`);
+    return { yardLine, side, label };
+  }, []);
+
+  const handleFieldPositionChange = (
+    yardLine: number,
+    side: "own" | "opp" | "midfield",
+    customLabel?: string
+  ) => {
+    if (readOnly) return;
+    const label =
+      customLabel ||
+      (side === "midfield" ? "Midfield (50)" : `${side === "opp" ? "Opp" : "Own"} ${yardLine}`);
+    onChange({
+      ...play,
+      fieldYardLine: yardLine,
+      fieldSide: side,
+      fieldPosition: label,
+    });
+    setIsFieldPositionMenuOpen(false);
+  };
+
   // Sync squad size if playbook or rules change
   useEffect(() => {
     const off = play.players ? play.players.filter((p) => p.side === "offense").length : 0;
@@ -123,7 +184,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   const defensePlayers = play.players.filter((p) => p.side === "defense");
 
   const losY = play.losY || DEFAULT_LOS_Y;
-  const rushDistanceY = (rushLineDistanceYards * 12) / 7;
+  const rushDistanceY = rushLineDistanceYards * YARD_HEIGHT_PCT;
   const rushY = losY - rushDistanceY;
 
   // Show Opposing Side toggle (offense if defensive playbook, defense if offensive playbook). OFF by default.
@@ -987,7 +1048,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                 markerHeight="6"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1 L 10 5 L 0 9 z" fill="#06B6D4" />
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#3ca505" />
               </marker>
 
               <marker
@@ -1112,7 +1173,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                 y1={(losY / 100) * 700}
                 x2="980"
                 y2={(losY / 100) * 700}
-                stroke="#06B6D4"
+                stroke="#3ca505"
                 strokeWidth="3.5"
               />
               {/* Football On Line of Scrimmage */}
@@ -1133,7 +1194,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                 stroke="#FFFFFF"
                 strokeWidth="1"
               />
-              <rect x="850" y={(losY / 100) * 700 - 10} width="120" height="20" rx="6" fill="#06B6D4" />
+              <rect x="850" y={(losY / 100) * 700 - 10} width="120" height="20" rx="6" fill="#3ca505" />
               <text
                 x="910"
                 y={(losY / 100) * 700 + 4}
@@ -1312,7 +1373,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                 ? "#EF4444"
                 : player.side === "defense"
                 ? "#A855F7"
-                : "#06B6D4";
+                : "#3ca505";
 
               const markerId = isMotion
                 ? "url(#arrow-motion)"
@@ -1462,7 +1523,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                         cy={py}
                         r="25"
                         fill="none"
-                        stroke={isIllegal ? "#EF4444" : isOffense ? "#06B6D4" : "#A855F7"}
+                        stroke={isIllegal ? "#EF4444" : isOffense ? "#3ca505" : "#A855F7"}
                         strokeWidth="2.5"
                         strokeOpacity="0.9"
                       />
@@ -1471,7 +1532,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                         cy={py}
                         r="30"
                         fill="none"
-                        stroke={isIllegal ? "#EF4444" : isOffense ? "#06B6D4" : "#A855F7"}
+                        stroke={isIllegal ? "#EF4444" : isOffense ? "#3ca505" : "#A855F7"}
                         strokeWidth="1.5"
                         strokeOpacity="0.4"
                       />

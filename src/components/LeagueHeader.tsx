@@ -21,6 +21,7 @@ import {
   Building2,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface LeagueHeaderProps {
   activePage?: "schedule" | "stats" | "teams" | "join" | "pricing";
@@ -151,7 +152,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div
                             className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black text-black shrink-0"
-                            style={{ backgroundColor: l.primaryColor || "#06B6D4" }}
+                            style={{ backgroundColor: l.primaryColor || "#3ca505" }}
                           >
                             {l.shortcode?.slice(0, 2) || "LG"}
                           </div>
@@ -242,7 +243,9 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
           </nav>
 
           {/* User Status & Settings Trigger */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <ThemeToggle size="md" />
+
             <button
               onClick={openCustomizer}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-all shadow-sm cursor-pointer"

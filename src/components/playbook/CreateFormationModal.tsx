@@ -442,11 +442,11 @@ export default function CreateFormationModal({
                 y1={(losY / 100) * 700}
                 x2="980"
                 y2={(losY / 100) * 700}
-                stroke="#06B6D4"
+                stroke="#3ca505"
                 strokeWidth="3.5"
               />
               <ellipse cx="500" cy={(losY / 100) * 700} rx="14" ry="8" fill="#78350F" stroke="#FBBF24" strokeWidth="1.5" />
-              <rect x="850" y={(losY / 100) * 700 - 10} width="120" height="20" rx="6" fill="#06B6D4" />
+              <rect x="850" y={(losY / 100) * 700 - 10} width="120" height="20" rx="6" fill="#3ca505" />
               <text x="910" y={(losY / 100) * 700 + 4} fill="#000000" fontSize="10" fontWeight="900" textAnchor="middle">
                 SCRIMMAGE (LOS)
               </text>
@@ -471,7 +471,7 @@ export default function CreateFormationModal({
                         cy={py}
                         r="25"
                         fill="none"
-                        stroke={isUnit ? (isOffense ? "#06B6D4" : "#A855F7") : "#64748B"}
+                        stroke={isUnit ? (isOffense ? "#3ca505" : "#A855F7") : "#64748B"}
                         strokeWidth="2.5"
                         strokeOpacity="0.8"
                       />

@@ -88,9 +88,9 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   seasonTitle: "2026 Season",
   logoUrl: "/flagos-logo.png",
   icon: "shield",
-  primaryColor: "#06B6D4", // Cyan
-  accentColor: "#3B82F6",  // Blue
-  themePreset: "cyber-cyan",
+  primaryColor: "#3ca505", // Field Green (#3ca505)
+  accentColor: "#22c55e",  // Turf Green (#22c55e)
+  themePreset: "gridiron-green",
   defaultLocation: "Turf Field 1",
   contactEmail: "commissioner@flagos.app",
   rulebookTitle: "Official 7v7 Non-Contact Rules",
@@ -170,12 +170,12 @@ interface RgbColor {
 }
 
 export const parseHex = (hex: string): RgbColor => {
-  let c = (hex || "#06B6D4").replace("#", "").trim();
+  let c = (hex || "#3ca505").replace("#", "").trim();
   if (c.length === 3) {
     c = c.split("").map((x) => x + x).join("");
   }
   const num = parseInt(c, 16);
-  if (isNaN(num) || c.length !== 6) return { r: 6, g: 182, b: 212 };
+  if (isNaN(num) || c.length !== 6) return { r: 60, g: 165, b: 5 };
   return {
     r: (num >> 16) & 255,
     g: (num >> 8) & 255,
@@ -263,8 +263,8 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
   // Apply CSS color variables dynamically to root & update browser title
   const applyThemeColors = (primary: string, accent: string, leagueName?: string, seasonTitle?: string) => {
     if (typeof document !== "undefined") {
-      const p = primary || "#06B6D4";
-      const a = accent || "#3B82F6";
+      const p = primary || "#3ca505";
+      const a = accent || "#22c55e";
       const pRgb = parseHex(p);
       const aRgb = parseHex(a);
 
@@ -348,8 +348,14 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         if (savedUserLeagues) {
           const parsedLeagues = JSON.parse(savedUserLeagues);
           if (Array.isArray(parsedLeagues) && parsedLeagues.length > 0) {
-            setUserLeagues(parsedLeagues);
-            const activeSummary = parsedLeagues.find((l: UserLeagueSummary) => l.id === initialLeagueId);
+            const sanitized = parsedLeagues.map((l: UserLeagueSummary) => {
+              if (l.primaryColor === "#06B6D4") {
+                return { ...l, primaryColor: DEFAULT_LEAGUE_SETTINGS.primaryColor, accentColor: DEFAULT_LEAGUE_SETTINGS.accentColor };
+              }
+              return l;
+            });
+            setUserLeagues(sanitized);
+            const activeSummary = sanitized.find((l: UserLeagueSummary) => l.id === initialLeagueId);
             if (activeSummary?.subscription) {
               setSubscription(activeSummary.subscription);
             }
@@ -359,6 +365,12 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         const cached = localStorage.getItem(`league_settings_${initialLeagueId}`) || localStorage.getItem("league_settings");
         if (cached) {
           const parsed = JSON.parse(cached);
+          if (parsed.primaryColor === "#06B6D4") {
+            parsed.primaryColor = DEFAULT_LEAGUE_SETTINGS.primaryColor;
+            parsed.accentColor = DEFAULT_LEAGUE_SETTINGS.accentColor;
+            parsed.themePreset = DEFAULT_LEAGUE_SETTINGS.themePreset;
+            localStorage.setItem(`league_settings_${initialLeagueId}`, JSON.stringify(parsed));
+          }
           setSettings((prev) => ({
             ...DEFAULT_LEAGUE_SETTINGS,
             ...prev,
@@ -368,7 +380,13 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         }
         const rawUserColors = localStorage.getItem("flagos_user_colors");
         if (rawUserColors) {
-          setUserThemeColorsState(JSON.parse(rawUserColors));
+          const parsedUserColors = JSON.parse(rawUserColors);
+          if (parsedUserColors?.primary === "#06B6D4") {
+            localStorage.removeItem("flagos_user_colors");
+            setUserThemeColorsState(null);
+          } else {
+            setUserThemeColorsState(parsedUserColors);
+          }
         }
       } catch (err) {
         console.error("Failed to read league settings from cache:", err);
@@ -408,8 +426,8 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     rulePreset?: string;
   }): Promise<string> => {
     const newLeagueId = `league_${Date.now()}`;
-    const pColor = data.primaryColor || "#06B6D4";
-    const aColor = data.accentColor || "#3B82F6";
+    const pColor = data.primaryColor || "#3ca505";
+    const aColor = data.accentColor || "#22c55e";
     const teams = data.teamCount || 8;
     const baseFee = 49;
     const perTeamFee = 5;

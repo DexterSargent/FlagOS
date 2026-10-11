@@ -26,8 +26,10 @@ import {
   BookOpen,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const THEME_PRESETS = [
+  { id: "gridiron-green", name: "Gridiron Turf (Default)", primary: "#3ca505", accent: "#22c55e" },
   { id: "cyber-cyan", name: "Cyber Cyan", primary: "#06B6D4", accent: "#3B82F6" },
   { id: "emerald-arena", name: "Emerald Arena", primary: "#10B981", accent: "#059669" },
   { id: "sunset-gold", name: "Sunset Gold", primary: "#F59E0B", accent: "#EF4444" },
@@ -349,6 +351,21 @@ export default function LeagueCustomizerModal() {
               )}
             </div>
 
+            {/* Appearance Mode (Dark / Light / System) */}
+            <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs font-black uppercase text-white tracking-wide block">
+                    Display Appearance Mode
+                  </span>
+                  <span className="text-[11px] text-neutral-400">
+                    Switch between dark gridiron, crisp daylight, or system OS mode.
+                  </span>
+                </div>
+                <ThemeToggle variant="segmented" />
+              </div>
+            </div>
+
             {/* Live Personal Preview */}
             <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-3">
               <span className="text-[10px] font-mono uppercase font-bold text-neutral-400 tracking-wider block">
@@ -495,6 +512,21 @@ export default function LeagueCustomizerModal() {
            ============================================================ */}
         {activeTab === "branding" && isLeagueAdmin && (
           <form onSubmit={handleSaveLeagueSettings} className="space-y-6">
+            {/* Appearance Mode Selector */}
+            <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs font-black uppercase text-white tracking-wide block">
+                    Display Appearance Mode
+                  </span>
+                  <span className="text-[11px] text-neutral-400">
+                    Switch between dark gridiron, crisp daylight, or system OS mode.
+                  </span>
+                </div>
+                <ThemeToggle variant="segmented" />
+              </div>
+            </div>
+
             {/* Live Multi-Preview Showcase */}
             <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-3">
               <span className="text-[10px] font-mono uppercase font-bold text-neutral-400 tracking-wider block">

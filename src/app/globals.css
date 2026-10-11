@@ -5,36 +5,36 @@
   --foreground: #ededed;
 
   /* League dynamic branding variables */
-  --league-primary: #06B6D4;
-  --league-accent: #3B82F6;
-  --league-primary-rgb: 6, 182, 212;
-  --league-accent-rgb: 59, 130, 246;
+  --league-primary: #3ca505;
+  --league-accent: #22c55e;
+  --league-primary-rgb: 60, 165, 5;
+  --league-accent-rgb: 34, 197, 94;
 
-  /* Default Primary Shade Palette (Cyan fallback) */
-  --league-primary-50: #ECFEFF;
-  --league-primary-100: #CFFAFE;
-  --league-primary-200: #A5F3FC;
-  --league-primary-300: #67E8F9;
-  --league-primary-400: #22D3EE;
-  --league-primary-500: #06B6D4;
-  --league-primary-600: #0891B2;
-  --league-primary-700: #0E7490;
-  --league-primary-800: #155E75;
-  --league-primary-900: #164E63;
-  --league-primary-950: #083344;
+  /* Default Primary Shade Palette (Field Green fallback based on #3ca505) */
+  --league-primary-50: #f3faf0;
+  --league-primary-100: #e0f1d7;
+  --league-primary-200: #c1e2af;
+  --league-primary-300: #9ad07d;
+  --league-primary-400: #6bbb41;
+  --league-primary-500: #3ca505;
+  --league-primary-600: #328b04;
+  --league-primary-700: #286d03;
+  --league-primary-800: #1d4f02;
+  --league-primary-900: #123202;
+  --league-primary-950: #091901;
 
-  /* Default Accent Shade Palette (Blue fallback) */
-  --league-accent-50: #EFF6FF;
-  --league-accent-100: #DBEAFE;
-  --league-accent-200: #BFDBFE;
-  --league-accent-300: #93C5FD;
-  --league-accent-400: #60A5FA;
-  --league-accent-500: #3B82F6;
-  --league-accent-600: #2563EB;
-  --league-accent-700: #1D4ED8;
-  --league-accent-800: #1E40AF;
-  --league-accent-900: #1E3A8A;
-  --league-accent-950: #172554;
+  /* Default Accent Shade Palette (Turf Emerald fallback based on #22c55e) */
+  --league-accent-50: #f2fcf5;
+  --league-accent-100: #dcf6e5;
+  --league-accent-200: #b8eccb;
+  --league-accent-300: #8ce1ab;
+  --league-accent-400: #57d385;
+  --league-accent-500: #22c55e;
+  --league-accent-600: #1da54f;
+  --league-accent-700: #16823e;
+  --league-accent-800: #105f2d;
+  --league-accent-900: #0a3b1c;
+  --league-accent-950: #051e0e;
 }
 
 @theme inline {
@@ -75,9 +75,10 @@
 }
 
 body {
-  background: #000000;
+  background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Dynamic League Theme Utilities */
@@ -105,5 +106,200 @@ body {
 
 .league-border-hover:hover {
   border-color: rgba(var(--league-primary-rgb), 0.6);
+}
+
+/* ===========================================================================
+   LIGHT & DARK MODE SYSTEM
+   =========================================================================== */
+
+html.dark {
+  color-scheme: dark;
+  --background: #000000;
+  --foreground: #ededed;
+}
+
+html.light {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+/* Light Mode Overrides */
+html.light body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Page, Header, and Section Backgrounds */
+html.light .bg-black {
+  background-color: #f8fafc !important;
+}
+
+html.light .bg-\[\#07090E\],
+html.light .bg-\[\#07090E\]\/90,
+html.light .bg-\[\#070A11\],
+html.light .bg-\[\#070A11\]\/95,
+html.light .bg-\[\#0B0F19\] {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+html.light .bg-neutral-950 {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-neutral-900 {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-neutral-900\/90,
+html.light .bg-neutral-900\/80,
+html.light .bg-neutral-900\/60,
+html.light .bg-neutral-900\/70,
+html.light .bg-neutral-900\/95,
+html.light .bg-neutral-950\/90,
+html.light .bg-neutral-950\/80,
+html.light .bg-neutral-950\/60,
+html.light .bg-neutral-950\/70 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+html.light .bg-black\/40,
+html.light .bg-black\/50,
+html.light .bg-black\/60,
+html.light .bg-black\/70,
+html.light .bg-black\/80,
+html.light .bg-black\/85 {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .bg-white\/5,
+html.light .bg-white\/10 {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .hover\:bg-white\/5:hover,
+html.light .hover\:bg-white\/10:hover,
+html.light .hover\:bg-white\/20:hover {
+  background-color: #e2e8f0 !important;
+}
+
+html.light .hover\:bg-neutral-800:hover,
+html.light .hover\:bg-neutral-900:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Card Borders & Dividers in Light Mode */
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/15,
+html.light .border-white\/20,
+html.light .border-white\/30 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Typography Adaptation in Light Mode */
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #0f172a;
+}
+
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-neutral-300,
+html.light .text-neutral-400 {
+  color: #475569 !important;
+}
+
+html.light .text-neutral-500 {
+  color: #64748b !important;
+}
+
+/* Exclude colored badges, gradient buttons, and pills from turning dark */
+html.light [class*="bg-gradient-to"] .text-white,
+html.light [class*="bg-gradient-to"],
+html.light button[class*="bg-gradient-to"] *,
+html.light a[class*="bg-gradient-to"] *,
+html.light .bg-cyan-500,
+html.light .bg-cyan-500 *,
+html.light .bg-emerald-600,
+html.light .bg-emerald-600 *,
+html.light .bg-emerald-500,
+html.light .bg-emerald-500 *,
+html.light .bg-red-500,
+html.light .bg-red-500 *,
+html.light .bg-red-600,
+html.light .bg-red-600 *,
+html.light .bg-amber-500,
+html.light .bg-amber-500 *,
+html.light .bg-blue-600,
+html.light .bg-blue-600 *,
+html.light .bg-purple-600,
+html.light .bg-purple-600 * {
+  color: inherit;
+}
+
+html.light [class*="bg-gradient-to"] .text-white,
+html.light [class*="bg-gradient-to"] span.text-white {
+  color: #ffffff !important;
+}
+
+/* Buttons with text-black */
+html.light .text-black {
+  color: #000000 !important;
+}
+
+/* Inputs, Textareas, and Selects in Light Mode */
+html.light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Modal and Backdrop Overlays in Light Mode */
+html.light .fixed.inset-0.bg-black\/80,
+html.light .fixed.inset-0.bg-black\/85,
+html.light .fixed.inset-0.bg-black\/90 {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Clean Soft Box Shadows in Light Mode */
+html.light .shadow-lg,
+html.light .shadow-xl,
+html.light .shadow-2xl {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Glow adjustments for light mode */
+html.light .league-glow {
+  box-shadow: 0 4px 20px rgba(var(--league-primary-rgb), 0.25);
+}
+
+html.light .league-glow-lg {
+  box-shadow: 0 8px 30px rgba(var(--league-primary-rgb), 0.3);
+}
+
+html.light .league-border {
+  border-color: rgba(var(--league-primary-rgb), 0.4);
+}
+
+/* In light mode, maintain clean contrast for football turf in PlayCanvas */
+html.light svg text[fill="#FFFFFF"] {
+  fill: #FFFFFF !important;
 }
 

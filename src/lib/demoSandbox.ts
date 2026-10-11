@@ -45,6 +45,9 @@ export interface DemoMatch {
   managingTeamId?: string;
   subs?: string[];
   matchState?: any;
+  didNotPlay?: string[];
+  roster?: { home?: string[]; away?: string[] } | any;
+  [key: string]: any;
 }
 
 export interface DemoPlay {
@@ -77,7 +80,7 @@ export interface DemoPlay {
 // ---------------------------------------------------------------------------
 
 export const SEED_DEMO_TEAMS: DemoTeam[] = [
-  { id: "team_apex", name: "Apex Predators", color: "#06B6D4" },
+  { id: "team_apex", name: "Apex Predators", color: "#3ca505" },
   { id: "team_cyber", name: "Cyber Knights", color: "#8B5CF6" },
   { id: "team_raptors", name: "Neon Raptors", color: "#10B981" },
   { id: "team_vipers", name: "Iron Vipers", color: "#F59E0B" },
@@ -547,7 +550,14 @@ export const getSandboxSettings = (): LeagueSettings => {
   const raw = sessionStorage.getItem(KEY_SETTINGS);
   if (raw) {
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed.primaryColor === "#06B6D4") {
+        parsed.primaryColor = DEFAULT_LEAGUE_SETTINGS.primaryColor;
+        parsed.accentColor = DEFAULT_LEAGUE_SETTINGS.accentColor;
+        parsed.themePreset = DEFAULT_LEAGUE_SETTINGS.themePreset;
+        sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(parsed));
+      }
+      return parsed;
     } catch {}
   }
   return DEFAULT_LEAGUE_SETTINGS;
@@ -774,10 +784,22 @@ export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
   return all;
 };
 
-export const addSandboxPlay = (play: Partial<DemoPlay>): DemoPlay => {
+export const addSandboxPlay = (play: Partial<DemoPlay> & Record<string, any>): DemoPlay => {
   const plays = getSandboxPlays();
-  const newPlay: DemoPlay = {
-    id: `play_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+  const calculatedPoints =
+    play.points !== undefined
+      ? play.points
+      : play.pointsScored !== undefined
+      ? play.pointsScored
+      : play.isSafety
+      ? 2
+      : play.isTouchdown || play.isPick6
+      ? 6
+      : 0;
+
+  const newPlay: DemoPlay & Record<string, any> = {
+    ...play,
+    id: play.id || `play_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
     matchId: play.matchId || "",
     possessionTeamId: play.possessionTeamId || "",
     playType: play.playType || "Pass",
@@ -791,12 +813,12 @@ export const addSandboxPlay = (play: Partial<DemoPlay>): DemoPlay => {
     isPick6: play.isPick6,
     isSafety: play.isSafety,
     turnover: play.turnover,
-    defenders: play.defenders,
-    flaggers: play.flaggers,
-    points: play.points,
+    defenders: play.defenders || [],
+    flaggers: play.flaggers || [],
+    points: calculatedPoints,
     result: play.result,
     notes: play.notes,
-    timestamp: new Date().toISOString(),
+    timestamp: play.timestamp || new Date().toISOString(),
     half: play.half,
     gameClock: play.gameClock,
   };
@@ -806,6 +828,27 @@ export const addSandboxPlay = (play: Partial<DemoPlay>): DemoPlay => {
     notifySandboxChange();
   }
   return newPlay;
+};
+
+export const deleteSandboxPlay = (playId: string): void => {
+  const plays = getSandboxPlays().filter((p) => p.id !== playId);
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(KEY_PLAYS, JSON.stringify(plays));
+    notifySandboxChange();
+  }
+};
+
+export const removeLastSandboxPlay = (matchId: string): DemoPlay | null => {
+  const allPlays = getSandboxPlays();
+  const matchPlays = allPlays.filter((p) => p.matchId === matchId);
+  if (matchPlays.length === 0) return null;
+  const lastPlay = matchPlays[matchPlays.length - 1];
+  const updated = allPlays.filter((p) => p.id !== lastPlay.id);
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(KEY_PLAYS, JSON.stringify(updated));
+    notifySandboxChange();
+  }
+  return lastPlay;
 };
 
 export const deleteSandboxPlaysForMatch = (matchId: string): void => {

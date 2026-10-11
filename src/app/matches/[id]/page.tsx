@@ -10,7 +10,7 @@ import { useLeague } from "@/lib/leagueContext";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
-import { getSandboxMatches, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { getSandboxMatches, updateSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -145,6 +145,11 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   onClick={async () => {
                     try {
                       const newValue = !matchData.isPreseason;
+                      if (isDemoLeague) {
+                        updateSandboxMatch(matchId, { isPreseason: newValue });
+                        setMatchData({ ...matchData, isPreseason: newValue });
+                        return;
+                      }
                       const { updateDoc, doc } = await import('firebase/firestore');
                       await updateDoc(doc(db, 'matches', matchId), { isPreseason: newValue });
                       setMatchData({ ...matchData, isPreseason: newValue });
@@ -155,14 +160,43 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   {matchData.isPreseason ? "★ Preseason" : "Mark as Preseason"}
                 </button>
               )}
-              {matchData.status !== 'completed' && (
+              {matchData.status !== 'completed' ? (
                 <Link
                   href={`/matches/${matchId}/play-by-play`}
                   className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap"
                 >
                   {matchData.isAsyncStatKeeping ? "Async Stat Keeper" : "Play-by-Play Manager"}
                 </Link>
-              )}
+              ) : isDemoLeague && isLeagueAdmin ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      updateSandboxMatch(matchId, { status: "in_progress" });
+                      window.location.href = `/matches/${matchId}/play-by-play`;
+                    }}
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap"
+                  >
+                    Reopen Play-by-Play
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!confirm("Reset this demo match to pre-game state (0-0 score, all plays cleared)?")) return;
+                      deleteSandboxPlaysForMatch(matchId);
+                      updateSandboxMatch(matchId, {
+                        status: "scheduled",
+                        homeScore: 0,
+                        awayScore: 0,
+                        matchState: null,
+                        didNotPlay: [],
+                      });
+                      window.location.reload();
+                    }}
+                    className="px-4 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold rounded-xl border border-white/10 transition-all whitespace-nowrap"
+                  >
+                    Reset Match
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

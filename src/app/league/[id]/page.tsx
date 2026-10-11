@@ -2273,7 +2273,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 {myPlayerTeam ? (
                   <Link
                     href={`/teams/${myPlayerTeam.id}/playbook`}
-                    className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center justify-center gap-2"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     <span>Launch Team Playbook</span>
