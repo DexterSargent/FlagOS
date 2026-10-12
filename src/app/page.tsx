@@ -28,9 +28,14 @@ import {
   Award,
   BadgeDollarSign,
   UserGroup,
+  UserPlus,
   RotateCw,
   ExternalLink,
   Lock,
+  Globe,
+  Copy,
+  Check,
+  MapPin,
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -71,13 +76,13 @@ export default function FlagOSPlatformLandingPage() {
   const getDisplayUrl = () => {
     switch (activeFeatureTab) {
       case "stats":
-        return `flagos.app/matches/match_demo_3/play-by-play?mode=${wizardMode}`;
+        return `flagos.ca/matches/match_demo_3/play-by-play?mode=${wizardMode}`;
       case "playbook":
-        return `flagos.app/teams/team_apex/playbook`;
+        return `flagos.ca/teams/team_apex/playbook`;
       case "live-clock":
-        return `flagos.app/schedule`;
+        return `flagos.ca/schedule`;
       case "infrastructure":
-        return `flagos.app/league/default`;
+        return `flagos.ca/league/default`;
     }
   };
 
@@ -106,8 +111,10 @@ export default function FlagOSPlatformLandingPage() {
     }
   };
 
-  // League Finder search
+  // League Finder search & filtering
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState<"all" | "5v5" | "7v7">("all");
+  const [copiedLeagueId, setCopiedLeagueId] = useState<string | null>(null);
 
   // Interactive slider on landing page
   const [teamSlider, setTeamSlider] = useState(8);
@@ -115,12 +122,102 @@ export default function FlagOSPlatformLandingPage() {
   const perTeamFee = 15;
   const calculatedTotal = baseFee + teamSlider * perTeamFee;
 
+  // Directory catalog of leagues
+  // STRICT REQUIREMENT: Only leagues with visibility !== "private" appear in the public league directory!
+  const directoryCatalog = [
+    {
+      id: activeLeagueId || "default",
+      name: settings?.leagueName || "FlagOS League",
+      shortcode: settings?.shortcode || "FLAG",
+      seasonTitle: settings?.seasonTitle || "2026 Season",
+      location: settings?.defaultLocation || "Turf Field 1",
+      rulesFormat: "IFAF 5v5 Non-Contact",
+      teamCount: 8,
+      primaryColor: settings?.primaryColor || "#3ca505",
+      accentColor: settings?.accentColor || "#22c55e",
+      tagline: settings?.tagline || "The Flag Football Operating System",
+      logoUrl: settings?.logoUrl || "/flagos-logo.png",
+      visibility: settings?.visibility || "public",
+    },
+    ...userLeagues
+      .filter((l) => l.id !== (activeLeagueId || "default"))
+      .map((l) => ({
+        id: l.id,
+        name: l.name,
+        shortcode: l.shortcode || "MFL",
+        seasonTitle: l.seasonTitle || "2026 Championship",
+        location: "Metropolitan Sports Complex",
+        rulesFormat: "IFAF 5v5 Non-Contact",
+        teamCount: 8,
+        primaryColor: l.primaryColor || "#3ca505",
+        accentColor: l.accentColor || "#22c55e",
+        tagline: "Official FlagOS Circuit",
+        logoUrl: l.logoUrl || "/flagos-logo.png",
+        visibility: l.visibility || "public",
+      })),
+    {
+      id: "league_opfc",
+      name: "Ontario Premier Flag Conference",
+      shortcode: "OPFC",
+      seasonTitle: "2026 Spring Invitational",
+      location: "Lamport Stadium, Toronto",
+      rulesFormat: "IFAF 5v5 Non-Contact",
+      teamCount: 12,
+      primaryColor: "#0284c7",
+      accentColor: "#38bdf8",
+      tagline: "Premier competitive 5v5 tournament circuit",
+      logoUrl: "/flagos-emblem.png",
+      visibility: "public" as const,
+    },
+    {
+      id: "league_metro7",
+      name: "Metro 7v7 Non-Contact Circuit",
+      shortcode: "M7V7",
+      seasonTitle: "2026 Summer League",
+      location: "Centennial Park Field 3",
+      rulesFormat: "7v7 Screen Non-Contact",
+      teamCount: 8,
+      primaryColor: "#d97706",
+      accentColor: "#f59e0b",
+      tagline: "Fast-tempo non-contact 7-on-7 division",
+      logoUrl: "/flagos-emblem.png",
+      visibility: "public" as const,
+    },
+    {
+      id: "league_pcfa",
+      name: "Pacific Coast Flag Association",
+      shortcode: "PCFA",
+      seasonTitle: "2026 Open Division",
+      location: "Empire Fields, Vancouver",
+      rulesFormat: "IFAF 5v5 Non-Contact",
+      teamCount: 10,
+      primaryColor: "#059669",
+      accentColor: "#10b981",
+      tagline: "British Columbia collegiate and adult flag league",
+      logoUrl: "/flagos-emblem.png",
+      visibility: "public" as const,
+    },
+  ];
 
-  const filteredLeagues = userLeagues.filter(
-    (l) =>
-      l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.shortcode?.toLowerCase().includes(searchQuery.toLowerCase())
+  // STRICT FILTER: Private leagues are excluded from public directory
+  const publicDirectoryLeagues = directoryCatalog.filter(
+    (l) => l.visibility !== "private"
   );
+
+  const filteredDirectoryLeagues = publicDirectoryLeagues.filter((l) => {
+    const matchesSearch =
+      l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.shortcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.rulesFormat.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesFormat =
+      selectedFormat === "all" ||
+      (selectedFormat === "5v5" && l.rulesFormat.includes("5v5")) ||
+      (selectedFormat === "7v7" && l.rulesFormat.includes("7v7"));
+
+    return matchesSearch && matchesFormat;
+  });
 
   const logoColour = mounted && resolvedTheme === "light" ? "/flagos-logo-original.png" : "/flagos-logo.png";
 
@@ -162,6 +259,10 @@ export default function FlagOSPlatformLandingPage() {
             </a>
             <a href="#interactive-demo" className="hover:text-cyan-400 transition-colors">
               Interactive Demo
+            </a>
+            <a href="#league-directory" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90">
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <span>League Directory</span>
             </a>
             <Link href="/pricing" className="text-amber-400/90 hover:text-amber-300 transition-colors flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -219,7 +320,7 @@ export default function FlagOSPlatformLandingPage() {
 
       {/* HERO SECTION */}
       <main className="flex-1 w-full relative z-10">
-        <section className="max-w-5xl mx-auto px-6 pt-12 pb-5 md:pt-16 md:pb-28 text-center space-y-8">
+        <section className="max-w-5xl mx-auto px-6 pt-12 pb-5 md:pt-16 md:pb-5 text-center space-y-8">
           {/* Official Logo */}
           <div className="flex flex-col items-center justify-center pt-1 pb-1">
             <div className="relative group">
@@ -229,11 +330,11 @@ export default function FlagOSPlatformLandingPage() {
                 className="relative w-56 sm:w-64 md:w-72 h-auto object-contain drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300"
               />
             </div>
-          </div>  
+          </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight text-white leading-none">
             The Operating System for Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 via-cyan-400 to-cyan-700"><br></br>Flag Football</span>
-          </h1> 
+          </h1>
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
@@ -258,19 +359,19 @@ export default function FlagOSPlatformLandingPage() {
           {/* Social Proof metrics */}
           <div className="pt-5 grid grid-cols-2 sm:grid-cols-2  gap-3 max-w-3xl mx-auto border-t border-white/10">
             <div>
-              <div className="text-xl md:text-3xl font-black text-cyan-500 font-mono">Season Long <br/> Statistics</div>
+              <div className="text-xl md:text-3xl font-black text-cyan-500 font-mono">Season Long <br /> Statistics</div>
               <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Cumulative Team and Individual Stats</div>
             </div>
             <div>
-              <div className="text-xl md:text-3xl font-black text-cyan-500 font-mono">Custom <br/> Playbooks</div>
+              <div className="text-xl md:text-3xl font-black text-cyan-500 font-mono">Custom <br /> Playbooks</div>
               <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Up to 5 Per Team</div>
             </div>
             <div>
-              <div className="text-xl md:text-3xl font-black text-emerald-500 font-mono">Customizable <br/> League Rules</div>
+              <div className="text-xl md:text-3xl font-black text-emerald-500 font-mono">Customizable <br /> League Rules</div>
               <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">5v5 IFAF Rules Pre-loaded</div>
             </div>
             <div>
-              <div className="text-xl md:text-3xl font-black text-emerald-500 font-mono">Automatic <br/> Schedule Builder</div>
+              <div className="text-xl md:text-3xl font-black text-emerald-500 font-mono">Automatic <br /> Schedule Builder</div>
               <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Plan your entire season in seconds</div>
             </div>
           </div>
@@ -317,7 +418,7 @@ export default function FlagOSPlatformLandingPage() {
                   </div>
 
                   <div className="space-y-2.5">
-                    {[                     
+                    {[
                       {
                         icon: Play,
                         badge: "Dynamic Play-by-Play Wizard",
@@ -401,7 +502,7 @@ export default function FlagOSPlatformLandingPage() {
                     <h3 className="text-xl font-black uppercase text-white tracking-tight">League Subscription</h3>
                   </div>
                   <span className="px-3 py-1 text-center rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-mono font-bold border border-cyan-500/20">
-                    For Leagues<br/> of 4-40 Teams
+                    For Leagues<br /> of 4-40 Teams
                   </span>
                 </div>
 
@@ -438,8 +539,8 @@ export default function FlagOSPlatformLandingPage() {
                         icon: Building2,
                         badge: "Branding",
                         title: "Customizable League Portal",
-                          description: "Make the league your own with custom branding, themes, and league information. The only FlagOS branding on your league is a brief \"Powered by FlagOS\" disclaimer in the footer.",
-                        },
+                        description: "Make the league your own with custom branding, themes, and league information. The only FlagOS branding on your league is a brief \"Powered by FlagOS\" disclaimer in the footer.",
+                      },
                       {
                         icon: Calendar,
                         badge: "Automation",
@@ -505,7 +606,7 @@ export default function FlagOSPlatformLandingPage() {
               Interactive Capabilities
             </span>
             <h2 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
-              The <span className="text-white">FLAG</span><span style={{ color: "#3CA505" }}>OS</span> Powerhouse Features
+              <span className="text-white">FLAG</span><span style={{ color: "#3CA505" }}>OS</span> Powerhouse Features
             </h2>
             <p className="text-neutral-400 text-sm max-w-2xl mx-auto">
               Test drive the actual system features directly in the sandboxed interactive frame below. Zero database writes.
@@ -523,7 +624,7 @@ export default function FlagOSPlatformLandingPage() {
             </button>
             <button
               onClick={() => setActiveFeatureTab("playbook")}
-              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "playbook" ? "bg-blue-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "playbook" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
               Playbook Studio
@@ -537,7 +638,7 @@ export default function FlagOSPlatformLandingPage() {
             </button>
             <button
               onClick={() => setActiveFeatureTab("infrastructure")}
-              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "infrastructure" ? "bg-amber-400 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "infrastructure" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
               League Dashboard
@@ -548,9 +649,30 @@ export default function FlagOSPlatformLandingPage() {
           {activeFeatureTab === "stats" && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-4xl mx-auto p-3 rounded-2xl bg-gradient-to-r from-neutral-900/90 via-neutral-950 to-neutral-900/90 border border-emerald-500/30 backdrop-blur-xl shadow-lg">
               <div className="flex items-center gap-2.5 px-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
                 <span className="text-xs font-bold text-neutral-300">
                   Wizard Operating Mode:
+                </span>
+                <span className="flex items-center gap-1.5 p-1 rounded-xl bg-black/80 border border-white/10 text-xs font-bold shrink-0">
+                  <button
+                    onClick={() => setWizardMode("async")}
+                    className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${wizardMode === "async"
+                      ? "bg-emerald-500 text-black font-black shadow-md"
+                      : "text-neutral-400 hover:text-white"
+                      }`}
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    <span>Asynchronous <br/>(Clockless)</span>
+                  </button>
+                  <button
+                    onClick={() => setWizardMode("sync")}
+                    className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${wizardMode === "sync"
+                      ? "bg-cyan-500 text-black font-black shadow-md"
+                      : "text-neutral-400 hover:text-white"
+                      }`}
+                  >
+                    <Timer className="w-3.5 h-3.5" />
+                    <span> Synchronous <br/> (Live Clocks)</span>
+                  </button>
                 </span>
                 <span className="text-[11px] font-mono text-neutral-400 hidden md:inline">
                   {wizardMode === "sync"
@@ -558,74 +680,13 @@ export default function FlagOSPlatformLandingPage() {
                     : "Rapid clockless stat keeper for high-tempo post-game or sideline logging"}
                 </span>
               </div>
-
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/80 border border-white/10 text-xs font-bold shrink-0">
-                <button
-                  onClick={() => setWizardMode("sync")}
-                  className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    wizardMode === "sync"
-                      ? "bg-cyan-500 text-black font-black shadow-md"
-                      : "text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  <Timer className="w-3.5 h-3.5" />
-                  <span>⚡ Synchronous (Live Clocks)</span>
-                </button>
-                <button
-                  onClick={() => setWizardMode("async")}
-                  className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    wizardMode === "async"
-                      ? "bg-emerald-500 text-black font-black shadow-md"
-                      : "text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  <span>📝 Asynchronous (Clockless)</span>
-                </button>
-              </div>
             </div>
           )}
 
           {/* INTERACTIVE APPLICATION FRAME */}
           <div className="bg-[#090D16] border border-white/15 rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative">
-            {/* Browser Window Chrome / Header */}
-            <div className="bg-[#0D121F] border-b border-white/10 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-              {/* Window Controls */}
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="w-3 h-3 rounded-full bg-red-500/80 border border-red-600"></div>
-                <div className="w-3 h-3 rounded-full bg-amber-500/80 border border-amber-600"></div>
-                <div className="w-3 h-3 rounded-full bg-emerald-500/80 border border-emerald-600"></div>
-                <span className="text-[11px] font-mono text-neutral-400 ml-2 hidden sm:inline font-bold">
-                  FlagOS Interactive Sandbox Frame
-                </span>
-              </div>
-
-              {/* Simulated Address / URL Bar */}
-              <div className="flex-1 max-w-xl mx-auto flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-neutral-300">
-                <div className="flex items-center gap-2 truncate">
-                  <Lock className="w-3 h-3 text-emerald-400 shrink-0" />
-                  <span className="truncate text-neutral-400">{getDisplayUrl()}</span>
-                </div>
-                <button
-                  onClick={() => setFrameKey((k) => k + 1)}
-                  title="Reload Interactive Sandbox"
-                  className="text-neutral-500 hover:text-white p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0 ml-2 cursor-pointer"
-                >
-                  <RotateCw className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Sandbox Status Badge */}
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>Zero Database Writes</span>
-                </div>
-              </div>
-            </div>
-
             {/* Embedded Real Feature App Frame */}
-            <div className="relative w-full h-[760px] md:h-[820px] bg-black">
+            <div className="relative w-full h-[500px] md:h-[600px] bg-black">
               <iframe
                 key={`${activeFeatureTab}-${wizardMode}-${frameKey}`}
                 src={getFeatureUrl()}
@@ -650,7 +711,255 @@ export default function FlagOSPlatformLandingPage() {
         </section>
 
         {/* FIND A LEAGUE / DIRECTORY SECTION */}
-       
+        <section id="league-directory" className="max-w-7xl mx-auto px-6 py-20 border-t border-white/10 space-y-10 scroll-mt-24">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+                  <Globe className="w-3.5 h-3.5" />
+                  Public League Directory
+                </span>
+                <span className="text-[11px] font-mono text-neutral-500">
+                  ({filteredDirectoryLeagues.length} Public Leagues Listed)
+                </span>
+              </div>
+              <h2 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
+                Find &amp; Join a Flag Football League
+              </h2>
+              <p className="text-neutral-400 text-sm leading-relaxed">
+                Search publicly listed leagues across FlagOS. Prospective athletes and coaches can explore schedules, live standings, and open registration.
+              </p>
+            </div>
+
+            {/* Private League Notice */}
+            <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 max-w-md text-xs space-y-1.5 shrink-0">
+              <div className="flex items-center gap-2 font-bold text-amber-300">
+                <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+                <span>Looking for a Private League?</span>
+              </div>
+              <p className="text-neutral-400 text-[11px] leading-relaxed">
+                Private leagues are hidden from this public directory. They can only be accessed with a direct URL link provided by your commissioner.
+              </p>
+            </div>
+          </div>
+
+          {/* Search & Filter Toolbar */}
+          <div className="p-4 rounded-2xl bg-[#090D16] border border-white/10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by league name, shortcode (e.g. OPFC, FLAG), or city..."
+                className="w-full bg-black/60 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-400 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs px-1.5 py-0.5 rounded cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs shrink-0 font-bold">
+              <button
+                onClick={() => setSelectedFormat("all")}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${selectedFormat === "all"
+                  ? "bg-white/15 text-white shadow-sm"
+                  : "text-neutral-400 hover:text-white"
+                  }`}
+              >
+                All Rulesets
+              </button>
+              <button
+                onClick={() => setSelectedFormat("5v5")}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${selectedFormat === "5v5"
+                  ? "bg-cyan-500 text-black font-black shadow-sm"
+                  : "text-neutral-400 hover:text-white"
+                  }`}
+              >
+                5v5
+              </button>
+              <button
+                onClick={() => setSelectedFormat("7v7")}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${selectedFormat === "7v7"
+                  ? "bg-amber-400 text-black font-black shadow-sm"
+                  : "text-neutral-400 hover:text-white"
+                  }`}
+              >
+                7v7
+              </button>
+            </div>
+          </div>
+
+          {/* Directory Grid */}
+          {filteredDirectoryLeagues.length === 0 ? (
+            <div className="p-12 rounded-3xl bg-[#090D16] border border-white/10 text-center space-y-4">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-neutral-400">
+                <Search className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-white">No Public Leagues Found</h3>
+                <p className="text-xs text-neutral-400 max-w-md mx-auto">
+                  No public leagues match &ldquo;{searchQuery}&rdquo;. Note that private leagues do not appear in this directory and require a direct URL link from the commissioner.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedFormat("all");
+                }}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition-all cursor-pointer"
+              >
+                Reset Search Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDirectoryLeagues.map((league) => (
+                <div
+                  key={league.id}
+                  className="bg-[#0B0F19] border border-white/10 hover:border-emerald-500/40 rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-[0_10px_40px_rgba(16,185,129,0.12)] group relative overflow-hidden"
+                >
+                  {/* Card Header & Status */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black uppercase text-black"
+                          style={{ backgroundColor: league.primaryColor }}
+                        >
+                          {league.shortcode}
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-neutral-400">
+                          {league.rulesFormat}
+                        </span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-bold text-emerald-400">
+                        <Globe className="w-3 h-3" />
+                        <span>Public Directory</span>
+                      </span>
+                    </div>
+
+                    {/* League Branding & Title */}
+                    <div className="flex items-start gap-3.5">
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center p-1.5 shrink-0 border border-white/15 shadow-md overflow-hidden"
+                        style={{
+                          background: `linear-gradient(135deg, ${league.primaryColor}, ${league.accentColor})`,
+                        }}
+                      >
+                        {league.logoUrl ? (
+                          <img
+                            src={league.logoUrl}
+                            alt={league.name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <Shield className="w-6 h-6 text-white" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base font-black uppercase tracking-wide text-white group-hover:text-emerald-300 transition-colors leading-snug truncate">
+                          {league.name}
+                        </h3>
+                        <p className="text-[11px] text-neutral-400 line-clamp-1 mt-0.5">
+                          {league.tagline}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Metadata Specs */}
+                    <div className="p-3 rounded-2xl bg-black/50 border border-white/5 space-y-2 text-[11px]">
+                      <div className="flex items-center justify-between text-neutral-300">
+                        <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
+                          <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span>Season</span>
+                        </span>
+                        <span className="font-bold text-white truncate max-w-[150px]">
+                          {league.seasonTitle}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-300">
+                        <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span>Venue</span>
+                        </span>
+                        <span className="font-mono text-[10px] text-neutral-300 truncate max-w-[150px]">
+                          {league.location}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-300">
+                        <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
+                          <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>Division Capacity</span>
+                        </span>
+                        <span className="font-mono text-[10px] text-amber-300 font-bold">
+                          {league.teamCount} Teams
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="pt-4 border-t border-white/10 mt-4 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Link
+                        href={`/league/${league.id}`}
+                        className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-center shadow-md shadow-emerald-500/20 active:scale-[0.98]"
+                      >
+                        <span>View Portal</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+
+                      <Link
+                        href="/join"
+                        className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center justify-center gap-1.5 text-center active:scale-[0.98]"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Register</span>
+                      </Link>
+                    </div>
+
+                    {/* Copy Direct URL */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          const url = `${window.location.origin}/league/${league.id}`;
+                          navigator.clipboard?.writeText(url);
+                          setCopiedLeagueId(league.id);
+                          setTimeout(() => setCopiedLeagueId(null), 2000);
+                        }
+                      }}
+                      className="w-full py-1.5 px-2.5 rounded-lg text-[10px] font-mono text-neutral-400 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedLeagueId === league.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400 font-bold">Direct URL Copied to Clipboard!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy Direct Access Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
       <LeagueFooter />
     </div>

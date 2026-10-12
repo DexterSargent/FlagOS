@@ -78,6 +78,7 @@ export interface LeagueSettings {
   rulebookTitle: string;
   rulebookUrl?: string;
   announcement?: string;
+  visibility?: "public" | "private"; // public = indexed in public directory, private = direct URL access only
   rules: LeagueRules;
 }
 
@@ -96,6 +97,7 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   rulebookTitle: "Official 7v7 Non-Contact Rules",
   rulebookUrl: "",
   announcement: "",
+  visibility: "public",
   rules: DEFAULT_LEAGUE_RULES,
 };
 
@@ -120,6 +122,7 @@ export interface UserLeagueSummary {
   primaryColor?: string;
   accentColor?: string;
   role: "owner" | "admin" | "member";
+  visibility?: "public" | "private";
   subscription?: LeagueSubscriptionInfo;
 }
 
@@ -148,6 +151,7 @@ interface LeagueContextType {
   loading: boolean;
   activeLeagueId: string;
   userLeagues: UserLeagueSummary[];
+  publicLeagues: UserLeagueSummary[];
   switchLeague: (leagueId: string) => Promise<void>;
   createLeague: (data: {
     name: string;
@@ -157,6 +161,7 @@ interface LeagueContextType {
     primaryColor?: string;
     accentColor?: string;
     rulePreset?: string;
+    visibility?: "public" | "private";
   }) => Promise<string>;
   subscription: LeagueSubscriptionInfo | null;
   isDemoLeague: boolean;
@@ -233,6 +238,7 @@ const LeagueContext = createContext<LeagueContextType>({
   loading: true,
   activeLeagueId: "default",
   userLeagues: [],
+  publicLeagues: [],
   switchLeague: async () => { },
   createLeague: async () => "",
   subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
@@ -252,6 +258,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       role: "owner",
       primaryColor: DEFAULT_LEAGUE_SETTINGS.primaryColor,
       accentColor: DEFAULT_LEAGUE_SETTINGS.accentColor,
+      visibility: "public",
       subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
     },
   ]);
@@ -424,6 +431,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     primaryColor?: string;
     accentColor?: string;
     rulePreset?: string;
+    visibility?: "public" | "private";
   }): Promise<string> => {
     const newLeagueId = `league_${Date.now()}`;
     const pColor = data.primaryColor || "#3ca505";
@@ -469,6 +477,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       primaryColor: pColor,
       accentColor: aColor,
       role: "owner",
+      visibility: data.visibility || "public",
       subscription: newSub,
     };
 
@@ -527,7 +536,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.setItem("league_settings", JSON.stringify(merged));
     }
 
-    // Update summary in userLeagues list if name or colors changed
+    // Update summary in userLeagues list if name, colors, or visibility changed
     setUserLeagues((prev) => {
       const updated = prev.map((l) =>
         l.id === activeLeagueId
@@ -537,6 +546,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
               shortcode: merged.shortcode,
               primaryColor: merged.primaryColor,
               accentColor: merged.accentColor,
+              visibility: merged.visibility || "public",
             }
           : l
       );
@@ -620,6 +630,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         loading,
         activeLeagueId,
         userLeagues,
+        publicLeagues: userLeagues.filter((l) => l.visibility !== "private"),
         switchLeague,
         createLeague,
         subscription,

@@ -33,6 +33,9 @@ import {
   User,
   Crosshair,
   Sparkles,
+  Lock,
+  Globe,
+  Copy,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, onSnapshot, addDoc } from "firebase/firestore";
@@ -99,6 +102,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const [newPlayerPositions, setNewPlayerPositions] = useState<string[]>([]);
   const [newPlayerExperience, setNewPlayerExperience] = useState("Rookie");
   const [addingPlayer, setAddingPlayer] = useState(false);
+  const [copiedLeagueLink, setCopiedLeagueLink] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -710,6 +714,17 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   {settings.seasonTitle || "Active Season"}
                 </span>
+                {settings.visibility === "private" ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold text-amber-300 font-mono" title="Private League: Accessible via Direct URL Only">
+                    <Lock className="w-2.5 h-2.5" />
+                    <span>Private League</span>
+                  </span>
+                ) : (
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-mono font-bold text-emerald-400" title="Listed in Public League Directory">
+                    <Globe className="w-2.5 h-2.5" />
+                    <span>Public Directory</span>
+                  </span>
+                )}
                 {settings.shortcode && (
                   <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-mono text-cyan-300 font-bold">
                     {settings.shortcode}
@@ -831,6 +846,29 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <p className="text-neutral-400 text-xs md:text-sm mt-1 max-w-2xl">
                   Centralized command console for match games, live scorekeeping, team registry, rule enforcement, and league branding.
                 </p>
+                {settings.visibility === "private" && (
+                  <div className="mt-3 inline-flex flex-wrap items-center gap-2.5 p-2 px-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs">
+                    <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="text-amber-200 text-[11px]">
+                      <strong>Private League:</strong> Hidden from directory. Accessible only via direct URL.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          const url = `${window.location.origin}/league/${activeLeagueId}`;
+                          navigator.clipboard?.writeText(url);
+                          setCopiedLeagueLink(true);
+                          setTimeout(() => setCopiedLeagueLink(false), 2000);
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-black font-bold text-[10px] uppercase tracking-wider transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                    >
+                      {copiedLeagueLink ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedLeagueLink ? "Copied Direct Link!" : "Copy Direct URL"}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Fast Operations Toolbar */}

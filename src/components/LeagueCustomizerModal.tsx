@@ -24,6 +24,9 @@ import {
   UserPlus,
   Info,
   BookOpen,
+  Globe,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -54,6 +57,7 @@ export default function LeagueCustomizerModal() {
     userThemeColors,
     setUserThemeColors,
     resetToLeagueColors,
+    activeLeagueId,
   } = useLeague();
   const { isLeagueAdmin, isPlayer, playerData } = useAuth();
 
@@ -76,6 +80,8 @@ export default function LeagueCustomizerModal() {
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
   const [accentColor, setAccentColor] = useState(settings.accentColor);
   const [selectedPreset, setSelectedPreset] = useState(settings.themePreset);
+  const [visibility, setVisibility] = useState<"public" | "private">(settings.visibility || "public");
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // Personal Theme Colors state (User / Player)
   const [personalPrimary, setPersonalPrimary] = useState(userThemeColors?.primary || settings.primaryColor);
@@ -107,6 +113,7 @@ export default function LeagueCustomizerModal() {
     setPrimaryColor(settings.primaryColor);
     setAccentColor(settings.accentColor);
     setSelectedPreset(settings.themePreset);
+    setVisibility(settings.visibility || "public");
     setRules(settings.rules || DEFAULT_LEAGUE_RULES);
 
     setPersonalPrimary(userThemeColors?.primary || settings.primaryColor);
@@ -222,6 +229,7 @@ export default function LeagueCustomizerModal() {
         primaryColor,
         accentColor,
         themePreset: selectedPreset,
+        visibility,
         rules: {
           ...rules,
           minRosterSize: sanitizedMinRoster,
@@ -577,6 +585,148 @@ export default function LeagueCustomizerModal() {
                 <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-neutral-400">
                   <MapPin className="w-3.5 h-3.5 text-cyan-400" />
                   <span>{defaultLocation || "Turf Field 1"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* League Privacy & Directory Access */}
+            <div className="p-5 rounded-2xl bg-black/70 border border-white/10 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-black uppercase text-white tracking-wide flex items-center gap-2">
+                    {visibility === "public" ? (
+                      <Globe className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <Lock className="w-4 h-4 text-amber-400" />
+                    )}
+                    <span>League Privacy & Directory Listing</span>
+                  </span>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">
+                    Choose whether this league appears in the public FlagOS league directory or is accessible only via direct URL.
+                  </p>
+                </div>
+                <span
+                  className={`text-[10px] font-mono px-2.5 py-1 rounded-full border font-bold uppercase tracking-wider self-start sm:self-auto ${
+                    visibility === "public"
+                      ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                      : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                  }`}
+                >
+                  {visibility === "public" ? "🌐 Public Directory" : "🔒 Private (Direct URL Only)"}
+                </span>
+              </div>
+
+              {/* Two Options Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {/* Public Option */}
+                <button
+                  type="button"
+                  onClick={() => setVisibility("public")}
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                    visibility === "public"
+                      ? "bg-emerald-500/10 border-emerald-500/60 shadow-lg shadow-emerald-500/10"
+                      : "bg-black/50 border-white/10 hover:border-white/20 text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
+                        <Globe className="w-4 h-4" />
+                        <span>Public League</span>
+                      </div>
+                      {visibility === "public" && (
+                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-black">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-neutral-300">
+                      Shows in the <strong>public league directory</strong>. Athletes and teams searching for leagues to join can find, explore, and register for your league.
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
+                    <span>✓ Discoverable on FlagOS homepage</span>
+                  </div>
+                </button>
+
+                {/* Private Option */}
+                <button
+                  type="button"
+                  onClick={() => setVisibility("private")}
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                    visibility === "private"
+                      ? "bg-amber-500/10 border-amber-500/60 shadow-lg shadow-amber-500/10"
+                      : "bg-black/50 border-white/10 hover:border-white/20 text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
+                        <Lock className="w-4 h-4" />
+                        <span>Private League</span>
+                      </div>
+                      {visibility === "private" && (
+                        <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-black">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-neutral-300">
+                      <strong>Hidden from the public directory</strong>. Unlisted from search results. Can only be accessed by visitors who have the direct URL link.
+                    </p>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-1.5 text-[10px] font-mono text-amber-400">
+                    <span>🔒 Accessible via direct URL only</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Direct Access Link Box */}
+              <div className="mt-3 p-3.5 rounded-xl bg-black border border-white/10 space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-mono text-neutral-400 font-bold flex items-center gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Direct Access URL</span>
+                  </span>
+                  <span className="text-[10px] text-neutral-500">
+                    {visibility === "private" ? "Exclusive entry link for private participants" : "Shareable direct portal link"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={typeof window !== "undefined" ? `${window.location.origin}/league/${activeLeagueId}` : `/league/${activeLeagueId}`}
+                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-neutral-300 select-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined") {
+                        const url = `${window.location.origin}/league/${activeLeagueId}`;
+                        navigator.clipboard?.writeText(url);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      copiedLink
+                        ? "bg-emerald-500 text-black font-black"
+                        : "bg-white/10 hover:bg-white/15 text-white border border-white/10"
+                    }`}
+                  >
+                    {copiedLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy URL</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>

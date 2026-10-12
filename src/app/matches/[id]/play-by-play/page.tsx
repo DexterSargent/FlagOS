@@ -66,12 +66,15 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   }
 
   const isDemoMatch = isDemoLeague || matchId.startsWith("match_demo_");
-  const canAdministerMatch =
-    isLeagueAdmin ||
-    isDemoMatch ||
-    (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) ||
-    (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) ||
-    (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId));
+  // In demo matches / play-by-play wizard demo, ONLY league admin can administer the game.
+  // If the user switches to any role other than league admin (e.g. Team Admin, Player, Spectator),
+  // show the play-by-play / box score view for the game they were in.
+  const canAdministerMatch = isDemoMatch
+    ? isLeagueAdmin
+    : (isLeagueAdmin ||
+       (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) ||
+       (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) ||
+       (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId)));
 
   if (canAdministerMatch && matchData?.status !== "completed") {
     return (

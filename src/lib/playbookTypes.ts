@@ -187,6 +187,7 @@ export interface PlayerNode {
   coverageType?: DefensiveCoverageType;
   manTargetId?: string; // id of offensive player to mirror / lock
   zoneId?: string; // id of zone to drop into
+  notes?: string; // Coaching notes & assignment instructions for this specific position
 }
 
 export interface PlayDiagram {
@@ -402,10 +403,75 @@ export function checkLegalPosition(player: PlayerNode, losY = DEFAULT_LOS_Y): Le
   }
 }
 
+export interface CustomRoutePreset {
+  id: string;
+  name: string;
+  shortName: string;
+  teamId: string;
+  category?: string;
+  offsets: Array<{ dx: number; dy: number }>;
+  createdAt?: string;
+}
+
+export const MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM = 20;
+
+export function getTeamCustomRoutePresets(teamId: string): CustomRoutePreset[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`flagos_custom_routes_${teamId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.error("Failed to load custom route presets:", e);
+  }
+  return [];
+}
+
+export function saveTeamCustomRoutePreset(teamId: string, preset: CustomRoutePreset): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const current = getTeamCustomRoutePresets(teamId);
+    if (current.length >= MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM) {
+      return false;
+    }
+    const filtered = current.filter((p) => p.id !== preset.id && p.name.toLowerCase() !== preset.name.toLowerCase());
+    const updated = [...filtered, preset].slice(0, MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM);
+    localStorage.setItem(`flagos_custom_routes_${teamId}`, JSON.stringify(updated));
+    return true;
+  } catch (e) {
+    console.error("Failed to save custom route preset:", e);
+    return false;
+  }
+}
+
+export function deleteTeamCustomRoutePreset(teamId: string, presetId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getTeamCustomRoutePresets(teamId);
+    const updated = current.filter((p) => p.id !== presetId);
+    localStorage.setItem(`flagos_custom_routes_${teamId}`, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Failed to delete custom route preset:", e);
+  }
+}
+
+export function applyCustomRoutePreset(
+  preset: CustomRoutePreset,
+  startX: number,
+  startY: number
+): RoutePoint[] {
+  return preset.offsets.map((pt) => ({
+    x: Math.max(4, Math.min(96, Math.round((startX + pt.dx) * 10) / 10)),
+    y: Math.max(8, Math.min(94, Math.round((startY + pt.dy) * 10) / 10)),
+  }));
+}
+
 export interface RoutePresetDefinition {
   name: string;
   shortName: string;
-  category: "Quick & Short" | "Intermediate" | "Deep" | "Cross & Motion";
+  category: "Quick & Short" | "Intermediate" | "Deep" | "Cross & Motion" | "Custom";
   defaultBreakYards: number;
   minBreakYards: number;
   maxBreakYards: number;

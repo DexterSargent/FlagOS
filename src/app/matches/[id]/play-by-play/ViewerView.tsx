@@ -21,7 +21,8 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague } = useLeague();
-  const { isLeagueAdmin } = useAuth();
+  const { isLeagueAdmin, managedTeamId, playerTeamId } = useAuth();
+  const isDemoMatch = isDemoLeague || matchId.startsWith("match_demo_");
 
   const [matchData, setMatchData] = useState<any>(null);
   const [plays, setPlays] = useState<any[]>([]);
@@ -34,11 +35,26 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       if (sp.get("embed") === "true") setIsEmbedded(true);
+      const tabParam = sp.get("tab");
+      if (tabParam === "box-score" || tabParam === "play-by-play") {
+        setActiveTab(tabParam);
+      }
     }
   }, []);
 
+  // Pre-select team tab for box score if user is affiliated with home or away team
   useEffect(() => {
-    if (isDemoLeague) {
+    if (!matchData) return;
+    const userTeam = managedTeamId || playerTeamId;
+    if (userTeam && userTeam === matchData.awayTeamId) {
+      setBoxScoreTab('away');
+    } else if (userTeam && userTeam === matchData.homeTeamId) {
+      setBoxScoreTab('home');
+    }
+  }, [matchData, managedTeamId, playerTeamId]);
+
+  useEffect(() => {
+    if (isDemoMatch) {
       setPlayers(getSandboxPlayers());
       const unsub = subscribeDemoSandbox(() => setPlayers(getSandboxPlayers()));
       return () => unsub();
@@ -47,7 +63,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       setPlayers(snap.docs.map(d => d.data()));
     });
     return () => unsub();
-  }, [isDemoLeague]);
+  }, [isDemoMatch]);
 
   const calculateBoxScore = () => {
     const statsMap: Record<string, any> = {};
@@ -252,7 +268,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   };
 
   useEffect(() => {
-    if (isDemoLeague) {
+    if (isDemoMatch) {
       const loadMatch = () => {
         const m = getSandboxMatches().find((m: any) => m.id === matchId);
         if (m) setMatchData(m);
@@ -267,10 +283,10 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       }
     });
     return () => unsub();
-  }, [matchId, isDemoLeague]);
+  }, [matchId, isDemoMatch]);
 
   useEffect(() => {
-    if (isDemoLeague) {
+    if (isDemoMatch) {
       const loadDemoPlays = () => {
         const pList = getSandboxPlays(matchId);
         pList.sort((a: any, b: any) => {
@@ -298,7 +314,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       setPlays(p);
     });
     return () => unsub();
-  }, [matchId, isDemoLeague]);
+  }, [matchId, isDemoMatch]);
 
   if (!matchData) {
     return (
@@ -374,7 +390,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-neutral-400">
-          {isDemoLeague && isLeagueAdmin && (
+          {isDemoMatch && isLeagueAdmin && (
             <div className="flex items-center gap-2 mr-2">
               <button
                 onClick={() => {

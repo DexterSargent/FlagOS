@@ -19,6 +19,8 @@ import {
   Plus,
   CreditCard,
   Building2,
+  Lock,
+  Globe,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -98,6 +100,17 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     {settings.seasonTitle || "Active Season"}
                   </span>
+                  {settings.visibility === "private" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold text-amber-300 font-mono" title="Private League: Accessible via Direct URL Only">
+                      <Lock className="w-2.5 h-2.5" />
+                      <span>Private</span>
+                    </span>
+                  ) : (
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-mono font-bold text-emerald-400" title="Listed in Public Directory">
+                      <Globe className="w-2.5 h-2.5" />
+                      <span>Public</span>
+                    </span>
+                  )}
                   {settings.shortcode && (
                     <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-mono text-cyan-300 font-bold">
                       {settings.shortcode}
@@ -157,9 +170,18 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                             {l.shortcode?.slice(0, 2) || "LG"}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-xs font-bold truncate leading-tight">{l.name}</div>
-                            <div className="text-[10px] text-neutral-500 font-mono">
-                              {l.role === "owner" ? "Owner / Commissioner" : "Admin"}
+                            <div className="text-xs font-bold truncate leading-tight flex items-center gap-1.5">
+                              <span className="truncate">{l.name}</span>
+                              {l.visibility === "private" && (
+                                <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                              )}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 font-mono flex items-center gap-1">
+                              <span>{l.role === "owner" ? "Owner" : "Admin"}</span>
+                              <span>•</span>
+                              <span className={l.visibility === "private" ? "text-amber-400 font-semibold" : "text-emerald-400 font-semibold"}>
+                                {l.visibility === "private" ? "Private" : "Public"}
+                              </span>
                             </div>
                           </div>
                         </div>
