@@ -23,6 +23,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const matchId = unwrappedParams.id;
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
+  const isDemo = isDemoLeague || matchId.startsWith("match_demo_");
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("embed") === "true") setIsEmbedded(true);
+    }
+  }, []);
+
   const periodType = settings?.rules?.periodType || "halves";
   const periodsCount = settings?.rules?.periodsCount || 2;
   const periodDurationMinutes = settings?.rules?.periodDurationMinutes || 20;
@@ -61,7 +71,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         setAwayPlayers(prev => [...prev, name].sort());
       }
       setIsSubModalOpen(false);
-      if (isDemoLeague) {
+      if (isDemo) {
         updateSandboxMatch(matchId, { subs: newSubs });
       } else {
         await import('firebase/firestore').then(({ updateDoc, doc }) => updateDoc(doc(db, "matches", matchId), { subs: newSubs }));
@@ -162,7 +172,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         let mData: any = null;
         let allP: any[] = [];
 
-        if (isDemoLeague) {
+        if (isDemo) {
           mData = getSandboxMatches().find((m: any) => m.id === matchId);
           if (!mData) return;
           allP = getSandboxPlayers();
@@ -222,7 +232,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       setLoadingData(false);
     };
     loadMatchData();
-  }, [matchId, isDemoLeague]);
+  }, [matchId, isDemo]);
 
   // Game Clock
   useEffect(() => {
@@ -301,7 +311,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (loadingData || isResetting || matchStatus === 'scheduled') return;
     const saveState = setTimeout(() => {
-      if (isDemoLeague) {
+      if (isDemo) {
         updateSandboxMatch(matchId, {
           status: 'in_progress',
           homeScore,
@@ -322,7 +332,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       }).catch(console.error);
     }, 1000);
     return () => clearTimeout(saveState);
-  }, [currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession, loadingData, isResetting, matchStatus, isDemoLeague, matchId]);
+  }, [currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession, loadingData, isResetting, matchStatus, isDemo, matchId]);
 
   // Reset Game to Pre-Game State handler
   const handleResetGameToPreGame = async () => {
@@ -332,7 +342,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       const defaultTimeouts = settings?.rules?.timeoutsPerTeam ?? 2;
       const defaultPlayClock = settings?.rules?.playClockSeconds || 30;
 
-      if (isDemoLeague) {
+      if (isDemo) {
         deleteSandboxPlaysForMatch(matchId);
         updateSandboxMatch(matchId, {
           status: "scheduled",
@@ -419,7 +429,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
   const finalizeGame = async () => {
     try {
-      if (isDemoLeague) {
+      if (isDemo) {
         updateSandboxMatch(matchId, {
           status: 'completed',
           homeScore,
@@ -430,7 +440,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             away: awayPlayers
           }
         });
-        router.push(`/matches/${matchId}`);
+        if (!isEmbedded) {
+          router.push(`/matches/${matchId}`);
+        } else {
+          alert("Game Finalized! Roster & scores recorded to demo session.");
+        }
         return;
       }
       await updateDoc(doc(db, "matches", matchId), {
@@ -523,7 +537,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const handleUndoLastPlay = async () => {
     if (!confirm("Are you sure you want to undo the last play?")) return;
     try {
-      if (isDemoLeague) {
+      if (isDemo) {
         const demoPlays = getSandboxPlays(matchId);
         if (demoPlays.length > 0) {
           const lastPlay: any = demoPlays[demoPlays.length - 1];
@@ -685,7 +699,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   };
 
   const logPlayToFirestore = async (playData: any) => {
-    if (isDemoLeague) {
+    if (isDemo) {
       addSandboxPlay({
         ...playData,
         matchId,
@@ -1003,9 +1017,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       <header className="bg-neutral-900 border-b border-cyan-500/30 p-4 flex flex-col md:flex-row items-center justify-between shrink-0 z-50 gap-4 md:gap-0">
         <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-1/4">
           <div className="flex items-center gap-4">
-            <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-3 rounded-2xl border border-white/10">
-              <ChevronLeft className="w-6 h-6" />
-            </Link>
+            {!isEmbedded && (
+              <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-3 rounded-2xl border border-white/10">
+                <ChevronLeft className="w-6 h-6" />
+              </Link>
+            )}
             <span className="hidden sm:inline-block px-2 py-1 rounded-lg bg-white/10 text-[10px] font-mono text-cyan-300 font-bold uppercase tracking-wider">
               {settings.shortcode || "FLAG"}
             </span>

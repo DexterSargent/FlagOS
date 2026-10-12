@@ -33,6 +33,14 @@ export const AVAILABLE_ICONS = [
   { id: "sparkles", label: "Spark", icon: Sparkles },
 ];
 
+export function isRealTeam(team?: { id?: string; name?: string } | null): boolean {
+  if (!team) return false;
+  if (team.id === "team_free_agents" || team.id === "Free Agent") return false;
+  const name = team.name?.trim().toLowerCase();
+  if (!name || name === "free agent" || name === "free agents") return false;
+  return true;
+}
+
 export function getTeamColor(teamName?: string, customColor?: string) {
   if (customColor) return customColor;
   if (!teamName) return "text-cyan-400";

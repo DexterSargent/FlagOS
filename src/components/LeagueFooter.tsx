@@ -14,13 +14,17 @@ import {
   UserPlus,
   ArrowRight,
   Settings,
+  Home,
+  LogIn,
+  CreditCard,
+  Sparkles,
 } from "lucide-react";
 import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LeagueFooter() {
   const { settings, openCustomizer } = useLeague();
-  const { canRegisterAsPlayer } = useAuth();
+  const { canRegisterAsPlayer, isAuthorized, isLeagueAdmin } = useAuth();
 
   return (
     <footer className="relative z-10 border-t border-white/10 bg-[#07090E] pt-12 pb-8 px-6 text-neutral-400 font-sans">
@@ -75,13 +79,15 @@ export default function LeagueFooter() {
               {settings.tagline || "The premier competitive flag football circuit with real-time statistics and match tracking."}
             </p>
 
-            <button
-              onClick={openCustomizer}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold border border-white/10 transition-all cursor-pointer"
-            >
-              <Settings className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Settings</span>
-            </button>
+            {isAuthorized && isLeagueAdmin && (
+              <button
+                onClick={openCustomizer}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold border border-white/10 transition-all cursor-pointer"
+              >
+                <Settings className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Settings</span>
+              </button>
+            )}
           </div>
 
           {/* Column 2: Venue & Operations */}
@@ -125,33 +131,64 @@ export default function LeagueFooter() {
 
           {/* Column 3: League Navigation */}
           <div className="space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-white">League Navigation</h4>
+            <h4 className="text-xs font-black uppercase tracking-wider text-white">Navigation</h4>
             <ul className="space-y-2 text-xs">
-              <li>
-                <Link href="/schedule" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-                  <CalendarDays className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Schedule</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/stats" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-                  <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-                  <span>Stats & Standings</span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/teams" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Team Directory</span>
-                </Link>
-              </li>
-              {settings.rules?.enableFreeAgents !== false && canRegisterAsPlayer && (
-                <li>
-                  <Link href="/join" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-                    <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Join League</span>
-                  </Link>
-                </li>
+              {isAuthorized ? (
+                <>
+                  <li>
+                    <Link href="/schedule" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                      <CalendarDays className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Schedule</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/stats" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                      <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                      <span>Stats & Standings</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/teams" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Team Directory</span>
+                    </Link>
+                  </li>
+                  {settings.rules?.enableFreeAgents !== false && canRegisterAsPlayer && (
+                    <li>
+                      <Link href="/join" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                        <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Join League</span>
+                      </Link>
+                    </li>
+                  )}
+                </>
+              ) : (
+                <>
+                  <li>
+                    <Link href="/" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                      <Home className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>FlagOS Home</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/#interactive-demo" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Interactive Demo</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/pricing" className="hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Pricing & Plans</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/login" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                      <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Sign In</span>
+                    </Link>
+                  </li>
+                </>
               )}
             </ul>
           </div>

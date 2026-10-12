@@ -180,6 +180,19 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     }
   }, [play.id, playbook?.playersOnField, settings?.rules?.playersOnField]);
 
+  // Auto-select a receiver if none is selected so route presets are immediately visible and active in-frame
+  useEffect(() => {
+    if (!selectedPlayerId && play.players && play.players.length > 0) {
+      const preferred =
+        play.players.find(
+          (p) => p.side === (play.type === "defense" ? "defense" : "offense") && p.label !== "QB" && p.label !== "C"
+        ) || play.players.find((p) => p.side === (play.type === "defense" ? "defense" : "offense"));
+      if (preferred) {
+        setSelectedPlayerId(preferred.id);
+      }
+    }
+  }, [play.id, play.type, selectedPlayerId]);
+
   const offensePlayers = play.players.filter((p) => p.side === "offense");
   const defensePlayers = play.players.filter((p) => p.side === "defense");
 
@@ -863,7 +876,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   };
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 w-full font-sans">
+    <div className="flex flex-col lg:flex-row gap-5 w-full font-sans">
       {/* ============================================================== */}
       {/* MAIN PLAYMAKER CANVAS & FIELD SURFACE                          */}
       {/* ============================================================== */}
@@ -1021,7 +1034,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
-          className="relative flex-1 w-full aspect-[4/3] sm:aspect-[16/10] bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair"
+          className="relative flex-1 w-full aspect-[16/10] max-h-[440px] bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair"
         >
           <svg
             ref={svgRef}
@@ -1658,17 +1671,242 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
           </svg>
 
           {/* Quick On-Field Canvas Helper Tooltip */}
-          <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-neutral-400 font-mono flex items-center gap-2">
+          <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-neutral-400 font-mono flex items-center gap-2 pointer-events-none">
             <Move className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span>Drag players to reposition • Drag waypoints to shape cuts</span>
           </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* IN-FRAME ROUTE PRESETS & QUICK ASSIGNMENT DOCK (ALWAYS VISIBLE)*/}
+        {/* ============================================================== */}
+        <div className="bg-[#0A0E17] border-t border-white/10 p-3 sm:p-3.5 shrink-0 space-y-2.5">
+          {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            {/* Player Selection Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 mr-1 flex items-center gap-1">
+                <Users className="w-3 h-3 text-cyan-400" />
+                <span>Player:</span>
+              </span>
+              {(play.type === "defense" ? defensePlayers : offensePlayers).map((p) => {
+                const isSelected = selectedPlayer?.id === p.id;
+                const hasRoute = p.route && p.route.length > 0;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPlayerId(p.id)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold transition-all border flex items-center gap-1.5 ${
+                      isSelected
+                        ? p.side === "offense"
+                          ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/25 ring-2 ring-cyan-400/30"
+                          : "bg-purple-500 text-black border-purple-400 shadow-md shadow-purple-500/25 ring-2 ring-purple-400/30"
+                        : "bg-black/60 text-neutral-300 border-white/10 hover:border-white/30 hover:text-white"
+                    }`}
+                  >
+                    <span>{p.label}</span>
+                    {hasRoute && (
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isSelected ? "bg-black" : p.side === "offense" ? "bg-cyan-400" : "bg-purple-400"
+                        }`}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected Player Status & Action Buttons */}
+            <div className="flex items-center gap-2 ml-auto">
+              {selectedPlayer && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-mono">
+                  <span className="text-neutral-400">{selectedPlayer.role}:</span>
+                  <span
+                    className={`font-bold ${
+                      selectedPlayer.side === "offense" ? "text-cyan-400" : "text-purple-400"
+                    }`}
+                  >
+                    {selectedPlayer.quickRouteName ||
+                      (selectedPlayer.route && selectedPlayer.route.length > 0
+                        ? "Custom Route"
+                        : selectedPlayer.coverageType?.toUpperCase() || "No Route")}
+                  </span>
+                </div>
+              )}
+
+              {/* Freehand Route Draw Mode Toggle */}
+              {!readOnly && selectedPlayer && selectedPlayer.side === "offense" && (
+                <button
+                  type="button"
+                  onClick={() => setMode(mode === "draw" ? "select" : "draw")}
+                  title={mode === "draw" ? "Drawing mode active: Click on field to add points" : "Enable Freehand Click-to-Draw"}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                    mode === "draw"
+                      ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/25"
+                      : "bg-white/5 hover:bg-white/10 text-neutral-300 border-white/10"
+                  }`}
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span className="hidden md:inline">{mode === "draw" ? "Drawing Active" : "Draw Route"}</span>
+                  <span className="md:hidden">Draw</span>
+                </button>
+              )}
+
+              {/* Clear Route Button */}
+              {!readOnly && selectedPlayer?.route && selectedPlayer.route.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearRoute}
+                  title="Clear Route / Assignment"
+                  className="px-2 py-1 rounded-xl text-xs font-bold text-neutral-400 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 transition-all flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Offense Route Presets Ribbon */}
+          {selectedPlayer?.side === "offense" ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  <span>Route Presets ({selectedPlayer.label}):</span>
+                </span>
+                <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">
+                  Click any route to apply directly to {selectedPlayer.label} on the field above
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                {ROUTE_PRESETS_CATALOG.map((rp) => {
+                  const isCurrent =
+                    selectedPlayer.quickRouteName === rp.name ||
+                    selectedPlayer.quickRouteName === rp.shortName;
+                  return (
+                    <button
+                      key={rp.name}
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => handleApplyPreset(rp.name)}
+                      title={rp.description}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1 ${
+                        isCurrent
+                          ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/30 font-extrabold"
+                          : "bg-black/50 text-neutral-300 hover:bg-neutral-800 hover:text-white border-white/10"
+                      }`}
+                    >
+                      <span>{rp.shortName}</span>
+                      {isCurrent && <Check className="w-3 h-3 text-black stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : selectedPlayer?.side === "defense" ? (
+            /* Defense Coverage Presets Ribbon */
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  <span>Coverage & Assignment ({selectedPlayer.label}):</span>
+                </span>
+                <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">
+                  Click assignment to apply to {selectedPlayer.label} on the field above
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                {/* 3 Main Defensive Modes */}
+                <button
+                  type="button"
+                  disabled={readOnly}
+                  onClick={handleSelectZoneCoverage}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
+                    selectedPlayer.coverageType === "zone" || (!selectedPlayer.coverageType && selectedPlayer.label !== "RUSH")
+                      ? "bg-purple-500 text-black border-purple-400 shadow-md shadow-purple-500/25"
+                      : "bg-black/50 text-neutral-300 hover:bg-neutral-800 border-white/10"
+                  }`}
+                >
+                  <Radio className="w-3 h-3" />
+                  <span>Zone</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={readOnly}
+                  onClick={handleSelectManCoverage}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
+                    selectedPlayer.coverageType === "man" || mode === "man"
+                      ? "bg-pink-500 text-black border-pink-400 shadow-md shadow-pink-500/25"
+                      : "bg-black/50 text-neutral-300 hover:bg-neutral-800 border-white/10"
+                  }`}
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Man Lock</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={readOnly}
+                  onClick={handleSetPassRush}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
+                    selectedPlayer.coverageType === "rush"
+                      ? "bg-red-500 text-white border-red-400 shadow-md shadow-red-500/25"
+                      : "bg-black/50 text-neutral-300 hover:bg-neutral-800 border-white/10"
+                  }`}
+                >
+                  <Zap className="w-3 h-3" />
+                  <span>Pass Rush</span>
+                </button>
+
+                <div className="w-[1px] h-6 bg-white/10 mx-1 shrink-0" />
+
+                {/* Standard Zones Quick Shortcuts */}
+                {STANDARD_DEFENSIVE_ZONES.map((zt) => {
+                  const isCurrent =
+                    selectedPlayer.quickRouteName === zt.name ||
+                    selectedPlayer.quickRouteName === zt.shortName;
+                  return (
+                    <button
+                      key={zt.id}
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => handleAssignStandardZone(zt)}
+                      title={zt.description}
+                      className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
+                        isCurrent
+                          ? "bg-purple-500 text-black border-purple-400 shadow-md"
+                          : "bg-black/50 text-neutral-300 hover:border-purple-400/40 hover:text-white border-white/10"
+                      }`}
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: zt.color }}
+                      />
+                      <span>{zt.shortName}</span>
+                      {isCurrent && <Check className="w-3 h-3 text-black stroke-[3]" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-neutral-400 py-1 font-mono">
+              Select a player from the pills above or click on the field to choose route presets.
+            </div>
+          )}
         </div>
       </div>
 
       {/* ============================================================== */}
       {/* SIDEBAR: ROUTE DRAWING, PLAY SETTINGS, & COVERAGE TOOLS        */}
       {/* ============================================================== */}
-      <div className="w-full xl:w-96 flex flex-col gap-5 shrink-0">
+      <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-5 shrink-0">
         {/* Play Details Info Card */}
         <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">

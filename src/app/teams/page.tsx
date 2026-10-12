@@ -10,6 +10,7 @@ import { useLeague } from "@/lib/leagueContext";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
+import { isRealTeam } from "@/components/TeamAssets";
 import {
   getSandboxTeams,
   addSandboxTeam,
@@ -84,7 +85,7 @@ export default function TeamsPage() {
   const fetchData = async () => {
     setLoading(true);
     if (isDemoLeague) {
-      const t = getSandboxTeams() as unknown as Team[];
+      const t = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();
@@ -97,7 +98,9 @@ export default function TeamsPage() {
     }
     try {
       const teamsSnap = await getDocs(collection(db, "teams"));
-      const tData = teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team));
+      const tData = teamsSnap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Team))
+        .filter(isRealTeam);
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
 
@@ -122,7 +125,7 @@ export default function TeamsPage() {
     fetchData();
     if (isDemoLeague) {
       const unsub = subscribeDemoSandbox(() => {
-        setTeams(getSandboxTeams() as unknown as Team[]);
+        setTeams((getSandboxTeams() as unknown as Team[]).filter(isRealTeam));
         setPlayers(getSandboxPlayers() as unknown as Player[]);
         setMatches(getSandboxMatches());
         setPlays(getSandboxPlays());
@@ -336,14 +339,14 @@ export default function TeamsPage() {
     .filter(p => p.teamId === activeTeamId)
     .sort((a, b) => a.playerName.localeCompare(b.playerName));
 
-  const competitiveTeams = teams.filter((t) => t.name !== "Free Agent");
-  const freeAgentTeam = teams.find((t) => t.name === "Free Agent");
+  const competitiveTeams = teams.filter(isRealTeam);
   const freeAgentPlayers = players.filter(
     (p) =>
       p.status === "Free Agent" ||
-      (freeAgentTeam && p.teamId === freeAgentTeam.id) ||
+      !p.teamId ||
       p.teamId === "Free Agent" ||
-      (!p.teamId && (p.experience || p.position || p.positions))
+      p.teamId === "team_free_agents" ||
+      !teams.some((t) => t.id === p.teamId)
   );
 
   const filteredFreeAgents = freeAgentPlayers.filter((p) => {
@@ -891,7 +894,7 @@ export default function TeamsPage() {
           <div className="flex flex-col xl:flex-row gap-8 animate-in fade-in slide-in-from-bottom-8 duration-300">
 
             {/* Left Column: Roster */}
-            <div className={`w-full flex flex-col gap-6 ${activeTeam?.name === 'Free Agent' ? 'max-w-4xl mx-auto' : 'xl:w-1/3'}`}>
+            <div className="w-full xl:w-1/3 flex flex-col gap-6">
               <div className="bg-neutral-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
                 <div className="bg-neutral-900 px-6 py-5 border-b border-white/5 flex items-center justify-between sticky top-0 z-20">
                   <div className="flex items-center gap-3">

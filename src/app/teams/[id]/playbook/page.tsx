@@ -28,7 +28,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
-import { getTeamShortcode } from "@/components/TeamAssets";
+import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
@@ -78,16 +78,33 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const [editingFormation, setEditingFormation] = useState<FormationAlignment | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [showOpposingSide, setShowOpposingSide] = useState(false);
+  const isDemoTeam = teamId === "team_apex" || teamId === "team_cyber" || teamId === "demo";
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("demo") === "true" || isDemoTeam) {
+        setIsDemoMode(true);
+      }
+      if (sp.get("embed") === "true") {
+        setIsEmbedded(true);
+      }
+    }
+  }, [teamId, isDemoTeam]);
 
   // Strict confidentiality permissions:
-  // - League admins are strictly forbidden from viewing or modifying team playbooks
+  // - League admins are strictly forbidden from viewing or modifying team playbooks UNLESS they are also team admins of this team
   // - Only team admins of this specific franchise have edit and manage access
   // - Rostered players of this team have view-only access
+  // - In demo mode (e.g. team_apex / interactive frame preview), allow full interactive studio access
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
-  const hasEditAccess = !isLeagueAdmin && isTeamAdminForThisTeam;
-  const isRosteredPlayerOnTeam = !isLeagueAdmin && isPlayer && playerTeamId === teamId;
-  const isPlayerOnDifferentTeam = isPlayer && !!playerTeamId && playerTeamId !== teamId;
-  const canViewPlaybook = !isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
+  const isBlockedLeagueAdmin = isLeagueAdmin && !isTeamAdminForThisTeam;
+  const hasEditAccess = (!isBlockedLeagueAdmin && isTeamAdminForThisTeam) || isDemoMode;
+  const isRosteredPlayerOnTeam = (!isBlockedLeagueAdmin && isPlayer && playerTeamId === teamId) || isDemoMode;
+  const isPlayerOnDifferentTeam = !isDemoMode && !isTeamAdminForThisTeam && isPlayer && !!playerTeamId && playerTeamId !== teamId;
+  const canViewPlaybook = (!isBlockedLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam)) || isDemoMode;
 
   // 1. Fetch Team & Playbooks from Firestore / LocalStorage
   useEffect(() => {
@@ -95,11 +112,16 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       try {
         const teamSnap = await getDoc(doc(db, "teams", teamId));
         if (teamSnap.exists()) {
-          setTeam({ id: teamSnap.id, ...(teamSnap.data() as any) });
+          const tData = { id: teamSnap.id, ...(teamSnap.data() as any) };
+          if (isRealTeam(tData)) {
+            setTeam(tData);
+          }
+        } else if (isDemoMode || isDemoTeam) {
+          setTeam({ id: teamId, name: "Apex Predators", shortcode: "APX" });
         }
 
-        // If user is league admin or unauthorized, do not load confidential playbooks
-        if (isLeagueAdmin || (!isTeamAdminForThisTeam && !isRosteredPlayerOnTeam)) {
+        // If user is league admin (without team admin rights) or unauthorized and not in demo mode, do not load confidential playbooks
+        if (!isDemoMode && !isDemoTeam && (isBlockedLeagueAdmin || (!isTeamAdminForThisTeam && !isRosteredPlayerOnTeam))) {
           setLoading(false);
           return;
         }
@@ -457,11 +479,29 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     );
   }
 
+  if ((!team && !isDemoMode && !isDemoTeam) || (team && !isRealTeam(team)) || teamId === "team_free_agents") {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
+        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+        <p className="text-neutral-400 mb-6 max-w-md">
+          The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
+        </p>
+        <Link
+          href="/teams"
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+        >
+          Back to Teams
+        </Link>
+      </div>
+    );
+  }
+
   const teamName = team?.name || "Team";
   const shortcode = team?.shortcode || getTeamShortcode(team);
 
   // RESTRICTION 0: League Admin Access Restriction (Strict Competitive Confidentiality Policy)
-  if (isLeagueAdmin) {
+  // League admins are completely blocked from seeing team playbooks unless they are also team admins
+  if (!isDemoMode && isBlockedLeagueAdmin) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
         <LeagueHeader activePage="teams" />
@@ -479,7 +519,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 League Admin Access Restricted
               </h2>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
-                To safeguard competitive integrity and prevent tactical advantages, League Administrators do not have access to franchise playbooks. Team playbooks, route diagrams, and schemes are strictly private to verified team admins and rostered players.
+                To safeguard competitive integrity and prevent tactical advantages, League Administrators do not have access to franchise playbooks unless they are verified team administrators of this franchise. Team playbooks, route diagrams, and schemes are strictly private to verified team admins and rostered players.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 relative z-10">
@@ -504,7 +544,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   // RESTRICTION 1: Rostered player trying to view opponent's playbook
-  if (isPlayerOnDifferentTeam) {
+  if (!isDemoMode && isPlayerOnDifferentTeam) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
         <LeagueHeader activePage="teams" />
@@ -544,7 +584,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   // RESTRICTION 2: Guest or general user without team admin/league admin role
-  if (!canViewPlaybook) {
+  if (!isDemoMode && !canViewPlaybook) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
         <LeagueHeader activePage="teams" />
@@ -586,7 +626,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative overflow-hidden flex flex-col">
       {/* Branded League Navigation Bar */}
-      <LeagueHeader activePage="teams" />
+      {!isEmbedded && <LeagueHeader activePage="teams" />}
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -594,20 +634,27 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         <div className="absolute bottom-20 right-10 w-[35rem] h-[35rem] bg-blue-950/25 rounded-full blur-[180px]"></div>
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-6 relative z-10 flex-1 w-full p-4 sm:p-6 md:p-8">
+      <div className={`max-w-7xl mx-auto ${isEmbedded ? "space-y-3 p-2 sm:p-3" : "space-y-6 p-4 sm:p-6 md:p-8"} relative z-10 flex-1 w-full`}>
         {/* ============================================================== */}
         {/* 1. TOP HEADER & BREADCRUMBS (DYNAMIC FOR ALL 3 DRILLDOWN LEVELS)*/}
         {/* ============================================================== */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
+        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 ${isEmbedded ? "pb-2.5" : "pb-5"}`}>
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <Link
-                href={`/teams/${teamId}`}
-                className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-3 py-1 rounded-full border border-white/10 text-xs font-semibold"
-              >
-                <ChevronLeft className="w-3.5 h-3.5 mr-1" />
-                <span>{teamName} Portal</span>
-              </Link>
+              {!isEmbedded ? (
+                <Link
+                  href={`/teams/${teamId}`}
+                  className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-3 py-1 rounded-full border border-white/10 text-xs font-semibold"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+                  <span>{teamName} Portal</span>
+                </Link>
+              ) : (
+                <span className="inline-flex items-center text-cyan-300 bg-cyan-950/40 px-3 py-1 rounded-full border border-cyan-500/30 text-xs font-semibold">
+                  <BookOpen className="w-3.5 h-3.5 mr-1 text-cyan-400" />
+                  <span>{teamName} Studio</span>
+                </span>
+              )}
 
               {viewLevel !== "playbooks" && (
                 <>
@@ -1167,14 +1214,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   )}
                 </div>
 
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                <div className={`flex gap-2.5 overflow-x-auto ${isEmbedded ? "pb-1" : "pb-2"} scrollbar-thin`}>
                   {playsInActiveFormation.map((p) => {
                     const isSelected = activePlayId === p.id;
                     return (
                       <div
                         key={p.id}
                         onClick={() => setActivePlayId(p.id)}
-                        className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border transition-all cursor-pointer shrink-0 min-w-[210px] ${
+                        className={`flex items-center justify-between gap-2.5 ${isEmbedded ? "px-3 py-2 min-w-[170px]" : "px-4 py-3 min-w-[210px]"} rounded-2xl border transition-all cursor-pointer shrink-0 ${
                           isSelected
                             ? "bg-cyan-500/15 border-cyan-400 text-white shadow-lg shadow-cyan-500/10"
                             : "bg-[#0B0F19] border-white/10 text-neutral-300 hover:border-white/20"
@@ -1282,7 +1329,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* Branded League Footer */}
-      <LeagueFooter />
+      {!isEmbedded && <LeagueFooter />}
     </div>
   );
 }

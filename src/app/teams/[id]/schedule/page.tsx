@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, Calendar, Clock, MapPin, Trophy, History, PlayCircle, Shield, Plus, X, Sparkles, Timer } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where, addDoc } from "firebase/firestore";
-import { TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
+import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import {
@@ -85,9 +85,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       if (isDemoLeague) {
         const loadDemo = () => {
           const tObj = getSandboxTeams().find((t) => t.id === teamId);
-          if (tObj) setTeam(tObj);
+          if (tObj && isRealTeam(tObj)) setTeam(tObj);
+          else setTeam(null);
           const tMap: Record<string, any> = {};
-          getSandboxTeams().forEach((t) => { tMap[t.id] = t; });
+          getSandboxTeams().filter(isRealTeam).forEach((t) => { tMap[t.id] = t; });
           setAllTeams(tMap);
           const mList = getSandboxMatches().filter(
             (m: any) => !m.isHidden && (m.homeTeamId === teamId || m.awayTeamId === teamId)
@@ -108,13 +109,18 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         ]);
 
         if (teamSnap.exists()) {
-          setTeam({ id: teamSnap.id, ...teamSnap.data() });
+          const tData = { id: teamSnap.id, ...teamSnap.data() };
+          if (isRealTeam(tData)) setTeam(tData);
+          else setTeam(null);
         }
 
         const teamsMap: Record<string, any> = {};
-        allTeamsSnap.docs.forEach((d) => {
-          teamsMap[d.id] = { id: d.id, ...d.data() };
-        });
+        allTeamsSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(isRealTeam)
+          .forEach((t) => {
+            teamsMap[t.id] = t;
+          });
         setAllTeams(teamsMap);
 
         // Fetch matches involving this team
@@ -142,6 +148,23 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
         <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!team || !isRealTeam(team)) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
+        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+        <p className="text-neutral-400 mb-6 max-w-md">
+          The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team.
+        </p>
+        <Link
+          href="/teams"
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+        >
+          Back to Teams
+        </Link>
       </div>
     );
   }

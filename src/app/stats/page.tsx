@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { getTeamShortcode } from "@/components/TeamAssets";
+import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
@@ -54,9 +54,11 @@ export default function StatsAndStandings() {
         let plays: any[];
 
         if (isDemoLeague) {
-          teams = getSandboxTeams();
+          teams = getSandboxTeams().filter(isRealTeam);
           players = getSandboxPlayers();
-          matches = getSandboxMatches();
+          matches = getSandboxMatches().filter(
+            (m: any) => m.homeTeamId !== "team_free_agents" && m.awayTeamId !== "team_free_agents"
+          );
           plays = getSandboxPlays();
         } else {
           const [teamsSnap, playersSnap, matchesSnap, playsSnap] = await Promise.all([
@@ -66,7 +68,9 @@ export default function StatsAndStandings() {
             getDocs(collection(db, "plays")),
           ]);
 
-          teams = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          teams = teamsSnap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as any) }))
+            .filter(isRealTeam);
           players = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
           matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
           plays = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
@@ -172,7 +176,7 @@ export default function StatsAndStandings() {
         });
 
         const computedStandings = Object.values(teamsMap)
-          .filter((t) => t.name !== "Free Agent")
+          .filter(isRealTeam)
           .map((t) => {
             t.diff = t.pf - t.pa;
             return t;

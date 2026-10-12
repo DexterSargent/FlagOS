@@ -38,7 +38,7 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, onSnapshot, addDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
-import { TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
+import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
 import {
@@ -56,6 +56,17 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const unwrappedParams = params ? use(params) : null;
   const leagueIdParam = unwrappedParams?.id;
   const { settings, openCustomizer, activeLeagueId, switchLeague, isDemoLeague } = useLeague();
+
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("embed") === "true") {
+        setIsEmbedded(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (leagueIdParam && leagueIdParam !== activeLeagueId) {
@@ -93,10 +104,11 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
     const fetchData = async () => {
       if (isDemoLeague) {
         const loadDemoData = () => {
-          const tList = getSandboxTeams();
+          const tList = getSandboxTeams().filter(isRealTeam);
           const pList = getSandboxPlayers();
           const plList = getSandboxPlays();
-          const mList = getSandboxMatches().filter((m: any) => !m.isHidden);
+          const mList = getSandboxMatches()
+            .filter((m: any) => !m.isHidden && m.homeTeamId !== "team_free_agents" && m.awayTeamId !== "team_free_agents");
           mList.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
           setTeams(tList);
           setPlayers(pList);
@@ -115,7 +127,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           getDocs(collection(db, "plays")),
         ]);
 
-        const tList = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        const tList = teamsSnap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+          .filter(isRealTeam);
         const pList = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         const plList = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         setTeams(tList);
@@ -139,12 +153,12 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
     fetchData();
   }, [isDemoLeague]);
 
-  // Compute Standings
+  // Compute Standings (strictly competitive teams only; free agents are not a team)
   const standingsMap: Record<
     string,
     { id: string; name: string; shortcode: string; w: number; l: number; t: number; pf: number; pa: number; pts: number }
   > = {};
-  teams.forEach((t) => {
+  teams.filter(isRealTeam).forEach((t) => {
     standingsMap[t.id] = {
       id: t.id,
       name: t.name,
@@ -184,13 +198,15 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
     }
   });
 
-  const sortedStandings = Object.values(standingsMap).sort((a, b) => {
-    if (b.pts !== a.pts) return b.pts - a.pts;
-    const diffB = b.pf - b.pa;
-    const diffA = a.pf - a.pa;
-    if (diffB !== diffA) return diffB - diffA;
-    return b.pf - a.pf;
-  });
+  const sortedStandings = Object.values(standingsMap)
+    .filter(isRealTeam)
+    .sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      const diffB = b.pf - b.pa;
+      const diffA = a.pf - a.pa;
+      if (diffB !== diffA) return diffB - diffA;
+      return b.pf - a.pf;
+    });
 
   // Compute Individual Stat Leaders for snapshot
   const playerStats: Record<
@@ -665,7 +681,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       )}
 
       {/* Top Application Header */}
-      <header className="relative z-20 border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0">
+      {!isEmbedded && (
+        <header className="relative z-20 border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           {/* Brand & League Status */}
           <Link href="/" className="flex items-center gap-3">
@@ -725,7 +742,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               <Users className="w-3.5 h-3.5" />
               <span>Teams</span>
             </Link>
-            {isPlayer && myPlayerTeam && (
+            {isPlayer && myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) && (
               <Link
                 href={`/teams/${myPlayerTeam.id}/playbook`}
                 className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90"
@@ -787,6 +804,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           </div>
         </div>
       </header>
+      )}
 
       {/* ========================================================================= */}
       {/* VIEW 1: LEAGUE ADMIN VIEW (LEAGUE COMMAND CENTER)                        */}
@@ -1078,7 +1096,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {teams.map((team) => {
+              {teams.filter(isRealTeam).map((team) => {
                 const teamRosterCount = players.filter((p) => p.teamId === team.id).length;
                 const standing = standingsMap[team.id] || { w: 0, l: 0, t: 0 };
 
@@ -1680,16 +1698,17 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
               {/* Player Quick Action Buttons */}
               <div className="flex flex-wrap items-center gap-3 relative z-10">
+                {myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) && (
+                  <Link
+                    href={`/teams/${myPlayerTeam.id}/playbook`}
+                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>Team Playbook</span>
+                  </Link>
+                )}
                 {myPlayerTeam ? (
                   <>
-                    <Link
-                      href={`/teams/${myPlayerTeam.id}/playbook`}
-                      className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      <span>Team Playbook</span>
-                    </Link>
-
                     <Link
                       href={`/teams/${myPlayerTeam.id}`}
                       className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-white/15 transition-all flex items-center gap-2"
@@ -1920,7 +1939,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {myPlayerTeam && (
+                  {myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) && (
                     <Link
                       href={`/teams/${myPlayerTeam.id}/playbook`}
                       className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-500/30 transition-all flex items-center gap-1.5"
@@ -2270,7 +2289,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               <div className="pt-4 mt-4 border-t border-white/5">
-                {myPlayerTeam ? (
+                {myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) ? (
                   <Link
                     href={`/teams/${myPlayerTeam.id}/playbook`}
                     className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center justify-center gap-2"
@@ -2436,33 +2455,35 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {/* Fan Quick Links */}
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
-                  href="/schedule"
-                  className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
-                >
-                  <CalendarDays className="w-4 h-4" />
-                  <span>Game Schedule</span>
-                </Link>
-
-                <Link
-                  href="/stats"
-                  className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-white/15 transition-all flex items-center gap-2"
-                >
-                  <Trophy className="w-4 h-4 text-amber-400" />
-                  <span>Standings & Stats</span>
-                </Link>
-
-                {canRegisterAsPlayer && settings.rules?.enableFreeAgents !== false && (
+              {!isEmbedded && (
+                <div className="flex flex-wrap items-center gap-3">
                   <Link
-                    href="/join"
-                    className="px-5 py-2.5 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-emerald-500/40 transition-colors flex items-center gap-2"
+                    href="/schedule"
+                    className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
                   >
-                    <UserPlus className="w-4 h-4" />
-                    <span>Player Registration</span>
+                    <CalendarDays className="w-4 h-4" />
+                    <span>Game Schedule</span>
                   </Link>
-                )}
-              </div>
+
+                  <Link
+                    href="/stats"
+                    className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-white/15 transition-all flex items-center gap-2"
+                  >
+                    <Trophy className="w-4 h-4 text-amber-400" />
+                    <span>Standings & Stats</span>
+                  </Link>
+
+                  {canRegisterAsPlayer && settings.rules?.enableFreeAgents !== false && (
+                    <Link
+                      href="/join"
+                      className="px-5 py-2.5 bg-emerald-600/30 hover:bg-emerald-600/40 text-emerald-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-emerald-500/40 transition-colors flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Player Registration</span>
+                    </Link>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Spectator Snapshot Tiles */}
@@ -2504,6 +2525,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             teams={teams}
             standingsMap={standingsMap}
             isLeagueAdmin={false}
+            isEmbedded={isEmbedded}
           />
 
           {/* 2-Column: Fan Standings & Stat Leaders */}
@@ -2542,21 +2564,36 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                           <tr key={row.id} className="hover:bg-white/5 transition-colors">
                             <td className="py-3 font-mono font-bold text-neutral-400">{idx + 1}</td>
                             <td className="py-3">
-                              <Link
-                                href={`/teams/${row.id}`}
-                                className="font-bold text-white hover:text-cyan-400 transition-colors flex items-center gap-2.5"
-                              >
-                                <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
-                                  <TeamLogo
-                                    teamName={row.name}
-                                    logoUrl={teamObj?.logoUrl}
-                                    icon={teamObj?.icon}
-                                    className="w-full h-full object-contain"
-                                  />
+                              {isEmbedded ? (
+                                <div className="font-bold text-white flex items-center gap-2.5">
+                                  <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
+                                    <TeamLogo
+                                      teamName={row.name}
+                                      logoUrl={teamObj?.logoUrl}
+                                      icon={teamObj?.icon}
+                                      className="w-full h-full object-contain"
+                                    />
+                                  </div>
+                                  <span>{row.name}</span>
+                                  <span className="text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
                                 </div>
-                                <span>{row.name}</span>
-                                <span className="text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
-                              </Link>
+                              ) : (
+                                <Link
+                                  href={`/teams/${row.id}`}
+                                  className="font-bold text-white hover:text-cyan-400 transition-colors flex items-center gap-2.5"
+                                >
+                                  <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
+                                    <TeamLogo
+                                      teamName={row.name}
+                                      logoUrl={teamObj?.logoUrl}
+                                      icon={teamObj?.icon}
+                                      className="w-full h-full object-contain"
+                                    />
+                                  </div>
+                                  <span>{row.name}</span>
+                                  <span className="text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
+                                </Link>
+                              )}
                             </td>
                             <td className="py-3 text-center font-bold text-emerald-400">{row.w}</td>
                             <td className="py-3 text-center text-red-400">{row.l}</td>
@@ -2573,15 +2610,17 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-white/5">
-                <Link
-                  href="/stats"
-                  className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>View Full Standings & Calculations</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+              {!isEmbedded && (
+                <div className="pt-4 mt-4 border-t border-white/5">
+                  <Link
+                    href="/stats"
+                    className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>View Full Standings & Calculations</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Fan Stat Leaders */}
@@ -2592,10 +2631,14 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     <Activity className="w-4 h-4 text-cyan-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">League Leaders</h3>
                   </div>
-                  <Link href="/stats" className="text-xs font-bold text-cyan-400 hover:underline flex items-center gap-1">
-                    <span>10 Categories</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                  {!isEmbedded ? (
+                    <Link href="/stats" className="text-xs font-bold text-cyan-400 hover:underline flex items-center gap-1">
+                      <span>10 Categories</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </Link>
+                  ) : (
+                    <span className="text-[10px] font-mono text-neutral-400">10 Categories</span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -2645,15 +2688,17 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-white/5">
-                <Link
-                  href="/stats"
-                  className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>View Full Stat Leaderboards</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
+              {!isEmbedded && (
+                <div className="pt-4 mt-4 border-t border-white/5">
+                  <Link
+                    href="/stats"
+                    className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>View Full Stat Leaderboards</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2666,13 +2711,15 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   <span>Team Directory</span>
                 </h2>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Click any team to access their roster, player statistics, and match history.
+                  Official registered franchises and athletic rosters.
                 </p>
               </div>
-              <Link href="/teams" className="text-xs font-bold text-cyan-400 hover:underline flex items-center gap-1">
-                <span>View All Teams</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
+              {!isEmbedded && (
+                <Link href="/teams" className="text-xs font-bold text-cyan-400 hover:underline flex items-center gap-1">
+                  <span>View All Teams</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -2680,7 +2727,45 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 const teamRosterCount = players.filter((p) => p.teamId === team.id).length;
                 const standing = standingsMap[team.id] || { w: 0, l: 0, t: 0 };
 
-                return (
+                return isEmbedded ? (
+                  <div
+                    key={team.id}
+                    className="p-5 bg-black/60 border border-white/5 rounded-2xl flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-16 h-16 rounded-2xl bg-black/60 border border-white/10 p-2.5 flex items-center justify-center shadow-md shrink-0">
+                          <TeamLogo
+                            teamName={team.name}
+                            logoUrl={team.logoUrl}
+                            icon={team.icon}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <span className="font-mono text-xs font-bold text-neutral-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                          {team.shortcode || getTeamShortcode(team)}
+                        </span>
+                      </div>
+
+                      <h4 className="text-lg font-black text-white truncate">
+                        {team.name}
+                      </h4>
+                      <p className="text-xs text-neutral-400 mt-0.5">{teamRosterCount} Athletes</p>
+                    </div>
+
+                    <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] text-neutral-500 uppercase font-mono block">Record</span>
+                        <span className="font-bold text-white tabular-nums">
+                          {standing.w}-{standing.l}-{standing.t}
+                        </span>
+                      </div>
+                      <span className="text-neutral-500 font-bold">
+                        Active Franchise
+                      </span>
+                    </div>
+                  </div>
+                ) : (
                   <Link
                     key={team.id}
                     href={`/teams/${team.id}`}
@@ -2725,7 +2810,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           </section>
 
           {/* Player Registration CTA Banner */}
-          {canRegisterAsPlayer && settings.rules?.enableFreeAgents !== false && (
+          {!isEmbedded && canRegisterAsPlayer && settings.rules?.enableFreeAgents !== false && (
             <div className="bg-gradient-to-r from-emerald-950/40 via-[#0B0F19] to-cyan-950/40 border border-emerald-500/30 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Join the Competition</span>
@@ -2865,7 +2950,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       )}
 
       {/* Branded League Footer */}
-      <LeagueFooter />
+      {!isEmbedded && <LeagueFooter />}
     </div>
   );
 }
@@ -2876,12 +2961,14 @@ function LiveAndUpcomingGamesSection({
   teams,
   standingsMap,
   isLeagueAdmin,
+  isEmbedded,
 }: {
   games: any[];
   liveCount: number;
   teams: any[];
   standingsMap: Record<string, any>;
   isLeagueAdmin?: boolean;
+  isEmbedded?: boolean;
 }) {
   const formatClock = (seconds: number) => {
     const m = Math.floor(Math.max(0, seconds) / 60);
@@ -3106,12 +3193,16 @@ function LiveAndUpcomingGamesSection({
                 <div className="pt-2.5 border-t border-white/5">
                   {live ? (
                     <Link
-                      href={`/matches/${m.id}/play-by-play`}
+                      href={isEmbedded ? `/matches/${m.id}/play-by-play?embed=true&demo=true` : `/matches/${m.id}/play-by-play`}
                       className="w-full py-2.5 px-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl text-center transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/50"
                     >
                       <PlayCircle className="w-4 h-4 animate-pulse" />
                       <span>{isLeagueAdmin ? "Manage Scorekeeper" : "Watch Live Play-by-Play"}</span>
                     </Link>
+                  ) : isEmbedded ? (
+                    <div className="w-full py-2.5 px-3 bg-white/5 text-neutral-400 text-xs font-bold rounded-xl border border-white/10 text-center flex items-center justify-center gap-1.5 cursor-default">
+                      <span>Match Scheduled</span>
+                    </div>
                   ) : (
                     <Link
                       href={isLeagueAdmin ? `/matches/${m.id}/play-by-play` : `/matches/${m.id}`}

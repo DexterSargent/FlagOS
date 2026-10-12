@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/themeContext";
 import { LeagueProvider } from "@/lib/leagueContext";
 import RoleSwitcherBar from "@/components/RoleSwitcherBar";
 import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
+import AuthGuard from "@/components/AuthGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,9 +55,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <ThemeProvider>
             <LeagueProvider>
-              <RoleSwitcherBar />
-              {children}
-              <LeagueCustomizerModal />
+              <AuthGuard>
+                <RoleSwitcherBar />
+                {children}
+                <LeagueCustomizerModal />
+              </AuthGuard>
             </LeagueProvider>
           </ThemeProvider>
         </AuthProvider>

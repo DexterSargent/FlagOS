@@ -58,6 +58,16 @@ interface AsyncPlayByPlayManagerProps {
 export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayByPlayManagerProps) {
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
+  const isDemo = isDemoLeague || matchId?.startsWith("match_demo_");
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("embed") === "true") setIsEmbedded(true);
+    }
+  }, []);
+
   const downsPerSeries = settings?.rules?.downsPerSeries || 4;
 
   const [loadingData, setLoadingData] = useState(true);
@@ -125,7 +135,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         let mData: any = null;
         let allP: any[] = [];
 
-        if (isDemoLeague) {
+        if (isDemo) {
           mData = getSandboxMatches().find((m: any) => m.id === matchId);
           if (!mData) return;
           allP = getSandboxPlayers();
@@ -182,11 +192,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     };
 
     loadMatchData();
-  }, [matchId, isDemoLeague]);
+  }, [matchId, isDemo]);
 
   // Fetch plays feed
   const loadPlays = async () => {
-    if (isDemoLeague) {
+    if (isDemo) {
       const pList = getSandboxPlays(matchId);
       setPlays(pList);
       return;
@@ -209,7 +219,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   useEffect(() => {
     if (loadingData || matchStatus === "scheduled" && step === "IDLE" && homeScore === 0 && awayScore === 0 && half === 1 && currentDown === 1) return;
     const saveState = setTimeout(() => {
-      if (isDemoLeague) {
+      if (isDemo) {
         updateSandboxMatch(matchId, {
           status: matchStatus === "completed" ? "completed" : "in_progress",
           homeScore,
@@ -242,7 +252,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       }).catch(console.error);
     }, 800);
     return () => clearTimeout(saveState);
-  }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus]);
+  }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus, isDemo]);
 
   const handleAddSub = async (subName: string, teamToAdd: "HOME" | "AWAY") => {
     if (!subName.trim()) return;
@@ -256,7 +266,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     }
     setNewSubInput("");
     setIsSubModalOpen(false);
-    if (isDemoLeague) {
+    if (isDemo) {
       updateSandboxMatch(matchId, { subs: newSubs });
       return;
     }
@@ -297,7 +307,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const finalizeGame = async () => {
     try {
-      if (isDemoLeague) {
+      if (isDemo) {
         updateSandboxMatch(matchId, {
           status: "completed",
           homeScore,
@@ -403,7 +413,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   };
 
   const logPlayToFirestore = async (playData: any) => {
-    if (isDemoLeague) {
+    if (isDemo) {
       addSandboxPlay({
         ...playData,
         matchId,
@@ -500,7 +510,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const handleUndoLastPlay = async () => {
     if (!confirm("Are you sure you want to undo the last logged play?")) return;
     try {
-      if (isDemoLeague) {
+      if (isDemo) {
         const demoPlays = getSandboxPlays(matchId);
         if (demoPlays.length > 0) {
           const lastPlay: any = demoPlays[demoPlays.length - 1];
@@ -673,13 +683,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       {/* Top Banner & Navigation */}
       <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-6 py-3 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <Link
-            href={backUrl || `/matches/${matchId}`}
-            className="flex items-center gap-1.5 text-neutral-400 hover:text-white text-xs font-bold bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Exit Stat Keeper</span>
-          </Link>
+          {!isEmbedded && (
+            <Link
+              href={backUrl || `/matches/${matchId}`}
+              className="flex items-center gap-1.5 text-neutral-400 hover:text-white text-xs font-bold bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Exit Stat Keeper</span>
+            </Link>
+          )}
           <div className="hidden sm:flex items-center gap-2">
             <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5" />

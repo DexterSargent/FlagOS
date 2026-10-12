@@ -91,7 +91,7 @@ export default function JoinLeague() {
       const finalPositions = selectedPositions.length > 0 ? selectedPositions : ["ATH"];
       addSandboxPlayer({
         playerName: name.trim(),
-        teamId: "team_free_agents",
+        teamId: "",
         email: email.trim(),
         experience,
         positions: finalPositions,
@@ -104,23 +104,12 @@ export default function JoinLeague() {
     }
 
     try {
-      // Find or create "Free Agent" team
-      const teamsSnap = await getDocs(query(collection(db, "teams"), where("name", "==", "Free Agent")));
-      let freeAgentTeamId = "";
-
-      if (teamsSnap.empty) {
-        const newTeamRef = await addDoc(collection(db, "teams"), { name: "Free Agent" });
-        freeAgentTeamId = newTeamRef.id;
-      } else {
-        freeAgentTeamId = teamsSnap.docs[0].id;
-      }
-
       const finalPositions = selectedPositions.length > 0 ? selectedPositions : ["ATH"];
 
-      // Add the player to the Free Agent pool
+      // Add the athlete to the unassigned Free Agent player pool (no team)
       await addDoc(collection(db, "players"), {
         playerName: name.trim(),
-        teamId: freeAgentTeamId,
+        teamId: "",
         email: email.trim(),
         emails: email.trim() ? [email.trim().toLowerCase()] : [],
         experience,

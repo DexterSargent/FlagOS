@@ -3,14 +3,16 @@
 import { useAuth, UserRole } from "@/lib/authContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Shield, Crown, User, ChevronLeft, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Shield, Crown, User, ChevronLeft, ArrowRight, CheckCircle2, ShieldAlert, Lock, LogIn } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { isRealTeam } from "@/components/TeamAssets";
 
 export default function LoginPage() {
   const {
     user,
     role,
+    isAuthorized,
     isLeagueAdmin,
     isTeamAdmin,
     isPlayer,
@@ -32,6 +34,17 @@ export default function LoginPage() {
   const [playerLoginEmail, setPlayerLoginEmail] = useState<string>("");
   const [playerLoginError, setPlayerLoginError] = useState<string>("");
   const [playerLoggingIn, setPlayerLoggingIn] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState<string>("");
+  const [isLocalhost, setIsLocalhost] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const red = params.get("redirect");
+      if (red) setRedirectUrl(red);
+      setIsLocalhost(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,7 +53,9 @@ export default function LoginPage() {
           getDocs(collection(db, "teams")),
           getDocs(collection(db, "players")),
         ]);
-        const tList = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+        const tList = teamsSnap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+          .filter(isRealTeam);
         tList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
         setTeams(tList);
         if (tList.length > 0 && !selectedTeamId) {
@@ -77,7 +92,7 @@ export default function LoginPage() {
     const res = await loginWithPlayerEmail(playerLoginEmail);
     setPlayerLoggingIn(false);
     if (res.success) {
-      router.push("/profile");
+      router.push(redirectUrl || "/profile");
     } else {
       setPlayerLoginError(res.message || "Player not found");
     }
@@ -92,7 +107,7 @@ export default function LoginPage() {
       <div className="absolute top-8 left-8">
         <button
           onClick={() => router.push("/")}
-          className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md cursor-pointer"
+          className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md cursor-pointer text-xs"
         >
           <ChevronLeft className="w-4 h-4" />
           Back to FlagOS
@@ -108,6 +123,16 @@ export default function LoginPage() {
             className="w-16 h-16 object-contain drop-shadow-[0_4px_20px_rgba(60,165,5,0.4)] hover:scale-105 transition-transform"
           />
         </div>
+
+        {/* Redirect Notice Banner */}
+        {redirectUrl && (
+          <div className="w-full mb-6 p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs flex items-center gap-2.5">
+            <Lock className="w-4 h-4 shrink-0 text-cyan-400" />
+            <span>
+              <strong>Authentication Required:</strong> Access to FlagOS league portals, private playbooks, and schedules is restricted to authorized coaches, players, and commissioners.
+            </span>
+          </div>
+        )}
 
         {/* Role Status Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold uppercase tracking-wider mb-6 text-neutral-300">
@@ -134,20 +159,20 @@ export default function LoginPage() {
           Sign In
         </h1>
         <p className="text-neutral-400 text-xs text-center mb-6">
-          Sign in with your athlete email or Google account to access your team and profile.
+          Sign in with your authorized email or Google account to access your league portals.
         </p>
 
-        {/* Player Email Sign-In */}
+        {/* Player / Coach Email Sign-In */}
         <form onSubmit={handlePlayerEmailSubmit} className="w-full mb-6 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5" />
-              <span>Player Email Sign-In</span>
+              <span>Athlete / Coach Email Sign-In</span>
             </span>
-            <span className="text-[10px] text-neutral-500 font-mono">Instant Access</span>
+            <span className="text-[10px] text-neutral-500 font-mono">Instant Verification</span>
           </div>
           <p className="text-[11px] text-neutral-400">
-            Enter any email address attached to your rostered player account to view your athlete stats, profile, and team playbook.
+            Enter the email address registered with your rostered player account or team coaching staff to access private rosters, playbooks, and stats.
           </p>
           <div className="flex gap-2">
             <input
@@ -155,15 +180,15 @@ export default function LoginPage() {
               required
               value={playerLoginEmail}
               onChange={(e) => setPlayerLoginEmail(e.target.value)}
-              placeholder="e.g. athlete@flagleague.com"
+              placeholder="e.g. athlete@flagos.ca"
               className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 font-mono"
             />
             <button
               type="submit"
               disabled={playerLoggingIn}
-              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap"
             >
-              {playerLoggingIn ? "Signing In..." : "Sign In"}
+              {playerLoggingIn ? "Verifying..." : "Sign In"}
             </button>
           </div>
           {playerLoginError && (
@@ -175,16 +200,57 @@ export default function LoginPage() {
 
         {/* Google Auth section */}
         {user ? (
-          <div className="flex flex-col items-center gap-4 text-center w-full mb-6">
-            <p className="text-sm text-neutral-300">
-              Signed in as <span className="text-emerald-400 font-semibold">{user.email}</span>
-            </p>
-            <button
-              onClick={logout}
-              className="py-2.5 px-6 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl transition-colors border border-white/10 cursor-pointer"
-            >
-              Sign Out Account
-            </button>
+          <div className="flex flex-col items-center gap-4 text-center w-full mb-6 p-4 rounded-2xl bg-black/40 border border-white/10">
+            <div>
+              <p className="text-xs text-neutral-400">Signed in as</p>
+              <p className="text-sm text-white font-bold font-mono">{user.email}</p>
+            </div>
+
+            {isAuthorized ? (
+              <div className="w-full space-y-2">
+                <button
+                  onClick={() => router.push(redirectUrl || `/league/default`)}
+                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>CONTINUE TO LEAGUE PORTAL</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={logout}
+                  className="py-2 px-4 text-neutral-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Sign Out Account
+                </button>
+              </div>
+            ) : (
+              <div className="w-full space-y-3">
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-left space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-400">
+                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                    <span>Account Not Authorized</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    This Google account is not registered to an active league commissioner, team coaching staff, or player roster.
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await logout();
+                    login();
+                  }}
+                  className="w-full py-3 px-4 bg-white hover:bg-neutral-200 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Switch Account / Sign In Again</span>
+                </button>
+                <button
+                  onClick={logout}
+                  className="py-1 px-4 text-neutral-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <button
@@ -196,149 +262,151 @@ export default function LoginPage() {
           </button>
         )}
 
-        {/* Localhost Role Switcher & Dev Tools */}
-        <div className="w-full border-t border-white/10 pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-              Role Switcher (Testing & Simulation)
-            </span>
-            <span className="text-[10px] text-cyan-400/80 bg-cyan-400/10 px-2 py-0.5 rounded font-mono">
-              Testing Mode
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2.5">
-            {/* 1. League Admin Button */}
-            <button
-              onClick={() => {
-                setDevRole("league_admin");
-                router.push("/");
-              }}
-              className={`p-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-                isLeagueAdmin
-                  ? "bg-amber-500/10 border-amber-500/50 text-white shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-                  : "bg-neutral-950/60 border-white/5 text-neutral-300 hover:bg-white/5 hover:border-white/20"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Crown className={`w-5 h-5 ${isLeagueAdmin ? "text-amber-400" : "text-neutral-500"}`} />
-                <div className="font-bold text-sm">League Admin</div>
-              </div>
-              {isLeagueAdmin && <CheckCircle2 className="w-4 h-4 text-amber-400" />}
-            </button>
-
-            {/* 2. Team Admin Controls */}
-            <div
-              className={`p-3.5 rounded-xl border transition-all ${
-                isTeamAdmin()
-                  ? "bg-blue-500/10 border-blue-500/50 text-white shadow-[0_0_15px_rgba(var(--league-accent-rgb),0.2)]"
-                  : "bg-neutral-950/60 border-white/5 text-neutral-300"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <Shield className={`w-5 h-5 ${isTeamAdmin() ? "text-blue-400" : "text-neutral-500"}`} />
-                  <div className="font-bold text-sm">Team Admin</div>
-                </div>
-                {isTeamAdmin() && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
-              </div>
-
-              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
-                <select
-                  value={selectedTeamId}
-                  onChange={(e) => setSelectedTeamId(e.target.value)}
-                  className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
-                >
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                  {teams.length === 0 && <option value="">No teams available</option>}
-                </select>
-                <button
-                  onClick={() => {
-                    if (selectedTeamId) {
-                      setDevRole("team_admin", selectedTeamId);
-                      router.push(`/teams/${selectedTeamId}`);
-                    }
-                  }}
-                  disabled={!selectedTeamId}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                >
-                  Apply & Go
-                </button>
-              </div>
+        {/* Localhost Role Switcher & Dev Tools (ONLY rendered in local development, NEVER in production on flagos.ca) */}
+        {isLocalhost && (
+          <div className="w-full border-t border-white/10 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                Role Switcher (Localhost Simulation)
+              </span>
+              <span className="text-[10px] text-cyan-400/80 bg-cyan-400/10 px-2 py-0.5 rounded font-mono">
+                Local Dev Only
+              </span>
             </div>
 
-            {/* 3. Player Controls */}
-            <div
-              className={`p-3.5 rounded-xl border transition-all ${
-                isPlayer
-                  ? "bg-emerald-500/10 border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                  : "bg-neutral-950/60 border-white/5 text-neutral-300"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
+            <div className="grid grid-cols-1 gap-2.5">
+              {/* 1. League Admin Button */}
+              <button
+                onClick={() => {
+                  setDevRole("league_admin");
+                  router.push(redirectUrl || "/");
+                }}
+                className={`p-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+                  isLeagueAdmin
+                    ? "bg-amber-500/10 border-amber-500/50 text-white shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+                    : "bg-neutral-950/60 border-white/5 text-neutral-300 hover:bg-white/5 hover:border-white/20"
+                }`}
+              >
                 <div className="flex items-center gap-3">
-                  <User className={`w-5 h-5 ${isPlayer ? "text-emerald-400" : "text-neutral-500"}`} />
-                  <div className="font-bold text-sm">Rostered Player</div>
+                  <Crown className={`w-5 h-5 ${isLeagueAdmin ? "text-amber-400" : "text-neutral-500"}`} />
+                  <div className="font-bold text-sm">League Admin</div>
                 </div>
-                {isPlayer && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-              </div>
+                {isLeagueAdmin && <CheckCircle2 className="w-4 h-4 text-amber-400" />}
+              </button>
 
-              <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
-                <select
-                  value={selectedPlayerId}
-                  onChange={(e) => setSelectedPlayerId(e.target.value)}
-                  className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                >
-                  {players.map((p) => {
-                    const team = teams.find((t) => t.id === p.teamId);
-                    return (
-                      <option key={p.id} value={p.id}>
-                        {p.playerName} (#{p.number || "00"}) — {team?.name || "Free Agent"}
+              {/* 2. Team Admin Controls */}
+              <div
+                className={`p-3.5 rounded-xl border transition-all ${
+                  isTeamAdmin()
+                    ? "bg-blue-500/10 border-blue-500/50 text-white shadow-[0_0_15px_rgba(var(--league-accent-rgb),0.2)]"
+                    : "bg-neutral-950/60 border-white/5 text-neutral-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <Shield className={`w-5 h-5 ${isTeamAdmin() ? "text-blue-400" : "text-neutral-500"}`} />
+                    <div className="font-bold text-sm">Team Admin</div>
+                  </div>
+                  {isTeamAdmin() && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
+                </div>
+
+                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                  <select
+                    value={selectedTeamId}
+                    onChange={(e) => setSelectedTeamId(e.target.value)}
+                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                  >
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
                       </option>
-                    );
-                  })}
-                  {players.length === 0 && <option value="">No rostered players</option>}
-                </select>
-                <button
-                  onClick={() => {
-                    const chosen = players.find((p) => p.id === selectedPlayerId);
-                    if (chosen) {
-                      setDevRole("player", chosen.teamId, chosen.id);
-                      router.push("/profile");
-                    }
-                  }}
-                  disabled={!selectedPlayerId}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
-                >
-                  Sign In As Player
-                </button>
+                    ))}
+                    {teams.length === 0 && <option value="">No teams available</option>}
+                  </select>
+                  <button
+                    onClick={() => {
+                      if (selectedTeamId) {
+                        setDevRole("team_admin", selectedTeamId);
+                        router.push(redirectUrl || `/teams/${selectedTeamId}`);
+                      }
+                    }}
+                    disabled={!selectedTeamId}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                  >
+                    Apply & Go
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* 4. Regular User (Spectator) Button */}
-            <button
-              onClick={() => {
-                setDevRole("user");
-                router.push("/");
-              }}
-              className={`p-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
-                role === "user"
-                  ? "bg-white/10 border-white/30 text-white"
-                  : "bg-neutral-950/60 border-white/5 text-neutral-300 hover:bg-white/5 hover:border-white/20"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <User className={`w-5 h-5 ${role === "user" ? "text-white" : "text-neutral-500"}`} />
-                <div className="font-bold text-sm">Spectator (Default View)</div>
+              {/* 3. Player Controls */}
+              <div
+                className={`p-3.5 rounded-xl border transition-all ${
+                  isPlayer
+                    ? "bg-emerald-500/10 border-emerald-500/50 text-white shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+                    : "bg-neutral-950/60 border-white/5 text-neutral-300"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <User className={`w-5 h-5 ${isPlayer ? "text-emerald-400" : "text-neutral-500"}`} />
+                    <div className="font-bold text-sm">Rostered Player</div>
+                  </div>
+                  {isPlayer && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                </div>
+
+                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                  <select
+                    value={selectedPlayerId}
+                    onChange={(e) => setSelectedPlayerId(e.target.value)}
+                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {players.map((p) => {
+                      const team = teams.find((t) => t.id === p.teamId);
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.playerName} (#{p.number || "00"}) — {team?.name || "Free Agent"}
+                        </option>
+                      );
+                    })}
+                    {players.length === 0 && <option value="">No rostered players</option>}
+                  </select>
+                  <button
+                    onClick={() => {
+                      const chosen = players.find((p) => p.id === selectedPlayerId);
+                      if (chosen) {
+                        setDevRole("player", chosen.teamId, chosen.id);
+                        router.push(redirectUrl || "/profile");
+                      }
+                    }}
+                    disabled={!selectedPlayerId}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                  >
+                    Sign In As Player
+                  </button>
+                </div>
               </div>
-              {role === "user" && <CheckCircle2 className="w-4 h-4 text-white" />}
-            </button>
+
+              {/* 4. Regular User (Spectator) Button */}
+              <button
+                onClick={() => {
+                  setDevRole("user");
+                  router.push(redirectUrl || "/");
+                }}
+                className={`p-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+                  role === "user"
+                    ? "bg-white/10 border-white/30 text-white"
+                    : "bg-neutral-950/60 border-white/5 text-neutral-300 hover:bg-white/5 hover:border-white/20"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <User className={`w-5 h-5 ${role === "user" ? "text-white" : "text-neutral-500"}`} />
+                  <div className="font-bold text-sm">Spectator (Default View)</div>
+                </div>
+                {role === "user" && <CheckCircle2 className="w-4 h-4 text-white" />}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

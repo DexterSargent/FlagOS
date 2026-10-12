@@ -28,6 +28,14 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const [players, setPlayers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'play-by-play' | 'box-score'>('play-by-play');
   const [boxScoreTab, setBoxScoreTab] = useState<'home' | 'away'>('home');
+  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("embed") === "true") setIsEmbedded(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isDemoLeague) {
@@ -321,9 +329,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     <div className="h-[100dvh] bg-black text-white font-sans flex flex-col">
       <header className="bg-neutral-900/90 backdrop-blur-md border-b border-white/10 p-3 sm:p-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-2.5 rounded-2xl border border-white/10">
-            <ChevronLeft className="w-5 h-5" />
-          </Link>
+          {!isEmbedded && (
+            <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-2.5 rounded-2xl border border-white/10">
+              <ChevronLeft className="w-5 h-5" />
+            </Link>
+          )}
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow overflow-hidden p-1 shrink-0 border border-white/10"

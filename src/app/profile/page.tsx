@@ -71,6 +71,7 @@ export default function PlayerProfilePage() {
     playerData: authPlayerData,
     logout,
     isLeagueAdmin,
+    isTeamAdmin,
     setDevRole,
   } = useAuth();
 
@@ -454,7 +455,7 @@ export default function PlayerProfilePage() {
 
             {/* Right: Key Action CTAs */}
             <div className="flex flex-wrap items-center gap-3">
-              {effectiveTeamId && (
+              {effectiveTeamId && (!isLeagueAdmin || isTeamAdmin(effectiveTeamId)) && (
                 <Link
                   href={`/teams/${effectiveTeamId}/playbook`}
                   className="px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/20"
@@ -677,7 +678,7 @@ export default function PlayerProfilePage() {
             </div>
 
             {/* Playbook Quick Access Reminder for Rostered Player */}
-            {effectiveTeamId && (
+            {effectiveTeamId && (!isLeagueAdmin || isTeamAdmin(effectiveTeamId)) && (
               <div className="bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-[#0B0F19] border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-5 shadow-xl">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">

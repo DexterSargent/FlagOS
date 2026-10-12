@@ -84,7 +84,6 @@ export const SEED_DEMO_TEAMS: DemoTeam[] = [
   { id: "team_cyber", name: "Cyber Knights", color: "#8B5CF6" },
   { id: "team_raptors", name: "Neon Raptors", color: "#10B981" },
   { id: "team_vipers", name: "Iron Vipers", color: "#F59E0B" },
-  { id: "team_free_agents", name: "Free Agent", color: "#64748B" },
 ];
 
 export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
@@ -121,10 +120,10 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_vip_5", teamId: "team_vipers", playerName: "Victor Rossi", number: "95", position: "RUSH", positions: ["RUSH"], status: "Active" },
   { id: "p_vip_6", teamId: "team_vipers", playerName: "Nate Campbell", number: "4", position: "ATH", positions: ["ATH", "DB"], status: "Active" },
 
-  // Free Agents Pool (3 athletes)
+  // Free Agents Pool (3 athletes - unassigned athletes, not a team)
   {
     id: "p_fa_1",
-    teamId: "team_free_agents",
+    teamId: "",
     playerName: "Leo Bennett",
     position: "WR",
     positions: ["WR"],
@@ -135,7 +134,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   },
   {
     id: "p_fa_2",
-    teamId: "team_free_agents",
+    teamId: "",
     playerName: "Ethan Ross",
     position: "DB",
     positions: ["DB", "ATH"],
@@ -146,7 +145,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   },
   {
     id: "p_fa_3",
-    teamId: "team_free_agents",
+    teamId: "",
     playerName: "Maya Lin",
     position: "QB",
     positions: ["QB", "WR"],
@@ -503,6 +502,20 @@ export const initDemoSandbox = (): void => {
     sessionStorage.setItem(KEY_PLAYERS, JSON.stringify(SEED_DEMO_PLAYERS));
     sessionStorage.setItem(KEY_MATCHES, JSON.stringify(SEED_DEMO_MATCHES));
     sessionStorage.setItem(KEY_PLAYS, JSON.stringify(SEED_DEMO_PLAYS));
+  } else {
+    // Clean up any legacy team_free_agents from existing session storage
+    try {
+      const rawTeams = sessionStorage.getItem(KEY_TEAMS);
+      if (rawTeams) {
+        const teamsList: DemoTeam[] = JSON.parse(rawTeams);
+        const filtered = teamsList.filter(
+          (t) => t.id !== "team_free_agents" && t.name?.trim().toLowerCase() !== "free agent" && t.name?.trim().toLowerCase() !== "free agents"
+        );
+        if (filtered.length !== teamsList.length) {
+          sessionStorage.setItem(KEY_TEAMS, JSON.stringify(filtered));
+        }
+      }
+    } catch {}
   }
 };
 
@@ -583,14 +596,19 @@ export const updateSandboxSettings = (newSettings: Partial<LeagueSettings>): Lea
 
 export const getSandboxTeams = (): DemoTeam[] => {
   initDemoSandbox();
-  if (typeof window === "undefined") return SEED_DEMO_TEAMS;
+  const filterActual = (list: DemoTeam[]) =>
+    list.filter(
+      (t) => t.id !== "team_free_agents" && t.name?.trim().toLowerCase() !== "free agent" && t.name?.trim().toLowerCase() !== "free agents"
+    );
+
+  if (typeof window === "undefined") return filterActual(SEED_DEMO_TEAMS);
   const raw = sessionStorage.getItem(KEY_TEAMS);
   if (raw) {
     try {
-      return JSON.parse(raw);
+      return filterActual(JSON.parse(raw));
     } catch {}
   }
-  return SEED_DEMO_TEAMS;
+  return filterActual(SEED_DEMO_TEAMS);
 };
 
 export const addSandboxTeam = (name: string): DemoTeam => {
@@ -647,12 +665,12 @@ export const addSandboxPlayer = (player: Partial<DemoPlayer>): DemoPlayer => {
   const players = getSandboxPlayers();
   const newP: DemoPlayer = {
     id: `player_${Date.now()}`,
-    teamId: player.teamId || "team_free_agents",
+    teamId: player.teamId || "",
     playerName: player.playerName || "New Player",
     number: player.number || "00",
     position: player.position || "ATH",
     positions: player.positions || [player.position || "ATH"],
-    status: player.status || "Active",
+    status: player.status || (player.teamId ? "Active" : "Free Agent"),
     experience: player.experience,
     preferredTeammateNames: player.preferredTeammateNames,
     email: player.email,

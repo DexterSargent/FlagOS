@@ -24,6 +24,7 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   role: UserRole;
+  isAuthorized: boolean; // True if authenticated with an authorized email (admin, team admin/coach, or rostered player)
   isAdmin: boolean; // General admin flag (true for league_admin or team_admin)
   isLeagueAdmin: boolean; // Full write/edit access over schedule, play-by-play, teams
   isTeamAdmin: (teamId?: string) => boolean; // Team admin for specific or any team
@@ -48,6 +49,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   role: "user",
+  isAuthorized: false,
   isAdmin: false,
   isLeagueAdmin: false,
   isTeamAdmin: () => false,
@@ -121,6 +123,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (e) {
       console.error("Error looking up player by email:", e);
     }
+
+    // Fallback: Check demo sandbox players
+    try {
+      const sbPlayer = getSandboxPlayers().find((p) => {
+        const pEmails = Array.isArray(p.emails)
+          ? p.emails.map((e) => e.toLowerCase())
+          : p.email
+          ? [p.email.toLowerCase()]
+          : [];
+        return pEmails.includes(cleanEmail);
+      });
+      if (sbPlayer) return sbPlayer;
+    } catch {}
+
+    return null;
+  };
+
+  // Helper to find team matching a coach or admin email address
+  const findTeamByEmail = async (email: string): Promise<{ id: string; name: string } | null> => {
+    if (!email) return null;
+    const cleanEmail = email.trim().toLowerCase();
+    try {
+      const teamsSnap = await getDocs(collection(db, "teams"));
+      for (const docSnap of teamsSnap.docs) {
+        const data = docSnap.data();
+        if (docSnap.id === "team_free_agents" || data.name?.trim().toLowerCase() === "free agent" || data.name?.trim().toLowerCase() === "free agents") {
+          continue;
+        }
+        const tEmails: string[] = Array.isArray(data.adminEmails)
+          ? data.adminEmails.map((e: any) => String(e).trim().toLowerCase())
+          : [data.coachEmail, data.adminEmail, data.email].filter(Boolean).map((e: any) => String(e).trim().toLowerCase());
+        if (tEmails.includes(cleanEmail)) {
+          return { id: docSnap.id, name: data.name };
+        }
+      }
+    } catch (e) {
+      console.error("Error looking up team by email:", e);
+    }
     return null;
   };
 
@@ -133,10 +173,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const snap = await getDoc(userDocRef);
           const isEmailLeagueAdmin = !!(u.email && adminEmails.includes(u.email.toLowerCase()));
 
-          // Look up if this email is attached to any player
+          // Look up if this email is attached to any player or team
           let matchingPlayer: any = null;
+          let matchingTeam: any = null;
           if (u.email) {
             matchingPlayer = await findPlayerByEmail(u.email);
+            matchingTeam = await findTeamByEmail(u.email);
           }
 
           if (snap.exists()) {
@@ -148,6 +190,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               data.playerId = matchingPlayer.id;
               data.playerTeamId = matchingPlayer.teamId;
               data.playerData = matchingPlayer;
+            } else if (matchingTeam) {
+              data.role = "team_admin";
+              data.managedTeamId = matchingTeam.id;
             }
             setUserProfile(data);
           } else {
@@ -156,6 +201,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               ? "league_admin"
               : matchingPlayer
               ? "player"
+              : matchingTeam
+              ? "team_admin"
               : "user";
 
             const newProfile: UserProfile = {
@@ -166,6 +213,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               playerId: matchingPlayer?.id,
               playerTeamId: matchingPlayer?.teamId,
               playerData: matchingPlayer,
+              managedTeamId: matchingTeam?.id,
             };
             await setDoc(userDocRef, newProfile);
             setUserProfile(newProfile);
@@ -254,16 +302,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return { success: false, message: "Please enter an email address." };
     }
     const clean = email.trim().toLowerCase();
-    const player = await findPlayerByEmail(clean);
-    if (!player) {
-      return {
-        success: false,
-        message: `No player found with email "${clean}". Please contact your team coach or league commissioner to link your email.`,
-      };
+
+    // Check if league admin email
+    if (adminEmails.includes(clean)) {
+      await setDevRole("league_admin");
+      return { success: true };
     }
 
-    await setDevRole("player", player.teamId, player.id);
-    return { success: true };
+    // Check if player roster email
+    const player = await findPlayerByEmail(clean);
+    if (player) {
+      await setDevRole("player", player.teamId, player.id);
+      return { success: true };
+    }
+
+    // Check if team coach/admin email
+    const team = await findTeamByEmail(clean);
+    if (team) {
+      await setDevRole("team_admin", team.id);
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      message: `No active player, coaching staff, or league administrator found with email "${clean}". Please contact your league commissioner to register your account.`,
+    };
   };
 
   const login = async () => {
@@ -293,6 +356,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setDevPlayerId(null);
     setDevPlayerData(null);
     if (typeof window !== "undefined") {
+      sessionStorage.removeItem("demo_dev_role");
+      sessionStorage.removeItem("demo_managed_team_id");
+      sessionStorage.removeItem("demo_player_id");
+      sessionStorage.removeItem("demo_player_data");
       localStorage.removeItem("dev_auth_role");
       localStorage.removeItem("dev_managed_team_id");
       localStorage.removeItem("dev_player_id");
@@ -340,6 +407,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const canManagePlayByPlay = isLeagueAdmin;
   const isAdmin = isLeagueAdmin || effectiveRole === "team_admin";
 
+  // Authorized email definition:
+  // User must be authenticated AND have an authorized role (League Admin, Team Admin / Coach, or Rostered Player)
+  const isAuthorized: boolean =
+    (!!user || isPlayer || isAdmin) &&
+    (isLeagueAdmin || isPlayer || isTeamAdmin() || !!effectiveTeamId);
+
   // Can register as player: ONLY users who are not logged in, OR users logged in without a team/role
   const canRegisterAsPlayer =
     !isLeagueAdmin &&
@@ -357,6 +430,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         userProfile,
         role: effectiveRole,
+        isAuthorized,
         isAdmin,
         isLeagueAdmin,
         isTeamAdmin,

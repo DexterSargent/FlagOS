@@ -31,7 +31,7 @@ import {
   where
 } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
-import { TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
+import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
@@ -60,6 +60,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [plays, setPlays] = useState<any[]>([]);
   const [playerStats, setPlayerStats] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"roster" | "depth_chart">("roster");
 
   // Player Detail Modal
   const [selectedPlayerForStats, setSelectedPlayerForStats] = useState<any | null>(null);
@@ -106,7 +107,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         playList = playsSnap.docs.map((d) => d.data() as any);
       }
 
-      if (tObj) setTeam(tObj);
+      if (tObj && isRealTeam(tObj)) {
+        setTeam(tObj);
+      } else {
+        setTeam(null);
+      }
       pList.sort((a: any, b: any) => a.playerName.localeCompare(b.playerName));
       setPlayers(pList);
       setMatches(mList);
@@ -423,6 +428,23 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     );
   }
 
+  if (!loading && (!team || !isRealTeam(team))) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
+        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+        <p className="text-neutral-400 mb-6 max-w-md">
+          The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
+        </p>
+        <Link
+          href="/teams"
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+        >
+          Back to Teams
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative overflow-hidden flex flex-col">
       {/* Branded League Navigation Bar */}
@@ -523,16 +545,43 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
         {/* Players List Table */}
         <div className="bg-neutral-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
-          <div className="bg-neutral-900 px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <div className="bg-neutral-900 px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <User className="w-5 h-5 text-neutral-400" />
               <h3 className="font-bold text-lg text-white">
-                Roster ({players.length}/{maxRosterSize} Max • Min: {minRosterSize})
+                {activeTab === "roster"
+                  ? `Roster (${players.length}/${maxRosterSize} Max • Min: ${minRosterSize})`
+                  : `${teamName} Official Depth Chart`}
               </h3>
+            </div>
+
+            {/* View Switcher: Roster Table vs Depth Chart */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto">
+              <button
+                onClick={() => setActiveTab("roster")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === "roster"
+                    ? "bg-cyan-500 text-black font-black shadow-md"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Roster Table
+              </button>
+              <button
+                onClick={() => setActiveTab("depth_chart")}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  activeTab === "depth_chart"
+                    ? "bg-emerald-500 text-black font-black shadow-md"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                Depth Chart
+              </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto hide-scrollbar">
+          {activeTab === "roster" ? (
+            <div className="overflow-x-auto hide-scrollbar">
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-black/50 text-neutral-500 text-xs font-semibold uppercase tracking-wider">
@@ -653,7 +702,157 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </tbody>
             </table>
           </div>
-        </div>
+        ) : (
+          /* DEPTH CHART VIEW */
+          <div className="p-6 space-y-8">
+            {/* Offense Depth Chart */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
+                  Offense Depth Chart
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { pos: "QB", title: "Quarterback" },
+                  { pos: "WR", title: "Wide Receiver" },
+                  { pos: "RB", title: "Running Back" },
+                  { pos: "C", title: "Center" },
+                ].map(({ pos, title }) => {
+                  const matchedPlayers = players.filter((p) => {
+                    const positions = Array.isArray(p.positions) ? p.positions : [p.position];
+                    return positions.includes(pos) || (pos === "WR" && positions.includes("ATH"));
+                  });
+
+                  return (
+                    <div
+                      key={pos}
+                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-between"
+                    >
+                      <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
+                        <span className="text-xs font-mono font-black text-cyan-300 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
+                          {pos}
+                        </span>
+                        <span className="text-[11px] text-neutral-500 font-bold uppercase">{title}</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {matchedPlayers.length > 0 ? (
+                          matchedPlayers.map((p, idx) => (
+                            <button
+                              key={p.id}
+                              onClick={() => setSelectedPlayerForStats(p)}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all ${
+                                idx === 0
+                                  ? "bg-cyan-500/10 border border-cyan-500/30 text-white font-bold hover:bg-cyan-500/20"
+                                  : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
+                                    idx === 0
+                                      ? "bg-cyan-400 text-black font-black"
+                                      : "bg-white/10 text-neutral-400"
+                                  }`}
+                                >
+                                  {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
+                                </span>
+                                <span className="text-xs truncate">{p.playerName}</span>
+                              </div>
+                              <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
+                                #{p.number || p.jerseyNumber || "0"}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="text-xs text-neutral-600 italic py-3 text-center">
+                            No {pos} assigned
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Defense Depth Chart */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
+                  Defense &amp; Special Depth Chart
+                </h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { pos: "DB", title: "Defensive Back" },
+                  { pos: "RUSH", title: "Pass Rusher" },
+                  { pos: "LB", title: "Linebacker" },
+                  { pos: "ATH", title: "Athlete / Flex" },
+                ].map(({ pos, title }) => {
+                  const matchedPlayers = players.filter((p) => {
+                    const positions = Array.isArray(p.positions) ? p.positions : [p.position];
+                    return positions.includes(pos) || (pos === "ATH" && positions.length > 1);
+                  });
+
+                  return (
+                    <div
+                      key={pos}
+                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-between"
+                    >
+                      <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
+                        <span className="text-xs font-mono font-black text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                          {pos}
+                        </span>
+                        <span className="text-[11px] text-neutral-500 font-bold uppercase">{title}</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {matchedPlayers.length > 0 ? (
+                          matchedPlayers.map((p, idx) => (
+                            <button
+                              key={p.id}
+                              onClick={() => setSelectedPlayerForStats(p)}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all ${
+                                idx === 0
+                                  ? "bg-emerald-500/10 border border-emerald-500/30 text-white font-bold hover:bg-emerald-500/20"
+                                  : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
+                                    idx === 0
+                                      ? "bg-emerald-400 text-black font-black"
+                                      : "bg-white/10 text-neutral-400"
+                                  }`}
+                                >
+                                  {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
+                                </span>
+                                <span className="text-xs truncate">{p.playerName}</span>
+                              </div>
+                              <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
+                                #{p.number || p.jerseyNumber || "0"}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="text-xs text-neutral-600 italic py-3 text-center">
+                            No {pos} assigned
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       </div>
 
       {/* Add Player Modal (Team Admin & League Admin) */}

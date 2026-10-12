@@ -25,7 +25,7 @@ import {
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
-import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS } from "@/components/TeamAssets";
+import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
@@ -39,8 +39,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const { canManageTeam, isLeagueAdmin, isTeamAdmin, isAdmin, isPlayer, playerTeamId } = useAuth();
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
   const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
-  // Playbooks are strictly confidential to team admins and rostered players; hidden from league admins and spectators
-  const canAccessPlaybook = !isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
+  // Playbooks are strictly confidential to team admins and rostered players; hidden from league admins and spectators unless they are also team admins
+  const isBlockedLeagueAdmin = isLeagueAdmin && !isTeamAdminForThisTeam;
+  const canAccessPlaybook = !isBlockedLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
   const { settings, isDemoLeague } = useLeague();
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +58,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     const fetchTeam = async () => {
       if (isDemoLeague) {
         const tData = getSandboxTeams().find((t) => t.id === teamId);
-        if (tData) {
+        if (tData && isRealTeam(tData)) {
           setTeam(tData);
           setEditName(tData.name || "");
           setEditShortcode(getTeamShortcode(tData));
@@ -71,11 +72,13 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         const snap = await getDoc(doc(db, "teams", teamId));
         if (snap.exists()) {
           const tData: any = { id: snap.id, ...(snap.data() as any) };
-          setTeam(tData);
-          setEditName(tData.name || "");
-          setEditShortcode(tData.shortcode || getTeamShortcode(tData));
-          setEditLogoUrl(tData.logoUrl || "");
-          setEditIcon(tData.icon || "shield");
+          if (isRealTeam(tData)) {
+            setTeam(tData);
+            setEditName(tData.name || "");
+            setEditShortcode(tData.shortcode || getTeamShortcode(tData));
+            setEditLogoUrl(tData.logoUrl || "");
+            setEditIcon(tData.icon || "shield");
+          }
         }
       } catch (e) {
         console.error("Error fetching team:", e);
@@ -132,83 +135,19 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     );
   }
 
-  if (!team) {
+  if (!team || !isRealTeam(team)) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
         <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-        <p className="text-neutral-400 mb-6">The requested team does not exist or has been removed.</p>
+        <p className="text-neutral-400 mb-6 max-w-md">
+          The requested franchise does not exist or has been removed. Free agents are an unassigned draft pool, not a franchise.
+        </p>
         <Link
           href="/teams"
           className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
         >
           Back to Teams
         </Link>
-      </div>
-    );
-  }
-
-  // Free Agent is treated as an unassigned player pool, accessible only to league and team admins
-  if (team.name === "Free Agent") {
-    if (!isAdmin) {
-      return (
-        <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 selection:text-cyan-200 overflow-hidden relative font-sans flex flex-col justify-between">
-          <LeagueHeader activePage="teams" />
-          <main className="relative z-10 flex flex-col items-center justify-center flex-1 p-6 md:p-20 text-center max-w-xl mx-auto space-y-6">
-            <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto shadow-2xl">
-              <Shield className="w-8 h-8" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-black uppercase tracking-tight">Admin Access Required</h1>
-              <p className="text-neutral-400 text-sm mt-2">
-                The Free Agent player pool is restricted to league and team administrators.
-              </p>
-            </div>
-            <Link
-              href="/teams"
-              className="px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
-            >
-              Back to Teams
-            </Link>
-          </main>
-          <LeagueFooter />
-        </div>
-      );
-    }
-
-    return (
-      <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 selection:text-cyan-200 overflow-hidden relative font-sans flex flex-col justify-between">
-        <LeagueHeader activePage="teams" />
-        <main className="relative z-10 flex flex-col items-center justify-center flex-1 p-6 md:p-20 text-center max-w-3xl mx-auto space-y-6">
-          <div className="w-20 h-20 rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mx-auto shadow-2xl">
-            <Users className="w-10 h-10" />
-          </div>
-          <div>
-            <span className="px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold uppercase tracking-wider">
-              Draft Pool Registry
-            </span>
-            <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight mt-3">
-              Free Agent Player Pool
-            </h1>
-            <p className="text-neutral-400 text-sm md:text-base mt-3 max-w-xl mx-auto leading-relaxed">
-              This pool holds unassigned athletes who completed the join registration form and are awaiting assignment to an active team. Free Agent is not a competitive franchise.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-            <Link
-              href="/teams"
-              className="px-6 py-3.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg"
-            >
-              View Free Agent Pool on Teams Page
-            </Link>
-            <Link
-              href={`/teams/${teamId}/roster`}
-              className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
-            >
-              Manage Unassigned Roster
-            </Link>
-          </div>
-        </main>
-        <LeagueFooter />
       </div>
     );
   }

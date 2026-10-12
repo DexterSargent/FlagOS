@@ -16,10 +16,19 @@ export default function RoleSwitcherBar() {
   const [players, setPlayers] = useState<Array<{ id: string; teamId: string; playerName: string; number?: string }>>([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [isLocalOrEmbed, setIsLocalOrEmbed] = useState(false);
 
-  // CRITICAL: Role Switcher MUST ONLY render inside the Demo League
-  // Never on marketing platform home (/), pricing (/pricing), or real user leagues
-  const isEligiblePage = isDemoLeague && pathname !== "/" && pathname !== "/pricing";
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
+      setIsLocalOrEmbed(isLocal || isEmbed);
+    }
+  }, []);
+
+  // CRITICAL: Role Switcher MUST ONLY render inside localhost dev or embedded preview frame
+  // Never on marketing platform home (/), pricing (/pricing), or production domain (flagos.ca)
+  const isEligiblePage = isLocalOrEmbed && isDemoLeague && pathname !== "/" && pathname !== "/pricing" && pathname !== "/login";
 
   useEffect(() => {
     if (!isEligiblePage) return;

@@ -29,7 +29,7 @@ interface LeagueHeaderProps {
 
 export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
   const { settings, openCustomizer, activeLeagueId, userLeagues, switchLeague, subscription } = useLeague();
-  const { role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer } = useAuth();
+  const { role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized } = useAuth();
 
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
@@ -193,43 +193,62 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center gap-6 text-xs font-bold uppercase tracking-wider text-neutral-300">
-            <Link
-              href="/schedule"
-              className={`transition-colors flex items-center gap-1.5 ${
-                activePage === "schedule" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1 -mb-1" : "hover:text-cyan-400"
-              }`}
-            >
-              <CalendarDays className="w-3.5 h-3.5" />
-              <span>Schedule</span>
-            </Link>
-            <Link
-              href="/stats"
-              className={`transition-colors flex items-center gap-1.5 ${
-                activePage === "stats" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1 -mb-1" : "hover:text-cyan-400"
-              }`}
-            >
-              <Trophy className="w-3.5 h-3.5" />
-              <span>Standings & Stats</span>
-            </Link>
-            <Link
-              href="/teams"
-              className={`transition-colors flex items-center gap-1.5 ${
-                activePage === "teams" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1 -mb-1" : "hover:text-cyan-400"
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Teams</span>
-            </Link>
-            {settings.rules?.enableFreeAgents !== false && canRegisterAsPlayer && (
-              <Link
-                href="/join"
-                className={`transition-colors flex items-center gap-1.5 ${
-                  activePage === "join" ? "text-emerald-400 border-b-2 border-emerald-400 pb-1 -mb-1" : "hover:text-emerald-400"
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Player Registration</span>
-              </Link>
+            {isAuthorized ? (
+              <>
+                <Link
+                  href="/schedule"
+                  className={`transition-colors flex items-center gap-1.5 ${
+                    activePage === "schedule" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1 -mb-1" : "hover:text-cyan-400"
+                  }`}
+                >
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <span>Schedule</span>
+                </Link>
+                <Link
+                  href="/stats"
+                  className={`transition-colors flex items-center gap-1.5 ${
+                    activePage === "stats" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1 -mb-1" : "hover:text-cyan-400"
+                  }`}
+                >
+                  <Trophy className="w-3.5 h-3.5" />
+                  <span>Standings & Stats</span>
+                </Link>
+                <Link
+                  href="/teams"
+                  className={`transition-colors flex items-center gap-1.5 ${
+                    activePage === "teams" ? "text-cyan-400 border-b-2 border-cyan-400 pb-1 -mb-1" : "hover:text-cyan-400"
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Teams</span>
+                </Link>
+                {settings.rules?.enableFreeAgents !== false && canRegisterAsPlayer && (
+                  <Link
+                    href="/join"
+                    className={`transition-colors flex items-center gap-1.5 ${
+                      activePage === "join" ? "text-emerald-400 border-b-2 border-emerald-400 pb-1 -mb-1" : "hover:text-emerald-400"
+                    }`}
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Player Registration</span>
+                  </Link>
+                )}
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/"
+                  className="hover:text-cyan-400 transition-colors"
+                >
+                  Platform Home
+                </Link>
+                <Link
+                  href="/#features"
+                  className="hover:text-cyan-400 transition-colors"
+                >
+                  Features
+                </Link>
+              </>
             )}
             <Link
               href="/pricing"
@@ -246,14 +265,16 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
           <div className="flex items-center gap-2.5">
             <ThemeToggle size="md" />
 
-            <button
-              onClick={openCustomizer}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-all shadow-sm cursor-pointer"
-              title="League Settings, Rules & Custom Colors"
-            >
-              <Settings className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden sm:inline">Settings</span>
-            </button>
+            {isAuthorized && isLeagueAdmin && (
+              <button
+                onClick={openCustomizer}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-all shadow-sm cursor-pointer"
+                title="League Settings, Rules & Custom Colors"
+              >
+                <Settings className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Settings</span>
+              </button>
+            )}
 
             {isPlayer ? (
               <Link
