@@ -27,11 +27,12 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const isPlayByPlay = pathname ? pathname.includes("/play-by-play") : false;
   const isLogin = pathname === "/login";
   const isAdminSandbox = pathname === "/admin/sandbox";
+  const isLandingPage = pathname === "/";
   const hideChrome = isEmbedded || isPlayByPlay || isLogin || isAdminSandbox;
 
   return (
     <div className="flex flex-col min-h-screen">
-      {!hideChrome && <LeagueHeader />}
+      {!hideChrome && !isLandingPage && <LeagueHeader />}
       <main className="flex-1 w-full">
         {children}
       </main>

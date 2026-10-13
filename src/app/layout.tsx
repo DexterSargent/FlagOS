@@ -37,10 +37,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               (function() {
                 try {
-                  var saved = localStorage.getItem('flagos_theme_mode');
-                  var isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var mode = saved || 'dark';
-                  var resolved = mode === 'system' ? (isSystemDark ? 'dark' : 'light') : mode;
+                  var saved = localStorage.getItem('flagos_theme_mode_v2');
+                  // Default to 'dark' for first-time visitors with no saved preference
+                  var mode = (saved === 'dark' || saved === 'light' || saved === 'system') ? saved : 'dark';
+                  var resolved = mode === 'system'
+                    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                    : mode;
                   var root = document.documentElement;
                   root.classList.remove('light', 'dark');
                   root.classList.add(resolved);

@@ -1,12 +1,48 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
+import {
+  onAuthStateChanged,
+  User,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { getSandboxPlayers, subscribeDemoSandbox, notifySandboxChange } from "./demoSandbox";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
+type LoginResult = { success: true } | { success: false; message: string };
+
+const getAuthErrorMessage = (error: unknown): string => {
+  if (!(error instanceof FirebaseError)) {
+    return error instanceof Error ? error.message : "Sign-in failed. Please try again.";
+  }
+
+  switch (error.code) {
+    case "auth/api-key-not-valid":
+    case "auth/api-key-not-valid.-please-pass-a-valid-api-key.":
+      return "Sign-in is temporarily unavailable because the site's Firebase API key is invalid. Please contact the site administrator.";
+    case "auth/operation-not-allowed":
+      return "Email and password sign-in is not enabled for this site. Please contact the site administrator.";
+    case "auth/invalid-email":
+      return "Enter a valid email address.";
+    case "auth/invalid-credential":
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "The email address or password is incorrect.";
+    case "auth/too-many-requests":
+      return "There have been too many sign-in attempts. Please wait and try again.";
+    case "auth/network-request-failed":
+      return "Unable to reach Firebase. Check your internet connection and try again.";
+    default:
+      return error.message;
+  }
+};
 
 export interface UserProfile {
   uid: string;
@@ -38,7 +74,8 @@ interface AuthContextType {
   managedTeamId: string | null;
   canRegisterAsPlayer: boolean;
   loading: boolean;
-  login: () => Promise<void>;
+  login: () => Promise<LoginResult>;
+  loginWithEmailAndPassword: (email: string, password: string) => Promise<LoginResult>;
   loginWithPlayerEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   bypassLogin: (role?: UserRole, teamId?: string, playerId?: string) => void;
@@ -63,7 +100,8 @@ const AuthContext = createContext<AuthContextType>({
   managedTeamId: null,
   canRegisterAsPlayer: true,
   loading: true,
-  login: async () => { },
+  login: async () => ({ success: false, message: "Sign-in is unavailable." }),
+  loginWithEmailAndPassword: async () => ({ success: false, message: "Sign-in is unavailable." }),
   loginWithPlayerEmail: async () => ({ success: false }),
   logout: async () => { },
   bypassLogin: () => { },
@@ -97,7 +135,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+  const adminEmails = (cleanFirebaseConfigValue(process.env.NEXT_PUBLIC_ADMIN_EMAILS) || "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
@@ -326,6 +364,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const loginWithPlayerEmail = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    if (
+      typeof window === "undefined" ||
+      (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1")
+    ) {
+      return {
+        success: false,
+        message: "Email-only roster access is available only during local development. Use Google or password sign-in.",
+      };
+    }
+
     if (!email || !email.trim()) {
       return { success: false, message: "Please enter an email address." };
     }
@@ -357,24 +405,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   };
 
-  const login = async () => {
+  const login = async (): Promise<LoginResult> => {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (error: any) {
+      return { success: true };
+    } catch (error: unknown) {
       console.error("Login Error:", error);
       if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+        const message = getAuthErrorMessage(error);
         if (
           confirm(
-            `Firebase Auth failed:\n${error.message}\n\nWould you like to bypass login and sign in as League Admin for testing?`
+            `Firebase Auth failed:\n${message}\n\nWould you like to bypass login and sign in as League Admin for testing?`
           )
         ) {
           setDevRole("league_admin");
           setLoading(false);
+          return { success: true };
         }
-      } else {
-        alert(`Login failed: ${error.message}`);
       }
+      return { success: false, message: getAuthErrorMessage(error) };
+    }
+  };
+
+  const loginWithEmailAndPassword = async (
+    email: string,
+    password: string
+  ): Promise<LoginResult> => {
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      return { success: true };
+    } catch (error: unknown) {
+      console.error("Email/password login error:", error);
+      return { success: false, message: getAuthErrorMessage(error) };
     }
   };
 
@@ -473,6 +536,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         canRegisterAsPlayer,
         loading,
         login,
+        loginWithEmailAndPassword,
         loginWithPlayerEmail,
         logout,
         bypassLogin,

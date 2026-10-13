@@ -340,12 +340,12 @@ html.light b.text-white {
 /* High-Contrast Brand Text in Light Mode (WCAG AA Compliant) */
 html.light .text-cyan-400,
 html.light .text-cyan-300 {
-  color: #0891b2 !important;
+  color: #0e7490 !important;
 }
 
 html.light .text-emerald-400,
 html.light .text-emerald-300 {
-  color: #059669 !important;
+  color: #047857 !important;
 }
 
 html.light .text-amber-400,
@@ -458,6 +458,18 @@ html.light [class*="bg-gradient-to"] * {
   color: inherit;
 }
 
+html.light [class*="bg-gradient-to"].from-neutral-900\/90,
+html.light [class*="bg-gradient-to"].from-neutral-950,
+html.light [class*="from-\[\#0B132B\]"],
+html.light [class*="from-\[\#061822\]"],
+html.light [class*="from-\[\#0C1222\]"],
+html.light [class*="from-\[\#0B0F19\]"],
+html.light [class*="from-\[\#1C0B0E\]"],
+html.light [class*="from-\[\#090D16\]"],
+html.light [class*="from-\[\#0D101A\]"] {
+  color: #0f172a !important;
+}
+
 /* Soft Action Buttons (e.g., bg-white/5 or bg-white/10) */
 html.light button.text-black,
 html.light a.text-black,
@@ -498,7 +510,16 @@ html.light option {
 
 html.light input::placeholder,
 html.light textarea::placeholder {
-  color: #94a3b8 !important;
+  color: #64748b !important;
+}
+
+html.light label.text-white:not([class*="bg-"]),
+html.light li.text-white:not([class*="bg-"]),
+html.light small.text-white:not([class*="bg-"]),
+html.light td.text-white:not([class*="bg-"]),
+html.light th.text-white:not([class*="bg-"]),
+html.light a.text-white:not([class*="bg-"]) {
+  color: #0f172a !important;
 }
 
 /* Modals & Backdrop Overlays */
@@ -551,5 +572,3 @@ html.light svg text[fill="#FFFFFF"],
 html.light svg text[fill="#ffffff"] {
   fill: #FFFFFF !important;
 }
-
-

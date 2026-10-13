@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth, UserRole } from "@/lib/authContext";
+import { useAuth } from "@/lib/authContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Shield, Crown, User, ChevronLeft, ArrowRight, CheckCircle2, ShieldAlert, Lock, LogIn } from "lucide-react";
@@ -16,11 +16,11 @@ export default function LoginPage() {
     isLeagueAdmin,
     isTeamAdmin,
     isPlayer,
-    playerId,
     playerData,
     managedTeamId,
     loading,
     login,
+    loginWithEmailAndPassword,
     loginWithPlayerEmail,
     logout,
     setDevRole,
@@ -34,6 +34,12 @@ export default function LoginPage() {
   const [playerLoginEmail, setPlayerLoginEmail] = useState<string>("");
   const [playerLoginError, setPlayerLoginError] = useState<string>("");
   const [playerLoggingIn, setPlayerLoggingIn] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailPasswordError, setEmailPasswordError] = useState("");
+  const [emailPasswordLoggingIn, setEmailPasswordLoggingIn] = useState(false);
+  const [googleLoggingIn, setGoogleLoggingIn] = useState(false);
+  const [googleLoginError, setGoogleLoginError] = useState("");
   const [redirectUrl, setRedirectUrl] = useState<string>("");
   const [isLocalhost, setIsLocalhost] = useState(false);
 
@@ -95,6 +101,43 @@ export default function LoginPage() {
       router.push(redirectUrl || "/profile");
     } else {
       setPlayerLoginError(res.message || "Player not found");
+    }
+  };
+
+  const handleEmailPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailPasswordError("");
+    setEmailPasswordLoggingIn(true);
+    try {
+      const result = await loginWithEmailAndPassword(email, password);
+      if (result.success) {
+        router.push(redirectUrl || "/league/default");
+      } else {
+        setEmailPasswordError(result.message);
+      }
+    } catch (error) {
+      console.error("Email/password login failed:", error);
+      setEmailPasswordError(error instanceof Error ? error.message : "Sign-in failed. Please try again.");
+    } finally {
+      setEmailPasswordLoggingIn(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoginError("");
+    setGoogleLoggingIn(true);
+    try {
+      const result = await login();
+      if (result.success) {
+        router.push(redirectUrl || "/league/default");
+      } else {
+        setGoogleLoginError(result.message);
+      }
+    } catch (error) {
+      console.error("Google login failed:", error);
+      setGoogleLoginError(error instanceof Error ? error.message : "Google sign-in failed. Please try again.");
+    } finally {
+      setGoogleLoggingIn(false);
     }
   };
 
@@ -162,41 +205,86 @@ export default function LoginPage() {
           Sign in with your authorized email or Google account to access your league portals.
         </p>
 
-        {/* Player / Coach Email Sign-In */}
-        <form onSubmit={handlePlayerEmailSubmit} className="w-full mb-6 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" />
-              <span>Athlete / Coach Email Sign-In</span>
-            </span>
-            <span className="text-[10px] text-neutral-500 font-mono">Instant Verification</span>
-          </div>
-          <p className="text-[11px] text-neutral-400">
-            Enter the email address registered with your rostered player account or team coaching staff to access private rosters, playbooks, and stats.
-          </p>
-          <div className="flex gap-2">
+        {/* Email-only roster role simulation is intentionally limited to local development. */}
+        {isLocalhost && !user && (
+          <form onSubmit={handlePlayerEmailSubmit} className="w-full mb-6 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5" />
+                <span>Athlete / Coach Email Sign-In</span>
+              </span>
+              <span className="text-[10px] text-neutral-500 font-mono">Instant Verification</span>
+            </div>
+            <p className="text-[11px] text-neutral-400">
+              Enter the email address registered with your rostered player account or team coaching staff to access private rosters, playbooks, and stats.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                required
+                value={playerLoginEmail}
+                onChange={(e) => setPlayerLoginEmail(e.target.value)}
+                placeholder="e.g. athlete@flagos.ca"
+                className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 font-mono"
+              />
+              <button
+                type="submit"
+                disabled={playerLoggingIn}
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap"
+              >
+                {playerLoggingIn ? "Verifying..." : "Sign In"}
+              </button>
+            </div>
+            {playerLoginError && (
+              <p className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">
+                {playerLoginError}
+              </p>
+            )}
+          </form>
+        )}
+
+        {!user && (
+          <form
+            onSubmit={handleEmailPasswordSubmit}
+            className="w-full mb-5 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3"
+          >
+            <label htmlFor="login-email" className="block text-xs font-bold uppercase tracking-wider text-neutral-200">
+              Email and password
+            </label>
             <input
+              id="login-email"
               type="email"
+              autoComplete="email"
               required
-              value={playerLoginEmail}
-              onChange={(e) => setPlayerLoginEmail(e.target.value)}
-              placeholder="e.g. athlete@flagos.ca"
-              className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 font-mono"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="you@example.com"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-500"
             />
+            <input
+              id="login-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Password"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-500"
+            />
+            {emailPasswordError && (
+              <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
+                {emailPasswordError}
+              </p>
+            )}
             <button
               type="submit"
-              disabled={playerLoggingIn}
-              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap"
+              disabled={emailPasswordLoggingIn}
+              className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {playerLoggingIn ? "Verifying..." : "Sign In"}
+              {emailPasswordLoggingIn ? "Signing in..." : "Sign in with email"}
             </button>
-          </div>
-          {playerLoginError && (
-            <p className="text-[11px] text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded-lg">
-              {playerLoginError}
-            </p>
-          )}
-        </form>
+          </form>
+        )}
 
         {/* Google Auth section */}
         {user ? (
@@ -236,7 +324,7 @@ export default function LoginPage() {
                 <button
                   onClick={async () => {
                     await logout();
-                    login();
+                    await handleGoogleLogin();
                   }}
                   className="w-full py-3 px-4 bg-white hover:bg-neutral-200 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
@@ -253,13 +341,21 @@ export default function LoginPage() {
             )}
           </div>
         ) : (
-          <button
-            onClick={login}
-            className="w-full py-3.5 mb-6 bg-white hover:bg-neutral-200 text-black font-extrabold text-sm rounded-2xl transition-all active:scale-98 shadow-xl flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>SIGN IN WITH GOOGLE</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <>
+            {googleLoginError && (
+              <p role="alert" className="w-full mb-4 text-xs text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
+                {googleLoginError}
+              </p>
+            )}
+            <button
+              onClick={handleGoogleLogin}
+              disabled={googleLoggingIn}
+              className="w-full py-3.5 mb-6 bg-white hover:bg-neutral-200 text-black font-extrabold text-sm rounded-2xl transition-all active:scale-98 shadow-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span>{googleLoggingIn ? "SIGNING IN..." : "SIGN IN WITH GOOGLE"}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </>
         )}
 
         {/* Localhost Role Switcher & Dev Tools (ONLY rendered in local development, NEVER in production on flagos.ca) */}

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 export type ThemeMode = "dark" | "light" | "system";
+const THEME_STORAGE_KEY = "flagos_theme_mode_v2";
 
 interface ThemeContextType {
   themeMode: ThemeMode;
@@ -41,7 +42,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let initialMode: ThemeMode = "dark";
     try {
-      const saved = localStorage.getItem("flagos_theme_mode") as ThemeMode | null;
+      const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
       if (saved && (saved === "dark" || saved === "light" || saved === "system")) {
         initialMode = saved;
       }
@@ -55,8 +56,8 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     const handleChange = () => {
       let currentMode: ThemeMode = "dark";
       try {
-        const saved = localStorage.getItem("flagos_theme_mode") as ThemeMode | null;
-        if (saved) currentMode = saved;
+        const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
+        if (saved === "dark" || saved === "light" || saved === "system") currentMode = saved;
       } catch {}
       if (currentMode === "system") {
         applyTheme("system");
@@ -70,7 +71,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
     try {
-      localStorage.setItem("flagos_theme_mode", mode);
+      localStorage.setItem(THEME_STORAGE_KEY, mode);
     } catch {}
     applyTheme(mode);
   };
