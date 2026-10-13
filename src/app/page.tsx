@@ -234,23 +234,23 @@ export default function FlagOSPlatformLandingPage() {
 
       {/* TOP PLATFORM HEADER */}
       <header className="border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3.5 group">
-            <div className="w-15 h-15 rounded-2xl flex items-center justify-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3.5 group min-w-0 shrink">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0">
               <img
                 src={mounted && resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png"}
                 alt="FlagOS"
                 className="w-full h-full object-contain drop-shadow"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-black uppercase tracking-wider leading-none">
+                <span className="text-xl sm:text-2xl font-black uppercase tracking-wider leading-none">
                   <span className="text-white font-black">FLAG</span>
                   <span style={{ color: "#3CA505" }}>OS</span>
                 </span>
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono tracking-widest uppercase block mt-1">
+              <span className="text-[10px] text-neutral-400 font-mono tracking-widest uppercase hidden sm:block mt-1">
                 The Flag Football Operating System
               </span>
             </div>
@@ -292,14 +292,14 @@ export default function FlagOSPlatformLandingPage() {
           </nav>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <ThemeToggle size="md" />
 
             {isPlatformAdmin && (
               <Link
                 href="/admin"
                 aria-label="Platform Admin"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
               >
                 <Shield className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Platform Admin</span>
@@ -309,17 +309,17 @@ export default function FlagOSPlatformLandingPage() {
             {isAuthorized ? (
               <Link
                 href={`/league/${activeLeagueId || "default"}`}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
               >
-                <Trophy className="w-3.5 h-3.5 text-cyan-400" />
+                <Trophy className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span className="hidden sm:inline">League Portal:</span>
-                <span className="text-cyan-300">{settings?.shortcode || "Active"}</span>
+                <span className="text-cyan-300 truncate max-w-[80px] sm:max-w-none">{settings?.shortcode || "Active"}</span>
               </Link>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Link
                   href="/login"
-                  className="px-3 py-2 text-white hover:text-[#3CA505] text-xs font-semibold transition-colors"
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-white hover:text-[#3CA505] text-xs font-semibold transition-colors"
                 >
                   Sign In
                 </Link>
@@ -331,7 +331,7 @@ export default function FlagOSPlatformLandingPage() {
                       localStorage.setItem("flagos_demo_active", "true");
                     }
                   }}
-                  className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 hover:text-white text-xs font-bold rounded-xl border border-cyan-500/30 transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(var(--league-primary-rgb),0.2)]"
+                  className="hidden sm:inline-flex px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 hover:text-white text-xs font-bold rounded-xl border border-cyan-500/30 transition-all items-center gap-1.5 shadow-[0_0_15px_rgba(var(--league-primary-rgb),0.2)]"
                 >
                   <PlayCircle className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Explore Demo League</span>
@@ -342,7 +342,7 @@ export default function FlagOSPlatformLandingPage() {
             {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+              className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors cursor-pointer shrink-0"
               aria-label="Toggle Navigation Menu"
             >
               {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -419,27 +419,27 @@ export default function FlagOSPlatformLandingPage() {
 
       {/* HERO SECTION */}
       <main className="flex-1 w-full relative z-10">
-        <section className="max-w-5xl mx-auto px-6 pt-12 pb-5 md:pt-16 md:pb-5 text-center space-y-8">
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-5 md:pt-16 md:pb-5 text-center space-y-6 sm:space-y-8">
           {/* Official Logo */}
           <div className="flex flex-col items-center justify-center pt-1 pb-1">
             <div className="relative group">
               <img
                 src={logoColour}
                 alt="FlagOS - The Flag Football Operating System"
-                className="relative w-56 sm:w-64 md:w-72 h-auto object-contain drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300"
+                className="relative w-48 sm:w-64 md:w-72 h-auto object-contain drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300"
               />
             </div>
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight text-white leading-none">
-            The Operating System for Modern <span className="text-[#7ED321]"><br></br>Flag Football</span>
+          <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tight text-white leading-tight sm:leading-none">
+            The Operating System for Modern <span className="text-[#7ED321]"><br className="hidden sm:inline" />Flag Football</span>
           </h1>
 
           {/* Primary Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-4">
             <Link
               href="/pricing"
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.4)] hover:scale-102 active:scale-98 flex items-center gap-2"
+              className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.4)] hover:scale-102 active:scale-98 flex items-center gap-2"
             >
               <BadgeDollarSign className="w-4 h-4" />
               <span>View Pricing</span>
@@ -454,7 +454,7 @@ export default function FlagOSPlatformLandingPage() {
                   localStorage.setItem("flagos_demo_active", "true");
                 }
               }}
-              className="px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-bold text-sm uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2 group hover:border-cyan-500/40"
+              className="px-5 sm:px-6 py-3.5 sm:py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-bold text-xs sm:text-sm uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2 group hover:border-cyan-500/40"
             >
               <PlayCircle className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
               <span>Explore Demo League</span>
@@ -462,28 +462,28 @@ export default function FlagOSPlatformLandingPage() {
           </div>
 
           {/* Social Proof metrics */}
-          <div className="pt-5 grid grid-cols-2 sm:grid-cols-2  gap-3 max-w-3xl mx-auto border-t border-white/10">
+          <div className="pt-5 grid grid-cols-2 gap-3 max-w-3xl mx-auto border-t border-white/10">
             <div>
-              <div className="text-xl md:text-3xl font-black text-cyan-500 font-mono">Season Long <br /> Statistics</div>
-              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Cumulative Team and Individual Stats</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-cyan-500 font-mono">Season Long <br /> Statistics</div>
+              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Cumulative Team and Individual Stats</div>
             </div>
             <div>
-              <div className="text-xl md:text-3xl font-black text-cyan-500 font-mono">Custom <br /> Playbooks</div>
-              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Up to 5 Per Team</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-cyan-500 font-mono">Custom <br /> Playbooks</div>
+              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Up to 5 Per Team</div>
             </div>
             <div>
-              <div className="text-xl md:text-3xl font-black text-emerald-500 font-mono">Customizable <br /> League Rules</div>
-              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">5v5 IFAF Rules Pre-loaded</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-emerald-500 font-mono">Customizable <br /> League Rules</div>
+              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">5v5 IFAF Rules Pre-loaded</div>
             </div>
             <div>
-              <div className="text-xl md:text-3xl font-black text-emerald-500 font-mono">Automatic <br /> Schedule Builder</div>
-              <div className="text-xs text-neutral-500 font-bold uppercase mt-0.5">Plan your entire season in seconds</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-emerald-500 font-mono">Automatic <br /> Schedule Builder</div>
+              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Plan your entire season in seconds</div>
             </div>
           </div>
         </section>
 
         {/* THE TEAM SIDE VS THE LEAGUE SIDE */}
-        <section className="max-w-6xl mx-auto px-6 py-5 border-t border-white/10 space-y-5">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-5 border-t border-white/10 space-y-5">
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
               Subscription Breakdown
@@ -495,7 +495,7 @@ export default function FlagOSPlatformLandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
             {/* TIER 1: THE TEAM PLAN (LEFT) */}
-            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-emerald-500/40 rounded-3xl p-8 space-y-2 relative shadow-[0_0_50px_rgba(16,185,129,0.12)] flex flex-col justify-between backdrop-blur-xl hover:border-emerald-500/60 transition-all">
+            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-emerald-500/40 rounded-3xl p-5 sm:p-8 space-y-2 relative shadow-[0_0_50px_rgba(16,185,129,0.12)] flex flex-col justify-between backdrop-blur-xl hover:border-emerald-500/60 transition-all">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
@@ -599,7 +599,7 @@ export default function FlagOSPlatformLandingPage() {
             </div>
 
             {/* TIER 2: THE LEAGUE PLAN (RIGHT) */}
-            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-8 space-y-2 relative shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
+            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-5 sm:p-8 space-y-2 relative shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="p-3 flex items-center gap-4 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
@@ -705,46 +705,46 @@ export default function FlagOSPlatformLandingPage() {
         </section>
 
         {/* INTERACTIVE FEATURE SHOWCASE */}
-        <section id="features" className="max-w-7xl mx-auto px-6 py-16 border-t border-white/10 space-y-8 scroll-mt-20 relative">
+        <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 border-t border-white/10 space-y-6 sm:space-y-8 scroll-mt-20 relative w-full max-w-full">
           <div id="interactive-demo" className="absolute -top-24 left-0" />
           <div className="text-center space-y-3">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
               Interactive Capabilities
             </span>
-            <h2 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
               <span className="text-white">FLAG</span><span style={{ color: "#3CA505" }}>OS</span> Powerhouse Features
             </h2>
-            <p className="text-neutral-400 text-sm max-w-2xl mx-auto">
+            <p className="text-neutral-400 text-xs sm:text-sm max-w-2xl mx-auto">
               Test drive the actual system features directly in the sandboxed interactive frame below. Zero database writes.
             </p>
           </div>
 
           {/* Feature selector tabs */}
-          <div className="flex flex-wrap items-center justify-center gap-2 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-3xl mx-auto text-xs font-bold">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-3xl mx-auto text-[11px] sm:text-xs font-bold">
             <button
               onClick={() => setActiveFeatureTab("stats")}
-              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "stats" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "stats" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
               Dynamic Play-by-Play Wizard
             </button>
             <button
               onClick={() => setActiveFeatureTab("playbook")}
-              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "playbook" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "playbook" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
               Playbook Studio
             </button>
             <button
               onClick={() => setActiveFeatureTab("live-clock")}
-              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "live-clock" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "live-clock" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
               Automated Schedule-Builder
             </button>
             <button
               onClick={() => setActiveFeatureTab("infrastructure")}
-              className={`px-4 py-2.5 rounded-xl transition-all cursor-pointer ${activeFeatureTab === "infrastructure" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "infrastructure" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
                 }`}
             >
               League Dashboard
@@ -753,34 +753,34 @@ export default function FlagOSPlatformLandingPage() {
 
           {/* DYNAMIC PLAY-BY-PLAY WIZARD MODE SWITCHER (SYNCHRONOUS VS ASYNCHRONOUS) */}
           {activeFeatureTab === "stats" && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-4xl mx-auto p-3 rounded-2xl bg-gradient-to-r from-neutral-900/90 via-neutral-950 to-neutral-900/90 border border-emerald-500/30 backdrop-blur-xl shadow-lg">
-              <div className="flex items-center gap-2.5 px-2">
-                <span className="text-xs font-bold text-neutral-300">
+            <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 max-w-4xl mx-auto p-3 rounded-2xl bg-gradient-to-r from-neutral-900/90 via-neutral-950 to-neutral-900/90 border border-emerald-500/30 backdrop-blur-xl shadow-lg w-full">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 w-full sm:w-auto">
+                <span className="text-xs font-bold text-neutral-300 whitespace-nowrap">
                   Wizard Operating Mode:
                 </span>
-                <span className="flex items-center gap-1.5 p-1 rounded-xl bg-black/80 border border-white/10 text-xs font-bold shrink-0">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 p-1 rounded-xl bg-black/80 border border-white/10 text-xs font-bold w-full sm:w-auto">
                   <button
                     onClick={() => setWizardMode("async")}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${wizardMode === "async"
+                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${wizardMode === "async"
                       ? "bg-emerald-500 text-black font-black shadow-md"
                       : "text-neutral-400 hover:text-white"
                       }`}
                   >
-                    <Play className="w-3.5 h-3.5" />
-                    <span>Asynchronous <br />(Clockless)</span>
+                    <Play className="w-3.5 h-3.5 shrink-0" />
+                    <span className="leading-tight">Asynchronous <span className="hidden xs:inline">(Clockless)</span></span>
                   </button>
                   <button
                     onClick={() => setWizardMode("sync")}
-                    className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${wizardMode === "sync"
+                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${wizardMode === "sync"
                       ? "bg-cyan-500 text-black font-black shadow-md"
                       : "text-neutral-400 hover:text-white"
                       }`}
                   >
-                    <Timer className="w-3.5 h-3.5" />
-                    <span> Synchronous <br /> (Live Clocks)</span>
+                    <Timer className="w-3.5 h-3.5 shrink-0" />
+                    <span className="leading-tight">Synchronous <span className="hidden xs:inline">(Live Clocks)</span></span>
                   </button>
-                </span>
-                <span className="text-[11px] font-mono text-neutral-400 hidden md:inline">
+                </div>
+                <span className="text-[11px] font-mono text-neutral-400 hidden lg:inline">
                   {wizardMode === "sync"
                     ? "Official live clock, play clock, spot ball & down counter"
                     : "Rapid clockless stat keeper for high-tempo post-game or sideline logging"}
@@ -790,34 +790,34 @@ export default function FlagOSPlatformLandingPage() {
           )}
 
           {/* INTERACTIVE APPLICATION FRAME */}
-          <div className="bg-[#090D16] border border-white/15 rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative">
+          <div className="bg-[#090D16] border border-white/15 rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative w-full max-w-full">
             {/* Embedded Real Feature App Frame */}
-            <div className="relative w-full h-[560px] md:h-[680px] bg-black">
+            <div className="relative w-full h-[460px] sm:h-[560px] md:h-[680px] bg-black max-w-full overflow-hidden">
               <iframe
                 key={`${activeFeatureTab}-${wizardMode}-${frameKey}`}
                 src={getFeatureUrl()}
                 title="FlagOS Real Feature Live Sandbox"
-                className="w-full h-full border-0 bg-black"
+                className="w-full h-full border-0 bg-black block"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
               />
             </div>
 
             {/* Frame Footer Info */}
-            <div className="bg-[#0B0F1A] border-t border-white/10 px-5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-neutral-400">
-              <div className="flex items-center gap-2">
+            <div className="bg-[#0B0F1A] border-t border-white/10 px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 text-[11px] text-neutral-400 text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
                 <span className="font-bold text-white">{getFeatureBadge().title}</span>
-                <span>•</span>
-                <span>{getFeatureBadge().desc}</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="line-clamp-1">{getFeatureBadge().desc}</span>
               </div>
-              <span className="font-mono text-[10px] text-neutral-500">
-                Isolated Client Sandbox (Session Storage)
+              <span className="font-mono text-[10px] text-neutral-500 shrink-0">
+                Isolated Client Sandbox
               </span>
             </div>
           </div>
         </section>
 
         {/* FIND A LEAGUE / DIRECTORY SECTION */}
-        <section id="league-directory" className="max-w-7xl mx-auto px-6 py-20 border-t border-white/10 space-y-10 scroll-mt-24">
+        <section id="league-directory" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 border-t border-white/10 space-y-8 sm:space-y-10 scroll-mt-24">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <div className="flex items-center gap-2">
@@ -1068,7 +1068,7 @@ export default function FlagOSPlatformLandingPage() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 bg-black px-6 py-10 text-xs text-neutral-400">
+      <footer className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="space-y-3">
             <span className="text-lg font-black uppercase tracking-wider text-white">

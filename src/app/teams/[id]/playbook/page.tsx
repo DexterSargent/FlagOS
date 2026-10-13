@@ -750,7 +750,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Dedicated Embedded Layout for Showcase (Directly renders PlayCanvas with compact controls)
   if (isEmbedded) {
     return (
-      <div className="min-h-screen bg-black text-white font-sans p-2 sm:p-4 flex flex-col gap-3 selection:bg-cyan-500/30 selection:text-cyan-200">
+      <div className="min-h-screen bg-black text-white font-sans p-2 sm:p-4 flex flex-col gap-3 selection:bg-cyan-500/30 selection:text-cyan-200 w-full max-w-full overflow-x-hidden">
         {/* Compact Header for Embedded Showcase */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 bg-[#0B0F19] p-3 rounded-2xl border border-white/10 shadow-lg">
           <div className="flex items-center gap-2 flex-wrap">
@@ -767,7 +767,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
           <div className="flex items-center gap-2 flex-wrap">
             {/* Quick Play Switcher Buttons */}
-            <div className="flex items-center gap-1 overflow-x-auto max-w-md scrollbar-thin">
+            <div className="flex items-center gap-1 overflow-x-auto max-w-full scrollbar-thin">
               {(activePlaybook?.plays || []).slice(0, 5).map((p) => (
                 <button
                   key={p.id}

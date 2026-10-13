@@ -350,7 +350,7 @@ export default function PricingPage() {
         <div className="absolute top-96 -left-40 w-[35rem] h-[35rem] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
       </div>
 
-      <main className="max-w-6xl mx-auto px-6 py-12 md:py-20 flex-1 w-full relative z-10 space-y-16">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-16 flex-1 w-full max-w-full overflow-hidden relative z-10 space-y-12 sm:space-y-16">
         {/* Page Hero Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold uppercase tracking-widest">
@@ -379,15 +379,15 @@ export default function PricingPage() {
               When you subscribe to a League, you aren&apos;t just getting commissioner tools. <strong className="text-white">Every single team in your organization receives their own full Team Plan access</strong> — complete player stats, career records, and up to 5 custom playbooks — at <strong>$15/team/mo (50% off the standalone team subscription)</strong>.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-center px-4 py-3 rounded-2xl bg-black/60 border border-emerald-500/30">
-              <div className="text-[11px] text-emerald-400 font-mono font-bold uppercase">Team Side</div>
-              <div className="text-sm md:text-base font-black text-white">Stats + 5 Playbooks</div>
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto">
+            <div className="text-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-black/60 border border-emerald-500/30 flex-1 sm:flex-initial min-w-[130px]">
+              <div className="text-[10px] sm:text-[11px] text-emerald-400 font-mono font-bold uppercase">Team Side</div>
+              <div className="text-xs sm:text-sm md:text-base font-black text-white whitespace-nowrap">Stats + 5 Playbooks</div>
             </div>
-            <div className="text-cyan-400 font-black text-lg">➕</div>
-            <div className="text-center px-4 py-3 rounded-2xl bg-black/60 border border-cyan-500/30">
-              <div className="text-[11px] text-cyan-400 font-mono font-bold uppercase">League Side</div>
-              <div className="text-sm md:text-base font-black text-white">Live Clocks + Infra</div>
+            <div className="text-cyan-400 font-black text-base sm:text-lg">➕</div>
+            <div className="text-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-black/60 border border-cyan-500/30 flex-1 sm:flex-initial min-w-[130px]">
+              <div className="text-[10px] sm:text-[11px] text-cyan-400 font-mono font-bold uppercase">League Side</div>
+              <div className="text-xs sm:text-sm md:text-base font-black text-white whitespace-nowrap">Live Clocks + Infra</div>
             </div>
           </div>
         </div>
@@ -395,7 +395,7 @@ export default function PricingPage() {
         {/* SIDE-BY-SIDE PLANS GRID (ALIGNED WITH HOME PAGE) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
           {/* TIER 1: THE TEAM PLAN (LEFT) */}
-          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-emerald-500/40 rounded-3xl p-8 space-y-6 relative shadow-[0_0_50px_rgba(16,185,129,0.12)] flex flex-col justify-between backdrop-blur-xl hover:border-emerald-500/60 transition-all">
+          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-emerald-500/40 rounded-3xl p-5 sm:p-8 space-y-6 relative shadow-[0_0_50px_rgba(16,185,129,0.12)] flex flex-col justify-between backdrop-blur-xl hover:border-emerald-500/60 transition-all">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
@@ -479,7 +479,7 @@ export default function PricingPage() {
           </div>
 
           {/* TIER 2: THE LEAGUE PLAN (RIGHT) */}
-          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-8 space-y-6 relative shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
+          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-5 sm:p-8 space-y-6 relative shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="p-3 flex items-center gap-4 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
@@ -668,7 +668,7 @@ export default function PricingPage() {
             </div>
 
             {/* Matrix Category Tabs */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold shrink-0">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold max-w-full overflow-x-auto hide-scrollbar shrink-0">
               <button
                 onClick={() => setActiveMatrixTab("all")}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${

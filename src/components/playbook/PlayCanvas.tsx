@@ -990,17 +990,17 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   };
 
   return (
-    <div className="flex flex-col gap-4 w-full font-sans">
+    <div className="flex flex-col gap-4 w-full max-w-full overflow-hidden font-sans">
       {/* ============================================================== */}
       {/* MAIN PLAYMAKER CANVAS & FIELD SURFACE                          */}
       {/* ============================================================== */}
-      <div className="w-full flex flex-col bg-[#07090E] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+      <div className="w-full max-w-full flex flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
         {/* ============================================================== */}
         {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
         {/* ============================================================== */}
-        <div className="p-3 sm:p-4 bg-gradient-to-r from-[#0B0F19] via-[#0D1220] to-[#0B0F19] border-b border-white/10 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="p-2.5 sm:p-4 bg-gradient-to-r from-[#0B0F19] via-[#0D1220] to-[#0B0F19] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0">
           {/* Play Name Editable Field */}
-          <div className="flex items-center gap-2 flex-1 min-w-[200px] max-w-sm">
+          <div className="flex items-center gap-2 flex-1 min-w-[140px] sm:min-w-[200px] max-w-sm">
             <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider">Play:</span>
             <input
               type="text"

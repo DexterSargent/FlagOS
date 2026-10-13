@@ -1175,33 +1175,33 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       )}
 
       {/* HEADER */}
-      <header className="bg-neutral-900 border-b border-cyan-500/30 p-2 md:p-3 flex flex-col md:flex-row items-center justify-between shrink-0 z-50 gap-2 md:gap-0">
-        <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-1/4">
-          <div className="flex items-center gap-4">
+      <header className="bg-neutral-900 border-b border-cyan-500/30 p-2 md:p-3 flex flex-col md:flex-row items-center justify-between shrink-0 z-50 gap-2 md:gap-0 max-w-full overflow-hidden">
+        <div className="flex items-center justify-between md:justify-start gap-2 sm:gap-4 w-full md:w-auto shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4">
             {!isEmbedded && (
-              <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-3 rounded-2xl border border-white/10">
-                <ChevronLeft className="w-6 h-6" />
+              <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/10 shrink-0">
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </Link>
             )}
-            <button onClick={resetPlay} className="flex items-center text-white bg-[#9b9b9b] p-3 rounded-2xl border border-white/10" title="Reset Current Play">
-              <RotateCcw className="w-6 h-6" />
+            <button onClick={resetPlay} className="flex items-center text-white bg-[#9b9b9b] p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/10 shrink-0 cursor-pointer" title="Reset Current Play">
+              <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <button onClick={handleUndoLastPlay} className="flex items-center text-white hover:text-amber-500 bg-[#9b9b9b] p-3 rounded-2xl border border-white/10" title="Undo Last Play">
-              <Undo className="w-6 h-6" />
+            <button onClick={handleUndoLastPlay} className="flex items-center text-white hover:text-amber-500 bg-[#9b9b9b] p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/10 shrink-0 cursor-pointer" title="Undo Last Play">
+              <Undo className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full md:w-auto mt-2 md:mt-0">
-          <div className="flex flex-row items-center justify-end gap-1 md:gap-2 w-1/4">
+        <div className="flex-1 flex flex-row items-center justify-between sm:justify-center gap-1 sm:gap-4 md:gap-6 w-full md:w-auto mt-1 sm:mt-2 md:mt-0 max-w-full">
+          <div className="flex flex-row items-center justify-end gap-1 sm:gap-2 flex-1 min-w-0">
             <button
               disabled={homeTimeouts === 0}
               onClick={() => callTimeout('home')}
-              className="px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
+              className="px-1.5 sm:px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[9px] sm:text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
             >
               TO ({homeTimeouts})
             </button>
-            <div className="flex gap-1 items-center mr-0.5">
+            <div className="flex gap-0.5 sm:gap-1 items-center mr-0.5 shrink-0">
               {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                 <div
                   key={i}
@@ -1209,12 +1209,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 />
               ))}
             </div>
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase truncate w-full text-right">{homeTeamName}</span>
-              <span className="text-2xl md:text-3xl font-black text-cyan-400 leading-none">{homeScore}</span>
+            <div className="flex flex-col items-end min-w-0">
+              <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase truncate max-w-[50px] xs:max-w-[70px] sm:max-w-none text-right">{homeTeamName}</span>
+              <span className="text-xl sm:text-2xl md:text-3xl font-black text-cyan-400 leading-none">{homeScore}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 md:gap-2 bg-[#9b9b9b] px-2 md:px-4 py-1 md:py-2 rounded-3xl border border-white/10 group">
+          <div className="flex items-center gap-1 sm:gap-2 bg-[#9b9b9b] px-1.5 sm:px-3 md:px-4 py-1 md:py-2 rounded-2xl sm:rounded-3xl border border-white/10 group shrink-0">
             <button
               onPointerDown={() => startAdjustingClock(-10)}
               onPointerUp={stopAdjustingClock}
@@ -1224,7 +1224,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             >
               <Minus className="w-5 h-5 pointer-events-none" />
             </button>
-            <span className="text-2xl md:text-3xl font-black tabular-nums text-white w-16 md:w-24 text-center">{formatTime(gameClock)}</span>
+            <span className="text-xl sm:text-2xl md:text-3xl font-black tabular-nums text-white w-14 sm:w-20 md:w-24 text-center">{formatTime(gameClock)}</span>
             <button
               onPointerDown={() => startAdjustingClock(10)}
               onPointerUp={stopAdjustingClock}
@@ -1234,16 +1234,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             >
               <Plus className="w-5 h-5 pointer-events-none" />
             </button>
-            <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} className={`p-2 md:p-3 ml-1 md:ml-2 rounded-full ${isGameClockRunning ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-              {isGameClockRunning ? <Pause className="w-4 h-4 md:w-5 md:h-5 fill-current" /> : <Play className="w-4 h-4 md:w-5 md:h-5 fill-current" />}
+            <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} className={`p-1.5 sm:p-2 md:p-3 ml-0.5 sm:ml-1 md:ml-2 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
+              {isGameClockRunning ? <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 fill-current" /> : <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 fill-current" />}
             </button>
           </div>
-          <div className="flex flex-row items-center justify-start gap-1 md:gap-2 w-1/4">
-            <div className="flex flex-col items-start">
-              <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase truncate w-full text-left">{awayTeamName}</span>
-              <span className="text-2xl md:text-3xl font-black text-blue-500 leading-none">{awayScore}</span>
+          <div className="flex flex-row items-center justify-start gap-1 sm:gap-2 flex-1 min-w-0">
+            <div className="flex flex-col items-start min-w-0">
+              <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase truncate max-w-[50px] xs:max-w-[70px] sm:max-w-none text-left">{awayTeamName}</span>
+              <span className="text-xl sm:text-2xl md:text-3xl font-black text-blue-500 leading-none">{awayScore}</span>
             </div>
-            <div className="flex gap-1 items-center ml-0.5">
+            <div className="flex gap-0.5 sm:gap-1 items-center ml-0.5 shrink-0">
               {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                 <div
                   key={i}
@@ -1254,20 +1254,20 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <button
               disabled={awayTimeouts === 0}
               onClick={() => callTimeout('away')}
-              className="px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
+              className="px-1.5 sm:px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[9px] sm:text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
             >
               TO ({awayTimeouts})
             </button>
           </div>
-          <button onClick={() => setIsScoreboardFullscreen(true)} className="ml-1 md:ml-4 bg-white/10 p-2 md:p-3 rounded-xl hover:bg-white/20 text-neutral-300 hidden sm:block" title="Fullscreen Scoreboard">
+          <button onClick={() => setIsScoreboardFullscreen(true)} className="ml-1 md:ml-4 bg-white/10 p-2 md:p-3 rounded-xl hover:bg-white/20 text-neutral-300 hidden sm:block shrink-0" title="Fullscreen Scoreboard">
             <Maximize className="w-4 h-4 md:w-5 md:h-5" />
           </button>
           <button
             onClick={() => setIsResetModalOpen(true)}
-            className="ml-2 md:ml-3 px-3 py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 hover:text-red-300 border border-red-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm"
+            className="ml-1 sm:ml-2 md:ml-3 p-1.5 sm:px-3 sm:py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 hover:text-red-300 border border-red-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
             title="Reset Game to Pre-Game State"
           >
-            <AlertTriangle className="w-3.5 h-3.5" />
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden sm:inline">Reset Game</span>
           </button>
         </div>
@@ -1332,8 +1332,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* SPOT BALL OVERLAY */}
         {!isBallSpotted && step !== 'CONVERSION' && step !== 'HALFTIME' && step !== 'GAME_OVER' && !isTimeoutActive && (
-          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4 sm:p-8 overflow-y-auto">
-            <div className="flex flex-col md:flex-row w-full max-w-7xl justify-between items-center px-4 sm:px-12 gap-8 md:gap-12 py-12 md:py-0">
+          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-8 overflow-y-auto">
+            <div className="flex flex-col md:flex-row w-full max-w-7xl justify-between items-center px-2 sm:px-12 gap-4 sm:gap-8 md:gap-12 py-4 sm:py-8 md:py-0">
 
               {/* Home Score (Left) */}
               <div className="hidden md:flex flex-col items-center gap-4 shrink-0">
@@ -1353,32 +1353,32 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </div>
 
               {/* Center Column (Time + Alert) */}
-              <div className="flex flex-col items-center justify-center gap-8">
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-xl font-bold uppercase tracking-widest text-cyan-400">
+              <div className="flex flex-col items-center justify-center gap-4 sm:gap-8 w-full max-w-xl">
+                <div className="flex flex-col items-center gap-1 sm:gap-2">
+                  <span className="text-xs sm:text-base md:text-xl font-bold uppercase tracking-widest text-cyan-400">
                     {getOrdinal(half)} {periodType === 'quarters' ? 'Quarter' : 'Half'}
                   </span>
-                  <span className="text-[5rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
+                  <span className="text-4xl sm:text-6xl md:text-[5rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
                 </div>
 
                 {isFirstPlayOfHalf ? (
-                  <div className="bg-neutral-900 border border-cyan-500/30 p-6 sm:p-10 md:p-12 rounded-3xl sm:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] max-w-xl text-center">
-                    <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-emerald-500 mb-4 sm:mb-6" />
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black mb-4 sm:mb-6 uppercase tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
+                  <div className="bg-neutral-900 border border-cyan-500/30 p-4 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl md:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] max-w-xl text-center w-full">
+                    <AlertCircle className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 text-emerald-500 mb-2 sm:mb-4 md:mb-6" />
+                    <h2 className="text-sm sm:text-2xl md:text-3xl font-black mb-3 sm:mb-6 uppercase tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
                     <button
                       onClick={() => { handleSpotBall(); setIsFirstPlayOfHalf(false); }}
-                      className="py-4 sm:py-6 px-6 sm:px-10 bg-white hover:bg-neutral-200 text-black font-black text-base sm:text-xl md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform"
+                      className="py-3 sm:py-5 md:py-6 px-5 sm:px-8 md:px-10 bg-white hover:bg-neutral-200 text-black font-black text-xs sm:text-lg md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
                     >
                       CLICK WHEN SNAPPED
                     </button>
                   </div>
                 ) : (
-                  <div className="bg-neutral-900 border border-amber-500/30 p-6 sm:p-10 md:p-12 rounded-3xl sm:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center">
-                    <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-amber-500 mb-4 sm:mb-6" />
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black mb-4 sm:mb-6 uppercase tracking-widest">Awaiting Spot</h2>
+                  <div className="bg-neutral-900 border border-amber-500/30 p-4 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl md:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center w-full">
+                    <AlertCircle className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 text-amber-500 mb-2 sm:mb-4 md:mb-6" />
+                    <h2 className="text-sm sm:text-2xl md:text-3xl font-black mb-3 sm:mb-6 uppercase tracking-widest">Awaiting Spot</h2>
                     <button
                       onClick={handleSpotBall}
-                      className="py-4 sm:py-6 px-6 sm:px-10 bg-white hover:bg-neutral-200 text-black font-black text-base sm:text-xl md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform"
+                      className="py-3 sm:py-5 md:py-6 px-5 sm:px-8 md:px-10 bg-white hover:bg-neutral-200 text-black font-black text-xs sm:text-lg md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
                     >
                       CLICK WHEN SPOTTED
                     </button>
@@ -1409,17 +1409,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* PERIOD BREAK / HALFTIME OVERLAY */}
         {step === 'HALFTIME' && (
-          <div className="absolute inset-0 z-40 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-8">
-            <h2 className="text-5xl font-black mb-8 uppercase tracking-widest text-cyan-400">
+          <div className="absolute inset-0 z-40 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-8 overflow-y-auto">
+            <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-8 uppercase tracking-widest text-cyan-400">
               {half === Math.floor(periodsCount / 2) ? "Halftime" : periodType === 'quarters' ? `End of Quarter ${half}` : `End of Half ${half}`}
             </h2>
-            <span className="text-[12rem] font-black leading-none text-white tabular-nums mb-12">{formatTime(halftimeClock)}</span>
+            <span className="text-5xl sm:text-8xl md:text-[12rem] font-black leading-none text-white tabular-nums mb-6 sm:mb-12">{formatTime(halftimeClock)}</span>
             {halftimeClock <= 0 ? (
-              <button onClick={startNextPeriod} className="py-6 px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-3xl rounded-full transition-transform active:scale-95 shadow-[0_0_50px_rgba(16,185,129,0.3)]">
+              <button onClick={startNextPeriod} className="py-4 sm:py-6 px-8 sm:px-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-lg sm:text-3xl rounded-full transition-transform active:scale-95 shadow-[0_0_50px_rgba(16,185,129,0.3)] cursor-pointer">
                 {periodType === 'quarters' ? `BEGIN QUARTER ${half + 1}` : "BEGIN SECOND HALF"}
               </button>
             ) : (
-              <button onClick={startNextPeriod} className="py-4 px-8 bg-white/10 hover:bg-white/20 text-white font-bold text-xl rounded-full transition-colors">
+              <button onClick={startNextPeriod} className="py-3 sm:py-4 px-6 sm:px-8 bg-white/10 hover:bg-white/20 text-white font-bold text-sm sm:text-xl rounded-full transition-colors cursor-pointer">
                 {periodType === 'quarters' ? `BEGIN QUARTER ${half + 1}` : "SKIP BREAK"}
               </button>
             )}
@@ -1428,17 +1428,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* GAME OVER OVERLAY */}
         {step === 'GAME_OVER' && (
-          <div className="absolute inset-0 z-40 bg-black/95 backdrop-blur-xl flex flex-col items-center p-8 overflow-y-auto">
-            <h2 className="text-5xl font-black mb-8 uppercase tracking-widest text-emerald-500 mt-12">Game Over</h2>
-            <div className="flex flex-col md:flex-row w-full max-w-4xl justify-between items-center mb-16 gap-8 md:gap-0">
-              <div className="flex flex-col items-center gap-4">
-                <span className="text-3xl font-black text-white uppercase">{homeTeamName}</span>
-                <span className="text-[6rem] font-black text-cyan-400 leading-none">{homeScore}</span>
+          <div className="absolute inset-0 z-40 bg-black/95 backdrop-blur-xl flex flex-col items-center p-4 sm:p-8 overflow-y-auto">
+            <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-8 uppercase tracking-widest text-emerald-500 mt-4 sm:mt-12">Game Over</h2>
+            <div className="flex flex-col md:flex-row w-full max-w-4xl justify-between items-center mb-8 sm:mb-16 gap-4 sm:gap-8 md:gap-0">
+              <div className="flex flex-col items-center gap-2 sm:gap-4">
+                <span className="text-xl sm:text-3xl font-black text-white uppercase">{homeTeamName}</span>
+                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black text-cyan-400 leading-none">{homeScore}</span>
               </div>
-              <div className="text-neutral-500 font-bold text-2xl tracking-widest">FINAL</div>
-              <div className="flex flex-col items-center gap-4">
-                <span className="text-3xl font-black text-white uppercase">{awayTeamName}</span>
-                <span className="text-[6rem] font-black text-blue-500 leading-none">{awayScore}</span>
+              <div className="text-neutral-500 font-bold text-lg sm:text-2xl tracking-widest">FINAL</div>
+              <div className="flex flex-col items-center gap-2 sm:gap-4">
+                <span className="text-xl sm:text-3xl font-black text-white uppercase">{awayTeamName}</span>
+                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black text-blue-500 leading-none">{awayScore}</span>
               </div>
             </div>
 

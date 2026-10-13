@@ -154,40 +154,42 @@ export default function RoleSwitcherBar() {
         </div>
 
         {/* Center: Toggle Buttons */}
-        <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-100 dark:bg-black/70 p-0.5 rounded-xl border border-slate-200 dark:border-white/10 shadow-inner shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-100 dark:bg-black/70 p-0.5 rounded-xl border border-slate-200 dark:border-white/10 shadow-inner shrink-0 max-w-full overflow-x-auto">
           {/* League Admin Toggle */}
           <button
             onClick={() => handleSelectRole("league_admin")}
             title="Commissioner view: configure rules, manage schedule & launch play-by-play"
-            className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
+            className={`flex items-center gap-1 px-1.5 sm:px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "league_admin"
                 ? "bg-amber-500 text-black shadow-md shadow-amber-500/20 font-black"
                 : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
             }`}
           >
             <Crown className="w-3.5 h-3.5 shrink-0" />
-            <span>League Admin</span>
+            <span className="hidden xs:inline">League </span>
+            <span>Admin</span>
           </button>
 
           {/* Team Admin Toggle */}
           <button
             onClick={() => handleSelectRole("team_admin")}
             title="Team manager view: franchise portal, exhibition games & async stat tracking"
-            className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
+            className={`flex items-center gap-1 px-1.5 sm:px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "team_admin"
                 ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20 font-black"
                 : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
             }`}
           >
             <Shield className="w-3.5 h-3.5 shrink-0" />
-            <span>Team Admin</span>
+            <span className="hidden xs:inline">Team </span>
+            <span>Admin</span>
           </button>
 
           {/* Player Toggle */}
           <button
             onClick={() => handleSelectRole("player")}
             title="Rostered athlete view: personal stats, player profile & team playbook"
-            className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
+            className={`flex items-center gap-1 px-1.5 sm:px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "player"
                 ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-black"
                 : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
@@ -201,13 +203,14 @@ export default function RoleSwitcherBar() {
           <button
             onClick={() => handleSelectRole("user")}
             title="Spectator view: public schedule, standings & game box scores"
-            className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
+            className={`flex items-center gap-1 px-1.5 sm:px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "user"
                 ? "bg-slate-300 dark:bg-neutral-200 text-black shadow-md font-black"
                 : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
             }`}
           >
-            <span>Spectator</span>
+            <span className="hidden xs:inline">Spectator</span>
+            <span className="xs:hidden">Fan</span>
           </button>
         </div>
 

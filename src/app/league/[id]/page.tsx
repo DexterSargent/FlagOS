@@ -695,7 +695,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       {/* VIEW 1: LEAGUE ADMIN VIEW (LEAGUE COMMAND CENTER)                        */}
       {/* ========================================================================= */}
       {isLeagueAdminView && (
-        <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+        <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
           {/* League Command Center Hero Banner */}
           <div className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
@@ -1051,7 +1051,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       {/* VIEW 2: TEAM ADMIN VIEW (Team CLUBHOUSE & HEADQUARTERS)              */}
       {/* ========================================================================= */}
       {isTeamAdminView && (
-        <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+        <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
           {/* Team Clubhouse Hero Banner */}
           <div className="bg-gradient-to-br from-[#0B132B]/95 via-[#0B0F19] to-[#07090E] border-2 border-cyan-500/40 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
@@ -1519,7 +1519,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       {/* VIEW 2.5: PLAYER VIEW (ATHLETE GAMEDAY COCKPIT & PERSONAL LOCKER ROOM)    */}
       {/* ========================================================================= */}
       {isPlayerView && (
-        <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+        <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
           {/* Athlete Cockpit Hero Banner */}
           <div className="bg-gradient-to-br from-[#061822]/95 via-[#0B0F19] to-[#08121E] border-2 border-emerald-500/40 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
             {/* Ambient Background Glows */}
@@ -2328,7 +2328,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       {/* VIEW 3: SPECTATOR / USER VIEW (GAMEDAY CENTRAL & FAN PORTAL)              */}
       {/* ========================================================================= */}
       {isSpectatorView && (
-        <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
+        <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
           {/* Fan & Spectator Hero Banner */}
           <div className="bg-gradient-to-r from-[#0C1222] via-[#0B0F19] to-[#0A101D] border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
