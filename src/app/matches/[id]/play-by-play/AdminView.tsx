@@ -8,6 +8,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
+import { simulateFullGame } from "@/lib/gameSimulator";
 import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
 import {
@@ -34,7 +35,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const matchId = unwrappedParams.id;
   const router = useRouter();
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
-  const { user } = useAuth();
+  const { user, isPlatformAdmin } = useAuth();
 
   const [isEmbedded, setIsEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -180,6 +181,45 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
   const [isPlayLogDrawerOpen, setIsPlayLogDrawerOpen] = useState(false);
   const [matchPlaysList, setMatchPlaysList] = useState<any[]>([]);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const isUnstartedGame =
+    matchStatus === "scheduled" ||
+    (matchStatus !== "completed" && matchPlaysList.length === 0);
+
+  const handleSimulateGame = async () => {
+    if (!isPlatformAdmin) return;
+    if (
+      !window.confirm(
+        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flag pulls, PBUs, sacks) between ${homeTeamName} and ${awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
+      )
+    ) {
+      return;
+    }
+    setIsSimulating(true);
+    try {
+      const res = await simulateFullGame(matchId, {
+        leagueId: activeLeagueId,
+        isDemo,
+      });
+      if (res.success) {
+        setHomeScore(res.homeScore);
+        setAwayScore(res.awayScore);
+        setMatchStatus("completed");
+        setGameClock(0);
+        setHalf(2);
+        setStep("GAME_OVER");
+        await refreshPlays();
+      } else {
+        alert(res.error || "Failed to simulate game.");
+      }
+    } catch (err: any) {
+      console.error("Simulation error:", err);
+      alert(err.message || "Failed to simulate game.");
+    } finally {
+      setIsSimulating(false);
+    }
+  };
 
   const getOrdinal = (n: number) => {
     if (n === 1) return "1st";
@@ -1285,6 +1325,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           <button onClick={() => setIsScoreboardFullscreen(true)} className="ml-1 md:ml-4 bg-white/10 p-2 md:p-3 rounded-xl hover:bg-white/20 text-neutral-300 hidden sm:block shrink-0" title="Fullscreen Scoreboard">
             <Maximize className="w-4 h-4 md:w-5 md:h-5" />
           </button>
+          {isPlatformAdmin && isUnstartedGame && (
+            <button
+              onClick={handleSimulateGame}
+              disabled={isSimulating}
+              className="ml-1 sm:ml-2 md:ml-3 p-1.5 sm:px-3 sm:py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer disabled:opacity-50"
+              title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
+            >
+              <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
+              <span>{isSimulating ? "Simulating..." : "Simulate Game"}</span>
+            </button>
+          )}
           <button
             onClick={() => setIsResetModalOpen(true)}
             className="ml-1 sm:ml-2 md:ml-3 p-1.5 sm:px-3 sm:py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 hover:text-red-300 border border-red-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
@@ -1394,6 +1445,21 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     >
                       CLICK WHEN SNAPPED
                     </button>
+                    {isPlatformAdmin && isUnstartedGame && (
+                      <div className="mt-4 pt-4 border-t border-white/10 flex flex-col items-center w-full">
+                        <button
+                          onClick={handleSimulateGame}
+                          disabled={isSimulating}
+                          className="py-2.5 px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
+                        >
+                          <Zap className={`w-4 h-4 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
+                          <span>{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>
+                        </button>
+                        <p className="text-[11px] text-neutral-400 mt-1.5 font-mono">
+                          Generates 16–28 realistic plays, box score & player stats
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-neutral-900 border border-amber-500/30 p-4 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl md:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center w-full">
@@ -1405,6 +1471,21 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     >
                       CLICK WHEN SPOTTED
                     </button>
+                    {isPlatformAdmin && isUnstartedGame && (
+                      <div className="mt-4 pt-4 border-t border-white/10 flex flex-col items-center w-full">
+                        <button
+                          onClick={handleSimulateGame}
+                          disabled={isSimulating}
+                          className="py-2.5 px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
+                        >
+                          <Zap className={`w-4 h-4 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
+                          <span>{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>
+                        </button>
+                        <p className="text-[11px] text-neutral-400 mt-1.5 font-mono">
+                          Generates 16–28 realistic plays, box score & player stats
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

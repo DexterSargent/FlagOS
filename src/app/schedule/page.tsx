@@ -29,6 +29,7 @@ import { useLeague, PlayoffFormat } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
 import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
+import { simulateFullGame } from "@/lib/gameSimulator";
 import {
   getSandboxTeams,
   getSandboxMatches,
@@ -75,9 +76,49 @@ interface Match {
 }
 
 export default function Calendar() {
-  const { user, isLeagueAdmin } = useAuth();
+  const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
   const { settings, updateSettings, isDemoLeague, activeLeagueId } = useLeague();
   const [matches, setMatches] = useState<Match[]>([]);
+  const [simulatingMatchId, setSimulatingMatchId] = useState<string | null>(null);
+
+  const handleSimulateMatch = async (matchId: string, homeTeamName: string, awayTeamName: string) => {
+    if (!isPlatformAdmin) return;
+    if (
+      !window.confirm(
+        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flag pulls, PBUs, sacks) between ${homeTeamName} and ${awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
+      )
+    ) {
+      return;
+    }
+    setSimulatingMatchId(matchId);
+    try {
+      const res = await simulateFullGame(matchId, {
+        leagueId: activeLeagueId,
+        isDemo: isDemoLeague,
+      });
+      if (res.success) {
+        setMatches((prev) =>
+          prev.map((m) =>
+            m.id === matchId
+              ? {
+                  ...m,
+                  status: "completed",
+                  homeScore: res.homeScore,
+                  awayScore: res.awayScore,
+                }
+              : m
+          )
+        );
+      } else {
+        alert(res.error || "Failed to simulate match.");
+      }
+    } catch (err: any) {
+      console.error("Simulation error:", err);
+      alert(err.message || "Failed to simulate match.");
+    } finally {
+      setSimulatingMatchId(null);
+    }
+  };
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -855,33 +896,53 @@ export default function Calendar() {
                               </div>
                             </Link>
 
-                            {canManageSchedule && (
+                            {(canManageSchedule || isPlatformAdmin) && (
                               <div className="absolute top-6 right-6 flex items-center gap-1.5 z-20">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setEditingMatch(match);
-                                    setIsModalOpen(true);
-                                  }}
-                                  title="Edit Event"
-                                  className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleDeleteSingleMatch(match.id);
-                                  }}
-                                  title="Delete Event"
-                                  className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {isPlatformAdmin && match.status !== "completed" && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleSimulateMatch(match.id, match.homeTeamName, match.awayTeamName);
+                                    }}
+                                    disabled={simulatingMatchId === match.id}
+                                    title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
+                                    className="p-1.5 sm:px-2.5 sm:py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/40 rounded-xl text-amber-300 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
+                                  >
+                                    <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${simulatingMatchId === match.id ? "animate-spin" : ""}`} />
+                                    <span className="hidden sm:inline">{simulatingMatchId === match.id ? "Simulating..." : "Simulate"}</span>
+                                  </button>
+                                )}
+                                {canManageSchedule && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setEditingMatch(match);
+                                        setIsModalOpen(true);
+                                      }}
+                                      title="Edit Event"
+                                      className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDeleteSingleMatch(match.id);
+                                      }}
+                                      title="Delete Event"
+                                      className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -995,33 +1056,53 @@ export default function Calendar() {
                           </div>
                         </Link>
 
-                        {canManageSchedule && (
+                        {(canManageSchedule || isPlatformAdmin) && (
                           <div className="absolute top-6 right-6 flex items-center gap-1.5 z-20">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setEditingMatch(match);
-                                setIsModalOpen(true);
-                              }}
-                              title="Edit Event"
-                              className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleDeleteSingleMatch(match.id);
-                              }}
-                              title="Delete Event"
-                              className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {isPlatformAdmin && match.status !== "completed" && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleSimulateMatch(match.id, match.homeTeamName, match.awayTeamName);
+                                }}
+                                disabled={simulatingMatchId === match.id}
+                                title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
+                                className="p-1.5 sm:px-2.5 sm:py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/40 rounded-xl text-amber-300 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
+                              >
+                                <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${simulatingMatchId === match.id ? "animate-spin" : ""}`} />
+                                <span className="hidden sm:inline">{simulatingMatchId === match.id ? "Simulating..." : "Simulate"}</span>
+                              </button>
+                            )}
+                            {canManageSchedule && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setEditingMatch(match);
+                                    setIsModalOpen(true);
+                                  }}
+                                  title="Edit Event"
+                                  className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDeleteSingleMatch(match.id);
+                                  }}
+                                  title="Delete Event"
+                                  className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

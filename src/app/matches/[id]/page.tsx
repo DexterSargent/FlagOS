@@ -3,12 +3,13 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ShieldAlert, Clock, MapPin, Edit2, Trash2, X } from "lucide-react";
+import { ChevronLeft, ShieldAlert, Clock, MapPin, Edit2, Trash2, X, Zap } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
+import { simulateFullGame } from "@/lib/gameSimulator";
 import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
 
@@ -17,7 +18,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
-  const { user, isLeagueAdmin, canManageTeam } = useAuth();
+  const { user, isLeagueAdmin, canManageTeam, isPlatformAdmin } = useAuth();
 
   const isPrivateMatch =
     activeLeagueId === "league_private_live" ||
@@ -44,6 +45,40 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const handleSimulateGame = async () => {
+    if (!isPlatformAdmin || !matchData) return;
+    if (
+      !window.confirm(
+        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flag pulls, PBUs, sacks) between ${matchData.homeTeamName} and ${matchData.awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
+      )
+    ) {
+      return;
+    }
+    setIsSimulating(true);
+    try {
+      const res = await simulateFullGame(matchId, {
+        leagueId: activeLeagueId,
+        isDemo: isDemoLeague,
+      });
+      if (res.success) {
+        setMatchData((prev: any) => ({
+          ...prev,
+          status: "completed",
+          homeScore: res.homeScore,
+          awayScore: res.awayScore,
+        }));
+      } else {
+        alert(res.error || "Failed to simulate game.");
+      }
+    } catch (err: any) {
+      console.error("Simulation error:", err);
+      alert(err.message || "Failed to simulate game.");
+    } finally {
+      setIsSimulating(false);
+    }
+  };
 
   const openEditModal = () => {
     setEditForm({
@@ -215,7 +250,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
         </div>
 
         {/* Admin Controls */}
-        {(isLeagueAdmin || (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) || (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) || (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId))) && (
+        {(isLeagueAdmin || isPlatformAdmin || (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) || (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) || (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId))) && (
           <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <ShieldAlert className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />
@@ -266,6 +301,17 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                     {matchData.isPreseason ? "★ Preseason" : "Mark as Preseason"}
                   </button>
                 </>
+              )}
+              {isPlatformAdmin && matchData.status !== 'completed' && (
+                <button
+                  onClick={handleSimulateGame}
+                  disabled={isSimulating}
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm disabled:opacity-50"
+                  title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
+                >
+                  <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
+                  <span>{isSimulating ? "Simulating Game..." : "⚡ Simulate Game"}</span>
+                </button>
               )}
               {matchData.status !== 'completed' ? (
                 <Link
