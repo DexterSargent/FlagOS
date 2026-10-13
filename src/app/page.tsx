@@ -261,9 +261,18 @@ export default function FlagOSPlatformLandingPage() {
             <a href="#features" className="hover:text-cyan-400 transition-colors" style={{ color: "#7ED321" }}>
               Features
             </a>
-            <a href="#interactive-demo" className="hover:text-cyan-400 transition-colors">
-              Interactive Demo
-            </a>
+            <Link
+              href="/league/default?demo=true"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("flagos_demo_active", "true");
+                  localStorage.setItem("flagos_demo_active", "true");
+                }
+              }}
+              className="hover:text-cyan-400 transition-colors"
+            >
+              Demo League
+            </Link>
             <a href="#league-directory" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90">
               <span>League Directory</span>
             </a>
@@ -343,14 +352,20 @@ export default function FlagOSPlatformLandingPage() {
               <Zap className="w-4 h-4 text-cyan-400" />
               <span>Features</span>
             </a>
-            <a
-              href="#interactive-demo"
-              onClick={() => setIsMobileMenuOpen(false)}
+            <Link
+              href="/league/default?demo=true"
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("flagos_demo_active", "true");
+                  localStorage.setItem("flagos_demo_active", "true");
+                }
+              }}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-neutral-300 hover:bg-white/5 transition-colors"
             >
-              <Play className="w-4 h-4 text-cyan-400" />
-              <span>Interactive Demo</span>
-            </a>
+              <PlayCircle className="w-4 h-4 text-cyan-400" />
+              <span>Demo League</span>
+            </Link>
             <a
               href="#league-directory"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -408,7 +423,7 @@ export default function FlagOSPlatformLandingPage() {
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight text-white leading-none">
-            The Operating System for Modern <span className="text-[#7ED321] border border-white"><br></br>Flag Football</span>
+            The Operating System for Modern <span className="text-[#7ED321]"><br></br>Flag Football</span>
           </h1>
 
           {/* Primary Action Buttons */}
@@ -681,7 +696,8 @@ export default function FlagOSPlatformLandingPage() {
         </section>
 
         {/* INTERACTIVE FEATURE SHOWCASE */}
-        <section id="features" className="max-w-7xl mx-auto px-6 py-16 border-t border-white/10 space-y-8">
+        <section id="features" className="max-w-7xl mx-auto px-6 py-16 border-t border-white/10 space-y-8 scroll-mt-20 relative">
+          <div id="interactive-demo" className="absolute -top-24 left-0" />
           <div className="text-center space-y-3">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
               Interactive Capabilities
@@ -1055,7 +1071,20 @@ export default function FlagOSPlatformLandingPage() {
             <h4 className="text-xs font-black uppercase tracking-wider text-white">Explore</h4>
             <ul className="space-y-2">
               <li><a href="#features" className="hover:text-cyan-400 transition-colors">Key Features</a></li>
-              <li><a href="#interactive-demo" className="hover:text-cyan-400 transition-colors">Interactive Demo</a></li>
+              <li>
+                <Link
+                  href="/league/default?demo=true"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      sessionStorage.setItem("flagos_demo_active", "true");
+                      localStorage.setItem("flagos_demo_active", "true");
+                    }
+                  }}
+                  className="hover:text-cyan-400 transition-colors"
+                >
+                  Demo League
+                </Link>
+              </li>
               <li><a href="#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</a></li>
             </ul>
           </div>

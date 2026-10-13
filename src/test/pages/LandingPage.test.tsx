@@ -73,6 +73,13 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     expect(screen.getAllByText("Explore Demo League").length).toBeGreaterThan(0);
   });
 
+  it("renders Demo League links in navigation pointing to the demo sandbox", () => {
+    render(<FlagOSPlatformLandingPage />);
+    const demoLeagueLinks = screen.getAllByRole("link", { name: /demo league/i });
+    expect(demoLeagueLinks.length).toBeGreaterThan(0);
+    expect(demoLeagueLinks[0]).toHaveAttribute("href", "/league/default?demo=true");
+  });
+
   it("STRICT REQUIREMENT: Pricing link is present on marketing landing page and points to /pricing", () => {
     render(<FlagOSPlatformLandingPage />);
     const pricingLinks = screen.getAllByRole("link", { name: /pricing/i });
