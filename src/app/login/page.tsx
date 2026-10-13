@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/authContext";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Shield, Crown, User, ChevronLeft, ArrowRight, CheckCircle2, ShieldAlert, Lock, LogIn } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -11,6 +12,7 @@ import { isRealTeam } from "@/components/TeamAssets";
 export default function LoginPage() {
   const {
     user,
+    userProfile,
     role,
     isAuthorized,
     isLeagueAdmin,
@@ -21,6 +23,7 @@ export default function LoginPage() {
     loading,
     login,
     loginWithEmailAndPassword,
+    createAccount,
     loginWithPlayerEmail,
     logout,
     setDevRole,
@@ -35,7 +38,9 @@ export default function LoginPage() {
   const [playerLoginError, setPlayerLoginError] = useState<string>("");
   const [playerLoggingIn, setPlayerLoggingIn] = useState(false);
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [emailPasswordError, setEmailPasswordError] = useState("");
   const [emailPasswordLoggingIn, setEmailPasswordLoggingIn] = useState(false);
   const [googleLoggingIn, setGoogleLoggingIn] = useState(false);
@@ -109,9 +114,13 @@ export default function LoginPage() {
     setEmailPasswordError("");
     setEmailPasswordLoggingIn(true);
     try {
-      const result = await loginWithEmailAndPassword(email, password);
+      const result = isCreatingAccount
+        ? await createAccount(displayName, email, password)
+        : await loginWithEmailAndPassword(email, password);
       if (result.success) {
-        router.push(redirectUrl || "/league/default");
+        if (!isCreatingAccount) {
+          router.push(redirectUrl || "/league/default");
+        }
       } else {
         setEmailPasswordError(result.message);
       }
@@ -249,8 +258,19 @@ export default function LoginPage() {
             className="w-full mb-5 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3"
           >
             <label htmlFor="login-email" className="block text-xs font-bold uppercase tracking-wider text-neutral-200">
-              Email and password
+              {isCreatingAccount ? "Create account" : "Email and password"}
             </label>
+            {isCreatingAccount && (
+              <input
+                id="login-display-name"
+                type="text"
+                autoComplete="name"
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="Name (optional)"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-500"
+              />
+            )}
             <input
               id="login-email"
               type="email"
@@ -264,11 +284,12 @@ export default function LoginPage() {
             <input
               id="login-password"
               type="password"
-              autoComplete="current-password"
+              autoComplete={isCreatingAccount ? "new-password" : "current-password"}
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Password"
+              minLength={isCreatingAccount ? 6 : undefined}
+              placeholder={isCreatingAccount ? "Password (at least 6 characters)" : "Password"}
               className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-500"
             />
             {emailPasswordError && (
@@ -281,8 +302,23 @@ export default function LoginPage() {
               disabled={emailPasswordLoggingIn}
               className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {emailPasswordLoggingIn ? "Signing in..." : "Sign in with email"}
+              {emailPasswordLoggingIn
+                ? isCreatingAccount ? "Creating account..." : "Signing in..."
+                : isCreatingAccount ? "Create account" : "Sign in with email"}
             </button>
+            <p className="text-center text-xs text-neutral-400">
+              {isCreatingAccount ? "Already have an account?" : "New to FlagOS?"}{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreatingAccount(!isCreatingAccount);
+                  setEmailPasswordError("");
+                }}
+                className="font-bold text-emerald-700 hover:text-emerald-600 underline underline-offset-2"
+              >
+                {isCreatingAccount ? "Sign in" : "Create an account"}
+              </button>
+            </p>
           </form>
         )}
 
@@ -308,6 +344,28 @@ export default function LoginPage() {
                   className="py-2 px-4 text-neutral-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
                 >
                   Sign Out Account
+                </button>
+              </div>
+            ) : !userProfile?.role ? (
+              <div className="w-full space-y-3">
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs text-left space-y-1">
+                  <div className="font-bold text-emerald-800">Account ready — no league role assigned</div>
+                  <p className="text-[11px] leading-relaxed">
+                    Your account can have a different role in each league. Choose a league to join, or create a league to become its commissioner.
+                  </p>
+                </div>
+                <Link
+                  href="/pricing"
+                  className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                  Explore league options
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <button
+                  onClick={logout}
+                  className="py-2 px-4 text-neutral-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Sign Out
                 </button>
               </div>
             ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useLayoutEffect, useState } from "react";
 
 export type ThemeMode = "dark" | "light" | "system";
 const THEME_STORAGE_KEY = "flagos_theme_mode_v2";
@@ -39,7 +39,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     root.style.colorScheme = resolved;
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let initialMode: ThemeMode = "dark";
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;

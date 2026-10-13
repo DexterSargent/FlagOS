@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import {
   onAuthStateChanged,
@@ -8,9 +8,11 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signOut,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { getSandboxPlayers, subscribeDemoSandbox, notifySandboxChange } from "./demoSandbox";
@@ -28,7 +30,11 @@ const getAuthErrorMessage = (error: unknown): string => {
     case "auth/api-key-not-valid.-please-pass-a-valid-api-key.":
       return "Sign-in is temporarily unavailable because the site's Firebase API key is invalid. Please contact the site administrator.";
     case "auth/operation-not-allowed":
-      return "Email and password sign-in is not enabled for this site. Please contact the site administrator.";
+      return "Email and password sign-in or account creation is not enabled for this site. Please contact the site administrator.";
+    case "auth/email-already-in-use":
+      return "An account already exists for this email. Sign in instead.";
+    case "auth/weak-password":
+      return "Choose a password with at least 6 characters.";
     case "auth/invalid-email":
       return "Enter a valid email address.";
     case "auth/invalid-credential":
@@ -48,7 +54,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName?: string;
-  role: UserRole;
+  role?: UserRole;
   managedTeamId?: string;
   managedTeamIds?: string[];
   playerId?: string;
@@ -76,6 +82,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<LoginResult>;
   loginWithEmailAndPassword: (email: string, password: string) => Promise<LoginResult>;
+  createAccount: (displayName: string, email: string, password: string) => Promise<LoginResult>;
   loginWithPlayerEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   bypassLogin: (role?: UserRole, teamId?: string, playerId?: string) => void;
@@ -102,6 +109,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => ({ success: false, message: "Sign-in is unavailable." }),
   loginWithEmailAndPassword: async () => ({ success: false, message: "Sign-in is unavailable." }),
+  createAccount: async () => ({ success: false, message: "Account creation is unavailable." }),
   loginWithPlayerEmail: async () => ({ success: false }),
   logout: async () => { },
   bypassLogin: () => { },
@@ -116,6 +124,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [devPlayerId, setDevPlayerId] = useState<string | null>(null);
   const [devPlayerData, setDevPlayerData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const pendingAccountEmails = useRef(new Set<string>());
 
   // Restore developer/testing auth state from sessionStorage (for ephemeral demo session) or localStorage
   useEffect(() => {
@@ -206,10 +215,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
+        const isPendingUnassignedAccount = !!u.email &&
+          pendingAccountEmails.current.has(u.email.trim().toLowerCase());
         try {
           const userDocRef = doc(db, "users", u.uid);
           const snap = await getDoc(userDocRef);
           const isEmailLeagueAdmin = !!(u.email && adminEmails.includes(u.email.toLowerCase()));
+
+          if (isPendingUnassignedAccount) {
+            const accountProfile: UserProfile = {
+              uid: u.uid,
+              email: u.email || "",
+              ...(u.displayName ? { displayName: u.displayName } : {}),
+            };
+            await setDoc(userDocRef, {
+              ...accountProfile,
+              createdAt: serverTimestamp(),
+            }, { merge: true });
+            setUserProfile(accountProfile);
+            setLoading(false);
+            return;
+          }
 
           // Look up if this email is attached to any player or team
           let matchingPlayer: any = null;
@@ -221,16 +247,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
-            if (isEmailLeagueAdmin) {
-              data.role = "league_admin";
-            } else if (matchingPlayer) {
-              data.role = "player";
-              data.playerId = matchingPlayer.id;
-              data.playerTeamId = matchingPlayer.teamId;
-              data.playerData = matchingPlayer;
-            } else if (matchingTeam) {
-              data.role = "team_admin";
-              data.managedTeamId = matchingTeam.id;
+            if (data.role) {
+              if (isEmailLeagueAdmin) {
+                data.role = "league_admin";
+              } else if (matchingPlayer) {
+                data.role = "player";
+                data.playerId = matchingPlayer.id;
+                data.playerTeamId = matchingPlayer.teamId;
+                data.playerData = matchingPlayer;
+              } else if (matchingTeam) {
+                data.role = "team_admin";
+                data.managedTeamId = matchingTeam.id;
+              }
             }
             setUserProfile(data);
           } else {
@@ -441,6 +469,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const createAccount = async (
+    displayName: string,
+    email: string,
+    password: string
+  ): Promise<LoginResult> => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return { success: false, message: "Enter your email address." };
+    }
+    if (password.length < 6) {
+      return { success: false, message: "Choose a password with at least 6 characters." };
+    }
+
+    pendingAccountEmails.current.add(normalizedEmail);
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+      const name = displayName.trim();
+      if (name) {
+        await updateProfile(credential.user, { displayName: name });
+      }
+
+      const accountProfile: UserProfile = {
+        uid: credential.user.uid,
+        email: credential.user.email || normalizedEmail,
+        ...(name ? { displayName: name } : {}),
+      };
+      await setDoc(doc(db, "users", credential.user.uid), {
+        ...accountProfile,
+        createdAt: serverTimestamp(),
+      }, { merge: true });
+      setUser(credential.user);
+      setUserProfile(accountProfile);
+      return { success: true };
+    } catch (error: unknown) {
+      console.error("Account creation error:", error);
+      return { success: false, message: getAuthErrorMessage(error) };
+    } finally {
+      pendingAccountEmails.current.delete(normalizedEmail);
+    }
+  };
+
   const logout = async () => {
     setDevRoleState(null);
     setDevTeamId(null);
@@ -537,6 +606,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loading,
         login,
         loginWithEmailAndPassword,
+        createAccount,
         loginWithPlayerEmail,
         logout,
         bypassLogin,
