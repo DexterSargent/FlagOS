@@ -11,7 +11,6 @@ import {
   Trophy,
   Users,
   UserPlus,
-  ArrowRight,
   Settings,
   Home,
 } from "lucide-react";
@@ -28,7 +27,7 @@ export default function LeagueFooter() {
         {/* Top Tier: Brand, Details, & Nav */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Column 1: League Brand */}
-          <div className="space-y-4">
+          <div className="space-y-4 py-0">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-black uppercase tracking-wider text-white">
@@ -44,10 +43,6 @@ export default function LeagueFooter() {
                 {settings.seasonTitle || "Active Season"}
               </span>
             </div>
-
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              {settings.tagline || "The premier competitive flag football circuit with real-time statistics and match tracking."}
-            </p>
 
             {isAuthorized && isLeagueAdmin && (
               <button
@@ -147,20 +142,6 @@ export default function LeagueFooter() {
             <p className="text-xs text-neutral-400 leading-relaxed">
               Operating enterprise tournament management, real-time live scorekeeping, down-by-down play logs, and player statistics for <span className="text-white font-semibold">{renderFlagOS(settings.leagueName)}</span>.
             </p>
-            {settings.rules?.enableFreeAgents !== false && canRegisterAsPlayer && (
-              <div className="pt-2">
-                <Link
-                  href="/join"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-md"
-                  style={{
-                    background: `linear-gradient(135deg, var(--league-primary), var(--league-accent))`,
-                  }}
-                >
-                  <span>Register for {settings.seasonTitle || "Season"}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            )}
           </div>
         </div>
 
