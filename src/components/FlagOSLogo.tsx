@@ -1,37 +1,50 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import { useTheme } from "@/lib/themeContext";
+import { FlagOSText } from "./FlagOSText";
+import {
+  FLAGOS_LOGO_LIGHT,
+  FLAGOS_LOGO_DARK,
+  getFlagOSLogoPath,
+  isDefaultFlagOSLogo,
+} from "@/lib/brandTokens";
 
-interface FlagOSLogoProps {
-  variant?: "full" | "emblem" | "horizontal";
+export { FLAGOS_LOGO_LIGHT, FLAGOS_LOGO_DARK, getFlagOSLogoPath, isDefaultFlagOSLogo };
+
+export interface FlagOSLogoProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+  variant?: "emblem" | "full" | "hero";
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "hero";
   className?: string;
-  showText?: boolean;
+  alt?: string;
 }
 
 const SIZE_MAP = {
-  xs: { img: 24, font: "text-sm", gap: "gap-1.5" },
-  sm: { img: 32, font: "text-base", gap: "gap-2" },
-  md: { img: 40, font: "text-xl", gap: "gap-2.5" },
-  lg: { img: 56, font: "text-2xl", gap: "gap-3" },
-  xl: { img: 80, font: "text-3xl", gap: "gap-4" },
-  hero: { img: 140, font: "text-5xl", gap: "gap-5" },
+  xs: { width: 24, height: 24 },
+  sm: { width: 32, height: 32 },
+  md: { width: 40, height: 40 },
+  lg: { width: 64, height: 64 },
+  xl: { width: 80, height: 80 },
+  hero: { width: 200, height: 200 },
 };
 
 /**
- * Official FlagOS Brand Logo Component
- * Uses the 3D football gear emblem and brand typography
- * Adapts dynamically to light and dark theme mode
+ * FlagOS Official Brand Logo Component
+ * 
+ * Uses the single brand logo token defined in `@/lib/brandTokens`.
+ * Automatically resolves light mode (`FLAGOS_LOGO_LIGHT`) or dark mode (`FLAGOS_LOGO_DARK`).
+ * 
+ * NOTE: The typography text is intentionally separated into `<FlagOSText />` in `@/components/FlagOSText`,
+ * so updating the logo only requires updating the single file path token in brandTokens.ts.
  */
-export default function FlagOSLogo({
-  variant = "horizontal",
+export function FlagOSLogo({
+  variant = "emblem",
   size = "md",
   className = "",
-  showText = true,
+  alt = "FlagOS Logo",
+  style,
+  ...rest
 }: FlagOSLogoProps) {
-  const config = SIZE_MAP[size] || SIZE_MAP.md;
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -39,52 +52,54 @@ export default function FlagOSLogo({
     setMounted(true);
   }, []);
 
-  // Default to dark mode emblem (dark middle hole)
-  const isLight = mounted && resolvedTheme === "light";
-  const emblemSrc = isLight ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png";
-  const logoSrc = isLight ? "/flagos-emblem-light.png" : "/flagos-logo.png";
+  const themeToUse = mounted ? resolvedTheme : "dark";
+  const logoSrc = getFlagOSLogoPath(themeToUse);
+  const sizeConfig = SIZE_MAP[size] || SIZE_MAP.md;
 
-  if (variant === "full") {
-    return (
-      <div className={`flex flex-col items-center justify-center ${className}`}>
-        <img
-          src={logoSrc}
-          alt="FlagOS Logo"
-          className="object-contain drop-shadow-[0_10px_30px_rgba(60,165,5,0.25)] transition-transform hover:scale-105"
-          style={{ width: config.img * 2, height: config.img * 2 }}
-        />
-      </div>
-    );
+  let variantStyles = "object-contain drop-shadow";
+  if (variant === "hero") {
+    variantStyles =
+      "object-contain drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300";
+  } else if (variant === "emblem") {
+    variantStyles =
+      "object-contain drop-shadow-[0_4px_16px_rgba(60,165,5,0.3)] transition-transform";
   }
 
-  if (variant === "emblem") {
-    return (
-      <div className={`inline-flex items-center justify-center shrink-0 ${className}`}>
-        <img
-          src={emblemSrc}
-          alt="FlagOS Emblem"
-          className="object-contain drop-shadow-[0_4px_16px_rgba(60,165,5,0.3)] transition-transform hover:scale-105"
-          style={{ width: config.img, height: config.img }}
-        />
-      </div>
-    );
-  }
-
-  // Horizontal variant: Emblem + FLAGOS wordmark
   return (
-    <div className={`inline-flex items-center ${config.gap} ${className}`}>
-      <img
-        src={emblemSrc}
-        alt="FlagOS Emblem"
-        className="object-contain shrink-0 drop-shadow-[0_4px_16px_rgba(60,165,5,0.35)]"
-        style={{ width: config.img, height: config.img }}
-      />
-      {showText && (
-        <span className={`font-black uppercase tracking-tight leading-none ${config.font}`}>
-          <span className="text-slate-900 dark:text-white transition-colors">FLAG</span>
-          <span style={{ color: "#3CA505" }}>OS</span>
-        </span>
-      )}
+    <img
+      src={logoSrc}
+      alt={alt}
+      width={rest.width || sizeConfig.width}
+      height={rest.height || sizeConfig.height}
+      className={`${variantStyles} ${className}`.trim()}
+      style={style}
+      {...rest}
+    />
+  );
+}
+
+/**
+ * Convenience composition of the separate `<FlagOSLogo />` and `<FlagOSText />` tokens.
+ */
+export function FlagOSBrand({
+  logoSize = "md",
+  className = "inline-flex items-center gap-2.5",
+  textClassName = "",
+  osClassName = "",
+  showText = true,
+}: {
+  logoSize?: FlagOSLogoProps["size"];
+  className?: string;
+  textClassName?: string;
+  osClassName?: string;
+  showText?: boolean;
+}) {
+  return (
+    <div className={className}>
+      <FlagOSLogo size={logoSize} />
+      {showText && <FlagOSText className={textClassName} osClassName={osClassName} />}
     </div>
   );
 }
+
+export default FlagOSLogo;

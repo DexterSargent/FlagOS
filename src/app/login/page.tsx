@@ -9,6 +9,7 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { isRealTeam } from "@/components/TeamAssets";
 import { useTheme } from "@/lib/themeContext";
+import { FlagOSLogo } from "@/components/FlagOSLogo";
 
 export default function LoginPage() {
   const { resolvedTheme } = useTheme();
@@ -171,9 +172,9 @@ export default function LoginPage() {
       <div className="bg-neutral-900/80 border border-white/10 p-8 md:p-12 rounded-[2.5rem] shadow-2xl flex flex-col items-center max-w-xl w-full backdrop-blur-xl relative z-10">
         {/* Brand Emblem */}
         <div className="flex flex-col items-center mb-4">
-          <img
-            src={resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png"}
-            alt="FlagOS"
+          <FlagOSLogo
+            size="lg"
+            variant="emblem"
             className="w-16 h-16 object-contain drop-shadow-[0_4px_20px_rgba(60,165,5,0.4)] hover:scale-105 transition-transform"
           />
         </div>

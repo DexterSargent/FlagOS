@@ -10,6 +10,7 @@ import {
   subscribeDemoSandbox,
   isDemoLeague as checkIsDemoLeague,
 } from "./demoSandbox";
+import { FLAGOS_LOGO_DARK } from "./brandTokens";
 
 export interface LeagueRules {
   playersOnField: number;          // e.g. 4, 5, 6, 7, 8 (default: 5)
@@ -98,7 +99,7 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   shortcode: "FLAG",
   tagline: "The Flag Football Operating System",
   seasonTitle: "2026 Season",
-  logoUrl: "/flagos-logo.png",
+  logoUrl: FLAGOS_LOGO_DARK,
   icon: "shield",
   primaryColor: "#3ca505", // Field Green (#3ca505)
   accentColor: "#22c55e",  // Turf Green (#22c55e)
@@ -161,7 +162,7 @@ export const PRIVATE_LIVE_LEAGUE_SETTINGS: LeagueSettings = {
   shortcode: "APEX",
   tagline: "Private Live Testing Environment with Active Database Writes",
   seasonTitle: "2026 Live Season",
-  logoUrl: "/flagos-logo.png",
+  logoUrl: FLAGOS_LOGO_DARK,
   icon: "shield",
   primaryColor: "#10b981",
   accentColor: "#06b6d4",

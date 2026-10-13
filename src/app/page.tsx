@@ -41,7 +41,8 @@ import {
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
-import { renderFlagOS } from "@/components/FlagOSText";
+import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
+import { FlagOSLogo, FLAGOS_LOGO_DARK } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/lib/themeContext";
 
@@ -168,7 +169,7 @@ export default function FlagOSPlatformLandingPage() {
       primaryColor: "#0284c7",
       accentColor: "#38bdf8",
       tagline: "Premier competitive 5v5 tournament circuit",
-      logoUrl: "/flagos-emblem.png",
+      logoUrl: FLAGOS_LOGO_DARK,
       visibility: "public" as const,
     },
     {
@@ -182,7 +183,7 @@ export default function FlagOSPlatformLandingPage() {
       primaryColor: "#d97706",
       accentColor: "#f59e0b",
       tagline: "Fast-tempo non-contact 7-on-7 division",
-      logoUrl: "/flagos-emblem.png",
+      logoUrl: FLAGOS_LOGO_DARK,
       visibility: "public" as const,
     },
     {
@@ -196,7 +197,7 @@ export default function FlagOSPlatformLandingPage() {
       primaryColor: "#059669",
       accentColor: "#10b981",
       tagline: "British Columbia collegiate and adult flag league",
-      logoUrl: "/flagos-emblem.png",
+      logoUrl: FLAGOS_LOGO_DARK,
       visibility: "public" as const,
     },
   ];
@@ -221,8 +222,6 @@ export default function FlagOSPlatformLandingPage() {
     return matchesSearch && matchesFormat;
   });
 
-  const logoColour = mounted && resolvedTheme === "light" ? "/flagos-logo-original.png" : "/flagos-logo.png";
-
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
       {/* Dynamic Background Glows */}
@@ -237,18 +236,15 @@ export default function FlagOSPlatformLandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2.5 sm:gap-3.5 group min-w-0 shrink">
             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0">
-              <img
-                src={mounted && resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png"}
-                alt="FlagOS"
+              <FlagOSLogo
+                variant="emblem"
+                size="md"
                 className="w-full h-full object-contain drop-shadow"
               />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-2xl font-black uppercase tracking-wider leading-none">
-                  <span className="text-white font-black">FLAG</span>
-                  <span style={{ color: "#3CA505" }}>OS</span>
-                </span>
+                <FlagOSText className="text-xl sm:text-2xl leading-none" />
               </div>
               <span className="text-[10px] text-neutral-400 font-mono tracking-widest uppercase hidden sm:block mt-1">
                 The Flag Football Operating System
@@ -423,10 +419,11 @@ export default function FlagOSPlatformLandingPage() {
           {/* Official Logo */}
           <div className="flex flex-col items-center justify-center pt-1 pb-1">
             <div className="relative group">
-              <img
-                src={logoColour}
+              <FlagOSLogo
+                variant="hero"
+                size="hero"
                 alt="FlagOS - The Flag Football Operating System"
-                className="relative w-48 sm:w-64 md:w-72 h-auto object-contain drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300"
+                className="relative w-48 sm:w-64 md:w-72 h-auto"
               />
             </div>
           </div>

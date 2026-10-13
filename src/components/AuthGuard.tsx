@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield, PlayCircle } from "lucide-react";
+import { FlagOSLogo } from "@/components/FlagOSLogo";
 
 // The only pages publicly accessible without being logged in to an authorized email
 const PUBLIC_ROUTES = ["/", "/pricing", "/login"];
@@ -100,9 +101,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-emerald-600/15 rounded-full blur-[140px] pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center text-center space-y-4">
           <div className="relative">
-            <img
-              src="/flagos-emblem.png"
-              alt="FlagOS"
+            <FlagOSLogo
+              size="lg"
+              variant="emblem"
               className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_4px_20px_rgba(60,165,5,0.4)]"
             />
             <div className="absolute -inset-2 rounded-2xl bg-emerald-500/20 blur-md -z-10" />

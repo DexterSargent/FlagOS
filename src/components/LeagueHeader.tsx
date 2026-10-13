@@ -27,6 +27,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
+import { FlagOSLogo, getFlagOSLogoPath, isDefaultFlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/lib/themeContext";
 
@@ -101,25 +102,21 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   background: `linear-gradient(135deg, var(--league-primary), var(--league-accent))`,
                 }}
               >
-                {settings.logoUrl &&
-                settings.logoUrl !== "/flagos-logo.png" &&
-                settings.logoUrl !== "/flagos-emblem.png" &&
-                settings.logoUrl !== "/flagos-emblem-dark.png" &&
-                settings.logoUrl !== "/flagos-emblem-light.png" ? (
+                {!isDefaultFlagOSLogo(settings.logoUrl) ? (
                   <img
                     src={settings.logoUrl}
                     alt={settings.leagueName}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      e.currentTarget.src = resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png";
+                      e.currentTarget.src = getFlagOSLogoPath(resolvedTheme);
                     }}
                   />
                 ) : (
-                  <img
-                    src={resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png"}
-                    alt="FlagOS"
+                  <FlagOSLogo
+                    variant="emblem"
                     className="w-full h-full object-contain drop-shadow"
+                    alt={settings.leagueName || "FlagOS"}
                   />
                 )}
               </div>
