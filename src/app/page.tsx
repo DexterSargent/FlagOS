@@ -397,7 +397,7 @@ export default function FlagOSPlatformLandingPage() {
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight text-white leading-none">
-            The Operating System for Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 via-cyan-400 to-cyan-700"><br></br>Flag Football</span>
+            The Operating System for Modern <span className="text-[#7ED321] border border-white"><br></br>Flag Football</span>
           </h1>
 
           {/* Primary Action Buttons */}

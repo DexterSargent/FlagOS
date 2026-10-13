@@ -1183,19 +1183,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 <ChevronLeft className="w-6 h-6" />
               </Link>
             )}
-            <span className="hidden sm:inline-block px-2 py-1 rounded-lg bg-white/10 text-[10px] font-mono text-cyan-300 font-bold uppercase tracking-wider">
-              {settings.shortcode || "FLAG"}
-            </span>
-            <button onClick={resetPlay} className="flex items-center text-neutral-400 hover:text-white bg-black p-3 rounded-2xl border border-white/10" title="Reset Current Play">
+            <button onClick={resetPlay} className="flex items-center text-white bg-[#9b9b9b] p-3 rounded-2xl border border-white/10" title="Reset Current Play">
               <RotateCcw className="w-6 h-6" />
             </button>
-            <button onClick={handleUndoLastPlay} className="flex items-center text-neutral-400 hover:text-amber-500 bg-black p-3 rounded-2xl border border-white/10" title="Undo Last Play">
+            <button onClick={handleUndoLastPlay} className="flex items-center text-white hover:text-amber-500 bg-[#9b9b9b] p-3 rounded-2xl border border-white/10" title="Undo Last Play">
               <Undo className="w-6 h-6" />
             </button>
           </div>
-          <button onClick={() => setIsSubModalOpen(true)} className="flex items-center text-amber-500 hover:text-amber-400 bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20" title="Add Temporary Sub">
-            <Plus className="w-6 h-6 mr-1" /> Sub
-          </button>
         </div>
 
         <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full md:w-auto mt-2 md:mt-0">
@@ -1203,7 +1197,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <button
               disabled={homeTimeouts === 0}
               onClick={() => callTimeout('home')}
-              className="px-2 py-1 bg-neutral-950 border border-white/10 rounded-lg text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
+              className="px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
             >
               TO ({homeTimeouts})
             </button>
@@ -1220,7 +1214,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <span className="text-2xl md:text-3xl font-black text-cyan-400 leading-none">{homeScore}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 md:gap-2 bg-black px-2 md:px-4 py-1 md:py-2 rounded-3xl border border-white/10 group">
+          <div className="flex items-center gap-1 md:gap-2 bg-[#9b9b9b] px-2 md:px-4 py-1 md:py-2 rounded-3xl border border-white/10 group">
             <button
               onPointerDown={() => startAdjustingClock(-10)}
               onPointerUp={stopAdjustingClock}
@@ -1260,7 +1254,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <button
               disabled={awayTimeouts === 0}
               onClick={() => callTimeout('away')}
-              className="px-2 py-1 bg-neutral-950 border border-white/10 rounded-lg text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
+              className="px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
             >
               TO ({awayTimeouts})
             </button>

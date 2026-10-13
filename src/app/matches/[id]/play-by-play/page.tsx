@@ -96,30 +96,6 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   if (canAdministerMatch && matchData?.status !== "completed") {
     return (
       <div className="relative">
-        {/* Floating Mode Switcher Toggle Bar */}
-        <div className="fixed top-2.5 right-4 z-50 flex items-center gap-1 bg-black/90 backdrop-blur-xl p-1 rounded-xl border border-white/20 shadow-2xl text-[11px] font-bold">
-          <button
-            onClick={() => setActiveMode("sync")}
-            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-              activeMode === "sync"
-                ? "bg-cyan-500 text-black font-black shadow-md"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            ⚡ Synchronous Mode
-          </button>
-          <button
-            onClick={() => setActiveMode("async")}
-            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-              activeMode === "async"
-                ? "bg-emerald-500 text-black font-black shadow-md"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            📝 Asynchronous Mode
-          </button>
-        </div>
-
         {activeMode === "async" ? (
           <AsyncPlayByPlayManager matchId={matchId} backUrl={`/matches/${matchId}`} />
         ) : (
