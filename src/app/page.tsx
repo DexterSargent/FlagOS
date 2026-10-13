@@ -257,8 +257,8 @@ export default function FlagOSPlatformLandingPage() {
           </Link>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-neutral-300">
-            <a href="#features" className="hover:text-cyan-400 transition-colors">
+          <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-white">
+            <a href="#features" className="hover:text-cyan-400 transition-colors" style={{ color: "#7ED321" }}>
               Features
             </a>
             <a href="#interactive-demo" className="hover:text-cyan-400 transition-colors">
