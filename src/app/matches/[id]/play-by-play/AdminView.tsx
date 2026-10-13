@@ -1052,7 +1052,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </h2>
 
             <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-              Are you sure you want to completely reset this game? This will wipe the match session back to before the game started.
+              Are you sure you want to completely reset this game? This will clear the live game session back to before kickoff.
             </p>
 
             <div className="w-full bg-red-950/20 border border-red-500/20 rounded-2xl p-4 text-left text-xs sm:text-sm text-neutral-300 space-y-2.5 mb-6">
@@ -1066,7 +1066,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-red-400 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>Reverts to Scheduled:</strong> Match status will be restored to &quot;Scheduled&quot; (Pre-Game).</span>
+                <span><strong>Reverts to Scheduled:</strong> Game status will be restored to &quot;Scheduled&quot; (Pre-Game).</span>
               </div>
             </div>
 
@@ -1790,7 +1790,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
               <div className="flex items-center gap-2">
                 <Flag className="w-5 h-5 text-amber-400" />
-                <h3 className="text-lg font-black uppercase text-white">Live Match Play Log</h3>
+                <h3 className="text-lg font-black uppercase text-white">Live Game Play Log</h3>
               </div>
               <button
                 onClick={() => setIsPlayLogDrawerOpen(false)}

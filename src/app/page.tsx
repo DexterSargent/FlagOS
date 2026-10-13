@@ -742,7 +742,7 @@ export default function FlagOSPlatformLandingPage() {
                       }`}
                   >
                     <Play className="w-3.5 h-3.5" />
-                    <span>Asynchronous <br/>(Clockless)</span>
+                    <span>Asynchronous <br />(Clockless)</span>
                   </button>
                   <button
                     onClick={() => setWizardMode("sync")}
@@ -752,7 +752,7 @@ export default function FlagOSPlatformLandingPage() {
                       }`}
                   >
                     <Timer className="w-3.5 h-3.5" />
-                    <span> Synchronous <br/> (Live Clocks)</span>
+                    <span> Synchronous <br /> (Live Clocks)</span>
                   </button>
                 </span>
                 <span className="text-[11px] font-mono text-neutral-400 hidden md:inline">
@@ -1054,9 +1054,9 @@ export default function FlagOSPlatformLandingPage() {
           <div className="space-y-3">
             <h4 className="text-xs font-black uppercase tracking-wider text-white">Explore</h4>
             <ul className="space-y-2">
-              <li><a href="#features" className="hover:text-cyan-400 transition-colors">Features</a></li>
+              <li><a href="#features" className="hover:text-cyan-400 transition-colors">Key Features</a></li>
               <li><a href="#interactive-demo" className="hover:text-cyan-400 transition-colors">Interactive Demo</a></li>
-              <li><a href="#league-directory" className="hover:text-emerald-400 transition-colors">League Directory</a></li>
+              <li><a href="#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</a></li>
             </ul>
           </div>
           <div className="space-y-3">

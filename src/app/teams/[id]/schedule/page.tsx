@@ -233,25 +233,25 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
             <p className="text-neutral-400 text-sm mt-1">Upcoming matchups, box scores, and live game tracking.</p>
           </div>
 
-          {/* Schedule Match Button (League Admins Only) */}
+          {/* Schedule Game Button (League Admins Only) */}
           {isLeagueAdmin && (
             <button
               onClick={() => setIsScheduleModalOpen(true)}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
-              <span>Schedule Match (Named Opponent)</span>
+              <span>Schedule Game (Named Opponent)</span>
             </button>
           )}
         </div>
 
         {/* Schedule Grid: Upcoming & Past */}
         <div className="grid grid-cols-1 gap-8">
-          {/* Upcoming Matches */}
+          {/* Upcoming Games */}
           <div className="space-y-4">
             <div className="flex items-center gap-2.5 text-lg font-black uppercase tracking-wider text-emerald-400">
               <Clock className="w-5 h-5" />
-              <span>Upcoming Matches</span>
+              <span>Upcoming Games</span>
             </div>
 
             {upcomingMatches.length === 0 ? (
@@ -278,7 +278,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] font-mono text-neutral-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
-                              {m.week || "Matchday"}
+                              {m.week || "Gameday"}
                             </span>
                             {isAsyncMatch && (
                               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -455,8 +455,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                 <Calendar className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-black uppercase text-white">Schedule Exhibition Match</h3>
-                <p className="text-xs text-neutral-400">Independent match against a custom named opponent</p>
+                <h3 className="text-xl font-black uppercase text-white">Schedule Exhibition Game</h3>
+                <p className="text-xs text-neutral-400">Independent game against a custom named opponent</p>
               </div>
             </div>
 
@@ -552,7 +552,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                 disabled={isScheduling}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
-                <span>{isScheduling ? "Scheduling..." : "Confirm & Schedule Match"}</span>
+                <span>{isScheduling ? "Scheduling..." : "Confirm & Schedule Game"}</span>
               </button>
             </form>
           </div>

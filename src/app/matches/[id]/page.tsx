@@ -128,7 +128,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Match Not Found</h2>
+          <h2 className="text-2xl font-bold mb-4">Game Not Found</h2>
           <Link href="/schedule" className="text-cyan-400 hover:underline">Return to Schedule</Link>
         </div>
       </div>
@@ -199,11 +199,11 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
             <div className="flex items-start gap-3">
               <ShieldAlert className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-lg text-white">Match Administration</h3>
+                <h3 className="font-semibold text-lg text-white">Game Administration</h3>
                 <p className="text-sm text-neutral-400">
                   {matchData.isAsyncStatKeeping
-                    ? "Asynchronous clockless match tracking with First & Second Half scoring."
-                    : "Official live match tracking with game clock and play clock."}
+                    ? "Asynchronous clockless game tracking with First & Second Half scoring."
+                    : "Official live game tracking with game clock and play clock."}
                 </p>
               </div>
             </div>
@@ -266,7 +266,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   </button>
                   <button
                     onClick={() => {
-                      if (!confirm("Reset this demo match to pre-game state (0-0 score, all plays cleared)?")) return;
+                      if (!confirm("Reset this demo game to pre-game state (0-0 score, all plays cleared)?")) return;
                       deleteSandboxPlaysForMatch(matchId);
                       updateSandboxMatch(matchId, {
                         status: "scheduled",
@@ -279,7 +279,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                     }}
                     className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold rounded-xl border border-white/10 transition-all whitespace-nowrap text-xs"
                   >
-                    Reset Match
+                    Reset Game
                   </button>
                 </div>
               ) : null}
@@ -312,8 +312,8 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
           <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-white">Edit Event Details</h2>
-                <p className="text-xs text-neutral-400 mt-0.5">League Admin Event Management</p>
+                <h2 className="text-2xl font-bold text-white">Edit Game Details</h2>
+                <p className="text-xs text-neutral-400 mt-0.5">League Admin Game Management</p>
               </div>
               <button
                 onClick={() => setIsEditModalOpen(false)}

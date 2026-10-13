@@ -202,7 +202,7 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
 
     // None of the admin schedule actions should exist
     expect(screen.queryByRole("button", { name: /Auto Schedule Builder/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Create Match/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Schedule Game/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Playoff Format/i })).toBeNull();
     expect(screen.queryByTitle("Clear Schedule (Admin Reset)")).toBeNull();
     expect(screen.queryByTitle("Edit Event")).toBeNull();

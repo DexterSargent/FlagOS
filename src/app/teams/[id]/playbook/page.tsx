@@ -604,9 +604,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </p>
               {isDemoLeague && (
                 <div className="mt-4 p-3 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-cyan-300 text-left">
-                  <p className="font-bold text-cyan-200 mb-1">💡 Demo Sandbox Role Switcher Notice:</p>
+                  <p className="font-bold text-cyan-200 mb-1">Active Role: League Commissioner</p>
                   <p className="text-neutral-300">
-                    You are currently previewing as a <strong>League Commissioner</strong>. To test the interactive Playbook Studio, switch your demo role to <strong>Team Coach / Manager ({teamName})</strong> or <strong>Rostered Athlete ({teamName})</strong> using the Demo Role Switcher at the bottom-right.
+                    To access the Playbook Studio for {teamName}, select <strong>Team Coach ({teamName})</strong> or <strong>Rostered Athlete ({teamName})</strong> in the role bar.
                   </p>
                 </div>
               )}

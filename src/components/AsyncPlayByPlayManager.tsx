@@ -339,7 +339,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         setMatchStatus("completed");
         setActiveTab("play-by-play");
         setStep("IDLE");
-        alert("Match finalized successfully!");
+        alert("Game finalized successfully!");
         return;
       }
       await updateDoc(doc(db, "matches", matchId), {
@@ -355,7 +355,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       setMatchStatus("completed");
       setActiveTab("play-by-play");
       setStep("IDLE");
-      alert("Match finalized successfully!");
+      alert("Game finalized successfully!");
     } catch (e) {
       console.error("Error finalizing match:", e);
       alert("Failed to finalize game.");
@@ -1348,9 +1348,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto border border-red-500/30">
                     <Trophy className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-black uppercase text-white">Finalize Match</h3>
+                  <h3 className="text-2xl font-black uppercase text-white">Finalize Game</h3>
                   <p className="text-neutral-400 text-xs max-w-sm mx-auto">
-                    Are you ready to mark this match as completed? Final score will be recorded as:
+                    Are you ready to mark this game as completed? Final score will be recorded as:
                   </p>
                   <div className="text-3xl font-black text-white font-mono py-2">
                     {homeTeamName} {homeScore} - {awayScore} {awayTeamName}
@@ -1362,13 +1362,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     onClick={() => setStep("IDLE")}
                     className="py-3 px-6 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs uppercase tracking-wider transition-all"
                   >
-                    Resume Match
+                    Resume Game
                   </button>
                   <button
                     onClick={finalizeGame}
                     className="py-3 px-6 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg"
                   >
-                    Confirm & Complete Match
+                    Confirm Final Score
                   </button>
                 </div>
               </div>
@@ -1380,7 +1380,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         {activeTab === "play-by-play" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-black uppercase text-white">Match Play Log</h3>
+              <h3 className="text-xl font-black uppercase text-white">Game Play Log</h3>
               <span className="text-xs text-neutral-400 font-mono">
                 {plays.length} Total Plays (Asynchronous)
               </span>

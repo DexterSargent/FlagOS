@@ -48,7 +48,7 @@ export interface BracketRound {
 }
 
 /**
- * Calculates current seasonal standings based on completed regular season fixtures.
+ * Calculates current seasonal standings based on completed regular season games.
  */
 export function calculateStandings(
   teams: any[],

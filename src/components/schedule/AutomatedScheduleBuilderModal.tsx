@@ -161,7 +161,7 @@ export default function AutomatedScheduleBuilderModal({
 
       await new Promise((r) => setTimeout(r, 180));
       setBuildProgress(Math.min(75, 20 + Math.round((w / totalRounds) * 55)));
-      setCurrentStepText(`Synthesizing Week ${w} fixtures across ${fieldsToUse.length} field venues...`);
+      setCurrentStepText(`Scheduling Week ${w} matchups across ${fieldsToUse.length} field venues...`);
 
       // Round-robin pairing algorithm
       const rotation = (w - 1) % (teamPool.length - 1);
@@ -721,7 +721,7 @@ export default function AutomatedScheduleBuilderModal({
                     <span>Regenerating will delete your existing schedule</span>
                   </div>
                   <p className="text-[11px] leading-relaxed text-rose-200/90">
-                    Generating a new schedule will delete your current <strong>{existingMatchesCount} fixtures</strong>.
+                    Generating a new schedule will delete your current <strong>{existingMatchesCount} games</strong>.
                     A single backup copy will be archived for <strong>24 hours</strong> so you can restore it if done accidentally.
                     If you regenerate again later, the previous backup is permanently replaced and a fresh 24-hour countdown starts.
                   </p>
@@ -754,7 +754,7 @@ export default function AutomatedScheduleBuilderModal({
               {/* Live Streaming Terminal / Fixture Feed */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400 px-1">
-                  <span>Synthesized Fixtures Stream</span>
+                  <span>Generated Game Slate</span>
                   <span className="text-cyan-400 font-bold">{generatedStream.length} Slotted</span>
                 </div>
 
@@ -803,7 +803,7 @@ export default function AutomatedScheduleBuilderModal({
                   Season Schedule Built Successfully!
                 </h4>
                 <p className="text-xs md:text-sm text-neutral-400 max-w-md mx-auto">
-                  {generatedStream.length} fixtures scheduled across {weeksCount} regular season weeks,
+                  {generatedStream.length} games scheduled across {weeksCount} regular season weeks,
                   with a Top {playoffTeamsCount} elimination bracket initialized.
                 </p>
               </div>
@@ -812,7 +812,7 @@ export default function AutomatedScheduleBuilderModal({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg mx-auto pt-2">
                 <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
                   <div className="text-xl font-black text-white">{generatedStream.length}</div>
-                  <div className="text-[10px] font-mono text-neutral-400 uppercase">Total Matches</div>
+                  <div className="text-[10px] font-mono text-neutral-400 uppercase">Total Games</div>
                 </div>
                 <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5">
                   <div className="text-xl font-black text-cyan-400">{weeksCount}</div>

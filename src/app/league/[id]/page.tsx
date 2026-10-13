@@ -756,7 +756,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   className="px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Create Match</span>
+                  <span>Schedule Game</span>
                 </Link>
 
                 <Link
@@ -1181,7 +1181,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   <span className="text-sm font-black uppercase tracking-wider text-white">Next Matchup Spotlight</span>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 font-mono text-xs font-bold border border-cyan-500/30">
-                  {managedTeamUpcoming.week || "Matchday"}
+                  {managedTeamUpcoming.week || "Gameday"}
                 </span>
               </div>
 
@@ -1761,7 +1761,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-xs font-bold border border-emerald-500/30">
-                    {myPlayerUpcomingMatch.week || "Upcoming Matchday"}
+                    {myPlayerUpcomingMatch.week || "Upcoming Gameday"}
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-mono text-[10px] font-bold border border-cyan-500/20 hidden sm:inline-block">
                     Kickoff Ready
@@ -1850,7 +1850,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     href={`/matches/${myPlayerUpcomingMatch.id}`}
                     className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/15 transition-all flex items-center gap-2"
                   >
-                    <span>Match Center & Game Preview →</span>
+                    <span>Game Center & Matchup Preview →</span>
                   </Link>
                 </div>
               </div>
@@ -2293,7 +2293,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               <div className="flex items-center gap-2 text-neutral-400">
                 <Sliders className="w-4 h-4 text-emerald-400" />
                 <span>
-                  Testing Mode: Logged in as{" "}
+                  Active Athlete: Signed in as{" "}
                   <strong className="text-white">#{pNumber} {pName}</strong>
                 </span>
               </div>
@@ -2971,7 +2971,7 @@ function LiveAndUpcomingGamesSection({
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 font-mono text-neutral-400">
-                        <span className="font-bold text-white uppercase">{m.week || "Matchday"}</span>
+                        <span className="font-bold text-white uppercase">{m.week || "Gameday"}</span>
                       </div>
                     )}
 
@@ -3097,14 +3097,14 @@ function LiveAndUpcomingGamesSection({
                     </Link>
                   ) : isEmbedded ? (
                     <div className="w-full py-2.5 px-3 bg-surface-muted text-neutral-400 text-xs font-bold rounded-xl border border-line text-center flex items-center justify-center gap-1.5 cursor-default">
-                      <span>Match Scheduled</span>
+                      <span>Game Scheduled</span>
                     </div>
                   ) : (
                     <Link
                       href={isLeagueAdmin ? `/matches/${m.id}/play-by-play` : `/matches/${m.id}`}
                       className="w-full py-2.5 px-3 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line text-center transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <span>{isLeagueAdmin ? "Launch Scorekeeper" : "Match Preview & Details"}</span>
+                      <span>{isLeagueAdmin ? "Launch Scorekeeper" : "Game Preview & Details"}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
                   )}

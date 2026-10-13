@@ -113,14 +113,14 @@ export default function RoleSwitcherBar() {
 
   if (isCollapsed) {
     return (
-      <aside aria-label="Demo Testing Role Switcher" className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+      <aside aria-label="Role Switcher" className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
         <ThemeToggle size="md" />
         <button
           onClick={() => setIsCollapsed(false)}
           className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-neutral-900/95 border border-cyan-500/40 text-white shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.35)] backdrop-blur-md hover:border-cyan-400 transition-all text-xs font-bold"
         >
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-          <span className="text-[10px] uppercase font-mono tracking-widest text-cyan-300">Demo Role:</span>
+          <span className="text-[10px] uppercase font-mono tracking-widest text-cyan-300">Active Role:</span>
           <span>
             {role === "player" || isPlayer
               ? `Player (${currentPlayer?.playerName || "Athlete"})`
@@ -138,18 +138,18 @@ export default function RoleSwitcherBar() {
 
   return (
     <aside
-      aria-label="Demo Testing Role Switcher"
+      aria-label="Role Switcher"
       className="relative z-40 bg-[#070A11]/95 border-b border-cyan-500/30 px-3 sm:px-4 py-1.5 backdrop-blur-md shadow-xl shadow-black/60 text-xs"
     >
       <div className="w-full max-w-[1700px] mx-auto flex flex-wrap md:flex-nowrap items-center justify-between gap-2 xl:gap-3">
-        {/* Left: Indicator & Demo Badge */}
+        {/* Left: Indicator & Role Badge */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-mono text-[10px] font-bold shrink-0">
             <Sparkles className="w-3 h-3 text-cyan-400 animate-pulse" />
-            <span className="tracking-wide">DEMO SANDBOX</span>
+            <span className="tracking-wide">ROLE SWITCHER</span>
           </div>
           <span className="hidden 2xl:inline text-[11px] text-neutral-400 font-medium truncate">
-            Test roles freely • Isolated to your session
+            Switch League Context • Session Isolated
           </span>
         </div>
 
@@ -158,7 +158,7 @@ export default function RoleSwitcherBar() {
           {/* League Admin Toggle */}
           <button
             onClick={() => handleSelectRole("league_admin")}
-            title="Experience full commissioner control: edit rules, manage schedule & launch play-by-play"
+            title="Commissioner view: configure rules, manage schedule & launch play-by-play"
             className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "league_admin"
                 ? "bg-amber-500 text-black shadow-md shadow-amber-500/20 font-black"
@@ -172,7 +172,7 @@ export default function RoleSwitcherBar() {
           {/* Team Admin Toggle */}
           <button
             onClick={() => handleSelectRole("team_admin")}
-            title="Experience team manager control: franchise portal, independent scheduling & async stat-keeping"
+            title="Team manager view: franchise portal, exhibition games & async stat tracking"
             className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "team_admin"
                 ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20 font-black"
@@ -186,7 +186,7 @@ export default function RoleSwitcherBar() {
           {/* Player Toggle */}
           <button
             onClick={() => handleSelectRole("player")}
-            title="Experience rostered athlete view: personal box score, athlete profile & team playbook"
+            title="Rostered athlete view: personal stats, player profile & team playbook"
             className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "player"
                 ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-black"
@@ -200,7 +200,7 @@ export default function RoleSwitcherBar() {
           {/* Regular User Toggle */}
           <button
             onClick={() => handleSelectRole("user")}
-            title="Experience spectator fan view: public schedule, leaderboards & game box scores"
+            title="Spectator view: public schedule, standings & game box scores"
             className={`flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-xs ${
               role === "user"
                 ? "bg-slate-300 dark:bg-neutral-200 text-black shadow-md font-black"
@@ -276,7 +276,7 @@ export default function RoleSwitcherBar() {
           <button
             onClick={openCustomizer}
             className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-neutral-200 font-bold border border-slate-200 dark:border-white/20 text-[11px] transition-all shadow-sm cursor-pointer shrink-0"
-            title="Customize demo league rules, colors, and branding"
+            title="Configure league rules, colors, and branding"
           >
             <Settings className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
             <span className="hidden sm:inline">Settings</span>
@@ -287,7 +287,7 @@ export default function RoleSwitcherBar() {
             <ThemeToggle size="sm" />
           </div>
 
-          {/* Reset Demo Session Button */}
+          {/* Reset Session Button */}
           <button
             onClick={handleResetSession}
             className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-all shadow-sm cursor-pointer border shrink-0 whitespace-nowrap ${
@@ -295,10 +295,10 @@ export default function RoleSwitcherBar() {
                 ? "bg-red-600 text-white border-red-500 animate-pulse font-black"
                 : "bg-red-500/10 hover:bg-red-500/20 text-red-300 border-red-500/30"
             }`}
-            title="Reset this session back to pristine demo state"
+            title="Reset current session to original defaults"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>{resetConfirm ? "Confirm Reset?" : "Reset Demo"}</span>
+            <span>{resetConfirm ? "Confirm Reset?" : "Reset Session"}</span>
           </button>
 
           {/* Minimize Button */}

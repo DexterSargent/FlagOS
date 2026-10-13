@@ -833,7 +833,7 @@ export default function LeagueCustomizerModal() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    Default Match Field / Complex
+                    Default Game Field / Complex
                   </label>
                   <input
                     type="text"
@@ -1510,7 +1510,7 @@ export default function LeagueCustomizerModal() {
                     </span>
                   </div>
                   <span className="text-[11px] text-cyan-100/70 block mt-0.5">
-                    Current active gameplay parameters set by the League Commissioner for all teams and matches.
+                    Current active gameplay parameters set by the League Commissioner for all teams and games.
                   </span>
                 </div>
               </div>
@@ -1524,7 +1524,7 @@ export default function LeagueCustomizerModal() {
                 <span className="text-[10px] text-neutral-400 mt-0.5">Per side on field</span>
               </div>
               <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex flex-col">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Match Clock</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Game Clock</span>
                 <span className="text-xl font-black font-mono text-white mt-1">
                   {rules.periodsCount} × {rules.periodDurationMinutes}m
                 </span>
@@ -1561,11 +1561,11 @@ export default function LeagueCustomizerModal() {
                   </span>
                 </div>
                 <div className="p-3 rounded-xl bg-black/30 border border-white/5 text-[11px] text-neutral-300 leading-relaxed">
-                  The play designer, defensive alignment, and match sheets operate on a <strong>{rules.playersOnField}-player per side</strong> format.
+                  The play designer, defensive alignment, and rosters operate on a <strong>{rules.playersOnField}-player per side</strong> format.
                 </div>
               </div>
 
-              {/* Card 2: Match Timing */}
+              {/* Card 2: Game Timing */}
               <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-blue-500/30 transition-all flex flex-col justify-between space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
