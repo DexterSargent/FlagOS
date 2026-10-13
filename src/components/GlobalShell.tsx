@@ -9,21 +9,14 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [isEmbedded, setIsEmbedded] = useState(() => {
-    if (typeof window !== "undefined") {
-      const isEmbedQuery = window.location.search.includes("embed=true");
-      const isIframe = window.self !== window.top;
-      return isEmbedQuery || (isIframe && isEmbedQuery);
-    }
-    return false;
-  });
+  // Always initialize to false so server HTML matches the first client render.
+  // The real embedded state is determined in useEffect (client-only).
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const isEmbedQuery = window.location.search.includes("embed=true");
-      const isIframe = window.self !== window.top;
-      setIsEmbedded(isEmbedQuery || (isIframe && isEmbedQuery));
-    }
+    const isEmbedQuery = window.location.search.includes("embed=true");
+    const isIframe = window.self !== window.top;
+    setIsEmbedded(isEmbedQuery || (isIframe && isEmbedQuery));
   }, [pathname, searchParams]);
 
   // Certain views require full-screen chrome-less layout:
