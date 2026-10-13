@@ -31,30 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var saved = localStorage.getItem('flagos_theme_mode_v2');
-                  // Default to 'dark' for first-time visitors with no saved preference
-                  var mode = (saved === 'dark' || saved === 'light' || saved === 'system') ? saved : 'dark';
-                  var resolved = mode === 'system'
-                    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-                    : mode;
-                  var root = document.documentElement;
-                  root.classList.remove('light', 'dark');
-                  root.classList.add(resolved);
-                  root.setAttribute('data-theme', resolved);
-                  root.style.colorScheme = resolved;
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-150" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-150">
         <AuthProvider>
           <ThemeProvider>
             <LeagueProvider>

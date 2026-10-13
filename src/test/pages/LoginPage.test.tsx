@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LoginPage from "@/app/login/page";
 
-const { loginWithEmailAndPasswordMock, routerPushMock, useAuthMock } = vi.hoisted(() => ({
+const { createAccountMock, loginWithEmailAndPasswordMock, routerPushMock, useAuthMock } = vi.hoisted(() => ({
+  createAccountMock: vi.fn(),
   loginWithEmailAndPasswordMock: vi.fn(),
   routerPushMock: vi.fn(),
   useAuthMock: vi.fn(),
@@ -29,6 +30,7 @@ describe("LoginPage email/password sign-in", () => {
   beforeEach(() => {
     useAuthMock.mockReturnValue({
       user: null,
+      userProfile: null,
       role: "user",
       isAuthorized: false,
       isLeagueAdmin: false,
@@ -40,11 +42,13 @@ describe("LoginPage email/password sign-in", () => {
       loading: false,
       login: vi.fn(async () => ({ success: true })),
       loginWithEmailAndPassword: loginWithEmailAndPasswordMock,
+      createAccount: createAccountMock,
       loginWithPlayerEmail: vi.fn(),
       logout: vi.fn(),
       setDevRole: vi.fn(),
     });
     loginWithEmailAndPasswordMock.mockReset();
+    createAccountMock.mockReset();
     routerPushMock.mockReset();
   });
 
@@ -88,5 +92,58 @@ describe("LoginPage email/password sign-in", () => {
       "Email/password sign-in is disabled."
     );
     expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
+  it("creates an account without selecting a league role", async () => {
+    createAccountMock.mockResolvedValue({ success: true });
+    render(<LoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create an account" }));
+    fireEvent.change(screen.getByPlaceholderText("Name (optional)"), {
+      target: { value: "Taylor Player" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "taylor@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password (at least 6 characters)"), {
+      target: { value: "a-secure-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    await waitFor(() => {
+      expect(createAccountMock).toHaveBeenCalledWith(
+        "Taylor Player",
+        "taylor@example.com",
+        "a-secure-password"
+      );
+    });
+    expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
+  it("explains that a signed-in account can have league-specific roles", () => {
+    useAuthMock.mockReturnValue({
+      user: { email: "taylor@example.com" },
+      userProfile: { uid: "user-1", email: "taylor@example.com" },
+      role: "user",
+      isAuthorized: false,
+      isLeagueAdmin: false,
+      isTeamAdmin: () => false,
+      isPlayer: false,
+      playerId: null,
+      playerData: null,
+      managedTeamId: null,
+      loading: false,
+      login: vi.fn(),
+      loginWithEmailAndPassword: loginWithEmailAndPasswordMock,
+      createAccount: createAccountMock,
+      loginWithPlayerEmail: vi.fn(),
+      logout: vi.fn(),
+      setDevRole: vi.fn(),
+    });
+
+    render(<LoginPage />);
+
+    expect(screen.getByText("Account ready — no league role assigned")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Explore league options" })).toHaveAttribute("href", "/pricing");
   });
 });

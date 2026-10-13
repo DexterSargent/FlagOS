@@ -246,7 +246,7 @@ export default function FlagOSPlatformLandingPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-black uppercase tracking-wider leading-none">
-                  <span className="text-white font-black" style={{ borderColor: "unset" }}>FLAG</span>
+                  <span className="text-white font-black">FLAG</span>
                   <span style={{ color: "#3CA505" }}>OS</span>
                 </span>
               </div>
