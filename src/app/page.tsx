@@ -265,7 +265,6 @@ export default function FlagOSPlatformLandingPage() {
               Interactive Demo
             </a>
             <a href="#league-directory" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90">
-              <Globe className="w-3.5 h-3.5 text-emerald-400" />
               <span>League Directory</span>
             </a>
             <Link href="/pricing" className="text-amber-400/90 hover:text-amber-300 transition-colors flex items-center gap-1.5">
