@@ -22,7 +22,7 @@ function isShowcaseRoute(path: string): boolean {
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isPlayer, isAuthorized, loading, logout } = useAuth();
+  const { user, userProfile, isPlayer, isAuthorized, loading, logout } = useAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
 
   // Synchronous client/server evaluation:
@@ -173,13 +173,15 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] font-bold text-amber-400 uppercase tracking-wider">
               <Lock className="w-3.5 h-3.5" />
-              <span>Access Restricted</span>
+              <span>{userProfile?.role ? "Access Restricted" : "No League Membership Yet"}</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
-              Private League Portal
+              {userProfile?.role ? "Private League Portal" : "Your account is ready"}
             </h1>
             <p className="text-neutral-400 text-xs max-w-sm mx-auto leading-relaxed">
-              For security and athlete privacy, schedules, rosters, and playbooks on FlagOS are restricted to verified coaches, rostered athletes, and league commissioners.
+              {userProfile?.role
+                ? "For security and athlete privacy, schedules, rosters, and playbooks on FlagOS are restricted to verified coaches, rostered athletes, and league commissioners."
+                : "Your FlagOS account has no global role. Join a league as a player or create a league to become its commissioner; your role is specific to each league."}
             </p>
           </div>
 
@@ -193,22 +195,34 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
               <span className="truncate">{user?.email || "Unregistered Account"}</span>
             </div>
             <p className="text-[11px] text-amber-300/80 pt-1">
-              This email address is not registered to an active league, coaching staff, or player roster.
+              {userProfile?.role
+                ? "This email address is not registered to an active league, coaching staff, or player roster."
+                : "You can have different memberships and permissions in different leagues."}
             </p>
           </div>
 
           {/* Action CTAs */}
           <div className="w-full space-y-2.5">
-            <button
-              onClick={async () => {
-                await logout();
-                router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
-              }}
-              className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-98"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In With Authorized Account</span>
-            </button>
+            {userProfile?.role ? (
+              <button
+                onClick={async () => {
+                  await logout();
+                  router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+                }}
+                className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-98"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In With Authorized Account</span>
+              </button>
+            ) : (
+              <Link
+                href="/pricing"
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg active:scale-98"
+              >
+                <ArrowRight className="w-4 h-4" />
+                <span>Explore leagues</span>
+              </Link>
+            )}
 
             <Link
               href="/"
