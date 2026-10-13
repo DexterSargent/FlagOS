@@ -783,9 +783,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   }
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden">
+    <div className="min-h-[100dvh] md:h-[100dvh] md:min-h-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-x-hidden md:overflow-hidden">
       {/* Top Banner & Navigation */}
-      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-6 py-3 flex items-center justify-between sticky top-0 z-30">
+      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-3 md:px-5 py-2 md:py-2.5 flex items-center justify-between shrink-0 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           {!isEmbedded && (
             <Link
@@ -837,30 +837,30 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       </header>
 
       {/* CLOCKLESS SCOREBOARD HEADER (TIMERS & TIMEOUTS REMOVED) */}
-      <div className="bg-gradient-to-b from-neutral-950 to-neutral-900 border-b border-white/10 p-6 md:p-8 relative">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+      <div className="bg-gradient-to-b from-neutral-950 to-neutral-900 border-b border-white/10 p-2.5 md:p-3 relative shrink-0">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* HOME TEAM */}
-          <div className="flex flex-col items-center gap-2 flex-1">
+          <div className="flex flex-col items-center gap-1 flex-1">
             <div className="flex items-center gap-2">
-              <TeamLogo teamName={homeTeamName} className="w-7 h-7" />
-              <span className="text-sm md:text-xl font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none">
+              <TeamLogo teamName={homeTeamName} className="w-5 h-5 md:w-6 md:h-6" />
+              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none">
                 {homeTeamName}
               </span>
               {possession === homeTeamName && (
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Possession" />
               )}
             </div>
-            <span className="text-5xl md:text-7xl font-black tabular-nums tracking-tighter text-white">
+            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter text-white">
               {homeScore}
             </span>
           </div>
 
           {/* PERIOD BADGE (FIRST HALF / SECOND HALF ONLY - NO TIMERS) */}
-          <div className="flex flex-col items-center justify-center gap-1.5 px-4 md:px-8 py-3 rounded-2xl bg-black/60 border border-white/10 shadow-inner">
-            <span className="text-[10px] md:text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+          <div className="flex flex-col items-center justify-center gap-0.5 px-2 md:px-5 py-1.5 rounded-xl bg-black/60 border border-white/10 shadow-inner">
+            <span className="text-[8px] md:text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">
               Current Period
             </span>
-            <span className="text-xl md:text-2xl font-black tracking-wider uppercase text-white">
+            <span className="text-sm md:text-lg font-black tracking-wider uppercase text-white">
               {half === 1 ? "First Half" : "Second Half"}
             </span>
             <div className="px-3 py-0.5 rounded-full bg-white/10 text-[11px] font-bold text-neutral-300">
@@ -869,17 +869,17 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </div>
 
           {/* AWAY TEAM */}
-          <div className="flex flex-col items-center gap-2 flex-1">
+          <div className="flex flex-col items-center gap-1 flex-1">
             <div className="flex items-center gap-2">
               {possession === awayTeamName && (
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Possession" />
               )}
-              <span className="text-sm md:text-xl font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none text-neutral-300">
+              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none text-neutral-300">
                 {awayTeamName}
               </span>
-              <TeamLogo teamName={awayTeamName} className="w-7 h-7" />
+              <TeamLogo teamName={awayTeamName} className="w-5 h-5 md:w-6 md:h-6" />
             </div>
-            <span className="text-5xl md:text-7xl font-black tabular-nums tracking-tighter text-neutral-300">
+            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter text-neutral-300">
               {awayScore}
             </span>
           </div>
@@ -887,12 +887,12 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 max-w-4xl mx-auto w-full p-6 md:p-8">
+      <main className="flex flex-col flex-1 min-h-0 w-full p-2 md:p-3 overflow-visible md:overflow-hidden">
         {/* TAB 1: INTERACTIVE STAT KEEPER */}
         {activeTab === "tracker" && (
-          <div className="space-y-6">
+          <div className="flex flex-col flex-1 min-h-0 space-y-2">
             {/* MASTER PERIOD & ACTION CONTROLS */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-neutral-900/60 border border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0">
               <div className="flex items-center gap-2 text-xs font-bold text-neutral-300">
                 <span>Possession:</span>
                 <button
@@ -998,8 +998,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: PLAY_TYPE -> Choose Pass, Run, or Penalty */}
             {step === "PLAY_TYPE" && (
-              <div className="bg-neutral-900 border border-white/10 rounded-3xl p-8 space-y-6 shadow-2xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex-1 min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-5 flex flex-col gap-3 md:gap-4 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
                   <div>
                     <h3 className="text-xl font-black uppercase text-white">Select Play Type</h3>
                     <p className="text-xs text-neutral-400">
@@ -1014,28 +1014,28 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 min-h-0">
                   <button
                     onClick={() => handlePlayTypeSelect("Pass")}
-                    className="py-10 px-6 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500 text-white font-black text-2xl uppercase tracking-wider flex flex-col items-center gap-3 transition-all cursor-pointer group"
+                    className="min-h-28 md:min-h-0 py-3 md:py-5 px-2 md:px-4 rounded-xl md:rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500 text-white font-black text-sm md:text-xl uppercase tracking-wider flex flex-col items-center justify-center gap-1.5 md:gap-3 transition-all cursor-pointer group"
                   >
-                    <span className="text-4xl group-hover:scale-110 transition-transform">🏈</span>
+                    <span className="text-2xl md:text-4xl group-hover:scale-110 transition-transform">🏈</span>
                     <span>PASS PLAY</span>
                   </button>
 
                   <button
                     onClick={() => handlePlayTypeSelect("Run")}
-                    className="py-10 px-6 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500 text-white font-black text-2xl uppercase tracking-wider flex flex-col items-center gap-3 transition-all cursor-pointer group"
+                    className="min-h-28 md:min-h-0 py-3 md:py-5 px-2 md:px-4 rounded-xl md:rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500 text-white font-black text-sm md:text-xl uppercase tracking-wider flex flex-col items-center justify-center gap-1.5 md:gap-3 transition-all cursor-pointer group"
                   >
-                    <span className="text-4xl group-hover:scale-110 transition-transform">⚡</span>
+                    <span className="text-2xl md:text-4xl group-hover:scale-110 transition-transform">⚡</span>
                     <span>RUN PLAY</span>
                   </button>
 
                   <button
                     onClick={() => handlePlayTypeSelect("Penalty")}
-                    className="py-10 px-6 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500 text-white font-black text-2xl uppercase tracking-wider flex flex-col items-center gap-3 transition-all cursor-pointer group shadow-lg shadow-amber-500/5"
+                    className="min-h-28 md:min-h-0 py-3 md:py-5 px-2 md:px-4 rounded-xl md:rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500 text-white font-black text-sm md:text-xl uppercase tracking-wider flex flex-col items-center justify-center gap-1.5 md:gap-3 transition-all cursor-pointer group shadow-lg shadow-amber-500/5"
                   >
-                    <span className="text-4xl group-hover:scale-110 transition-transform">🚩</span>
+                    <span className="text-2xl md:text-4xl group-hover:scale-110 transition-transform">🚩</span>
                     <span>PENALTY</span>
                   </button>
                 </div>
@@ -1044,7 +1044,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: DETAILS -> Penalty Wizard Step OR Pass/Run Details */}
             {step === "DETAILS" && playType === "Penalty" && (
-              <div className="bg-neutral-900 border border-amber-500/30 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+              <div className="flex-1 min-h-0 bg-neutral-900 border border-amber-500/30 rounded-2xl p-2 md:p-3 overflow-y-auto md:overflow-hidden shadow-2xl">
                 <PenaltyWizardStep
                   possessionTeamName={possession}
                   defendingTeamName={possession === homeTeamName ? awayTeamName : homeTeamName}
@@ -1059,8 +1059,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
             )}
 
             {step === "DETAILS" && playType !== "Penalty" && (
-              <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex-1 min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-4 grid grid-cols-1 md:grid-cols-2 content-start gap-2 md:gap-3 shadow-2xl overflow-y-auto md:overflow-hidden">
+                <div className="md:col-span-2 flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
                   <div>
                     <h3 className="text-xl font-black uppercase text-white">
                       {playType} Play Details
@@ -1078,11 +1078,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {/* Outcome Toggle */}
-                <div>
-                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                <div className="md:col-span-2">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
                     Play Outcome
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {playType === "Pass" ? (
                       <>
                         {[
@@ -1097,7 +1097,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                             key={opt.id}
                             type="button"
                             onClick={() => setOutcome(opt.id as any)}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+                            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
                               outcome === opt.id
                                 ? "bg-emerald-500 text-black border-emerald-500 font-black"
                                 : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
@@ -1133,17 +1133,17 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {/* Quarterback / Runner Selection */}
-                <div>
-                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                <div className="min-w-0">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
                     {playType === "Pass" ? "Quarterback" : "Ball Carrier"}
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-20 md:max-h-24 overflow-y-auto">
                     {offensePlayers.map((p) => (
                       <button
                         key={p}
                         type="button"
                         onClick={() => setQbRunner(p)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all border ${
                           qbRunner === p
                             ? "bg-white text-black font-black border-white"
                             : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
@@ -1157,11 +1157,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
                 {/* Receiver Selection (for Complete pass) */}
                 {playType === "Pass" && outcome === "Complete" && (
-                  <div>
-                    <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                  <div className="min-w-0">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
                       Target Receiver
                     </label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-20 md:max-h-24 overflow-y-auto">
                       {offensePlayers.map((p) => (
                         <button
                           key={p}
@@ -1181,11 +1181,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 )}
 
                 {/* Defenders / Flag Pullers */}
-                <div>
-                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider block mb-2">
+                <div className="md:col-span-2">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
                     Defenders Involved / Flag Pull
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-1 max-h-20 md:max-h-24 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => handleDefenders("TEAM")}
@@ -1215,46 +1215,46 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {/* ACTION RESULTS BUTTONS */}
-                <div className="border-t border-white/10 pt-4 space-y-2">
+                <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1">
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
                     Save Play Result
                   </span>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
                     <button
                       onClick={() => handleSavePlay("Touchdown")}
-                      className="py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-xs uppercase tracking-wider shadow-lg transition-all"
+                      className="py-2 px-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-[10px] uppercase tracking-wider shadow-lg transition-all"
                     >
                       TOUCHDOWN (+6)
                     </button>
                     <button
                       onClick={() => handleSavePlay("First Down")}
-                      className="py-3 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-all"
                     >
                       FIRST DOWN
                     </button>
                     <button
                       onClick={() => handleSavePlay("Next Down")}
-                      className="py-3 px-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all"
                     >
                       NEXT DOWN
                     </button>
                     {outcome === "Interception" && (
                       <button
                         onClick={() => handleSavePlay("Pick 6")}
-                        className="py-3 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider shadow-lg transition-all"
+                        className="py-2 px-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg transition-all"
                       >
                         PICK 6 (+6)
                       </button>
                     )}
                     <button
                       onClick={() => handleSavePlay("Turnover")}
-                      className="py-3 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider transition-all"
                     >
                       TURNOVER
                     </button>
                     <button
                       onClick={() => handleSavePlay("Safety")}
-                      className="py-3 px-3 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-xs uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-[10px] uppercase tracking-wider transition-all"
                     >
                       SAFETY (+2 DEF)
                     </button>
@@ -1265,7 +1265,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: CONVERSION (PAT 1PT or 2PT) */}
             {step === "CONVERSION" && (
-              <div className="bg-neutral-900 border border-emerald-500/40 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+              <div className="flex-1 min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-3 md:p-4 flex flex-col gap-3 md:gap-4 shadow-2xl overflow-y-auto md:overflow-hidden">
                 <div className="space-y-1 text-center">
                   <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
                     Touchdown Scored!
@@ -1274,11 +1274,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   <p className="text-xs text-neutral-400">Select attempt value and result</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 md:gap-3">
                   <button
                     type="button"
                     onClick={() => setConvPts(1)}
-                    className={`py-6 px-4 rounded-2xl border text-center font-black transition-all ${
+                    className={`py-3 md:py-4 px-3 rounded-xl border text-center font-black transition-all ${
                       convPts === 1
                         ? "bg-emerald-500 text-black border-emerald-500 shadow-lg"
                         : "bg-neutral-800 border-white/10 text-white"
@@ -1291,7 +1291,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   <button
                     type="button"
                     onClick={() => setConvPts(2)}
-                    className={`py-6 px-4 rounded-2xl border text-center font-black transition-all ${
+                    className={`py-3 md:py-4 px-3 rounded-xl border text-center font-black transition-all ${
                       convPts === 2
                         ? "bg-emerald-500 text-black border-emerald-500 shadow-lg"
                         : "bg-neutral-800 border-white/10 text-white"
@@ -1303,7 +1303,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {convPts && (
-                  <div className="space-y-4 pt-2">
+                  <div className="space-y-2 pt-1">
                     <div className="flex justify-center gap-4">
                       <button
                         type="button"
@@ -1332,7 +1332,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     <button
                       onClick={finalizeConversion}
                       disabled={convIsGood === null}
-                      className="w-full py-3.5 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
                     >
                       Confirm Conversion & Flip Possession
                     </button>
@@ -1343,7 +1343,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: GAME_OVER MODAL */}
             {step === "GAME_OVER" && (
-              <div className="bg-neutral-900 border border-red-500/40 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl text-center">
+              <div className="flex-1 min-h-0 bg-neutral-900 border border-red-500/40 rounded-2xl p-3 md:p-5 flex flex-col justify-center gap-3 shadow-2xl text-center overflow-y-auto md:overflow-hidden">
                 <div className="space-y-2">
                   <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto border border-red-500/30">
                     <Trophy className="w-6 h-6" />

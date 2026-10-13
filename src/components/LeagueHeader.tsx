@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useTheme } from "@/lib/themeContext";
 
 interface LeagueHeaderProps {
   activePage?: "league" | "schedule" | "stats" | "teams" | "playbook" | "join" | "pricing";
@@ -35,6 +36,7 @@ interface LeagueHeaderProps {
 
 export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
   const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
   const { settings, openCustomizer, activeLeagueId, userLeagues, switchLeague, isDemoLeague } = useLeague();
   const { role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId } = useAuth();
 
@@ -99,19 +101,23 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   background: `linear-gradient(135deg, var(--league-primary), var(--league-accent))`,
                 }}
               >
-                {settings.logoUrl && settings.logoUrl !== "/flagos-logo.png" ? (
+                {settings.logoUrl &&
+                settings.logoUrl !== "/flagos-logo.png" &&
+                settings.logoUrl !== "/flagos-emblem.png" &&
+                settings.logoUrl !== "/flagos-emblem-dark.png" &&
+                settings.logoUrl !== "/flagos-emblem-light.png" ? (
                   <img
                     src={settings.logoUrl}
                     alt={settings.leagueName}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      e.currentTarget.src = "/flagos-emblem.png";
+                      e.currentTarget.src = resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png";
                     }}
                   />
                 ) : (
                   <img
-                    src="/flagos-emblem.png"
+                    src={resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png"}
                     alt="FlagOS"
                     className="w-full h-full object-contain drop-shadow"
                   />

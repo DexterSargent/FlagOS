@@ -48,7 +48,7 @@ import { useTheme } from "@/lib/themeContext";
 export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
-  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized } = useAuth();
+  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin } = useAuth();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -238,9 +238,9 @@ export default function FlagOSPlatformLandingPage() {
           <Link href="/" className="flex items-center gap-3.5 group">
             <div className="w-15 h-15 rounded-2xl flex items-center justify-center">
               <img
-                src="/flagos-emblem.png"
+                src={mounted && resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png"}
                 alt="FlagOS"
-                className="w-full h-full object-contain "
+                className="w-full h-full object-contain drop-shadow"
               />
             </div>
             <div>
@@ -276,6 +276,17 @@ export default function FlagOSPlatformLandingPage() {
           {/* Action CTAs */}
           <div className="flex items-center gap-3">
             <ThemeToggle size="md" />
+
+            {isPlatformAdmin && (
+              <Link
+                href="/admin"
+                aria-label="Platform Admin"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Platform Admin</span>
+              </Link>
+            )}
 
             {isAuthorized ? (
               <Link

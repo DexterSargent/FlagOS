@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { useTheme } from "@/lib/themeContext";
 
 interface FlagOSLogoProps {
   variant?: "full" | "emblem" | "horizontal";
@@ -22,6 +23,7 @@ const SIZE_MAP = {
 /**
  * Official FlagOS Brand Logo Component
  * Uses the 3D football gear emblem and brand typography
+ * Adapts dynamically to light and dark theme mode
  */
 export default function FlagOSLogo({
   variant = "horizontal",
@@ -30,12 +32,23 @@ export default function FlagOSLogo({
   showText = true,
 }: FlagOSLogoProps) {
   const config = SIZE_MAP[size] || SIZE_MAP.md;
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Default to dark mode emblem (dark middle hole)
+  const isLight = mounted && resolvedTheme === "light";
+  const emblemSrc = isLight ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png";
+  const logoSrc = isLight ? "/flagos-emblem-light.png" : "/flagos-logo.png";
 
   if (variant === "full") {
     return (
       <div className={`flex flex-col items-center justify-center ${className}`}>
         <img
-          src="/flagos-logo.png"
+          src={logoSrc}
           alt="FlagOS Logo"
           className="object-contain drop-shadow-[0_10px_30px_rgba(60,165,5,0.25)] transition-transform hover:scale-105"
           style={{ width: config.img * 2, height: config.img * 2 }}
@@ -48,7 +61,7 @@ export default function FlagOSLogo({
     return (
       <div className={`inline-flex items-center justify-center shrink-0 ${className}`}>
         <img
-          src="/flagos-emblem.png"
+          src={emblemSrc}
           alt="FlagOS Emblem"
           className="object-contain drop-shadow-[0_4px_16px_rgba(60,165,5,0.3)] transition-transform hover:scale-105"
           style={{ width: config.img, height: config.img }}
@@ -61,14 +74,14 @@ export default function FlagOSLogo({
   return (
     <div className={`inline-flex items-center ${config.gap} ${className}`}>
       <img
-        src="/flagos-emblem.png"
+        src={emblemSrc}
         alt="FlagOS Emblem"
         className="object-contain shrink-0 drop-shadow-[0_4px_16px_rgba(60,165,5,0.35)]"
         style={{ width: config.img, height: config.img }}
       />
       {showText && (
         <span className={`font-black uppercase tracking-tight leading-none ${config.font}`}>
-          <span className="text-white">FLAG</span>
+          <span className="text-slate-900 dark:text-white transition-colors">FLAG</span>
           <span style={{ color: "#3CA505" }}>OS</span>
         </span>
       )}

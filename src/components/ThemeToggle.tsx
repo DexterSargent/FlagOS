@@ -26,7 +26,7 @@ export default function ThemeToggle({
     // Render placeholder to avoid layout shift before hydration
     return (
       <div
-        className={`inline-flex items-center justify-center rounded-xl bg-white/5 border border-white/10 ${
+        className={`inline-flex items-center justify-center rounded-xl bg-surface-inset border border-token ${
           size === "sm" ? "w-7 h-7" : size === "lg" ? "w-10 h-10" : "w-8 h-8"
         } ${className}`}
         aria-hidden="true"
@@ -43,7 +43,7 @@ export default function ThemeToggle({
 
     return (
       <div
-        className={`inline-flex items-center gap-1 p-1 rounded-xl bg-black/40 border border-white/10 ${className}`}
+        className={`inline-flex items-center gap-1 p-1 rounded-xl bg-surface-inset border border-token ${className}`}
         role="group"
         aria-label="Theme selection"
       >
@@ -57,7 +57,7 @@ export default function ThemeToggle({
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 isActive
                   ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20 font-black"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  : "text-text-secondary hover:text-text-primary hover:bg-surface-hover"
               }`}
             >
               {opt.icon}
@@ -76,11 +76,7 @@ export default function ThemeToggle({
     <button
       type="button"
       onClick={toggleTheme}
-      className={`relative inline-flex items-center justify-center rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer ${
-        isDark
-          ? "bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white"
-          : "bg-white hover:bg-slate-100 border border-slate-300/80 text-slate-800 shadow-sm"
-      } ${
+      className={`relative inline-flex items-center justify-center rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer bg-surface-inset hover:bg-surface-hover border border-token text-text-secondary hover:text-text-primary ${
         size === "sm"
           ? "w-7 h-7"
           : size === "lg"

@@ -80,6 +80,21 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     expect(pricingLinks[0]).toHaveAttribute("href", "/pricing");
   });
 
+  it("shows the platform administration link only to the platform owner", () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: "owner-id", email: "owner@example.com" },
+      isLeagueAdmin: true,
+      isTeamAdmin: () => false,
+      role: "league_admin",
+      isAuthorized: true,
+      isPlatformAdmin: true,
+    });
+
+    render(<FlagOSPlatformLandingPage />);
+
+    expect(screen.getByRole("link", { name: "Platform Admin" })).toHaveAttribute("href", "/admin");
+  });
+
   it("switches interactive demo preview tabs and updates feature iframe target", () => {
     render(<FlagOSPlatformLandingPage />);
 

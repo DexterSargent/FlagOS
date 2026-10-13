@@ -144,9 +144,9 @@ export default function PenaltyWizardStep({
   };
 
   return (
-    <div className="flex flex-col h-full gap-4 max-w-5xl mx-auto w-full animate-in zoom-in-95 duration-200">
+    <div className="grid grid-cols-1 md:grid-cols-2 content-start min-h-0 h-full gap-2 md:gap-3 max-w-6xl mx-auto w-full overflow-y-auto md:overflow-hidden animate-in zoom-in-95 duration-200">
       {/* Top Bar with Cancel */}
-      <div className="flex items-center justify-between">
+      <div className="md:col-span-2 flex items-center justify-between">
         <button
           onClick={onCancel}
           className="flex items-center gap-2 text-neutral-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
@@ -161,17 +161,17 @@ export default function PenaltyWizardStep({
       </div>
 
       {/* LIVE STATEMENT CALLOUT CARD */}
-      <div className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-black border border-amber-500/30 shadow-xl relative overflow-hidden">
+      <div className="md:col-span-2 p-2 md:p-3 rounded-xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-black border border-amber-500/30 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="flex items-start gap-3 relative z-10">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-            <Flag className="w-5 h-5" />
+          <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+            <Flag className="w-4 h-4" />
           </div>
           <div className="space-y-1 min-w-0">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400 block">
               Official Play-by-Play Statement (Preview)
             </span>
-            <p className="text-sm md:text-base font-black text-white leading-relaxed font-sans">
+            <p className="text-xs md:text-sm font-black text-white leading-snug font-sans line-clamp-2">
               {liveStatement}
             </p>
           </div>
@@ -179,25 +179,25 @@ export default function PenaltyWizardStep({
       </div>
 
       {/* STEP 1: SELECT PENALTY SIDE (TEAM) */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
+      <div className="md:col-span-2 space-y-1">
+        <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
           1. Infraction Committed By:
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => handleSideSwitch("defense")}
-            className={`py-3.5 px-4 rounded-2xl border transition-all text-left flex items-center justify-between cursor-pointer ${
+            className={`py-2 px-3 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer ${
               side === "defense"
                 ? "bg-amber-500/20 border-amber-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.25)] font-black"
                 : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white hover:bg-neutral-800"
             }`}
           >
             <div className="flex items-center gap-3">
-              <Shield className={`w-5 h-5 ${side === "defense" ? "text-amber-400" : "text-neutral-500"}`} />
+              <Shield className={`w-4 h-4 ${side === "defense" ? "text-amber-400" : "text-neutral-500"}`} />
               <div>
-                <span className="text-xs uppercase block text-neutral-400 font-bold">DEFENSE</span>
-                <span className="text-sm md:text-base font-bold text-white">{defendingTeamName}</span>
+                <span className="text-[10px] uppercase block text-neutral-400 font-bold">DEFENSE</span>
+                <span className="text-xs md:text-sm font-bold text-white">{defendingTeamName}</span>
               </div>
             </div>
             {side === "defense" && <Check className="w-5 h-5 text-amber-400" />}
@@ -206,17 +206,17 @@ export default function PenaltyWizardStep({
           <button
             type="button"
             onClick={() => handleSideSwitch("offense")}
-            className={`py-3.5 px-4 rounded-2xl border transition-all text-left flex items-center justify-between cursor-pointer ${
+            className={`py-2 px-3 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer ${
               side === "offense"
                 ? "bg-amber-500/20 border-amber-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.25)] font-black"
                 : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white hover:bg-neutral-800"
             }`}
           >
             <div className="flex items-center gap-3">
-              <Flag className={`w-5 h-5 ${side === "offense" ? "text-amber-400" : "text-neutral-500"}`} />
+              <Flag className={`w-4 h-4 ${side === "offense" ? "text-amber-400" : "text-neutral-500"}`} />
               <div>
-                <span className="text-xs uppercase block text-neutral-400 font-bold">OFFENSE</span>
-                <span className="text-sm md:text-base font-bold text-white">{possessionTeamName}</span>
+                <span className="text-[10px] uppercase block text-neutral-400 font-bold">OFFENSE</span>
+                <span className="text-xs md:text-sm font-bold text-white">{possessionTeamName}</span>
               </div>
             </div>
             {side === "offense" && <Check className="w-5 h-5 text-amber-400" />}
@@ -225,11 +225,11 @@ export default function PenaltyWizardStep({
       </div>
 
       {/* STEP 2: SELECT PENALTY INFRACTION */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
+      <div className="space-y-1">
+        <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
           2. Select Infraction ({side.toUpperCase()}):
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 max-h-none md:max-h-36 overflow-y-auto pr-1">
           {availablePenalties.map((pDef) => {
             const isSelected = selectedPenaltyId === pDef.id;
             return (
@@ -237,7 +237,7 @@ export default function PenaltyWizardStep({
                 key={pDef.id}
                 type="button"
                 onClick={() => handleSelectPenalty(pDef)}
-                className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 cursor-pointer ${
+                className={`p-2 rounded-lg border text-left transition-all flex flex-col justify-between gap-0.5 cursor-pointer ${
                   isSelected
                     ? "bg-white text-black border-white shadow-lg font-black"
                     : "bg-neutral-900 border-white/10 text-neutral-300 hover:border-amber-500/40 hover:bg-neutral-800"
@@ -275,10 +275,10 @@ export default function PenaltyWizardStep({
       </div>
 
       {/* STEP 3: ENFORCEMENT & YARDS CONFIG */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-1 gap-2 md:gap-3 pt-1">
         {/* Enforcement Status */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
             Enforcement
           </label>
           <div className="grid grid-cols-3 gap-1.5">
@@ -304,8 +304,8 @@ export default function PenaltyWizardStep({
         </div>
 
         {/* Yardage Assessment */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
             Yardage
           </label>
           <div className="grid grid-cols-4 gap-1.5">
@@ -332,8 +332,8 @@ export default function PenaltyWizardStep({
         </div>
 
         {/* Down Result */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
+        <div className="space-y-1">
+          <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
             Down Impact
           </label>
           <div className="grid grid-cols-3 gap-1.5">
@@ -360,18 +360,18 @@ export default function PenaltyWizardStep({
       </div>
 
       {/* STEP 4: PLAYER RESPONSIBLE (OPTIONAL) */}
-      <div className="space-y-1.5">
-        <label className="text-[11px] font-mono font-bold uppercase tracking-wider text-neutral-400 flex items-center justify-between">
+      <div className="md:col-span-2 space-y-1">
+        <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 flex items-center justify-between">
           <span>Athlete Responsible (Optional):</span>
           <span className="text-[10px] text-neutral-500 font-normal">
             Selected: <strong className="text-white">{player}</strong>
           </span>
         </label>
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <div className="flex flex-wrap gap-1 overflow-y-auto md:max-h-16">
           <button
             type="button"
             onClick={() => setPlayer("TEAM")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border ${
+            className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all border ${
               player === "TEAM"
                 ? "bg-amber-500 text-black border-amber-500 font-black"
                 : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
@@ -384,7 +384,7 @@ export default function PenaltyWizardStep({
               key={pName}
               type="button"
               onClick={() => setPlayer(pName)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border ${
+              className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all border ${
                 player === pName
                   ? "bg-amber-500 text-black border-amber-500 font-black"
                   : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
@@ -397,11 +397,11 @@ export default function PenaltyWizardStep({
       </div>
 
       {/* CONFIRM & SUBMIT BUTTON */}
-      <div className="pt-2">
+      <div className="md:col-span-2 pt-1">
         <button
           type="button"
           onClick={handleSubmit}
-          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-base md:text-lg uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:scale-101 active:scale-99 cursor-pointer flex items-center justify-center gap-3"
+          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-xs md:text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:scale-101 active:scale-99 cursor-pointer flex items-center justify-center gap-2"
         >
           <Flag className="w-5 h-5 fill-current" />
           <span>ENFORCE PENALTY & RECORD PLAY</span>

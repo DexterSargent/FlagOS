@@ -1,8 +1,44 @@
 @import "tailwindcss";
 
-:root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+/*
+ * Theme palette: edit these tokens to update the shared application styling.
+ * Components keep their layout classes; common legacy Tailwind color classes
+ * are translated to these semantic values below.
+ */
+:root,
+html.dark {
+  color-scheme: dark;
+
+  --background: #080b10;
+  --foreground: #f4f7fb;
+  --surface: #10151d;
+  --surface-raised: #171e28;
+  --surface-inset: #0b1017;
+  --surface-hover: #222b38;
+  --text-primary: #f4f7fb;
+  --text-secondary: #a7b1c0;
+  --text-muted: #778397;
+  --text-brand: #6dd4e5;
+  --text-success: #63d297;
+  --text-warning: #f2c66d;
+  --text-danger: #ff858b;
+  --text-info: #82b8ff;
+  --text-accent: #c4a4ff;
+  --border: #293342;
+  --border-strong: #3b485a;
+  --control-background: #111821;
+  --control-border: #394658;
+  --overlay: rgb(3 7 12 / 78%);
+  --shadow-color: 0 0 0;
+
+  --tint-brand: #102a32;
+  --tint-brand-border: #1d5260;
+  --tint-success: #102a20;
+  --tint-success-border: #235a40;
+  --tint-warning: #302512;
+  --tint-warning-border: #6a4e22;
+  --tint-danger: #31191b;
+  --tint-danger-border: #713238;
 
   /* League dynamic branding variables */
   --league-primary: #3ca505;
@@ -10,7 +46,6 @@
   --league-primary-rgb: 60, 165, 5;
   --league-accent-rgb: 34, 197, 94;
 
-  /* Default Primary Shade Palette (Field Green fallback based on #3ca505) */
   --league-primary-50: #f3faf0;
   --league-primary-100: #e0f1d7;
   --league-primary-200: #c1e2af;
@@ -23,7 +58,6 @@
   --league-primary-900: #123202;
   --league-primary-950: #091901;
 
-  /* Default Accent Shade Palette (Turf Emerald fallback based on #22c55e) */
   --league-accent-50: #f2fcf5;
   --league-accent-100: #dcf6e5;
   --league-accent-200: #b8eccb;
@@ -37,13 +71,68 @@
   --league-accent-950: #051e0e;
 }
 
+html.light {
+  color-scheme: light;
+
+  --background: #f3f6fa;
+  --foreground: #17212e;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-inset: #edf1f6;
+  --surface-hover: #e7edf4;
+  --text-primary: #17212e;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-brand: #0e7490;
+  --text-success: #047857;
+  --text-warning: #a16207;
+  --text-danger: #b4232d;
+  --text-info: #1d4ed8;
+  --text-accent: #7e22ce;
+  --border: #d7e0ea;
+  --border-strong: #bac7d6;
+  --control-background: #ffffff;
+  --control-border: #c5d0dc;
+  --overlay: rgb(15 23 42 / 58%);
+  --shadow-color: 15 23 42;
+
+  --tint-brand: #e9f7fa;
+  --tint-brand-border: #b7e4ed;
+  --tint-success: #eaf7ef;
+  --tint-success-border: #b8e2c7;
+  --tint-warning: #fff7e6;
+  --tint-warning-border: #f1d59a;
+  --tint-danger: #fff0f0;
+  --tint-danger-border: #f0c3c5;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-inset: var(--surface-inset);
+  --color-surface-hover: var(--surface-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-brand: var(--text-brand);
+  --color-text-success: var(--text-success);
+  --color-text-warning: var(--text-warning);
+  --color-text-danger: var(--text-danger);
+  --color-text-info: var(--text-info);
+  --color-text-accent: var(--text-accent);
+  --color-border-token: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-control-background: var(--control-background);
+  --color-control-border: var(--control-border);
+  --color-tint-brand: var(--tint-brand);
+  --color-tint-success: var(--tint-success);
+  --color-tint-warning: var(--tint-warning);
+  --color-tint-danger: var(--tint-danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Primary brand mapping: automatically connects all cyan utilities site-wide to the active league brand */
   --color-cyan-50: var(--league-primary-50);
   --color-cyan-100: var(--league-primary-100);
   --color-cyan-200: var(--league-primary-200);
@@ -55,8 +144,6 @@
   --color-cyan-800: var(--league-primary-800);
   --color-cyan-900: var(--league-primary-900);
   --color-cyan-950: var(--league-primary-950);
-
-  /* Accent brand mapping: automatically connects all blue utilities site-wide to the active league accent */
   --color-blue-50: var(--league-accent-50);
   --color-blue-100: var(--league-accent-100);
   --color-blue-200: var(--league-accent-200);
@@ -68,8 +155,6 @@
   --color-blue-800: var(--league-accent-800);
   --color-blue-900: var(--league-accent-900);
   --color-blue-950: var(--league-accent-950);
-
-  /* Explicit brand color tokens */
   --color-league-primary: var(--league-primary);
   --color-league-accent: var(--league-accent);
 
@@ -81,14 +166,306 @@
   --color-line-subtle: var(--line-subtle);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
+* {
+  border-color: var(--border);
 }
 
-/* Dynamic League Theme Utilities */
+html,
+body {
+  min-height: 100%;
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+body {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+::selection {
+  color: var(--text-primary);
+  background: rgb(var(--league-primary-rgb) / 25%);
+}
+
+/* Compatibility bridge: legacy palette utilities now follow the theme tokens. */
+.bg-black,
+.bg-neutral-950,
+.bg-neutral-900,
+.bg-\[\#07090E\],
+.bg-\[\#070A11\],
+.bg-\[\#0B0F19\],
+.bg-\[\#0E1424\],
+.bg-\[\#0E1422\],
+.bg-\[\#060911\],
+.bg-\[\#0A0E17\],
+.bg-\[\#0D1220\],
+.bg-\[\#080C14\],
+.bg-\[\#0D121F\],
+.bg-\[\#05070B\],
+.bg-\[\#0a0f1d\],
+.bg-\[\#090D16\],
+.bg-\[\#0B0F1A\],
+[class*="bg-[#07090E]"],
+[class*="bg-[#070A11]"],
+[class*="bg-[#0B0F19]"],
+[class*="bg-[#0E1424]"],
+[class*="bg-[#0E1422]"],
+[class*="bg-[#060911]"],
+[class*="bg-[#0A0E17]"],
+[class*="bg-[#0D1220]"],
+[class*="bg-[#080C14]"],
+[class*="bg-[#0D121F]"],
+[class*="bg-[#05070B]"],
+[class*="bg-[#0a0f1d]"],
+[class*="bg-[#090D16]"],
+[class*="bg-[#0B0F1A]"] {
+  background-color: var(--surface) !important;
+}
+
+.bg-black\/40,
+.bg-black\/50,
+.bg-black\/60,
+.bg-black\/70,
+.bg-black\/80,
+.bg-black\/85,
+.bg-black\/90,
+.bg-white\/5,
+.bg-white\/10,
+.bg-white\/15,
+.bg-neutral-900\/50,
+.bg-neutral-900\/60,
+.bg-neutral-900\/70,
+.bg-neutral-900\/80,
+.bg-neutral-900\/90,
+.bg-neutral-900\/95,
+.bg-neutral-950\/50,
+.bg-neutral-950\/60,
+.bg-neutral-950\/70,
+.bg-neutral-950\/80,
+.bg-neutral-950\/90,
+.bg-neutral-950\/95 {
+  background-color: var(--surface-inset) !important;
+}
+
+.bg-neutral-800,
+.bg-neutral-800\/50,
+.bg-neutral-800\/60,
+.bg-neutral-800\/70,
+.bg-neutral-800\/80,
+.bg-neutral-800\/90 {
+  background-color: var(--surface-raised) !important;
+}
+
+.hover\:bg-white\/5:hover,
+.hover\:bg-white\/10:hover,
+.hover\:bg-white\/15:hover,
+.hover\:bg-white\/20:hover,
+.hover\:bg-neutral-800:hover,
+.hover\:bg-neutral-900:hover {
+  background-color: var(--surface-hover) !important;
+}
+
+.text-white,
+.text-neutral-100,
+.text-neutral-200,
+.text-neutral-300 {
+  color: var(--text-primary) !important;
+}
+
+.text-neutral-400 {
+  color: var(--text-secondary) !important;
+}
+
+.text-neutral-500,
+.text-neutral-600 {
+  color: var(--text-muted) !important;
+}
+
+.text-cyan-300,
+.text-cyan-400 {
+  color: var(--text-brand) !important;
+}
+
+.text-emerald-300,
+.text-emerald-400 {
+  color: var(--text-success) !important;
+}
+
+.text-amber-300,
+.text-amber-400,
+.text-yellow-400 {
+  color: var(--text-warning) !important;
+}
+
+.text-red-300,
+.text-red-400 {
+  color: var(--text-danger) !important;
+}
+
+.text-blue-300,
+.text-blue-400 {
+  color: var(--text-info) !important;
+}
+
+.text-purple-300,
+.text-purple-400 {
+  color: var(--text-accent) !important;
+}
+
+button.text-white[class*="bg-cyan-"],
+button.text-white[class*="bg-emerald-"],
+button.text-white[class*="bg-blue-"],
+button.text-white[class*="bg-red-"],
+button.text-white[class*="bg-purple-"],
+a.text-white[class*="bg-cyan-"],
+a.text-white[class*="bg-emerald-"],
+a.text-white[class*="bg-blue-"],
+a.text-white[class*="bg-red-"],
+a.text-white[class*="bg-purple-"],
+button[class*="bg-gradient-to"].text-white,
+a[class*="bg-gradient-to"].text-white {
+  color: #fff !important;
+}
+
+button[class*="bg-cyan-"] .text-white,
+button[class*="bg-emerald-"] .text-white,
+button[class*="bg-blue-"] .text-white,
+button[class*="bg-red-"] .text-white,
+button[class*="bg-purple-"] .text-white,
+a[class*="bg-cyan-"] .text-white,
+a[class*="bg-emerald-"] .text-white,
+a[class*="bg-blue-"] .text-white,
+a[class*="bg-red-"] .text-white,
+a[class*="bg-purple-"] .text-white,
+button[class*="bg-gradient-to"] .text-white,
+a[class*="bg-gradient-to"] .text-white {
+  color: #fff !important;
+}
+
+.hover\:text-white:hover {
+  color: var(--text-primary) !important;
+}
+
+.border-white\/5,
+.border-white\/10,
+.border-white\/15,
+.border-white\/20,
+.border-white\/30,
+.border-neutral-800,
+.border-neutral-700 {
+  border-color: var(--border) !important;
+}
+
+.divide-white\/5 > :not([hidden]) ~ :not([hidden]),
+.divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+.bg-cyan-950\/40,
+.bg-cyan-950\/30,
+.bg-cyan-500\/10,
+.bg-cyan-500\/15,
+.bg-cyan-500\/20 {
+  background-color: var(--tint-brand) !important;
+  border-color: var(--tint-brand-border);
+}
+
+.bg-emerald-950\/40,
+.bg-emerald-950\/30,
+.bg-emerald-500\/10,
+.bg-emerald-500\/15,
+.bg-emerald-500\/20 {
+  background-color: var(--tint-success) !important;
+  border-color: var(--tint-success-border);
+}
+
+.bg-amber-950\/40,
+.bg-amber-950\/30,
+.bg-amber-500\/10,
+.bg-amber-500\/15,
+.bg-amber-500\/20 {
+  background-color: var(--tint-warning) !important;
+  border-color: var(--tint-warning-border);
+}
+
+.bg-red-950\/20,
+.bg-red-950\/30,
+.bg-red-950\/40,
+.bg-red-500\/10,
+.bg-red-500\/15,
+.bg-red-500\/20 {
+  background-color: var(--tint-danger) !important;
+  border-color: var(--tint-danger-border);
+}
+
+.fixed.inset-0.bg-black\/70,
+.fixed.inset-0.bg-black\/80,
+.fixed.inset-0.bg-black\/85,
+.fixed.inset-0.bg-black\/90 {
+  background-color: var(--overlay) !important;
+}
+
+[class*="bg-gradient-to"].from-neutral-900\/90,
+[class*="bg-gradient-to"].from-neutral-950,
+[class*="from-\[\#0B132B\]"],
+[class*="from-\[\#061822\]"],
+[class*="from-\[\#0C1222\]"],
+[class*="from-\[\#0B0F19\]"],
+[class*="from-\[\#1C0B0E\]"],
+[class*="from-\[\#090D16\]"],
+[class*="from-\[\#0D101A\]"] {
+  background-image: none !important;
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+select {
+  background-color: var(--control-background);
+  color: var(--text-primary);
+  border-color: var(--control-border);
+}
+
+option {
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+table th {
+  background-color: var(--surface-inset);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+table td {
+  border-color: var(--border);
+}
+
+table tr:hover {
+  background-color: var(--surface-inset);
+}
+
+.shadow-lg,
+.shadow-xl,
+.shadow-2xl {
+  --tw-shadow-color: rgb(var(--shadow-color) / 8%);
+}
+
+.blur-\[160px\],
+.blur-\[170px\],
+.blur-\[140px\],
+.blur-\[150px\] {
+  opacity: 0.16;
+}
+
+/* Dynamic league theme utilities */
 .league-bg-gradient {
   background: linear-gradient(135deg, var(--league-primary), var(--league-accent));
 }
@@ -588,4 +965,13 @@ html.light .bg-\[\#102319\] {
 html.light svg text[fill="#FFFFFF"],
 html.light svg text[fill="#ffffff"] {
   fill: #FFFFFF !important;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

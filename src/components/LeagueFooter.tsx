@@ -16,10 +16,12 @@ import {
 } from "lucide-react";
 import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useTheme } from "@/lib/themeContext";
 
 export default function LeagueFooter() {
   const { settings, openCustomizer, activeLeagueId } = useLeague();
   const { canRegisterAsPlayer, isAuthorized, isLeagueAdmin } = useAuth();
+  const { resolvedTheme } = useTheme();
 
   return (
     <footer className="relative z-10 border-t border-white/10 bg-black pt-12 pb-8 px-6 text-neutral-400 font-sans transition-colors">

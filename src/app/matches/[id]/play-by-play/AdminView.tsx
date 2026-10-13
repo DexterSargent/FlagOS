@@ -1031,7 +1031,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="h-[100dvh] bg-black text-white font-sans overflow-hidden flex flex-col relative">
+    <div className="min-h-[100dvh] md:h-[100dvh] md:min-h-0 bg-black text-white font-sans overflow-x-hidden md:overflow-hidden flex flex-col relative">
 
       {/* RESET GAME TO PRE-GAME MODAL */}
       {isResetModalOpen && (
@@ -1175,7 +1175,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       )}
 
       {/* HEADER */}
-      <header className="bg-neutral-900 border-b border-cyan-500/30 p-4 flex flex-col md:flex-row items-center justify-between shrink-0 z-50 gap-4 md:gap-0">
+      <header className="bg-neutral-900 border-b border-cyan-500/30 p-2 md:p-3 flex flex-col md:flex-row items-center justify-between shrink-0 z-50 gap-2 md:gap-0">
         <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-1/4">
           <div className="flex items-center gap-4">
             {!isEmbedded && (
@@ -1274,7 +1274,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       </header>
 
       {/* GAME STATE BAR */}
-      <div className="bg-neutral-950 border-b border-white/10 p-2 md:p-4 flex flex-row items-center justify-between shrink-0 gap-2 overflow-x-auto">
+      <div className="bg-neutral-950 border-b border-white/10 p-1.5 md:p-2 flex flex-row items-center justify-between shrink-0 gap-2 overflow-x-auto">
         <div className="flex items-center gap-2 md:gap-6 px-2 md:px-8 w-auto">
           <div className="flex flex-col">
             <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase tracking-widest leading-none">Period</span>
@@ -1328,7 +1328,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         </button>
       </div>
 
-      <main className="flex-1 p-6 flex flex-col overflow-hidden relative">
+      <main className="flex-1 min-h-0 p-2 md:p-3 flex flex-col overflow-visible md:overflow-hidden relative">
 
         {/* SPOT BALL OVERLAY */}
         {!isBallSpotted && step !== 'CONVERSION' && step !== 'HALFTIME' && step !== 'GAME_OVER' && !isTimeoutActive && (
@@ -1498,25 +1498,25 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* WIZARD: PLAY TYPE */}
         {step === 'PLAY_TYPE' && (
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-4 md:gap-6 h-full max-w-6xl mx-auto w-full overflow-y-auto md:overflow-visible pb-12 md:pb-0">
-            <button onClick={() => handlePlayTypeSelect("Pass")} className="bg-neutral-900 border-2 border-white/5 hover:border-blue-500 hover:bg-blue-900/20 rounded-3xl p-6 md:p-8 flex flex-row md:flex-col items-center justify-start md:justify-center gap-6 md:gap-6 transition-all group shadow-xl shrink-0">
-              <span className="text-6xl md:text-8xl group-hover:scale-110 transition-transform">🏈</span>
-              <span className="font-black text-3xl md:text-4xl">PASS</span>
+          <div className="flex flex-col md:grid md:grid-cols-3 gap-2 md:gap-4 flex-1 min-h-0 max-w-6xl mx-auto w-full overflow-visible pb-2 md:pb-0">
+            <button onClick={() => handlePlayTypeSelect("Pass")} className="min-h-24 md:min-h-0 bg-neutral-900 border-2 border-white/5 hover:border-blue-500 hover:bg-blue-900/20 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-row md:flex-col items-center justify-start md:justify-center gap-3 md:gap-4 transition-all group shadow-xl shrink-0">
+              <span className="text-4xl md:text-6xl group-hover:scale-110 transition-transform">🏈</span>
+              <span className="font-black text-xl md:text-3xl">PASS</span>
             </button>
-            <button onClick={() => handlePlayTypeSelect("Run")} className="bg-neutral-900 border-2 border-white/5 hover:border-emerald-500 hover:bg-emerald-900/20 rounded-3xl p-6 md:p-8 flex flex-row md:flex-col items-center justify-start md:justify-center gap-6 md:gap-6 transition-all group shadow-xl shrink-0">
-              <span className="text-6xl md:text-8xl group-hover:scale-110 transition-transform">🏃‍♀️</span>
-              <span className="font-black text-3xl md:text-4xl">RUN</span>
+            <button onClick={() => handlePlayTypeSelect("Run")} className="min-h-24 md:min-h-0 bg-neutral-900 border-2 border-white/5 hover:border-emerald-500 hover:bg-emerald-900/20 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-row md:flex-col items-center justify-start md:justify-center gap-3 md:gap-4 transition-all group shadow-xl shrink-0">
+              <span className="text-4xl md:text-6xl group-hover:scale-110 transition-transform">🏃‍♀️</span>
+              <span className="font-black text-xl md:text-3xl">RUN</span>
             </button>
-            <button onClick={() => { setPlayType("Penalty"); setStep('DETAILS'); }} className="bg-neutral-900 border-2 border-white/5 hover:border-amber-500 hover:bg-amber-900/20 rounded-3xl p-6 md:p-8 flex flex-row md:flex-col items-center justify-start md:justify-center gap-6 md:gap-6 transition-all group shadow-xl shrink-0">
-              <span className="text-6xl md:text-8xl group-hover:scale-110 transition-transform">🚩</span>
-              <span className="font-black text-3xl md:text-4xl">PENALTY</span>
+            <button onClick={() => { setPlayType("Penalty"); setStep('DETAILS'); }} className="min-h-24 md:min-h-0 bg-neutral-900 border-2 border-white/5 hover:border-amber-500 hover:bg-amber-900/20 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-row md:flex-col items-center justify-start md:justify-center gap-3 md:gap-4 transition-all group shadow-xl shrink-0">
+              <span className="text-4xl md:text-6xl group-hover:scale-110 transition-transform">🚩</span>
+              <span className="font-black text-xl md:text-3xl">PENALTY</span>
             </button>
           </div>
         )}
 
         {/* WIZARD: DETAILS */}
         {step === 'DETAILS' && (
-          <div className="flex flex-col h-full gap-4 max-w-7xl mx-auto w-full animate-in slide-in-from-right-8 duration-200">
+          <div className="flex flex-col flex-1 min-h-0 gap-2 md:gap-3 max-w-7xl mx-auto w-full animate-in slide-in-from-right-8 duration-200">
             {playType === 'Penalty' ? (
               <PenaltyWizardStep
                 possessionTeamName={possession}
@@ -1536,7 +1536,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 >
                   <ChevronLeft className="w-4 h-4" /> Back to Play Type
                 </button>
-                <div className="grid grid-cols-2 md:flex gap-2 p-2 bg-neutral-900 border border-white/10 rounded-2xl shrink-0 relative z-10 w-full">
+                <div className="grid grid-cols-2 md:flex gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-white/10 rounded-2xl shrink-0 relative z-10 w-full">
                   {playType === 'Pass' && ['Complete', 'Incomplete', 'Interception', 'Sack'].map((res) => {
                     const isActive = (res === 'Incomplete' && (outcome === 'Incomplete_Menu' || outcome === 'PBU' || outcome === 'Missed')) || outcome === res;
                     return (
@@ -1548,7 +1548,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                           setReceiver("");
                           setIsOobPrompt(false);
                         }}
-                        className={`flex-1 py-3 md:py-4 text-xs md:text-xl font-bold uppercase tracking-wider rounded-xl transition-all ${isActive ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
+                        className={`flex-1 py-2 md:py-2.5 text-[11px] md:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${isActive ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
                       >
                         {res}
                       </button>
@@ -1557,7 +1557,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   {playType === 'Run' && ['Gain', 'FFL'].map((res) => (
                     <button
                       key={res} onClick={() => { setOutcome(res as any); setDefenders([]); setFlaggers([]); setIsOobPrompt(false); }}
-                      className={`flex-1 py-3 md:py-4 text-xs md:text-xl font-bold uppercase tracking-wider rounded-xl transition-all ${outcome === res ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
+                      className={`flex-1 py-2 md:py-2.5 text-[11px] md:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${outcome === res ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
                     >
                       {res === 'FFL' ? 'Flag For Loss (FFL)' : 'Positive / No Gain'}
                     </button>
@@ -1565,25 +1565,25 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 </div>
 
                 {outcome === 'Incomplete_Menu' ? (
-                  <div className="flex-1 flex flex-col md:flex-row items-stretch justify-center gap-4 md:gap-8 animate-in zoom-in-95 overflow-y-auto pb-12 md:pb-0">
-                    <button onClick={() => setOutcome('PBU')} className="flex-1 py-12 md:py-16 px-12 bg-neutral-900 border-2 border-white/10 hover:border-blue-500 rounded-3xl text-3xl font-black transition-all shadow-xl shrink-0 min-h-[200px]">
+                  <div className="md:col-span-2 flex-1 min-h-0 flex flex-col md:flex-row items-stretch justify-center gap-2 md:gap-4 animate-in zoom-in-95 overflow-visible">
+                    <button onClick={() => setOutcome('PBU')} className="flex-1 py-5 md:py-8 px-4 md:px-8 bg-neutral-900 border-2 border-white/10 hover:border-blue-500 rounded-2xl md:rounded-3xl text-xl md:text-2xl font-black transition-all shadow-xl shrink-0 min-h-24 md:min-h-0">
                       PASS BREAK UP
                     </button>
-                    <button onClick={() => setOutcome('Missed')} className="flex-1 py-12 md:py-16 px-12 bg-neutral-900 border-2 border-white/10 hover:border-amber-500 rounded-3xl text-3xl font-black transition-all shadow-xl shrink-0 min-h-[200px]">
+                    <button onClick={() => setOutcome('Missed')} className="flex-1 py-5 md:py-8 px-4 md:px-8 bg-neutral-900 border-2 border-white/10 hover:border-amber-500 rounded-2xl md:rounded-3xl text-xl md:text-2xl font-black transition-all shadow-xl shrink-0 min-h-24 md:min-h-0">
                       MISSED THROW
                     </button>
                   </div>
                 ) : (
-                  <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-y-auto md:overflow-visible pb-24 md:pb-0">
+                  <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2 md:gap-3 overflow-visible">
                     {/* COL 1: Offense (QB) */}
-                    <div className="flex-1 bg-neutral-900 rounded-3xl p-6 border border-white/5 flex flex-col shadow-lg relative min-h-[250px] md:min-h-0 shrink-0">
+                    <div className="flex-1 bg-neutral-900 rounded-2xl p-3 md:p-4 border border-white/5 flex flex-col shadow-lg relative min-h-40 md:min-h-0 shrink-0">
                       {!qbRunner && <div className="absolute top-4 right-4 w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>}
-                      <label className="text-neutral-400 font-bold uppercase tracking-widest mb-4">
+                      <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest mb-2">
                         {playType === 'Run' ? 'Runner' : 'Quarterback'}
                       </label>
-                      <div className="flex flex-col gap-2 overflow-y-auto hide-scrollbar flex-1">
+                      <div className="grid grid-cols-2 xl:grid-cols-1 content-start gap-1.5 overflow-y-auto hide-scrollbar flex-1 min-h-0">
                         {getOffensiveRoster().map(p => (
-                          <button key={p} onClick={() => { setQbRunner(p); if (receiver === p) setReceiver(""); }} className={`p-4 rounded-2xl font-bold text-left text-lg transition-all shrink-0 ${qbRunner === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>
+                          <button key={p} onClick={() => { setQbRunner(p); if (receiver === p) setReceiver(""); }} className={`p-2 rounded-xl font-bold text-left text-sm transition-all shrink-0 ${qbRunner === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>
                             {p}
                           </button>
                         ))}
@@ -1592,12 +1592,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
                     {/* COL 2: Offense (Receiver) */}
                     {outcome === 'Complete' && (
-                      <div className="flex-1 bg-neutral-900 rounded-3xl p-6 border border-white/5 flex flex-col shadow-lg relative animate-in fade-in min-h-[250px] md:min-h-0 shrink-0">
+                      <div className="flex-1 bg-neutral-900 rounded-2xl p-3 md:p-4 border border-white/5 flex flex-col shadow-lg relative animate-in fade-in min-h-40 md:min-h-0 shrink-0">
                         {!receiver && outcome === 'Complete' && <div className="absolute top-4 right-4 w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>}
-                        <label className="text-neutral-400 font-bold uppercase tracking-widest mb-4">Receiver</label>
-                        <div className="flex flex-col gap-2 overflow-y-auto hide-scrollbar flex-1">
+                        <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest mb-2">Receiver</label>
+                        <div className="grid grid-cols-2 xl:grid-cols-1 content-start gap-1.5 overflow-y-auto hide-scrollbar flex-1 min-h-0">
                           {getOffensiveRoster().filter(p => p !== qbRunner || p === 'TEAM').map(p => (
-                            <button key={p} onClick={() => setReceiver(p)} className={`p-4 rounded-2xl font-bold text-left text-lg transition-all shrink-0 ${receiver === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>
+                            <button key={p} onClick={() => setReceiver(p)} className={`p-2 rounded-xl font-bold text-left text-sm transition-all shrink-0 ${receiver === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>
                               {p}
                             </button>
                           ))}
@@ -1607,20 +1607,20 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
                     {/* COL 3: Defense */}
                     {(outcome === 'Complete' || outcome === 'Gain' || outcome === 'Sack' || outcome === 'FFL' || outcome === 'PBU' || outcome === 'Interception') && (
-                      <div className="flex-1 bg-neutral-900 rounded-3xl p-6 border border-white/5 flex flex-col shadow-lg relative animate-in fade-in min-h-[250px] md:min-h-0 shrink-0">
+                      <div className="flex-1 bg-neutral-900 rounded-2xl p-3 md:p-4 border border-white/5 flex flex-col shadow-lg relative animate-in fade-in min-h-40 md:min-h-0 shrink-0">
                         {defenders.length === 0 && <div className="absolute top-4 right-4 w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>}
-                        <label className="text-neutral-400 font-bold uppercase tracking-widest mb-2 flex justify-between">
+                        <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest mb-1 flex justify-between">
                           {outcome === 'Interception' ? 'Interceptor' : outcome === 'PBU' ? 'Pass Break Up' : 'Flagger(s)'}
                         </label>
                         {outcome !== 'Interception' && outcome !== 'PBU' && (
                           <span className="text-xs text-amber-500/80 mb-4">Select up to 2</span>
                         )}
-                        <div className="flex flex-col gap-2 overflow-y-auto hide-scrollbar flex-1 mt-2">
+                        <div className="grid grid-cols-2 xl:grid-cols-1 content-start gap-1.5 overflow-y-auto hide-scrollbar flex-1 min-h-0 mt-1">
                           {getDefensiveRoster().map(p => (
                             <button
                               key={p}
                               onClick={() => handleDefenders(p, (outcome === 'Interception' || outcome === 'PBU') ? 1 : 2)}
-                              className={`p-4 rounded-2xl font-bold text-left text-lg transition-all shrink-0 ${defenders.includes(p) ? 'bg-amber-500 text-black' : 'bg-black border border-white/5 text-neutral-400'}`}
+                              className={`p-2 rounded-xl font-bold text-left text-sm transition-all shrink-0 ${defenders.includes(p) ? 'bg-amber-500 text-black' : 'bg-black border border-white/5 text-neutral-400'}`}
                             >
                               {p}
                             </button>
@@ -1631,7 +1631,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
                     {/* COL 4: Interception Flaggers (Offense acting as Defense) */}
                     {outcome === 'Interception' && (
-                      <div className="flex-1 bg-neutral-900 rounded-3xl p-6 border border-white/5 flex flex-col shadow-lg relative animate-in fade-in min-h-[250px] md:min-h-0 shrink-0">
+                      <div className="flex-1 bg-neutral-900 rounded-2xl p-3 md:p-4 border border-white/5 flex flex-col shadow-lg relative animate-in fade-in min-h-40 md:min-h-0 shrink-0">
                         <label className="text-neutral-400 font-bold uppercase tracking-widest mb-2 flex justify-between">
                           Flagger(s) (Offense)
                         </label>
@@ -1720,60 +1720,60 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* WIZARD: CONVERSION */}
         {step === 'CONVERSION' && (
-          <div className="flex flex-col h-full gap-4 max-w-7xl mx-auto w-full animate-in zoom-in-95 duration-200">
-            <h3 className="text-2xl font-black text-emerald-400 flex items-center justify-center gap-4 bg-emerald-950/30 py-4 rounded-3xl border border-emerald-500/30 shrink-0">
-              <Flag className="w-6 h-6" /> POINT AFTER ATTEMPT
+          <div className="flex flex-col flex-1 min-h-0 gap-2 md:gap-3 max-w-7xl mx-auto w-full animate-in zoom-in-95 duration-200">
+            <h3 className="text-base md:text-xl font-black text-emerald-400 flex items-center justify-center gap-2 bg-emerald-950/30 py-2 md:py-3 rounded-2xl border border-emerald-500/30 shrink-0">
+              <Flag className="w-5 h-5" /> POINT AFTER ATTEMPT
             </h3>
 
             {!convPts && (
-              <div className="flex-1 flex items-center justify-center gap-8">
-                <button onClick={() => setConvPts(1)} className="w-64 h-64 bg-neutral-900 border border-white/10 hover:border-emerald-500 rounded-3xl flex flex-col items-center justify-center gap-4 group">
-                  <span className="text-8xl font-black text-white group-hover:text-emerald-400">1</span>
-                  <span className="text-xl font-bold uppercase tracking-widest text-neutral-500">From 5 Yd</span>
+              <div className="flex-1 min-h-0 flex items-center justify-center gap-3 md:gap-6">
+                <button onClick={() => setConvPts(1)} className="w-36 h-36 md:w-52 md:h-52 max-h-full bg-neutral-900 border border-white/10 hover:border-emerald-500 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-2 group">
+                  <span className="text-5xl md:text-7xl font-black text-white group-hover:text-emerald-400">1</span>
+                  <span className="text-sm md:text-lg font-bold uppercase tracking-widest text-neutral-500">From 5 Yd</span>
                 </button>
-                <button onClick={() => setConvPts(2)} className="w-64 h-64 bg-neutral-900 border border-white/10 hover:border-emerald-500 rounded-3xl flex flex-col items-center justify-center gap-4 group">
-                  <span className="text-8xl font-black text-white group-hover:text-emerald-400">2</span>
-                  <span className="text-xl font-bold uppercase tracking-widest text-neutral-500">From 10 Yd</span>
+                <button onClick={() => setConvPts(2)} className="w-36 h-36 md:w-52 md:h-52 max-h-full bg-neutral-900 border border-white/10 hover:border-emerald-500 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-2 group">
+                  <span className="text-5xl md:text-7xl font-black text-white group-hover:text-emerald-400">2</span>
+                  <span className="text-sm md:text-lg font-bold uppercase tracking-widest text-neutral-500">From 10 Yd</span>
                 </button>
               </div>
             )}
 
             {convPts && convIsGood === null && (
-              <div className="flex-1 flex items-center justify-center gap-8 animate-in slide-in-from-right-4">
-                <button onClick={() => setConvIsGood(true)} className="flex-1 max-w-sm py-16 bg-emerald-600 rounded-3xl font-black text-5xl text-white">GOOD</button>
-                <button onClick={() => { setConvIsGood(false); finalizeConversion(); }} className="flex-1 max-w-sm py-16 bg-neutral-800 rounded-3xl font-black text-5xl text-white border border-white/10">NO GOOD</button>
+              <div className="flex-1 min-h-0 flex items-center justify-center gap-3 md:gap-6 animate-in slide-in-from-right-4">
+                <button onClick={() => setConvIsGood(true)} className="flex-1 max-w-sm py-8 md:py-12 bg-emerald-600 rounded-2xl md:rounded-3xl font-black text-3xl md:text-4xl text-white">GOOD</button>
+                <button onClick={() => { setConvIsGood(false); finalizeConversion(); }} className="flex-1 max-w-sm py-8 md:py-12 bg-neutral-800 rounded-2xl md:rounded-3xl font-black text-3xl md:text-4xl text-white border border-white/10">NO GOOD</button>
               </div>
             )}
 
             {convPts && convIsGood && (
-              <div className="flex-1 flex flex-col gap-4 animate-in slide-in-from-right-4">
-                <div className="flex justify-between items-center bg-neutral-900 border border-white/10 px-8 py-4 rounded-2xl shrink-0">
-                  <span className="text-xl font-bold uppercase">Success: {convPts} Point(s)</span>
-                  <span className="text-sm text-neutral-400">Select players to award stats</span>
+              <div className="flex-1 min-h-0 flex flex-col gap-2 animate-in slide-in-from-right-4">
+                <div className="flex justify-between items-center bg-neutral-900 border border-white/10 px-4 py-2 rounded-xl shrink-0">
+                  <span className="text-sm font-bold uppercase">Success: {convPts} Point(s)</span>
+                  <span className="text-xs text-neutral-400">Select players to award stats</span>
                 </div>
 
-                <div className="flex-1 grid grid-cols-2 gap-4">
-                  <div className="bg-neutral-900 rounded-3xl p-6 border border-white/5 flex flex-col shadow-lg relative">
+                <div className="flex-1 min-h-0 grid grid-cols-2 gap-2">
+                  <div className="bg-neutral-900 rounded-2xl p-3 border border-white/5 flex flex-col shadow-lg relative min-h-0">
                     {!convPasser && <div className="absolute top-4 right-4 w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>}
-                    <label className="text-neutral-400 font-bold uppercase tracking-widest mb-4">Passer / Runner</label>
-                    <div className="flex flex-col gap-2 overflow-y-auto max-h-64 hide-scrollbar">
+                    <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest mb-2">Passer / Runner</label>
+                    <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0 hide-scrollbar">
                       {getOffensiveRoster().map(p => (
-                        <button key={p} onClick={() => { setConvPasser(p); if (convReceiver === p) setConvReceiver(""); }} className={`p-4 rounded-xl font-bold text-left transition-all ${convPasser === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>{p}</button>
+                        <button key={p} onClick={() => { setConvPasser(p); if (convReceiver === p) setConvReceiver(""); }} className={`p-2 rounded-lg text-sm font-bold text-left transition-all ${convPasser === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>{p}</button>
                       ))}
                     </div>
                   </div>
-                  <div className="bg-neutral-900 rounded-3xl p-6 border border-white/5 flex flex-col shadow-lg">
-                    <label className="text-neutral-400 font-bold uppercase tracking-widest mb-4">Receiver (Optional)</label>
-                    <div className="flex flex-col gap-2 overflow-y-auto max-h-64 hide-scrollbar">
+                  <div className="bg-neutral-900 rounded-2xl p-3 border border-white/5 flex flex-col shadow-lg min-h-0">
+                    <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest mb-2">Receiver (Optional)</label>
+                    <div className="flex flex-col gap-1 overflow-y-auto flex-1 min-h-0 hide-scrollbar">
                       {getOffensiveRoster().filter(p => p !== convPasser || p === 'TEAM').map(p => (
-                        <button key={p} onClick={() => setConvReceiver(convReceiver === p ? '' : p)} className={`p-4 rounded-xl font-bold text-left transition-all ${convReceiver === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>{p}</button>
+                        <button key={p} onClick={() => setConvReceiver(convReceiver === p ? '' : p)} className={`p-2 rounded-lg text-sm font-bold text-left transition-all ${convReceiver === p ? 'bg-cyan-500 text-white' : 'bg-black border border-white/5 text-neutral-400'}`}>{p}</button>
                       ))}
                     </div>
                   </div>
                 </div>
 
                 <div className={`transition-all duration-300 ${convPasser ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-                  <button onClick={finalizeConversion} className="w-full py-6 rounded-3xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-2xl transition-all shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.3)]">
+                  <button onClick={finalizeConversion} className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base transition-all shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.3)]">
                     SAVE CONVERSION STATS
                   </button>
                 </div>

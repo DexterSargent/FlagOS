@@ -1,6 +1,6 @@
-export function cleanFirebaseConfigValue(value: string | undefined): string | undefined {
+export function cleanFirebaseConfigValue(value: string | undefined, fallback?: string): string | undefined {
   const trimmed = value?.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) return fallback;
 
   const quote = trimmed[0];
   if (
@@ -8,8 +8,9 @@ export function cleanFirebaseConfigValue(value: string | undefined): string | un
     (quote === '"' || quote === "'") &&
     trimmed[trimmed.length - 1] === quote
   ) {
-    return trimmed.slice(1, -1).trim();
+    const unquoted = trimmed.slice(1, -1).trim();
+    return unquoted || fallback;
   }
 
-  return trimmed;
+  return trimmed || fallback;
 }

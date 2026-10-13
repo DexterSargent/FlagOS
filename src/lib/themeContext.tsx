@@ -43,7 +43,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     let initialMode: ThemeMode = "dark";
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
-      if (saved && (saved === "dark" || saved === "light" || saved === "system")) {
+      if (saved === "light" || saved === "dark") {
         initialMode = saved;
       }
     } catch {}

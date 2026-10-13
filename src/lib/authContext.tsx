@@ -67,6 +67,7 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   role: UserRole;
   isAuthorized: boolean; // True if authenticated with an authorized email (admin, team admin/coach, or rostered player)
+  isPlatformAdmin: boolean;
   isAdmin: boolean; // General admin flag (true for league_admin or team_admin)
   isLeagueAdmin: boolean; // Full write/edit access over schedule, play-by-play, teams
   isTeamAdmin: (teamId?: string) => boolean; // Team admin for specific or any team
@@ -94,6 +95,7 @@ const AuthContext = createContext<AuthContextType>({
   userProfile: null,
   role: "user",
   isAuthorized: false,
+  isPlatformAdmin: false,
   isAdmin: false,
   isLeagueAdmin: false,
   isTeamAdmin: () => false,
@@ -534,6 +536,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Determine effective role & player properties
   const effectiveRole: UserRole = devRole || userProfile?.role || "user";
+  const isPlatformAdmin = !!user?.email && adminEmails.includes(user.email.trim().toLowerCase());
   const effectiveTeamId: string | null =
     effectiveRole === "player"
       ? devTeamId || userProfile?.playerTeamId || null
@@ -591,6 +594,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         userProfile,
         role: effectiveRole,
         isAuthorized,
+        isPlatformAdmin,
         isAdmin,
         isLeagueAdmin,
         isTeamAdmin,

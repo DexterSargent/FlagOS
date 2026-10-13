@@ -8,8 +8,10 @@ import { Shield, Crown, User, ChevronLeft, ArrowRight, CheckCircle2, ShieldAlert
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { isRealTeam } from "@/components/TeamAssets";
+import { useTheme } from "@/lib/themeContext";
 
 export default function LoginPage() {
+  const { resolvedTheme } = useTheme();
   const {
     user,
     userProfile,
@@ -170,7 +172,7 @@ export default function LoginPage() {
         {/* Brand Emblem */}
         <div className="flex flex-col items-center mb-4">
           <img
-            src="/flagos-emblem.png"
+            src={resolvedTheme === "light" ? "/flagos-emblem-light.png" : "/flagos-emblem-dark.png"}
             alt="FlagOS"
             className="w-16 h-16 object-contain drop-shadow-[0_4px_20px_rgba(60,165,5,0.4)] hover:scale-105 transition-transform"
           />
@@ -293,14 +295,14 @@ export default function LoginPage() {
               className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-500"
             />
             {emailPasswordError && (
-              <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
+              <p role="alert" className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 p-3 rounded-lg font-medium">
                 {emailPasswordError}
               </p>
             )}
             <button
               type="submit"
               disabled={emailPasswordLoggingIn}
-              className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {emailPasswordLoggingIn
                 ? isCreatingAccount ? "Creating account..." : "Signing in..."
@@ -314,7 +316,7 @@ export default function LoginPage() {
                   setIsCreatingAccount(!isCreatingAccount);
                   setEmailPasswordError("");
                 }}
-                className="font-bold text-emerald-700 hover:text-emerald-600 underline underline-offset-2"
+                className="font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 cursor-pointer"
               >
                 {isCreatingAccount ? "Sign in" : "Create an account"}
               </button>
@@ -401,7 +403,7 @@ export default function LoginPage() {
         ) : (
           <>
             {googleLoginError && (
-              <p role="alert" className="w-full mb-4 text-xs text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
+              <p role="alert" className="w-full mb-4 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 p-3 rounded-lg font-medium">
                 {googleLoginError}
               </p>
             )}

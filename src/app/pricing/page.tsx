@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Crown,
   Shield,
@@ -30,16 +29,8 @@ import {
   HelpCircle,
   FileText,
 } from "lucide-react";
-import { useLeague } from "@/lib/leagueContext";
-import { useAuth } from "@/lib/authContext";
-import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
 
 export default function PricingPage() {
-  const router = useRouter();
-  const { createLeague, userLeagues, activeLeagueId, subscription: currentSub } = useLeague();
-  const { user, isLeagueAdmin, setDevRole } = useAuth();
-
   // League interactive slider
   const [teamCount, setTeamCount] = useState<number>(8);
   const baseLeagueFee = 40;
@@ -49,88 +40,28 @@ export default function PricingPage() {
   // Active comparison tab / category filter
   const [activeMatrixTab, setActiveMatrixTab] = useState<"all" | "stats" | "playbook" | "league">("all");
 
-  // Modals
+  const [showDevelopmentNotice, setShowDevelopmentNotice] = useState(false);
   const [isLeagueModalOpen, setIsLeagueModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-
-  // League Modal Form
   const [leagueName, setLeagueName] = useState("");
   const [leagueShortcode, setLeagueShortcode] = useState("");
   const [leagueColor, setLeagueColor] = useState("#3ca505");
   const [isSubmittingLeague, setIsSubmittingLeague] = useState(false);
-
-  // Team Modal Form
   const [teamName, setTeamName] = useState("");
   const [teamShortcode, setTeamShortcode] = useState("");
   const [teamIcon, setTeamIcon] = useState("shield");
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
 
-  const handleSubscribeLeague = async (e: React.FormEvent) => {
+  const handleSubscribeLeague = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!leagueName.trim() || !leagueShortcode.trim()) return;
-    setIsSubmittingLeague(true);
-    try {
-      const newLeagueId = await createLeague({
-        name: leagueName.trim(),
-        shortcode: leagueShortcode.trim().toUpperCase(),
-        teamCount,
-        primaryColor: leagueColor,
-        seasonTitle: `${new Date().getFullYear()} Championship`,
-      });
-      // Switch user to league admin
-      setDevRole("league_admin");
-      setIsLeagueModalOpen(false);
-      router.push("/");
-    } catch (err) {
-      console.error("Failed to create league:", err);
-      alert("Failed to activate league subscription. Please try again.");
-    } finally {
-      setIsSubmittingLeague(false);
-    }
+    setIsLeagueModalOpen(false);
+    setShowDevelopmentNotice(true);
   };
 
-  const handleSubscribeTeam = async (e: React.FormEvent) => {
+  const handleSubscribeTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamName.trim()) return;
-    setIsSubmittingTeam(true);
-    try {
-      const shortcode = (teamShortcode.trim() || teamName.trim().slice(0, 3)).toUpperCase();
-      const teamDocRef = await addDoc(collection(db, "teams"), {
-        name: teamName.trim(),
-        shortcode,
-        icon: teamIcon,
-        subscription: {
-          plan: "team",
-          monthlyFee: 30,
-          status: "active",
-          activatedAt: new Date().toISOString(),
-        },
-        createdAt: new Date().toISOString(),
-      });
-
-      // Save to local team subscription list
-      if (typeof window !== "undefined") {
-        const existing = JSON.parse(localStorage.getItem("flagos_team_subscriptions") || "[]");
-        existing.push({
-          teamId: teamDocRef.id,
-          teamName: teamName.trim(),
-          shortcode,
-          monthlyFee: 30,
-          status: "active",
-        });
-        localStorage.setItem("flagos_team_subscriptions", JSON.stringify(existing));
-      }
-
-      // Switch user role to team admin for this team
-      setDevRole("team_admin", teamDocRef.id);
-      setIsTeamModalOpen(false);
-      router.push(`/teams/${teamDocRef.id}`);
-    } catch (err) {
-      console.error("Failed to create team subscription:", err);
-      alert("Failed to activate team subscription. Please try again.");
-    } finally {
-      setIsSubmittingTeam(false);
-    }
+    setIsTeamModalOpen(false);
+    setShowDevelopmentNotice(true);
   };
 
   // Exact 6 Team Features from Public Home Page
@@ -538,7 +469,7 @@ export default function PricingPage() {
 
             <div className="pt-6 border-t border-white/10 mt-6">
               <button
-                onClick={() => setIsTeamModalOpen(true)}
+                onClick={() => setShowDevelopmentNotice(true)}
                 className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <span>Subscribe Team Portal ($30/mo)</span>
@@ -654,7 +585,7 @@ export default function PricingPage() {
 
             <div className="pt-6 border-t border-white/10 mt-6">
               <button
-                onClick={() => setIsLeagueModalOpen(true)}
+                onClick={() => setShowDevelopmentNotice(true)}
                 className="w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.3)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <span>Launch &amp; Subscribe League (${totalLeagueMonthly}/mo)</span>
@@ -1026,6 +957,56 @@ export default function PricingPage() {
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {showDevelopmentNotice && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          onClick={() => setShowDevelopmentNotice(false)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="development-notice-title"
+            className="relative w-full max-w-md rounded-3xl border border-cyan-500/30 bg-neutral-950 p-7 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              aria-label="Close development notice"
+              onClick={() => setShowDevelopmentNotice(false)}
+              className="absolute right-4 top-4 rounded-lg p-2 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <h2 id="development-notice-title" className="text-xl font-black text-white">
+              FlagOS is still in development
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+              Subscriptions and purchases are not available yet. No payment will be taken and no league or team will be created. You can continue exploring the demo league while we finish building the service.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/league/default?demo=true"
+                onClick={() => setShowDevelopmentNotice(false)}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-xs font-black uppercase tracking-wide text-black transition-colors hover:bg-cyan-400"
+              >
+                <Play className="h-4 w-4" />
+                Explore demo league
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowDevelopmentNotice(false)}
+                className="rounded-xl border border-white/10 px-4 py-3 text-xs font-bold text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                Maybe later
+              </button>
+            </div>
+          </section>
         </div>
       )}
 

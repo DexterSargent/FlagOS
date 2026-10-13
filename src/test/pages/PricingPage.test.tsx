@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import PricingPage from "@/app/pricing/page";
 
 // Mock router
@@ -118,65 +118,29 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     expect(screen.queryByText("Dynamic Play-by-Play Wizard (Asynchronous Mode)")).toBeNull();
   });
 
-  it("opens league creation modal, calculates team fees, and invokes createLeague handler", async () => {
+  it("shows a development notice instead of starting a league purchase", () => {
     render(<PricingPage />);
 
-    // Click Launch & Subscribe League button
     const subscribeButton = screen.getByRole("button", {
       name: /Launch & Subscribe League/i,
     });
     fireEvent.click(subscribeButton);
 
-    // Modal is now open
-    expect(screen.getByText("Subscribe League Portal")).toBeInTheDocument();
-
-    // Fill in League Name and Shortcode
-    const leagueNameInput = screen.getByPlaceholderText(/Gotham Flag Football League/i);
-    const shortcodeInput = screen.getByPlaceholderText(/GFFL/i);
-
-    fireEvent.change(leagueNameInput, { target: { value: "Apex Flag Championship" } });
-    fireEvent.change(shortcodeInput, { target: { value: "APEX" } });
-
-    // Submit form
-    const submitBtn = screen.getByRole("button", { name: /Confirm & Pay/i });
-    fireEvent.click(submitBtn);
-
-    await waitFor(() => {
-      expect(mockCreateLeague).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "Apex Flag Championship",
-          shortcode: "APEX",
-          teamCount: 8,
-        })
-      );
-      expect(mockSetDevRole).toHaveBeenCalledWith("league_admin");
-      expect(mockPush).toHaveBeenCalledWith("/");
-    });
+    expect(screen.getByRole("dialog")).toHaveTextContent("FlagOS is still in development");
+    expect(screen.getByRole("dialog")).toHaveTextContent("No payment will be taken");
+    expect(screen.queryByPlaceholderText(/Gotham Flag Football League/i)).not.toBeInTheDocument();
+    expect(mockCreateLeague).not.toHaveBeenCalled();
   });
 
-  it("opens team subscription modal and handles team creation", async () => {
+  it("shows the same purchase notice instead of creating a team", () => {
     render(<PricingPage />);
 
-    // Click Subscribe Team button
     const subscribeTeamBtn = screen.getByRole("button", {
       name: /Subscribe Team Portal/i,
     });
     fireEvent.click(subscribeTeamBtn);
 
-    // Modal is now open
-    expect(screen.getAllByText("Subscribe Team Portal").length).toBeGreaterThan(0);
-
-    // Fill team name
-    const teamNameInput = screen.getByPlaceholderText(/Apex Predators/i);
-    fireEvent.change(teamNameInput, { target: { value: "Neon Raptors" } });
-
-    // Submit team form
-    const submitTeamBtn = screen.getByRole("button", { name: /Confirm & Pay \$30\/mo/i });
-    fireEvent.click(submitTeamBtn);
-
-    await waitFor(() => {
-      expect(mockSetDevRole).toHaveBeenCalledWith("team_admin", "team_mock_123");
-      expect(mockPush).toHaveBeenCalledWith("/teams/team_mock_123");
-    });
+    expect(screen.getByRole("dialog")).toHaveTextContent("FlagOS is still in development");
+    expect(screen.queryByPlaceholderText(/Apex Predators/i)).not.toBeInTheDocument();
   });
 });
