@@ -84,14 +84,15 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     const fetchData = async () => {
       if (isDemoLeague) {
         const loadDemo = () => {
-          const tObj = getSandboxTeams().find((t) => t.id === teamId);
+          const tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
+          const effectiveTeamId = tObj?.id || teamId;
           if (tObj && isRealTeam(tObj)) setTeam(tObj);
           else setTeam(null);
           const tMap: Record<string, any> = {};
           getSandboxTeams().filter(isRealTeam).forEach((t) => { tMap[t.id] = t; });
           setAllTeams(tMap);
           const mList = getSandboxMatches().filter(
-            (m: any) => !m.isHidden && (m.homeTeamId === teamId || m.awayTeamId === teamId)
+            (m: any) => !m.isHidden && (m.homeTeamId === effectiveTeamId || m.awayTeamId === effectiveTeamId)
           );
           mList.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
           setMatches(mList);
@@ -146,25 +147,33 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
+        <LeagueHeader activePage="teams" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <LeagueFooter />
       </div>
     );
   }
 
   if (!team || !isRealTeam(team)) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
-        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-        <p className="text-neutral-400 mb-6 max-w-md">
-          The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team.
-        </p>
-        <Link
-          href="/teams"
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
-        >
-          Back to Teams
-        </Link>
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
+        <LeagueHeader activePage="teams" />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+          <p className="text-neutral-400 mb-6 max-w-md">
+            The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team.
+          </p>
+          <Link
+            href="/teams"
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          >
+            Back to Teams
+          </Link>
+        </div>
+        <LeagueFooter />
       </div>
     );
   }
@@ -176,12 +185,14 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const hasManagementAccess = canManageTeam(teamId) || isLeagueAdmin;
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
       {/* Branded League Navigation Bar */}
       <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background */}
-      <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15 pointer-events-none"></div>
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
+      </div>
 
       <div className="max-w-5xl mx-auto space-y-8 relative z-10 flex-1 w-full p-6 md:p-12">
         {/* Navigation */}

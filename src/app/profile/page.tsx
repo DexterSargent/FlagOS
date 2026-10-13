@@ -342,7 +342,7 @@ export default function PlayerProfilePage() {
   const teamShortcode = effectiveTeam ? getTeamShortcode(effectiveTeam) : "TM";
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
       <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background Glows */}

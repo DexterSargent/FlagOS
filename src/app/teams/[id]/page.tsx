@@ -36,13 +36,15 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
+  const { settings, isDemoLeague } = useLeague();
   const { canManageTeam, isLeagueAdmin, isTeamAdmin, isAdmin, isPlayer, playerTeamId } = useAuth();
+  // Playbooks RBAC:
+  // - League admins have NO access (confidential franchise strategy)
+  // - Authorized team admins can access playbooks for their team only
+  // - Rostered players can access playbooks for their team only
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
   const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
-  // Playbooks are strictly confidential to team admins and rostered players; hidden from league admins and spectators unless they are also team admins
-  const isBlockedLeagueAdmin = isLeagueAdmin && !isTeamAdminForThisTeam;
-  const canAccessPlaybook = !isBlockedLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
-  const { settings, isDemoLeague } = useLeague();
+  const canAccessPlaybook = !isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +59,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     const fetchTeam = async () => {
       if (isDemoLeague) {
-        const tData = getSandboxTeams().find((t) => t.id === teamId);
+        const tData = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
         if (tData && isRealTeam(tData)) {
           setTeam(tData);
           setEditName(tData.name || "");
@@ -129,25 +131,33 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
-        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
+        <LeagueHeader activePage="teams" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <LeagueFooter />
       </div>
     );
   }
 
   if (!team || !isRealTeam(team)) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
-        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-        <p className="text-neutral-400 mb-6 max-w-md">
-          The requested franchise does not exist or has been removed. Free agents are an unassigned draft pool, not a franchise.
-        </p>
-        <Link
-          href="/teams"
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
-        >
-          Back to Teams
-        </Link>
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
+        <LeagueHeader activePage="teams" />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+          <p className="text-neutral-400 mb-6 max-w-md">
+            The requested franchise does not exist or has been removed. Free agents are an unassigned draft pool, not a franchise.
+          </p>
+          <Link
+            href="/teams"
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          >
+            Back to Teams
+          </Link>
+        </div>
+        <LeagueFooter />
       </div>
     );
   }
@@ -155,12 +165,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const shortcode = team.shortcode || getTeamShortcode(team);
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 selection:text-cyan-200 overflow-hidden relative font-sans flex flex-col">
+    <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 selection:text-cyan-200 relative font-sans flex flex-col">
       {/* Branded League Navigation Bar */}
       <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background with ambient glows */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[140px] opacity-20 animate-pulse"></div>
         <div className="absolute top-40 -right-40 w-[35rem] h-[35rem] bg-blue-950 rounded-full mix-blend-screen filter blur-[140px] opacity-35 animate-pulse delay-1000"></div>
       </div>

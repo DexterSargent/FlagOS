@@ -90,8 +90,9 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       let playList: any[] = [];
 
       if (isDemoLeague) {
-        tObj = getSandboxTeams().find((t) => t.id === teamId);
-        pList = getSandboxPlayers().filter((p) => p.teamId === teamId);
+        tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
+        const effectiveTeamId = tObj?.id || teamId;
+        pList = getSandboxPlayers().filter((p) => p.teamId === effectiveTeamId);
         mList = getSandboxMatches();
         playList = getSandboxPlays();
       } else {
@@ -422,36 +423,46 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
+        <LeagueHeader activePage="teams" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <LeagueFooter />
       </div>
     );
   }
 
   if (!loading && (!team || !isRealTeam(team))) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
-        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-        <p className="text-neutral-400 mb-6 max-w-md">
-          The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
-        </p>
-        <Link
-          href="/teams"
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
-        >
-          Back to Teams
-        </Link>
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
+        <LeagueHeader activePage="teams" />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+          <p className="text-neutral-400 mb-6 max-w-md">
+            The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
+          </p>
+          <Link
+            href="/teams"
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          >
+            Back to Teams
+          </Link>
+        </div>
+        <LeagueFooter />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
       {/* Branded League Navigation Bar */}
       <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background */}
-      <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15 pointer-events-none"></div>
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
+      </div>
 
       <div className="max-w-6xl mx-auto space-y-8 relative z-10 flex-1 w-full p-6 md:p-12">
         {/* Navigation */}

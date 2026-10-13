@@ -156,6 +156,9 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     }
   }, [teamId]);
 
+  // Selected player reference
+  const selectedPlayer = (play.players || []).find((p) => p.id === selectedPlayerId) || null;
+
   const handleSaveCurrentRouteAsPreset = () => {
     if (!selectedPlayer?.route || selectedPlayer.route.length === 0) return;
     if (customPresets.length >= MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM) {
@@ -318,10 +321,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   const [showOpposingSide, setShowOpposingSide] = useState<boolean>(false);
 
   // Filter visible players based on showOpposingSide
-  const visiblePlayers = play.players.filter((p) => (showOpposingSide ? true : p.side === play.type));
-
-  // Selected player reference
-  const selectedPlayer = play.players.find((p) => p.id === selectedPlayerId) || null;
+  const visiblePlayers = (play.players || []).filter((p) => (showOpposingSide ? true : p.side === play.type));
 
   // Compute legal status across visible players in play
   const alignmentIssues = visiblePlayers

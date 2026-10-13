@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
-import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield } from "lucide-react";
+import { useLeague } from "@/lib/leagueContext";
+import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield, PlayCircle } from "lucide-react";
 
 // The only pages publicly accessible without being logged in to an authorized email
 const PUBLIC_ROUTES = ["/", "/pricing", "/login"];
@@ -22,31 +23,78 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isPlayer, isAuthorized, loading, logout } = useAuth();
-  const [isIframeEmbed, setIsIframeEmbed] = useState<boolean>(false);
-  const [mounted, setMounted] = useState<boolean>(false);
+  const { isDemoLeague, activeLeagueId } = useLeague();
 
-  useEffect(() => {
-    setMounted(true);
-    // Allow iframe embedded preview frames inside the marketing page showcase
-    if (typeof window !== "undefined") {
-      const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
-      setIsIframeEmbed(isEmbed);
+  // Synchronous client/server evaluation:
+  // Is this the interactive demo sandbox where all features should be explored without signing in?
+  const isDemo = useMemo(() => {
+    // 1. Explicit demo routes
+    if (
+      pathname.startsWith("/league/default") ||
+      pathname.startsWith("/league/demo") ||
+      pathname.startsWith("/matches/match_demo_")
+    ) {
+      return true;
     }
-  }, []);
+
+    // 2. Active league context is the default demo league
+    if (isDemoLeague || activeLeagueId === "default" || activeLeagueId === "demo") {
+      return true;
+    }
+
+    // 3. Client-side storage or query parameter
+    if (typeof window !== "undefined") {
+      try {
+        if (window.location.search.includes("demo=true")) return true;
+        if (sessionStorage.getItem("flagos_demo_active") === "true") return true;
+        if (localStorage.getItem("flagos_demo_active") === "true") return true;
+      } catch {}
+    }
+
+    return false;
+  }, [pathname, isDemoLeague, activeLeagueId]);
+
+  // Synchronous embed evaluation
+  const isEmbedShowcase = useMemo(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
+        if (isEmbed && isShowcaseRoute(pathname)) return true;
+      } catch {}
+    }
+    return false;
+  }, [pathname]);
 
   // Determine if current path is strictly public
   const isPublic = PUBLIC_ROUTES.includes(pathname);
 
-  // Only allow iframe embeds to render if they are strictly on one of the 4 showcased feature routes
-  const isAllowedEmbedShowcase = isIframeEmbed && isShowcaseRoute(pathname);
+  // Synchronously persist demo state so subsequent sub-page navigations stay in sandbox
+  useEffect(() => {
+    if (typeof window !== "undefined" && isDemo) {
+      try {
+        sessionStorage.setItem("flagos_demo_active", "true");
+        localStorage.setItem("flagos_demo_active", "true");
+      } catch {}
+    }
+  }, [isDemo, pathname]);
 
-  // If public route or valid showcase preview frame, grant immediate access
-  if (isPublic || isAllowedEmbedShowcase) {
+  // Redirect unauthenticated visitors on private real leagues
+  useEffect(() => {
+    if (!isPublic && !isEmbedShowcase && !isDemo && !loading && !user && !isPlayer) {
+      if (typeof window !== "undefined") {
+        router.push(`/login?redirect=${encodeURIComponent(pathname + window.location.search)}`);
+      }
+    }
+  }, [isPublic, isEmbedShowcase, isDemo, loading, user, isPlayer, pathname, router]);
+
+  // If public route, valid showcase preview frame, or demo sandbox, GRANT IMMEDIATE ACCESS!
+  // Zero database writes, zero sign-in required.
+  if (isPublic || isEmbedShowcase || isDemo) {
     return <>{children}</>;
   }
 
-  // Still checking Firebase Auth / Firestore verification
-  if (loading || !mounted) {
+  // Still checking Firebase Auth / Firestore verification for real leagues
+  if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-emerald-600/15 rounded-full blur-[140px] pointer-events-none" />
@@ -73,19 +121,38 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Case 1: Visitor is completely unauthenticated (not logged in)
-  // Redirect immediately to login with redirect parameter
+  // Case 1: Visitor is completely unauthenticated on a private league
   if (!user && !isPlayer) {
-    if (typeof window !== "undefined") {
-      const target = `/login?redirect=${encodeURIComponent(pathname + window.location.search)}`;
-      router.push(target);
-    }
-
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-sans">
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <div className="text-xs text-neutral-400 font-mono">Redirecting to Authorized Sign In...</div>
+        <div className="flex flex-col items-center text-center space-y-4 max-w-sm">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <Lock className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-sm font-bold uppercase tracking-wider text-white">
+              Private League Portal
+            </div>
+            <div className="text-xs text-neutral-400 mt-1">
+              Sign in is required to view this private league portal.
+            </div>
+          </div>
+          <div className="flex flex-col w-full gap-2.5 pt-2">
+            <Link
+              href={`/login?redirect=${encodeURIComponent(pathname)}`}
+              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-neutral-200 text-black font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Continue</span>
+            </Link>
+            <Link
+              href="/league/default?demo=true"
+              className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-cyan-400 hover:text-cyan-300 text-xs font-bold transition-all border border-white/10 flex items-center justify-center gap-1.5"
+            >
+              <PlayCircle className="w-4 h-4" />
+              <span>Explore Demo League Sandbox</span>
+            </Link>
+          </div>
         </div>
       </div>
     );

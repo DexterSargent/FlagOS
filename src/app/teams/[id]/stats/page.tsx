@@ -34,8 +34,9 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         let plays: any[] = [];
 
         if (isDemoLeague) {
-          tObj = getSandboxTeams().find((t) => t.id === teamId);
-          players = getSandboxPlayers().filter((p) => p.teamId === teamId);
+          tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
+          const effectiveTeamId = tObj?.id || teamId;
+          players = getSandboxPlayers().filter((p) => p.teamId === effectiveTeamId);
           matches = getSandboxMatches();
           plays = getSandboxPlays();
         } else {
@@ -75,8 +76,9 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         });
 
         // Games played
+        const targetTeamId = tObj?.id || teamId;
         matches.forEach((m) => {
-          if ((m.status === "completed" || m.status === "Final") && (m.homeTeamId === teamId || m.awayTeamId === teamId)) {
+          if ((m.status === "completed" || m.status === "Final") && (m.homeTeamId === targetTeamId || m.awayTeamId === targetTeamId)) {
             const dnp = m.didNotPlay || [];
             players.forEach((p: any) => {
               if (statsMap[p.playerName] && !dnp.includes(p.playerName)) {
@@ -193,8 +195,12 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
+        <LeagueHeader activePage="teams" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <LeagueFooter />
       </div>
     );
   }
@@ -202,12 +208,14 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const teamName = team?.name || "Team";
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
       {/* Branded League Navigation Bar */}
       <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background */}
-      <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15 pointer-events-none"></div>
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
+      </div>
 
       <div className="max-w-6xl mx-auto space-y-8 relative z-10 flex-1 w-full p-6 md:p-12">
         {/* Navigation */}

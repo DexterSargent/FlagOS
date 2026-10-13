@@ -8,7 +8,7 @@ import AsyncPlayByPlayManager from "@/components/AsyncPlayByPlayManager";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
-import { getSandboxMatches, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
   const { isLeagueAdmin, isTeamAdmin, canManageTeam, loading } = useAuth();
@@ -23,7 +23,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   useEffect(() => {
     const loadMatch = async () => {
       if (isDemo) {
-        const m = getSandboxMatches().find((m: any) => m.id === matchId);
+        const m = getSandboxMatch(matchId);
         if (m) setMatchData(m);
         setIsFetching(false);
         return;
@@ -66,10 +66,15 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   }
 
   const isDemoMatch = isDemoLeague || matchId.startsWith("match_demo_");
-  // In demo matches / play-by-play wizard demo, ONLY league admin can administer the game.
-  // If the user switches to any role other than league admin (e.g. Team Admin, Player, Spectator),
-  // show the play-by-play / box score view for the game they were in.
-  const canAdministerMatch = isDemoMatch
+  const isEmbedded = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true";
+  // In demo matches / play-by-play wizard demo:
+  // - If embedded on the landing page showcase (embed=true), allow interactive testing of the wizard
+  // - In full app, ONLY league admin can administer the game
+  // - If the user switches to any role other than league admin (e.g. Team Admin, Player, Spectator),
+  //   show the play-by-play / box score view for the game they were in.
+  const canAdministerMatch = isEmbedded
+    ? true
+    : isDemoMatch
     ? isLeagueAdmin
     : (isLeagueAdmin ||
        (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) ||

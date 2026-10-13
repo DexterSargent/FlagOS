@@ -76,7 +76,11 @@ export default function ThemeToggle({
     <button
       type="button"
       onClick={toggleTheme}
-      className={`relative inline-flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-all shadow-sm active:scale-95 cursor-pointer ${
+      className={`relative inline-flex items-center justify-center rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer ${
+        isDark
+          ? "bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white"
+          : "bg-white hover:bg-slate-100 border border-slate-300/80 text-slate-800 shadow-sm"
+      } ${
         size === "sm"
           ? "w-7 h-7"
           : size === "lg"
@@ -89,7 +93,7 @@ export default function ThemeToggle({
       {isDark ? (
         <Sun className={`${size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} text-amber-400 transition-transform duration-200 hover:rotate-45`} />
       ) : (
-        <Moon className={`${size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} text-cyan-400 transition-transform duration-200 hover:-rotate-12`} />
+        <Moon className={`${size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} text-cyan-700 transition-transform duration-200 hover:-rotate-12`} />
       )}
     </button>
   );

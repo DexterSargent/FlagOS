@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { getSandboxPlayers, subscribeDemoSandbox } from "./demoSandbox";
+import { getSandboxPlayers, subscribeDemoSandbox, notifySandboxChange } from "./demoSandbox";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
 
@@ -196,7 +196,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
             setUserProfile(data);
           } else {
-            // Create user profile
+            // Create user profile in Firestore (strictly omitting undefined fields)
             const newRole: UserRole = isEmailLeagueAdmin
               ? "league_admin"
               : matchingPlayer
@@ -205,7 +205,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               ? "team_admin"
               : "user";
 
-            const newProfile: UserProfile = {
+            const profileDataToSave: Record<string, any> = {
+              uid: u.uid,
+              email: u.email || "",
+              displayName: u.displayName || matchingPlayer?.playerName || "",
+              role: newRole,
+            };
+
+            if (matchingPlayer?.id) {
+              profileDataToSave.playerId = matchingPlayer.id;
+            }
+            if (matchingPlayer?.teamId) {
+              profileDataToSave.playerTeamId = matchingPlayer.teamId;
+            }
+            if (matchingPlayer) {
+              profileDataToSave.playerData = matchingPlayer;
+            }
+            if (matchingTeam?.id) {
+              profileDataToSave.managedTeamId = matchingTeam.id;
+            }
+
+            await setDoc(userDocRef, profileDataToSave);
+            setUserProfile({
               uid: u.uid,
               email: u.email || "",
               displayName: u.displayName || matchingPlayer?.playerName || "",
@@ -214,9 +235,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               playerTeamId: matchingPlayer?.teamId,
               playerData: matchingPlayer,
               managedTeamId: matchingTeam?.id,
-            };
-            await setDoc(userDocRef, newProfile);
-            setUserProfile(newProfile);
+            });
           }
         } catch (err) {
           console.error("Error fetching user profile:", err);
@@ -236,18 +255,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
-  // Reset dev role when demo session resets
+  // Sync or reset dev role when demo session changes
   useEffect(() => {
     const unsub = subscribeDemoSandbox(() => {
-      setDevRoleState(null);
-      setDevTeamId(null);
-      setDevPlayerId(null);
-      setDevPlayerData(null);
       if (typeof window !== "undefined") {
-        sessionStorage.removeItem("demo_dev_role");
-        sessionStorage.removeItem("demo_managed_team_id");
-        sessionStorage.removeItem("demo_player_id");
-        sessionStorage.removeItem("demo_player_data");
+        const savedRole = (sessionStorage.getItem("demo_dev_role") || localStorage.getItem("dev_auth_role")) as UserRole | null;
+        setDevRoleState(savedRole || null);
+        const savedTeam = sessionStorage.getItem("demo_managed_team_id") || localStorage.getItem("dev_managed_team_id");
+        setDevTeamId(savedTeam || null);
+        const savedPlayer = sessionStorage.getItem("demo_player_id") || localStorage.getItem("dev_player_id");
+        setDevPlayerId(savedPlayer || null);
+        const savedData = sessionStorage.getItem("demo_player_data") || localStorage.getItem("dev_player_data");
+        if (savedData) {
+          try {
+            setDevPlayerData(JSON.parse(savedData));
+          } catch {
+            setDevPlayerData(null);
+          }
+        } else {
+          setDevPlayerData(null);
+        }
       }
     });
     return () => unsub();
@@ -294,6 +321,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         sessionStorage.removeItem("demo_player_data");
       }
+      notifySandboxChange();
     }
   };
 

@@ -22,9 +22,10 @@ export default function RoleSwitcherBar() {
     if (typeof window !== "undefined") {
       const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
       const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
-      setIsLocalOrEmbed(isLocal || isEmbed);
+      const isDemo = window.location.search.includes("demo=true") || sessionStorage.getItem("flagos_demo_active") === "true";
+      setIsLocalOrEmbed(isLocal || isEmbed || isDemo);
     }
-  }, []);
+  }, [pathname]);
 
   // CRITICAL: Role Switcher MUST ONLY render inside localhost dev or embedded preview frame
   // Never on marketing platform home (/), pricing (/pricing), or production domain (flagos.ca)
@@ -138,7 +139,7 @@ export default function RoleSwitcherBar() {
   return (
     <aside
       aria-label="Demo Testing Role Switcher"
-      className="sticky top-0 z-50 bg-[#070A11]/95 border-b border-cyan-500/30 px-4 py-2.5 backdrop-blur-md shadow-xl shadow-black/60 text-xs"
+      className="relative z-40 bg-[#070A11]/95 border-b border-cyan-500/30 px-4 py-2.5 backdrop-blur-md shadow-xl shadow-black/60 text-xs"
     >
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* Left: Indicator & Demo Badge */}
@@ -153,7 +154,7 @@ export default function RoleSwitcherBar() {
         </div>
 
         {/* Center: Toggle Buttons */}
-        <div className="flex items-center gap-1 bg-black/70 p-1 rounded-xl border border-white/10 shadow-inner">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-black/70 p-1 rounded-xl border border-slate-200 dark:border-white/10 shadow-inner">
           {/* League Admin Toggle */}
           <button
             onClick={() => handleSelectRole("league_admin")}
@@ -161,7 +162,7 @@ export default function RoleSwitcherBar() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
               role === "league_admin"
                 ? "bg-amber-500 text-black shadow-md shadow-amber-500/20 font-black"
-                : "text-neutral-400 hover:text-white hover:bg-white/5"
+                : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
             }`}
           >
             <Crown className="w-3.5 h-3.5" />
@@ -175,7 +176,7 @@ export default function RoleSwitcherBar() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
               role === "team_admin"
                 ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20 font-black"
-                : "text-neutral-400 hover:text-white hover:bg-white/5"
+                : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
             }`}
           >
             <Shield className="w-3.5 h-3.5" />
@@ -189,7 +190,7 @@ export default function RoleSwitcherBar() {
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
               role === "player"
                 ? "bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-black"
-                : "text-neutral-400 hover:text-white hover:bg-white/5"
+                : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
             }`}
           >
             <User className="w-3.5 h-3.5" />
@@ -202,8 +203,8 @@ export default function RoleSwitcherBar() {
             title="Experience spectator fan view: public schedule, leaderboards & game box scores"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
               role === "user"
-                ? "bg-neutral-200 text-black shadow-md font-black"
-                : "text-neutral-400 hover:text-white hover:bg-white/5"
+                ? "bg-slate-300 dark:bg-neutral-200 text-black shadow-md font-black"
+                : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5"
             }`}
           >
             <span>Spectator</span>
@@ -214,15 +215,15 @@ export default function RoleSwitcherBar() {
         <div className="flex items-center gap-2">
           {/* Team Admin Team Selector */}
           {role === "team_admin" && teams.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-cyan-950/40 border border-cyan-500/30 px-2.5 py-1 rounded-lg">
-              <span className="text-[10px] uppercase font-bold text-cyan-300">Franchise:</span>
+            <div className="flex items-center gap-1.5 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-500/30 px-2.5 py-1 rounded-lg">
+              <span className="text-[10px] uppercase font-bold text-cyan-800 dark:text-cyan-300">Franchise:</span>
               <select
                 value={managedTeamId || teams[0]?.id || ""}
                 onChange={(e) => handleTeamChange(e.target.value)}
-                className="bg-transparent text-white font-bold outline-none text-xs cursor-pointer"
+                className="bg-transparent text-slate-900 dark:text-white font-bold outline-none text-xs cursor-pointer"
               >
                 {teams.map((t) => (
-                  <option key={t.id} value={t.id} className="bg-neutral-900 text-white">
+                  <option key={t.id} value={t.id} className="bg-white text-slate-900 dark:bg-neutral-900 dark:text-white">
                     {t.name}
                   </option>
                 ))}
@@ -234,15 +235,15 @@ export default function RoleSwitcherBar() {
           {role === "player" && (
             <div className="flex items-center gap-2">
               {teams.length > 0 && (
-                <div className="flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/30 px-2 py-1 rounded-lg">
-                  <span className="text-[10px] uppercase font-bold text-emerald-300">Team:</span>
+                <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-2 py-1 rounded-lg">
+                  <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300">Team:</span>
                   <select
                     value={managedTeamId || teams[0]?.id || ""}
                     onChange={(e) => handleTeamChange(e.target.value)}
-                    className="bg-transparent text-white font-bold outline-none text-xs cursor-pointer"
+                    className="bg-transparent text-slate-900 dark:text-white font-bold outline-none text-xs cursor-pointer"
                   >
                     {teams.map((t) => (
-                      <option key={t.id} value={t.id} className="bg-neutral-900 text-white">
+                      <option key={t.id} value={t.id} className="bg-white text-slate-900 dark:bg-neutral-900 dark:text-white">
                         {t.name}
                       </option>
                     ))}
@@ -251,22 +252,22 @@ export default function RoleSwitcherBar() {
               )}
 
               {playersForActiveTeam.length > 0 ? (
-                <div className="flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/30 px-2 py-1 rounded-lg">
-                  <span className="text-[10px] uppercase font-bold text-emerald-300">Athlete:</span>
+                <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-2 py-1 rounded-lg">
+                  <span className="text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300">Athlete:</span>
                   <select
                     value={playerId || playersForActiveTeam[0]?.id || ""}
                     onChange={(e) => handlePlayerChange(e.target.value)}
-                    className="bg-transparent text-white font-bold outline-none text-xs cursor-pointer"
+                    className="bg-transparent text-slate-900 dark:text-white font-bold outline-none text-xs cursor-pointer"
                   >
                     {playersForActiveTeam.map((p) => (
-                      <option key={p.id} value={p.id} className="bg-neutral-900 text-white">
+                      <option key={p.id} value={p.id} className="bg-white text-slate-900 dark:bg-neutral-900 dark:text-white">
                         #{p.number} {p.playerName}
                       </option>
                     ))}
                   </select>
                 </div>
               ) : (
-                <span className="text-[10px] text-neutral-400 italic">No players on team</span>
+                <span className="text-[10px] text-slate-500 dark:text-neutral-400 italic">No players on team</span>
               )}
             </div>
           )}
@@ -274,10 +275,10 @@ export default function RoleSwitcherBar() {
           {/* League Customizer / Settings Button */}
           <button
             onClick={openCustomizer}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-neutral-200 font-bold border border-white/20 text-[11px] transition-all shadow-sm cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-neutral-200 font-bold border border-slate-200 dark:border-white/20 text-[11px] transition-all shadow-sm cursor-pointer"
             title="Customize demo league rules, colors, and branding"
           >
-            <Settings className="w-3.5 h-3.5 text-cyan-400" />
+            <Settings className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
             <span className="hidden sm:inline">Settings</span>
           </button>
 

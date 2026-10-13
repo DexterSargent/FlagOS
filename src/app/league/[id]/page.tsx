@@ -42,8 +42,10 @@ import { collection, getDocs, onSnapshot, addDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
+import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -671,155 +673,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         <div className="absolute bottom-20 right-10 w-[35rem] h-[35rem] bg-blue-900/15 rounded-full blur-[170px]"></div>
       </div>
 
-      {/* Site-Wide League Announcement Bar */}
-      {settings.announcement && (
-        <div
-          className="relative z-30 py-1.5 px-4 text-center text-xs font-semibold text-white flex items-center justify-center gap-2 border-b border-white/10 shadow-sm"
-          style={{
-            background: `linear-gradient(90deg, var(--league-primary), var(--league-accent))`,
-          }}
-        >
-          <Radio className="w-3.5 h-3.5 animate-pulse shrink-0" />
-          <span className="truncate">{settings.announcement}</span>
-        </div>
-      )}
-
       {/* Top Application Header */}
-      {!isEmbedded && (
-        <header className="relative z-20 border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          {/* Brand & League Status */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white overflow-hidden p-1.5 shrink-0 border border-white/10">
-              {settings.logoUrl ? (
-                <img
-                  src={settings.logoUrl}
-                  alt={settings.leagueName}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                <Shield className="w-5 h-5 fill-white/20 text-white" />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-black uppercase tracking-wider leading-none">
-                  {renderFlagOS(settings.leagueName)}
-                </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  {settings.seasonTitle || "Active Season"}
-                </span>
-                {settings.visibility === "private" ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold text-amber-300 font-mono" title="Private League: Accessible via Direct URL Only">
-                    <Lock className="w-2.5 h-2.5" />
-                    <span>Private League</span>
-                  </span>
-                ) : (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-mono font-bold text-emerald-400" title="Listed in Public League Directory">
-                    <Globe className="w-2.5 h-2.5" />
-                    <span>Public Directory</span>
-                  </span>
-                )}
-                {settings.shortcode && (
-                  <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-mono text-cyan-300 font-bold">
-                    {settings.shortcode}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] text-neutral-400 font-mono tracking-widest uppercase">
-                {isPlayerView
-                  ? `${myPlayerTeam?.name || "Athlete"} Locker Room`
-                  : isTeamAdminView
-                    ? `${managedTeam?.name || "Team"} Portal`
-                    : isLeagueAdminView
-                      ? "League Command Center"
-                      : settings.tagline || "Official League System"}
-              </span>
-            </div>
-          </Link>
-
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-bold uppercase tracking-wider text-neutral-300">
-            <Link href="/schedule" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-              <CalendarDays className="w-3.5 h-3.5" />
-              <span>Schedule</span>
-            </Link>
-            <Link href="/stats" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-              <Trophy className="w-3.5 h-3.5" />
-              <span>Standings & Stats</span>
-            </Link>
-            <Link href="/teams" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5" />
-              <span>Teams</span>
-            </Link>
-            {isPlayer && myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) && (
-              <Link
-                href={`/teams/${myPlayerTeam.id}/playbook`}
-                className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Playbook</span>
-              </Link>
-            )}
-            {canRegisterAsPlayer && settings.rules?.enableFreeAgents !== false && (
-              <Link href="/join" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Player Registration</span>
-              </Link>
-            )}
-          </nav>
-
-          {/* User Profile / Status */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={openCustomizer}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-all shadow-sm cursor-pointer"
-              title="League Settings, Rules & Custom Colors"
-            >
-              <Settings className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Settings</span>
-            </button>
-
-            {isPlayerView ? (
-              <Link
-                href="/profile"
-                className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-500/30 transition-colors flex items-center gap-2"
-              >
-                <User className="w-3.5 h-3.5 text-emerald-400" />
-                <span>#{pNumber} {pName || "My Profile"}</span>
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-2"
-              >
-                {isLeagueAdminView ? (
-                  <>
-                    <Crown className="w-3.5 h-3.5 text-amber-400" />
-                    <span>League Admin</span>
-                  </>
-                ) : isTeamAdminView ? (
-                  <>
-                    <Shield className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>{managedTeam?.name || "Team Admin"}</span>
-                  </>
-                ) : (
-                  <>
-                    <Users className="w-3.5 h-3.5 text-neutral-400" />
-                    <span>Spectator</span>
-                  </>
-                )}
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-      )}
+      {!isEmbedded && <LeagueHeader activePage="league" />}
 
       {/* ========================================================================= */}
       {/* VIEW 1: LEAGUE ADMIN VIEW (LEAGUE COMMAND CENTER)                        */}

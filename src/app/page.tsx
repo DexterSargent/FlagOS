@@ -36,6 +36,8 @@ import {
   Copy,
   Check,
   MapPin,
+  Menu,
+  X,
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -50,6 +52,7 @@ export default function FlagOSPlatformLandingPage() {
   const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized } = useAuth();
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -65,7 +68,7 @@ export default function FlagOSPlatformLandingPage() {
       case "stats":
         return `/matches/match_demo_3/play-by-play?embed=true&mode=${wizardMode}`;
       case "playbook":
-        return `/teams/team_apex/playbook?embed=true&demo=true`;
+        return `/teams/team_kc/playbook?embed=true&demo=true`;
       case "live-clock":
         return `/schedule?embed=true&demo=true`;
       case "infrastructure":
@@ -78,7 +81,7 @@ export default function FlagOSPlatformLandingPage() {
       case "stats":
         return `flagos.ca/matches/match_demo_3/play-by-play?mode=${wizardMode}`;
       case "playbook":
-        return `flagos.ca/teams/team_apex/playbook`;
+        return `flagos.ca/teams/team_kc/playbook`;
       case "live-clock":
         return `flagos.ca/schedule`;
       case "infrastructure":
@@ -222,11 +225,13 @@ export default function FlagOSPlatformLandingPage() {
   const logoColour = mounted && resolvedTheme === "light" ? "/flagos-logo-original.png" : "/flagos-logo.png";
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
       {/* Dynamic Background Glows */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60rem] h-[35rem] bg-gradient-to-b from-cyan-600/20 via-blue-600/10 to-transparent rounded-full blur-[160px] pointer-events-none"></div>
-      <div className="absolute top-96 -left-40 w-[35rem] h-[35rem] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
-      <div className="absolute top-[40rem] -right-40 w-[35rem] h-[35rem] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none"></div>
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60rem] h-[35rem] bg-gradient-to-b from-cyan-600/20 via-blue-600/10 to-transparent rounded-full blur-[160px]"></div>
+        <div className="absolute top-96 -left-40 w-[35rem] h-[35rem] bg-emerald-600/10 rounded-full blur-[140px]"></div>
+        <div className="absolute top-[40rem] -right-40 w-[35rem] h-[35rem] bg-blue-600/10 rounded-full blur-[140px]"></div>
+      </div>
 
       {/* TOP PLATFORM HEADER */}
       <header className="border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0 z-50">
@@ -242,7 +247,7 @@ export default function FlagOSPlatformLandingPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-black uppercase tracking-wider leading-none">
-                  <span className="text-white">FLAG</span>
+                  <span className="text-white font-sanfrancisco">FLAG</span>
                   <span style={{ color: "#3CA505" }}>OS</span>
                 </span>
               </div>
@@ -284,16 +289,77 @@ export default function FlagOSPlatformLandingPage() {
                 <span className="text-cyan-300">{settings?.shortcode || "Active"}</span>
               </Link>
             ) : (
-              <Link
-                href="/login"
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
-              >
-                <Lock className="w-3.5 h-3.5 text-neutral-400" />
-                <span>Sign In</span>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="px-3 py-2 text-neutral-400 hover:text-white text-xs font-semibold transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/league/default?demo=true"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      sessionStorage.setItem("flagos_demo_active", "true");
+                      localStorage.setItem("flagos_demo_active", "true");
+                    }
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 hover:text-white text-xs font-bold rounded-xl border border-cyan-500/30 transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(var(--league-primary-rgb),0.2)]"
+                >
+                  <PlayCircle className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Explore Demo League</span>
+                </Link>
+              </div>
             )}
+
+            {/* Mobile Menu Toggle Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors cursor-pointer"
+              aria-label="Toggle Navigation Menu"
+            >
+              {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Dropdown Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/10 bg-[#07090E]/98 px-6 py-4 space-y-2 animate-in slide-in-from-top-2">
+            <a
+              href="#features"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-neutral-300 hover:bg-white/5 transition-colors"
+            >
+              <Zap className="w-4 h-4 text-cyan-400" />
+              <span>Features</span>
+            </a>
+            <a
+              href="#interactive-demo"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-neutral-300 hover:bg-white/5 transition-colors"
+            >
+              <Play className="w-4 h-4 text-cyan-400" />
+              <span>Interactive Demo</span>
+            </a>
+            <a
+              href="#league-directory"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-emerald-400 hover:bg-white/5 transition-colors"
+            >
+              <Globe className="w-4 h-4 text-emerald-400" />
+              <span>League Directory</span>
+            </a>
+            <Link
+              href="/pricing"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-white/5 transition-colors"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Pricing</span>
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* ACTIVE LEAGUE WELCOME BANNER (IF RETURNING AUTHORIZED USER) */}
@@ -348,11 +414,17 @@ export default function FlagOSPlatformLandingPage() {
             </Link>
 
             <Link
-              href={isAuthorized ? `/league/${activeLeagueId || "default"}` : "/login?redirect=/league/default"}
-              className="px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-bold text-sm uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2"
+              href="/league/default?demo=true"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("flagos_demo_active", "true");
+                  localStorage.setItem("flagos_demo_active", "true");
+                }
+              }}
+              className="px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-bold text-sm uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2 group hover:border-cyan-500/40"
             >
-              <Trophy className="w-4 h-4 text-cyan-400" />
-              <span>{isAuthorized ? "Enter League Portal" : "Sign In to League"}</span>
+              <PlayCircle className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <span>Explore Demo League</span>
             </Link>
           </div>
 
@@ -502,7 +574,7 @@ export default function FlagOSPlatformLandingPage() {
                     <h3 className="text-xl font-black uppercase text-white tracking-tight">League Subscription</h3>
                   </div>
                   <span className="px-3 py-1 text-center rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-mono font-bold border border-cyan-500/20">
-                    For Leagues<br /> of 4-40 Teams
+                    For Leagues<br /> of 4-64 Teams
                   </span>
                 </div>
 

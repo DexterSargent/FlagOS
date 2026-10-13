@@ -8,8 +8,10 @@ import { doc, onSnapshot, collection, query, where, orderBy, limit } from "fireb
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
+import { formatPlaySentence as formatPlaySentenceEngine } from "@/lib/playSentenceFormatter";
 import {
   getSandboxMatches,
+  getSandboxMatch,
   getSandboxPlays,
   getSandboxPlayers,
   updateSandboxMatch,
@@ -200,77 +202,21 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     return `${n}th`;
   };
 
+  const downsPerSeries = settings?.rules?.downsPerSeries || 4;
+
   const formatPlaySentence = (play: any) => {
-    let sentence = "";
-
-    if (play.playType === 'Pass') {
-      const qb = play.qbPlayerId || "Unknown QB";
-      const rec = play.receiverPlayerId;
-      const defs = play.defenders?.length ? play.defenders.join(" and ") : "";
-
-      if (play.passOutcome === 'Complete') {
-        sentence = `${qb} pass complete to ${rec}`;
-        if (defs) sentence += ` (Flagged by ${defs})`;
-      } else if (play.passOutcome === 'Interception') {
-        sentence = `${qb} pass intercepted by ${defs || "Unknown"}`;
-      } else if (play.passOutcome === 'PBU') {
-        sentence = `${qb} pass broken up by ${defs || "Unknown"}`;
-      } else if (play.passOutcome === 'Missed') {
-        sentence = `${qb} pass incomplete/missed`;
-      } else if (play.passOutcome === 'Sack') {
-        sentence = `${qb} sacked by ${defs || "Unknown"}`;
-      } else {
-        sentence = `${qb} pass (${play.passOutcome})`;
-      }
-    } else if (play.playType === 'Run') {
-      const runner = play.runnerPlayerId || "Unknown Runner";
-      const defs = play.defenders?.length ? play.defenders.join(" and ") : "";
-
-      if (play.passOutcome === 'Gain') {
-        sentence = `${runner} run`;
-        if (defs) sentence += ` (Flagged by ${defs})`;
-      } else if (play.passOutcome === 'FFL') {
-        sentence = `${runner} flagged for loss by ${defs || "Unknown"}`;
-      } else {
-        sentence = `${runner} run (${play.passOutcome})`;
-      }
-    } else if (play.playType === 'Penalty') {
-      sentence = "Penalty on the play";
-    }
-
-    if (play.isPick6) {
-      sentence += " for a Pick 6!";
-    } else if (play.isTouchdown) {
-      sentence += " for a TOUCHDOWN!";
-    } else if (play.isSafety) {
-      sentence += " for a SAFETY!";
-    } else if (play.firstDown) {
-      sentence += " for a FIRST DOWN.";
-    } else if (play.result) {
-      sentence += ` (${play.result})`;
-    }
-
-    if (play.conversionAttempt) {
-      sentence += "\n";
-      const convType = play.conversionAttempt === 1 ? "1-PT" : "2-PT";
-      if (play.conversionSuccess) {
-        if (play.conversionReceiver) {
-          sentence += `${convType} CONVERSION GOOD: ${play.conversionPasser} pass to ${play.conversionReceiver}`;
-        } else {
-          sentence += `${convType} CONVERSION GOOD: ${play.conversionPasser} run`;
-        }
-      } else {
-        sentence += `${convType} CONVERSION FAILED`;
-      }
-    }
-
-    return sentence;
+    return formatPlaySentenceEngine(play, {
+      homeTeamName: matchData?.homeTeamName,
+      awayTeamName: matchData?.awayTeamName,
+      homeTeamId: matchData?.homeTeamId,
+      downsPerSeries,
+    });
   };
 
   useEffect(() => {
     if (isDemoMatch) {
       const loadMatch = () => {
-        const m = getSandboxMatches().find((m: any) => m.id === matchId);
+        const m = getSandboxMatch(matchId);
         if (m) setMatchData(m);
       };
       loadMatch();
@@ -513,7 +459,13 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                 <div key={idx} className="bg-neutral-900 border border-white/5 p-6 rounded-2xl flex flex-col gap-2 shadow-lg">
                   <div className="flex justify-between items-center text-sm font-bold tracking-widest text-neutral-500 uppercase">
                     <span>
-                      {play.half ? `${play.half === 2 ? "2nd Half" : "1st Half"}` : ""}
+                      {play.half
+                        ? settings.rules?.periodType === "quarters" || play.half > 2
+                          ? `Q${play.half}`
+                          : play.half === 2
+                          ? "2nd Half"
+                          : "1st Half"
+                        : ""}
                       {!play.isAsyncStatKeeping && play.gameClock != null ? ` • ${formatTime(play.gameClock)}` : ""}
                       {" • "}
                       {play.possessionTeamId === matchData.homeTeamId ? matchData.homeTeamName : matchData.awayTeamName} - {getOrdinal(play.down)} Down

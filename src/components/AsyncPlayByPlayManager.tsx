@@ -40,6 +40,13 @@ import {
 } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo } from "@/components/TeamAssets";
+import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
+import {
+  PENALTY_CATALOG,
+  PenaltyDefinition,
+  formatPenaltyStatement,
+  formatPlaySentence,
+} from "@/lib/playSentenceFormatter";
 import {
   getSandboxMatches,
   getSandboxPlayers,
@@ -127,6 +134,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score">("tracker");
   const [boxScoreTab, setBoxScoreTab] = useState<"home" | "away">("home");
   const [plays, setPlays] = useState<any[]>([]);
+  const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
 
   // Load Match Data & Plays
   useEffect(() => {
@@ -196,16 +204,27 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   // Fetch plays feed
   const loadPlays = async () => {
-    if (isDemo) {
-      const pList = getSandboxPlays(matchId);
-      setPlays(pList);
-      return;
-    }
     try {
-      const q = query(collection(db, "plays"), where("matchId", "==", matchId), orderBy("timestamp", "asc"));
-      const snap = await getDocs(q);
-      const pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      let pList: any[] = [];
+      if (isDemo) {
+        pList = getSandboxPlays(matchId);
+      } else {
+        const q = query(collection(db, "plays"), where("matchId", "==", matchId), orderBy("timestamp", "asc"));
+        const snap = await getDocs(q);
+        pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      }
       setPlays(pList);
+      if (pList.length > 0) {
+        const last = pList[pList.length - 1];
+        setLastLoggedPlayStatement(
+          formatPlaySentence(last, {
+            homeTeamName,
+            awayTeamName,
+            homeTeamId,
+            downsPerSeries,
+          })
+        );
+      }
     } catch (e) {
       console.error("Error loading plays:", e);
     }
@@ -358,13 +377,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setPlayResult("");
   };
 
-  const handlePlayTypeSelect = (type: "Pass" | "Run") => {
+  const handlePlayTypeSelect = (type: "Pass" | "Run" | "Penalty") => {
     setPlayType(type);
-    setOutcome(type === "Pass" ? "Complete" : "Gain");
     if (type === "Pass") {
+      setOutcome("Complete");
       setQbRunner(possession === homeTeamName ? lastHomeQB : lastAwayQB);
-    } else {
+    } else if (type === "Run") {
+      setOutcome("Gain");
       setQbRunner("");
+    } else {
+      setOutcome(null);
     }
     setStep("DETAILS");
   };
@@ -385,7 +407,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     }
   };
 
-  const buildPlayData = (result: string) => {
+  const buildPlayData = (result: string, extra?: any) => {
     return {
       matchId,
       possessionTeamId: possession === homeTeamName ? homeTeamId : awayTeamId,
@@ -409,6 +431,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       half,
       gameClock: null, // Strictly clockless
       isAsyncStatKeeping: true,
+      ...extra,
     };
   };
 
@@ -457,7 +480,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       return;
     }
 
-    logPlayToFirestore(buildPlayData(result));
+    const rawPlay = buildPlayData(result);
+    const statement = formatPlaySentence(rawPlay, {
+      homeTeamName,
+      awayTeamName,
+      homeTeamId,
+      downsPerSeries,
+    });
+    const finalPlay = { ...rawPlay, playStatement: statement };
+    logPlayToFirestore(finalPlay);
+    setLastLoggedPlayStatement(statement);
 
     if (result === "Safety") {
       if (possession === homeTeamName) setAwayScore((s) => s + 2);
@@ -484,13 +516,78 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     resetPlayForm();
   };
 
+  const handleSavePenalty = (penaltyData: {
+    side: "offense" | "defense";
+    penalizedTeamName: string;
+    penaltyDef: PenaltyDefinition;
+    yards: number;
+    enforcement: "accepted" | "declined" | "offset";
+    downResult: "automatic_first_down" | "repeat_down" | "loss_of_down" | "play_stands";
+    player?: string;
+    statement: string;
+  }) => {
+    const { side, penalizedTeamName, penaltyDef, yards, enforcement, downResult, player, statement } = penaltyData;
+
+    const isFirstDown = downResult === "automatic_first_down";
+    const isLossOfDown = downResult === "loss_of_down";
+    const isRepeatDown = downResult === "repeat_down";
+
+    const resultString = isFirstDown
+      ? "First Down"
+      : isLossOfDown
+      ? "Loss of Down"
+      : isRepeatDown
+      ? "Repeat Down"
+      : "Next Down";
+
+    const playData = buildPlayData(resultString, {
+      playType: "Penalty",
+      firstDown: isFirstDown,
+      turnover: isLossOfDown && currentDown >= downsPerSeries,
+      penaltyTeam: side,
+      penaltyTeamName: penalizedTeamName,
+      penaltyType: penaltyDef.name,
+      penaltyYards: yards,
+      penaltyEnforcement: enforcement,
+      penaltyDownResult: downResult,
+      penaltyPlayer: player,
+      playStatement: statement,
+    });
+
+    logPlayToFirestore(playData);
+    setLastLoggedPlayStatement(statement);
+
+    // Down progression
+    if (isFirstDown) {
+      setCurrentDown(1);
+    } else if (isLossOfDown) {
+      if (currentDown >= downsPerSeries) {
+        setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
+        setCurrentDown(1);
+      } else {
+        setCurrentDown((d) => d + 1);
+      }
+    } else if (isRepeatDown) {
+      // Keep same down
+    } else if (enforcement === "declined") {
+      if (currentDown >= downsPerSeries) {
+        setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
+        setCurrentDown(1);
+      } else {
+        setCurrentDown((d) => d + 1);
+      }
+    }
+
+    resetPlayForm();
+  };
+
   const finalizeConversion = () => {
     if (convIsGood && convPts) {
       if (possession === homeTeamName) setHomeScore((s) => s + convPts);
       else setAwayScore((s) => s + convPts);
     }
 
-    const finalPlay = {
+    const finalPlay: any = {
       ...buildPlayData(playResult),
       conversionAttempt: convPts,
       conversionSuccess: convIsGood,
@@ -498,8 +595,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       conversionReceiver: convReceiver,
       pointsScored: 6 + (convIsGood ? convPts! : 0),
     };
-
+    const statement = formatPlaySentence(finalPlay, {
+      homeTeamName,
+      awayTeamName,
+      homeTeamId,
+      downsPerSeries,
+    });
+    finalPlay.playStatement = statement;
     logPlayToFirestore(finalPlay);
+    setLastLoggedPlayStatement(statement);
 
     // Turnover possession to defense after conversion
     setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
@@ -868,6 +972,18 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </p>
                 </div>
 
+                {lastLoggedPlayStatement && (
+                  <div className="max-w-md mx-auto p-4 rounded-2xl bg-black/60 border border-amber-500/30 text-left space-y-1.5 shadow-md">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Last Play Statement:</span>
+                    </div>
+                    <p className="text-xs font-bold text-neutral-200 font-sans leading-snug">
+                      {lastLoggedPlayStatement}
+                    </p>
+                  </div>
+                )}
+
                 <div className="pt-2">
                   <button
                     onClick={handleStartPlay}
@@ -880,7 +996,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               </div>
             )}
 
-            {/* STEP: PLAY_TYPE -> Choose Pass or Run */}
+            {/* STEP: PLAY_TYPE -> Choose Pass, Run, or Penalty */}
             {step === "PLAY_TYPE" && (
               <div className="bg-neutral-900 border border-white/10 rounded-3xl p-8 space-y-6 shadow-2xl">
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -892,13 +1008,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                   <button
                     onClick={() => setStep("IDLE")}
-                    className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
+                    className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     onClick={() => handlePlayTypeSelect("Pass")}
                     className="py-10 px-6 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500 text-white font-black text-2xl uppercase tracking-wider flex flex-col items-center gap-3 transition-all cursor-pointer group"
@@ -914,12 +1030,35 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     <span className="text-4xl group-hover:scale-110 transition-transform">⚡</span>
                     <span>RUN PLAY</span>
                   </button>
+
+                  <button
+                    onClick={() => handlePlayTypeSelect("Penalty")}
+                    className="py-10 px-6 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500 text-white font-black text-2xl uppercase tracking-wider flex flex-col items-center gap-3 transition-all cursor-pointer group shadow-lg shadow-amber-500/5"
+                  >
+                    <span className="text-4xl group-hover:scale-110 transition-transform">🚩</span>
+                    <span>PENALTY</span>
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* STEP: DETAILS -> Offense, Defense, Outcome */}
-            {step === "DETAILS" && (
+            {/* STEP: DETAILS -> Penalty Wizard Step OR Pass/Run Details */}
+            {step === "DETAILS" && playType === "Penalty" && (
+              <div className="bg-neutral-900 border border-amber-500/30 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+                <PenaltyWizardStep
+                  possessionTeamName={possession}
+                  defendingTeamName={possession === homeTeamName ? awayTeamName : homeTeamName}
+                  currentDown={currentDown}
+                  downsPerSeries={downsPerSeries}
+                  offenseRoster={offensePlayers}
+                  defenseRoster={defensePlayers}
+                  onCancel={resetPlayForm}
+                  onSavePenalty={handleSavePenalty}
+                />
+              </div>
+            )}
+
+            {step === "DETAILS" && playType !== "Penalty" && (
               <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
                   <div>
@@ -1272,18 +1411,14 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                         </span>
                       </div>
 
-                      <p className="text-sm text-neutral-200">
-                        {p.playType} {p.passOutcome ? `(${p.passOutcome})` : ""}{" "}
-                        {p.qbPlayerId ? `by ${p.qbPlayerId}` : p.runnerPlayerId ? `by ${p.runnerPlayerId}` : ""}{" "}
-                        {p.receiverPlayerId ? `to ${p.receiverPlayerId}` : ""}
-                        {p.defenders && p.defenders.length > 0 ? ` • Def: ${p.defenders.join(", ")}` : ""}
+                      <p className="text-sm font-bold text-white leading-relaxed">
+                        {formatPlaySentence(p, {
+                          homeTeamName,
+                          awayTeamName,
+                          homeTeamId,
+                          downsPerSeries,
+                        })}
                       </p>
-
-                      {p.conversionAttempt && (
-                        <span className="text-xs text-emerald-400 font-bold block">
-                          PAT: {p.conversionAttempt} PT Attempt • {p.conversionSuccess ? "GOOD" : "FAILED"}
-                        </span>
-                      )}
                     </div>
 
                     <div className="text-right shrink-0">

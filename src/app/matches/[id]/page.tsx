@@ -10,7 +10,7 @@ import { useLeague } from "@/lib/leagueContext";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
-import { getSandboxMatches, updateSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -24,7 +24,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     const fetchMatch = async () => {
       if (isDemoLeague) {
-        const m = getSandboxMatches().find((m: any) => m.id === matchId);
+        const m = getSandboxMatch(matchId);
         if (m) setMatchData(m);
         setLoading(false);
         return;

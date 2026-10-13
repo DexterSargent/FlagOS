@@ -3,12 +3,20 @@
 import { useState, useEffect, use, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Zap, RotateCcw, Flag, Maximize, Minimize, Play, Pause, AlertCircle, Timer, Save, Plus, Minus, X, ChevronRight, Undo, AlertTriangle } from "lucide-react";
+import { ChevronLeft, Zap, RotateCcw, Flag, Maximize, Minimize, Play, Pause, AlertCircle, Timer, Save, Plus, Minus, X, ChevronRight, Undo, AlertTriangle, Shield, Check } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
+import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
+import {
+  PENALTY_CATALOG,
+  PenaltyDefinition,
+  formatPenaltyStatement,
+  formatPlaySentence,
+} from "@/lib/playSentenceFormatter";
 import {
   getSandboxMatches,
+  getSandboxMatch,
   getSandboxPlayers,
   getSandboxPlays,
   addSandboxPlay,
@@ -136,6 +144,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   // Play Result Memory for Conversion
   const [playResult, setPlayResult] = useState<string>("");
 
+  // Live Play Statement & Play Log Drawer State
+  const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
+  const [isPlayLogDrawerOpen, setIsPlayLogDrawerOpen] = useState(false);
+  const [matchPlaysList, setMatchPlaysList] = useState<any[]>([]);
+
   const getOrdinal = (n: number) => {
     if (n === 1) return "1st";
     if (n === 2) return "2nd";
@@ -173,7 +186,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         let allP: any[] = [];
 
         if (isDemo) {
-          mData = getSandboxMatches().find((m: any) => m.id === matchId);
+          mData = getSandboxMatch(matchId);
           if (!mData) return;
           allP = getSandboxPlayers();
         } else {
@@ -226,13 +239,49 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         setHomePlayers([...homeP, ...matchSubs].sort());
         setAwayPlayers([...awayP, ...matchSubs].sort());
+        refreshPlays();
       } catch (e) {
         console.error(e);
       }
       setLoadingData(false);
     };
     loadMatchData();
-  }, [matchId, isDemo]);
+    if (isDemo) {
+      const unsub = subscribeDemoSandbox(() => refreshPlays());
+      return () => unsub();
+    }
+  }, [matchId, isDemo, homeTeamName, awayTeamName, homeTeamId, downsPerSeries]);
+
+  const refreshPlays = async () => {
+    try {
+      let pList: any[] = [];
+      if (isDemo) {
+        pList = getSandboxPlays(matchId);
+      } else {
+        const q = query(
+          collection(db, "plays"),
+          where("matchId", "==", matchId),
+          orderBy("timestamp", "asc")
+        );
+        const snap = await getDocs(q);
+        pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      }
+      setMatchPlaysList(pList);
+      if (pList.length > 0) {
+        const last = pList[pList.length - 1];
+        setLastLoggedPlayStatement(
+          formatPlaySentence(last, {
+            homeTeamName,
+            awayTeamName,
+            homeTeamId,
+            downsPerSeries,
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Error refreshing plays in admin:", e);
+    }
+  };
 
   // Game Clock
   useEffect(() => {
@@ -675,7 +724,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return true;
   };
 
-  const buildPlayData = (result: string) => {
+  const buildPlayData = (result: string, extra?: any) => {
     return {
       matchId,
       possessionTeamId: possession === homeTeamName ? homeTeamId : awayTeamId,
@@ -694,7 +743,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       turnover: result === 'Turnover' || result === 'Pick 6' || (currentDown === downsPerSeries && result !== 'First Down' && result !== 'Repeat Down'),
       result: result,
       gameClock: gameClock,
-      half: half
+      half: half,
+      ...extra,
     };
   };
 
@@ -705,6 +755,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         matchId,
         timestamp: new Date().toISOString(),
       });
+      refreshPlays();
       return;
     }
     try {
@@ -712,6 +763,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         ...playData,
         timestamp: serverTimestamp()
       });
+      refreshPlays();
       console.log("Play saved to Firestore!");
     } catch (e) {
       console.error("Error saving play:", e);
@@ -743,8 +795,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       return;
     }
 
-    // Not a touchdown/pick 6, log the play immediately
-    logPlayToFirestore(buildPlayData(result));
+    // Compute coherent statement and log the play
+    const rawPlay = buildPlayData(result);
+    const statement = formatPlaySentence(rawPlay, {
+      homeTeamName,
+      awayTeamName,
+      homeTeamId,
+      downsPerSeries,
+    });
+    const finalPlay = { ...rawPlay, playStatement: statement };
+    logPlayToFirestore(finalPlay);
+    setLastLoggedPlayStatement(statement);
 
     if (result === 'Safety') {
       if (possession === homeTeamName) setAwayScore(s => s + 2);
@@ -773,6 +834,77 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     endPlay();
   };
 
+  const handleSavePenalty = (penaltyData: {
+    side: "offense" | "defense";
+    penalizedTeamName: string;
+    penaltyDef: PenaltyDefinition;
+    yards: number;
+    enforcement: "accepted" | "declined" | "offset";
+    downResult: "automatic_first_down" | "repeat_down" | "loss_of_down" | "play_stands";
+    player?: string;
+    statement: string;
+  }) => {
+    setIsPlayClockRunning(false);
+    const { side, penalizedTeamName, penaltyDef, yards, enforcement, downResult, player, statement } = penaltyData;
+
+    const isFirstDown = downResult === "automatic_first_down";
+    const isLossOfDown = downResult === "loss_of_down";
+    const isRepeatDown = downResult === "repeat_down";
+
+    const resultString = isFirstDown
+      ? "First Down"
+      : isLossOfDown
+      ? "Loss of Down"
+      : isRepeatDown
+      ? "Repeat Down"
+      : "Next Down";
+
+    const playData = buildPlayData(resultString, {
+      playType: "Penalty",
+      firstDown: isFirstDown,
+      turnover: isLossOfDown && currentDown >= downsPerSeries,
+      penaltyTeam: side,
+      penaltyTeamName: penalizedTeamName,
+      penaltyType: penaltyDef.name,
+      penaltyYards: yards,
+      penaltyEnforcement: enforcement,
+      penaltyDownResult: downResult,
+      penaltyPlayer: player,
+      playStatement: statement,
+    });
+
+    logPlayToFirestore(playData);
+    setLastLoggedPlayStatement(statement);
+
+    // Stop clock under 2 minutes for penalty enforcement
+    if (gameClock <= 120) {
+      setIsGameClockRunning(false);
+    }
+
+    // Down progression
+    if (isFirstDown) {
+      setCurrentDown(1);
+    } else if (isLossOfDown) {
+      if (currentDown >= downsPerSeries) {
+        setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
+        setCurrentDown(1);
+      } else {
+        setCurrentDown(currentDown + 1);
+      }
+    } else if (isRepeatDown) {
+      // Keep same down
+    } else if (enforcement === "declined") {
+      if (currentDown >= downsPerSeries) {
+        setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
+        setCurrentDown(1);
+      } else {
+        setCurrentDown(currentDown + 1);
+      }
+    }
+
+    endPlay();
+  };
+
   const finalizeConversion = () => {
     if (convIsGood && convPts) {
       if (possession === homeTeamName) setHomeScore(s => s + convPts);
@@ -780,7 +912,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     }
 
     // Log Touchdown + PAT to Firestore
-    const finalPlay = {
+    const finalPlay: any = {
       ...buildPlayData(playResult),
       conversionAttempt: convPts,
       conversionSuccess: convIsGood,
@@ -788,7 +920,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       conversionReceiver: convReceiver,
       pointsScored: 6 + (convIsGood ? convPts! : 0)
     };
+    const statement = formatPlaySentence(finalPlay, {
+      homeTeamName,
+      awayTeamName,
+      homeTeamId,
+      downsPerSeries,
+    });
+    finalPlay.playStatement = statement;
     logPlayToFirestore(finalPlay);
+    setLastLoggedPlayStatement(statement);
 
     setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);
     setCurrentDown(1);
@@ -1155,6 +1295,24 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {/* LIVE PLAY-BY-PLAY STATEMENT BANNER */}
+      <div className="bg-neutral-900/90 border-b border-white/10 px-4 py-2.5 flex items-center justify-between text-xs font-mono shadow-sm">
+        <div className="flex items-center gap-2 overflow-hidden truncate">
+          <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold uppercase tracking-wider text-[10px] shrink-0 flex items-center gap-1">
+            <Zap className="w-3 h-3" /> Live Statement
+          </span>
+          <span className="text-white truncate font-medium">
+            {lastLoggedPlayStatement || "Game in progress • Select play type to begin tracking."}
+          </span>
+        </div>
+        <button
+          onClick={() => setIsPlayLogDrawerOpen(true)}
+          className="text-cyan-400 hover:text-cyan-300 shrink-0 ml-3 text-[11px] font-bold flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 transition-colors"
+        >
+          <span>Play Log ({matchPlaysList.length})</span>
+        </button>
+      </div>
+
       <main className="flex-1 p-6 flex flex-col overflow-hidden relative">
 
         {/* SPOT BALL OVERLAY */}
@@ -1344,31 +1502,25 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         {/* WIZARD: DETAILS */}
         {step === 'DETAILS' && (
           <div className="flex flex-col h-full gap-4 max-w-7xl mx-auto w-full animate-in slide-in-from-right-8 duration-200">
-            <button
-              onClick={() => { setStep('PLAY_TYPE'); setPlayType(null); setOutcome(null); }}
-              className="self-start flex items-center gap-2 text-neutral-400 hover:text-white text-sm font-bold uppercase tracking-widest mb-[-0.5rem] mt-[-0.5rem] z-10"
-            >
-              <ChevronLeft className="w-4 h-4" /> Back to Play Type
-            </button>
             {playType === 'Penalty' ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-6 animate-in zoom-in-95">
-                <h3 className="text-3xl font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-4">
-                  <Flag className="w-8 h-8" /> Penalty Outcome
-                </h3>
-                <button onClick={() => handleSavePlay('First Down')} className="w-full max-w-2xl py-4 md:py-6 rounded-3xl bg-blue-600 text-white font-black text-xl hover:bg-blue-500 transition-colors">
-                  FIRST DOWN (Due to Yards Gained)
-                </button>
-                <div className="grid grid-cols-2 gap-4 w-full max-w-2xl">
-                  <button onClick={() => handleSavePlay('Repeat Down')} className="py-4 md:py-6 rounded-3xl bg-neutral-800 text-white font-black text-xl border border-white/10 hover:bg-neutral-700 transition-colors">
-                    REPEAT DOWN
-                  </button>
-                  <button onClick={() => handleSavePlay('Loss of Down')} className="py-4 md:py-6 rounded-3xl bg-neutral-800 text-white font-black text-xl border border-white/10 hover:bg-neutral-700 transition-colors">
-                    LOSS OF DOWN
-                  </button>
-                </div>
-              </div>
+              <PenaltyWizardStep
+                possessionTeamName={possession}
+                defendingTeamName={possession === homeTeamName ? awayTeamName : homeTeamName}
+                currentDown={currentDown}
+                downsPerSeries={downsPerSeries}
+                offenseRoster={getOffensiveRoster()}
+                defenseRoster={getDefensiveRoster()}
+                onCancel={() => { setStep('PLAY_TYPE'); setPlayType(null); setOutcome(null); }}
+                onSavePenalty={handleSavePenalty}
+              />
             ) : (
               <>
+                <button
+                  onClick={() => { setStep('PLAY_TYPE'); setPlayType(null); setOutcome(null); }}
+                  className="self-start flex items-center gap-2 text-neutral-400 hover:text-white text-sm font-bold uppercase tracking-widest mb-[-0.5rem] mt-[-0.5rem] z-10"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Back to Play Type
+                </button>
                 <div className="grid grid-cols-2 md:flex gap-2 p-2 bg-neutral-900 border border-white/10 rounded-2xl shrink-0 relative z-10 w-full">
                   {playType === 'Pass' && ['Complete', 'Incomplete', 'Interception', 'Sack'].map((res) => {
                     const isActive = (res === 'Incomplete' && (outcome === 'Incomplete_Menu' || outcome === 'PBU' || outcome === 'Missed')) || outcome === res;
@@ -1615,6 +1767,63 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
         )}
       </main>
+
+      {/* PLAY LOG DRAWER MODAL */}
+      {isPlayLogDrawerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end animate-in fade-in">
+          <div className="bg-neutral-950 border-l border-white/10 w-full max-w-lg h-full p-6 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <Flag className="w-5 h-5 text-amber-400" />
+                <h3 className="text-lg font-black uppercase text-white">Live Match Play Log</h3>
+              </div>
+              <button
+                onClick={() => setIsPlayLogDrawerOpen(false)}
+                className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-4 space-y-2.5">
+              {matchPlaysList.length === 0 ? (
+                <div className="text-center py-12 text-neutral-500 text-sm italic">
+                  No plays logged yet.
+                </div>
+              ) : (
+                matchPlaysList.map((p, idx) => {
+                  const sentence = formatPlaySentence(p, {
+                    homeTeamName,
+                    awayTeamName,
+                    homeTeamId,
+                    downsPerSeries,
+                  });
+                  const isPenalty = p.playType === "Penalty";
+
+                  return (
+                    <div
+                      key={p.id || idx}
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        isPenalty
+                          ? "bg-amber-950/20 border-amber-500/30"
+                          : "bg-neutral-900 border-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 mb-1">
+                        <span className="font-bold text-cyan-400">
+                          {p.half === 2 ? "2nd Half" : "1st Half"} • {getOrdinal(p.down || 1)} Down
+                        </span>
+                        <span>{p.gameClock !== undefined && p.gameClock !== null ? formatTime(p.gameClock) : ""}</span>
+                      </div>
+                      <p className="text-xs font-bold text-white leading-relaxed">{sentence}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

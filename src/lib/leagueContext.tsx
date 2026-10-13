@@ -30,9 +30,9 @@ export interface LeagueRules {
 
 export const DEFAULT_LEAGUE_RULES: LeagueRules = {
   playersOnField: 5,
-  periodType: "halves",
-  periodsCount: 2,
-  periodDurationMinutes: 20,
+  periodType: "quarters",
+  periodsCount: 4,
+  periodDurationMinutes: 15,
   timeoutsPerTeam: 2,
   timeoutDurationSeconds: 60,
   timeoutsResetPerPeriod: true,
@@ -80,6 +80,16 @@ export interface LeagueSettings {
   announcement?: string;
   visibility?: "public" | "private"; // public = indexed in public directory, private = direct URL access only
   rules: LeagueRules;
+  playoffFormat?: PlayoffFormat;
+}
+
+export interface PlayoffFormat {
+  teamsCount: number; // 4, 6, 8, 12, 14, 16
+  structure: "single_elimination" | "double_elimination";
+  hasByes?: boolean;
+  byesCount?: number;
+  playoffWeeks?: number;
+  championshipName?: string;
 }
 
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
@@ -99,6 +109,14 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   announcement: "",
   visibility: "public",
   rules: DEFAULT_LEAGUE_RULES,
+  playoffFormat: {
+    teamsCount: 14,
+    structure: "single_elimination",
+    hasByes: true,
+    byesCount: 2,
+    playoffWeeks: 4,
+    championshipName: "FlagOS League Championship",
+  },
 };
 
 export interface LeagueSubscriptionInfo {

@@ -1,479 +1,25 @@
 "use client";
 
 import { DEFAULT_LEAGUE_SETTINGS, LeagueSettings } from "./leagueContext";
+import {
+  DemoTeam,
+  DemoPlayer,
+  DemoMatch,
+  DemoPlay,
+  SEED_DEMO_TEAMS,
+  SEED_DEMO_PLAYERS,
+  SEED_DEMO_MATCHES,
+  SEED_DEMO_PLAYS,
+} from "./demoSeedData";
 
-export interface DemoTeam {
-  id: string;
-  name: string;
-  color?: string;
-  createdAt?: string;
-}
-
-export interface DemoPlayer {
-  id: string;
-  teamId: string;
-  playerName: string;
-  number?: string;
-  position?: string;
-  positions?: string[];
-  experience?: string;
-  status?: string;
-  preferredTeammateNames?: string[];
-  email?: string;
-  emails?: string[];
-  joinedAt?: string;
-}
-
-export interface DemoMatch {
-  id: string;
-  week: string;
-  homeTeamName: string;
-  awayTeamName: string;
-  homeTeamId: string;
-  awayTeamId: string;
-  date: string;
-  time: string;
-  location: string;
-  status: "scheduled" | "upcoming" | "in_progress" | "completed";
-  homeScore?: number;
-  awayScore?: number;
-  matchdayIndex: number;
-  order?: number;
-  isPreseason?: boolean;
-  isAsyncStatKeeping?: boolean;
-  isIndependent?: boolean;
-  managingTeamId?: string;
-  subs?: string[];
-  matchState?: any;
-  didNotPlay?: string[];
-  roster?: { home?: string[]; away?: string[] } | any;
-  [key: string]: any;
-}
-
-export interface DemoPlay {
-  id: string;
-  matchId: string;
-  possessionTeamId: string;
-  playType: "Pass" | "Run" | "Penalty";
-  down?: number;
-  firstDown?: boolean;
-  qbPlayerId?: string | null;
-  receiverPlayerId?: string | null;
-  runnerPlayerId?: string | null;
-  passOutcome?: string;
-  isTouchdown?: boolean;
-  isPick6?: boolean;
-  isSafety?: boolean;
-  turnover?: boolean;
-  defenders?: string[];
-  flaggers?: string[];
-  points?: number;
-  result?: string;
-  notes?: string;
-  timestamp?: string;
-  half?: number;
-  gameClock?: number;
-}
-
-// ---------------------------------------------------------------------------
-// Pristine Default Demo Seed Data
-// ---------------------------------------------------------------------------
-
-export const SEED_DEMO_TEAMS: DemoTeam[] = [
-  { id: "team_apex", name: "Apex Predators", color: "#3ca505" },
-  { id: "team_cyber", name: "Cyber Knights", color: "#8B5CF6" },
-  { id: "team_raptors", name: "Neon Raptors", color: "#10B981" },
-  { id: "team_vipers", name: "Iron Vipers", color: "#F59E0B" },
-];
-
-export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
-  // Apex Predators (7 players)
-  { id: "p_apx_1", teamId: "team_apex", playerName: "Marcus Vance", number: "7", position: "QB", positions: ["QB"], status: "Active" },
-  { id: "p_apx_2", teamId: "team_apex", playerName: "Jordan Reed", number: "11", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_apx_3", teamId: "team_apex", playerName: "Tyler Brooks", number: "88", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_apx_4", teamId: "team_apex", playerName: "Devonte Cole", number: "24", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_apx_5", teamId: "team_apex", playerName: "Malik Sterling", number: "99", position: "RUSH", positions: ["RUSH"], status: "Active" },
-  { id: "p_apx_6", teamId: "team_apex", playerName: "Chris Paulson", number: "17", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
-  { id: "p_apx_7", teamId: "team_apex", playerName: "David Chen", number: "3", position: "DB", positions: ["DB"], status: "Active" },
-
-  // Cyber Knights (6 players)
-  { id: "p_cyb_1", teamId: "team_cyber", playerName: "Jaxson Hayes", number: "12", position: "QB", positions: ["QB"], status: "Active" },
-  { id: "p_cyb_2", teamId: "team_cyber", playerName: "Liam Walker", number: "1", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_cyb_3", teamId: "team_cyber", playerName: "Elijah Moore", number: "80", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_cyb_4", teamId: "team_cyber", playerName: "Trey Simmons", number: "21", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_cyb_5", teamId: "team_cyber", playerName: "Xavier Cruz", number: "55", position: "RUSH", positions: ["RUSH"], status: "Active" },
-  { id: "p_cyb_6", teamId: "team_cyber", playerName: "Brandon Ortiz", number: "8", position: "ATH", positions: ["ATH", "DB"], status: "Active" },
-
-  // Neon Raptors (6 players)
-  { id: "p_rap_1", teamId: "team_raptors", playerName: "Kaelen Morris", number: "5", position: "QB", positions: ["QB"], status: "Active" },
-  { id: "p_rap_2", teamId: "team_raptors", playerName: "Austin Ray", number: "84", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_rap_3", teamId: "team_raptors", playerName: "Caleb King", number: "19", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_rap_4", teamId: "team_raptors", playerName: "Dominic West", number: "23", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_rap_5", teamId: "team_raptors", playerName: "Isaiah Green", number: "90", position: "RUSH", positions: ["RUSH"], status: "Active" },
-  { id: "p_rap_6", teamId: "team_raptors", playerName: "Sean Miller", number: "14", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
-
-  // Iron Vipers (6 players)
-  { id: "p_vip_1", teamId: "team_vipers", playerName: "Damon Knight", number: "9", position: "QB", positions: ["QB"], status: "Active" },
-  { id: "p_vip_2", teamId: "team_vipers", playerName: "Bryce Howard", number: "81", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_vip_3", teamId: "team_vipers", playerName: "Cameron Diaz", number: "10", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_vip_4", teamId: "team_vipers", playerName: "Andre Washington", number: "25", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_vip_5", teamId: "team_vipers", playerName: "Victor Rossi", number: "95", position: "RUSH", positions: ["RUSH"], status: "Active" },
-  { id: "p_vip_6", teamId: "team_vipers", playerName: "Nate Campbell", number: "4", position: "ATH", positions: ["ATH", "DB"], status: "Active" },
-
-  // Free Agents Pool (3 athletes - unassigned athletes, not a team)
-  {
-    id: "p_fa_1",
-    teamId: "",
-    playerName: "Leo Bennett",
-    position: "WR",
-    positions: ["WR"],
-    experience: "3 years competitive flag football, former varsity WR",
-    status: "Free Agent",
-    preferredTeammateNames: ["Marcus Vance"],
-    email: "leo.bennett@example.com",
-  },
-  {
-    id: "p_fa_2",
-    teamId: "",
-    playerName: "Ethan Ross",
-    position: "DB",
-    positions: ["DB", "ATH"],
-    experience: "College intramural champions safety",
-    status: "Free Agent",
-    preferredTeammateNames: [],
-    email: "ethan.ross@example.com",
-  },
-  {
-    id: "p_fa_3",
-    teamId: "",
-    playerName: "Maya Lin",
-    position: "QB",
-    positions: ["QB", "WR"],
-    experience: "Metro tournament all-star passer",
-    status: "Free Agent",
-    preferredTeammateNames: [],
-    email: "maya.lin@example.com",
-  },
-];
-
-export const SEED_DEMO_MATCHES: DemoMatch[] = [
-  {
-    id: "match_demo_1",
-    week: "Week 1",
-    homeTeamName: "Apex Predators",
-    awayTeamName: "Cyber Knights",
-    homeTeamId: "team_apex",
-    awayTeamId: "team_cyber",
-    date: "2026-10-04",
-    time: "18:00",
-    location: "Field 1 - Championship Turf",
-    status: "completed",
-    homeScore: 28,
-    awayScore: 20,
-    matchdayIndex: 1,
-    order: 0,
-    isPreseason: false,
-  },
-  {
-    id: "match_demo_2",
-    week: "Week 1",
-    homeTeamName: "Neon Raptors",
-    awayTeamName: "Iron Vipers",
-    homeTeamId: "team_raptors",
-    awayTeamId: "team_vipers",
-    date: "2026-10-04",
-    time: "19:15",
-    location: "Field 2 - Prime Turf",
-    status: "completed",
-    homeScore: 21,
-    awayScore: 24,
-    matchdayIndex: 1,
-    order: 1,
-    isPreseason: false,
-  },
-  {
-    id: "match_demo_3",
-    week: "Week 2",
-    homeTeamName: "Apex Predators",
-    awayTeamName: "Neon Raptors",
-    homeTeamId: "team_apex",
-    awayTeamId: "team_raptors",
-    date: "2026-10-11",
-    time: "18:00",
-    location: "Field 1 - Championship Turf",
-    status: "upcoming",
-    homeScore: 0,
-    awayScore: 0,
-    matchdayIndex: 2,
-    order: 0,
-    isPreseason: false,
-  },
-  {
-    id: "match_demo_4",
-    week: "Week 2",
-    homeTeamName: "Cyber Knights",
-    awayTeamName: "Iron Vipers",
-    homeTeamId: "team_cyber",
-    awayTeamId: "team_vipers",
-    date: "2026-10-11",
-    time: "19:15",
-    location: "Field 2 - Prime Turf",
-    status: "upcoming",
-    homeScore: 0,
-    awayScore: 0,
-    matchdayIndex: 2,
-    order: 1,
-    isPreseason: false,
-  },
-];
-
-export const SEED_DEMO_PLAYS: DemoPlay[] = [
-  // Match 1 Plays (Apex vs Cyber Knights)
-  {
-    id: "play_1_1",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_apex",
-    playType: "Pass",
-    down: 1,
-    qbPlayerId: "Marcus Vance",
-    receiverPlayerId: "Jordan Reed",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["Trey Simmons"],
-    flaggers: [],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-  {
-    id: "play_1_2",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_apex",
-    playType: "Pass",
-    qbPlayerId: "Marcus Vance",
-    receiverPlayerId: "Tyler Brooks",
-    passOutcome: "Complete",
-    isTouchdown: false,
-    points: 1,
-    result: "1-PT Conversion Good",
-  },
-  {
-    id: "play_1_3",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_cyber",
-    playType: "Pass",
-    down: 1,
-    qbPlayerId: "Jaxson Hayes",
-    receiverPlayerId: "Liam Walker",
-    passOutcome: "Complete",
-    isTouchdown: false,
-    firstDown: true,
-    defenders: ["Devonte Cole"],
-    flaggers: ["Devonte Cole"],
-    result: "First Down Pass",
-  },
-  {
-    id: "play_1_4",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_cyber",
-    playType: "Pass",
-    down: 2,
-    qbPlayerId: "Jaxson Hayes",
-    receiverPlayerId: "Elijah Moore",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["David Chen"],
-    flaggers: [],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-  {
-    id: "play_1_5",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_cyber",
-    playType: "Pass",
-    qbPlayerId: "Jaxson Hayes",
-    receiverPlayerId: "Liam Walker",
-    passOutcome: "Complete",
-    isTouchdown: false,
-    points: 2,
-    result: "2-PT Conversion Good",
-  },
-  {
-    id: "play_1_6",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_apex",
-    playType: "Pass",
-    down: 1,
-    qbPlayerId: "Marcus Vance",
-    receiverPlayerId: "Tyler Brooks",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["Xavier Cruz"],
-    flaggers: [],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-  {
-    id: "play_1_7",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_apex",
-    playType: "Pass",
-    qbPlayerId: "Marcus Vance",
-    receiverPlayerId: "Jordan Reed",
-    passOutcome: "Complete",
-    isTouchdown: false,
-    points: 1,
-    result: "1-PT Conversion Good",
-  },
-  {
-    id: "play_1_8",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_cyber",
-    playType: "Pass",
-    down: 3,
-    qbPlayerId: "Jaxson Hayes",
-    receiverPlayerId: null,
-    passOutcome: "Interception",
-    turnover: true,
-    defenders: ["Devonte Cole"],
-    flaggers: ["Devonte Cole"],
-    result: "Interception by Devonte Cole",
-  },
-  {
-    id: "play_1_9",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_apex",
-    playType: "Run",
-    down: 1,
-    runnerPlayerId: "Marcus Vance",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["Xavier Cruz"],
-    flaggers: [],
-    points: 6,
-    result: "Touchdown (Run)",
-  },
-  {
-    id: "play_1_10",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_apex",
-    playType: "Pass",
-    qbPlayerId: "Marcus Vance",
-    receiverPlayerId: "Chris Paulson",
-    passOutcome: "Complete",
-    points: 2,
-    result: "2-PT Conversion Good",
-  },
-  {
-    id: "play_1_11",
-    matchId: "match_demo_1",
-    possessionTeamId: "team_cyber",
-    playType: "Pass",
-    down: 2,
-    qbPlayerId: "Jaxson Hayes",
-    receiverPlayerId: "Liam Walker",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["David Chen"],
-    flaggers: [],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-
-  // Match 2 Plays (Neon Raptors vs Iron Vipers)
-  {
-    id: "play_2_1",
-    matchId: "match_demo_2",
-    possessionTeamId: "team_raptors",
-    playType: "Pass",
-    down: 1,
-    qbPlayerId: "Kaelen Morris",
-    receiverPlayerId: "Austin Ray",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["Andre Washington"],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-  {
-    id: "play_2_2",
-    matchId: "match_demo_2",
-    possessionTeamId: "team_vipers",
-    playType: "Pass",
-    down: 1,
-    qbPlayerId: "Damon Knight",
-    receiverPlayerId: "Bryce Howard",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["Dominic West"],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-  {
-    id: "play_2_3",
-    matchId: "match_demo_2",
-    possessionTeamId: "team_vipers",
-    playType: "Pass",
-    qbPlayerId: "Damon Knight",
-    receiverPlayerId: "Cameron Diaz",
-    passOutcome: "Complete",
-    points: 2,
-    result: "2-PT Conversion Good",
-  },
-  {
-    id: "play_2_4",
-    matchId: "match_demo_2",
-    possessionTeamId: "team_raptors",
-    playType: "Pass",
-    down: 2,
-    qbPlayerId: "Kaelen Morris",
-    receiverPlayerId: "Caleb King",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["Victor Rossi"],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-  {
-    id: "play_2_5",
-    matchId: "match_demo_2",
-    possessionTeamId: "team_vipers",
-    playType: "Pass",
-    down: 4,
-    qbPlayerId: "Damon Knight",
-    receiverPlayerId: "Cameron Diaz",
-    passOutcome: "Complete",
-    isTouchdown: true,
-    firstDown: true,
-    defenders: ["Isaiah Green"],
-    points: 6,
-    result: "Touchdown (Pass)",
-  },
-  {
-    id: "play_2_6",
-    matchId: "match_demo_2",
-    possessionTeamId: "team_vipers",
-    playType: "Pass",
-    qbPlayerId: "Damon Knight",
-    receiverPlayerId: "Bryce Howard",
-    passOutcome: "Complete",
-    points: 2,
-    result: "2-PT Conversion Good",
-  },
-];
+export type { DemoTeam, DemoPlayer, DemoMatch, DemoPlay };
+export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS };
 
 // ---------------------------------------------------------------------------
 // Session Storage Keys & Helper Functions
 // ---------------------------------------------------------------------------
 
-const KEY_INIT = "flagos_demo_initialized";
+const KEY_INIT = "flagos_demo_initialized_17weeks_nfl_v1";
 const KEY_SETTINGS = "flagos_demo_settings";
 const KEY_TEAMS = "flagos_demo_teams";
 const KEY_PLAYERS = "flagos_demo_players";
@@ -483,6 +29,13 @@ const KEY_ROLE = "demo_dev_role";
 const KEY_TEAM_ID = "demo_managed_team_id";
 const KEY_PLAYER_ID = "demo_player_id";
 const KEY_PLAYER_DATA = "demo_player_data";
+const KEY_SCHEDULE_BACKUP = "flagos_demo_schedule_backup_v1";
+
+export interface ScheduleBackup {
+  matches: any[];
+  savedAt: number;
+  expiresAt: number;
+}
 
 export const DEMO_EVENT = "flagos_demo_sandbox_updated";
 
@@ -495,7 +48,45 @@ export const initDemoSandbox = (): void => {
   if (typeof window === "undefined") return;
 
   const initialized = sessionStorage.getItem(KEY_INIT);
-  if (!initialized) {
+  const rawTeams = sessionStorage.getItem(KEY_TEAMS);
+  const rawMatches = sessionStorage.getItem(KEY_MATCHES);
+  const rawSettings = sessionStorage.getItem(KEY_SETTINGS);
+  let shouldInit = !initialized;
+
+  if (rawTeams) {
+    try {
+      const parsed = JSON.parse(rawTeams);
+      if (!Array.isArray(parsed) || parsed.length < 30) {
+        shouldInit = true;
+      }
+    } catch {
+      shouldInit = true;
+    }
+  }
+
+  if (rawMatches) {
+    try {
+      const parsedMatches = JSON.parse(rawMatches);
+      if (!Array.isArray(parsedMatches) || parsedMatches.length < 250) {
+        shouldInit = true;
+      }
+    } catch {
+      shouldInit = true;
+    }
+  }
+
+  if (rawSettings) {
+    try {
+      const parsedSettings = JSON.parse(rawSettings);
+      if (parsedSettings?.playoffFormat?.teamsCount !== 14) {
+        shouldInit = true;
+      }
+    } catch {
+      shouldInit = true;
+    }
+  }
+
+  if (shouldInit) {
     sessionStorage.setItem(KEY_INIT, "true");
     sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(DEFAULT_LEAGUE_SETTINGS));
     sessionStorage.setItem(KEY_TEAMS, JSON.stringify(SEED_DEMO_TEAMS));
@@ -505,7 +96,6 @@ export const initDemoSandbox = (): void => {
   } else {
     // Clean up any legacy team_free_agents from existing session storage
     try {
-      const rawTeams = sessionStorage.getItem(KEY_TEAMS);
       if (rawTeams) {
         const teamsList: DemoTeam[] = JSON.parse(rawTeams);
         const filtered = teamsList.filter(
@@ -717,6 +307,15 @@ export const getSandboxMatches = (): DemoMatch[] => {
   return SEED_DEMO_MATCHES;
 };
 
+export const getSandboxMatch = (id: string): DemoMatch | undefined => {
+  const matches = getSandboxMatches();
+  const m = matches.find((match) => match.id === id);
+  if (m) return m;
+  if (id === "match_demo_1") return matches.find((match) => match.id === "match_w16_11");
+  if (id === "match_demo_3") return matches.find((match) => match.id === "match_w16_12");
+  return undefined;
+};
+
 export const addSandboxMatch = (match: Partial<DemoMatch>): DemoMatch => {
   const matches = getSandboxMatches();
   const teams = getSandboxTeams();
@@ -755,8 +354,9 @@ export const addSandboxMatch = (match: Partial<DemoMatch>): DemoMatch => {
 export const updateSandboxMatch = (id: string, data: Partial<DemoMatch>): void => {
   const matches = getSandboxMatches();
   const teams = getSandboxTeams();
+  const targetId = id === "match_demo_1" ? "match_w16_11" : id === "match_demo_3" ? "match_w16_12" : id;
   const updated = matches.map((m) => {
-    if (m.id === id) {
+    if (m.id === id || m.id === targetId) {
       const merged = { ...m, ...data };
       if (data.homeTeamId && !data.homeTeamName) {
         merged.homeTeamName = teams.find((t) => t.id === data.homeTeamId)?.name || m.homeTeamName;
@@ -782,6 +382,20 @@ export const deleteSandboxMatch = (id: string): void => {
   }
 };
 
+export const setSandboxMatches = (matches: DemoMatch[]): void => {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(KEY_MATCHES, JSON.stringify(matches));
+    notifySandboxChange();
+  }
+};
+
+export const clearSandboxMatches = (): void => {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(KEY_MATCHES, JSON.stringify([]));
+    notifySandboxChange();
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Plays CRUD
 // ---------------------------------------------------------------------------
@@ -797,7 +411,9 @@ export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
     } catch {}
   }
   if (matchId) {
-    return all.filter((p) => p.matchId === matchId);
+    const targetId = matchId === "match_demo_1" ? "match_w16_11" : matchId === "match_demo_3" ? "match_w16_12" : matchId;
+    const reverseAlias = matchId === "match_w16_11" ? "match_demo_1" : matchId === "match_w16_12" ? "match_demo_3" : matchId;
+    return all.filter((p) => p.matchId === matchId || p.matchId === targetId || p.matchId === reverseAlias);
   }
   return all;
 };
@@ -876,3 +492,71 @@ export const deleteSandboxPlaysForMatch = (matchId: string): void => {
     notifySandboxChange();
   }
 };
+
+// ---------------------------------------------------------------------------
+// 24-Hour Schedule Overwrite Backup (Single Snapshot)
+// ---------------------------------------------------------------------------
+
+export const saveSandboxScheduleBackup = (matches: any[]): ScheduleBackup | null => {
+  if (typeof window === "undefined" || !matches || matches.length === 0) return null;
+  const now = Date.now();
+  const backup: ScheduleBackup = {
+    matches,
+    savedAt: now,
+    expiresAt: now + 24 * 60 * 60 * 1000, // Strictly 24 hours
+  };
+  try {
+    // Save to localStorage so it survives tab closes for 24h
+    localStorage.setItem(KEY_SCHEDULE_BACKUP, JSON.stringify(backup));
+    sessionStorage.setItem(KEY_SCHEDULE_BACKUP, JSON.stringify(backup));
+    notifySandboxChange();
+    return backup;
+  } catch (err) {
+    console.error("Failed to save schedule backup:", err);
+    return null;
+  }
+};
+
+export const getSandboxScheduleBackup = (): ScheduleBackup | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw =
+      localStorage.getItem(KEY_SCHEDULE_BACKUP) ||
+      sessionStorage.getItem(KEY_SCHEDULE_BACKUP);
+    if (!raw) return null;
+    const backup: ScheduleBackup = JSON.parse(raw);
+    if (!backup || !Array.isArray(backup.matches) || !backup.expiresAt) {
+      clearSandboxScheduleBackup();
+      return null;
+    }
+    // Check 24-hour expiration
+    if (Date.now() > backup.expiresAt) {
+      clearSandboxScheduleBackup();
+      return null;
+    }
+    return backup;
+  } catch (err) {
+    console.error("Error reading schedule backup:", err);
+    return null;
+  }
+};
+
+export const restoreSandboxScheduleBackup = (): boolean => {
+  const backup = getSandboxScheduleBackup();
+  if (!backup || !backup.matches || backup.matches.length === 0) return false;
+  setSandboxMatches(backup.matches);
+  clearSandboxScheduleBackup();
+  return true;
+};
+
+export const clearSandboxScheduleBackup = (): void => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(KEY_SCHEDULE_BACKUP);
+    sessionStorage.removeItem(KEY_SCHEDULE_BACKUP);
+    notifySandboxChange();
+  } catch (err) {
+    console.error("Error clearing schedule backup:", err);
+  }
+};
+
