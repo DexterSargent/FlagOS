@@ -2,9 +2,9 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Calendar, Clock, MapPin, Trophy, History, PlayCircle, Shield, Plus, X, Sparkles, Timer } from "lucide-react";
+import { ChevronLeft, Calendar, Clock, MapPin, Trophy, History, PlayCircle, Shield, Plus, X, Sparkles, Timer, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where, addDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where, addDoc, deleteDoc } from "firebase/firestore";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -12,10 +12,10 @@ import {
   getSandboxTeams,
   getSandboxMatches,
   addSandboxMatch,
+  deleteSandboxMatch,
+  deleteSandboxPlaysForMatch,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 
 export default function TeamSchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -37,8 +37,31 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "Turf Field 1");
   const [isScheduling, setIsScheduling] = useState(false);
 
+  const handleDeleteMatch = async (e: React.MouseEvent, matchId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLeagueAdmin) return;
+    if (!window.confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) return;
+
+    if (isDemoLeague) {
+      deleteSandboxPlaysForMatch(matchId);
+      deleteSandboxMatch(matchId);
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "matches", matchId));
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+    } catch (err) {
+      console.error("Failed to delete match:", err);
+      alert("Failed to delete match. Please check permissions.");
+    }
+  };
+
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLeagueAdmin) return;
     if (!opponentName.trim()) return;
         setIsScheduling(true);
     try {
@@ -133,6 +156,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           mList.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           setMatches(mList);
           setLoading(false);
+        }, (err) => {
+          console.warn("Teams schedule matches onSnapshot error:", err);
+          setLoading(false);
         });
 
         return () => unsub();
@@ -147,33 +173,25 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="teams" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
+        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!team || !isRealTeam(team)) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="teams" />
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-          <p className="text-neutral-400 mb-6 max-w-md">
-            The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team.
-          </p>
-          <Link
-            href="/teams"
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
-          >
-            Back to Teams
-          </Link>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
+        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+        <p className="text-neutral-400 mb-6 max-w-md">
+          The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team.
+        </p>
+        <Link
+          href="/teams"
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+        >
+          Back to Teams
+        </Link>
       </div>
     );
   }
@@ -186,8 +204,6 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
-      {/* Branded League Navigation Bar */}
-      <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -217,8 +233,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
             <p className="text-neutral-400 text-sm mt-1">Upcoming matchups, box scores, and live game tracking.</p>
           </div>
 
-          {/* Schedule Match Button for Team Admins */}
-          {hasManagementAccess && (
+          {/* Schedule Match Button (League Admins Only) */}
+          {isLeagueAdmin && (
             <button
               onClick={() => setIsScheduleModalOpen(true)}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
@@ -270,9 +286,21 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                               </span>
                             )}
                           </div>
-                          <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
-                            {m.status === "in_progress" ? "● LIVE NOW" : "Scheduled"}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                              {m.status === "in_progress" ? "● LIVE NOW" : "Scheduled"}
+                            </span>
+                            {isLeagueAdmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteMatch(e, m.id)}
+                                title="Delete Event"
+                                className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between my-4">
@@ -391,6 +419,16 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                         >
                           {isWin ? "W" : isLoss ? "L" : "T"}
                         </span>
+                        {isLeagueAdmin && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteMatch(e, m.id)}
+                            title="Delete Event"
+                            className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl transition-colors cursor-pointer z-10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </Link>
                   );
@@ -521,8 +559,6 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* Branded League Footer */}
-      <LeagueFooter />
     </div>
   );
 }

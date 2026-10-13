@@ -7,8 +7,6 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
 import {
@@ -82,9 +80,15 @@ export default function TeamsPage() {
   // Modal State
   const [selectedPlayerForStats, setSelectedPlayerForStats] = useState<Player | null>(null);
 
+  const isEffectiveDemo =
+    isDemoLeague ||
+    (typeof window !== "undefined" &&
+      (new URLSearchParams(window.location.search).get("embed") === "true" ||
+        new URLSearchParams(window.location.search).get("demo") === "true"));
+
   const fetchData = async () => {
     setLoading(true);
-    if (isDemoLeague) {
+    if (isEffectiveDemo) {
       const t = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
@@ -116,14 +120,22 @@ export default function TeamsPage() {
       const playData = playsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setPlays(playData);
     } catch (e) {
-      console.error("Error fetching data: ", e);
+      console.warn("Unable to fetch live teams data, falling back to sandbox:", e);
+      const t = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
+      const p = getSandboxPlayers() as unknown as Player[];
+      const m = getSandboxMatches();
+      const pl = getSandboxPlays();
+      setTeams(t);
+      setPlayers(p);
+      setMatches(m);
+      setPlays(pl);
     }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-    if (isDemoLeague) {
+    if (isEffectiveDemo) {
       const unsub = subscribeDemoSandbox(() => {
         setTeams((getSandboxTeams() as unknown as Team[]).filter(isRealTeam));
         setPlayers(getSandboxPlayers() as unknown as Player[]);
@@ -132,7 +144,7 @@ export default function TeamsPage() {
       });
       return () => unsub();
     }
-  }, [isDemoLeague]);
+  }, [isEffectiveDemo]);
 
   const handleAddPlayer = async () => {
     if (!newPlayerName.trim() || !activeTeamId) return;
@@ -466,7 +478,6 @@ export default function TeamsPage() {
 
   return (
     <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
-      <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -1263,8 +1274,6 @@ export default function TeamsPage() {
         </div>
       )}
 
-      {/* Branded League Footer */}
-      <LeagueFooter />
     </div>
   );
 }

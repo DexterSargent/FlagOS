@@ -42,8 +42,7 @@ import { collection, getDocs, onSnapshot, addDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
+
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
 import {
@@ -62,12 +61,20 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const leagueIdParam = unwrappedParams?.id;
   const { settings, openCustomizer, activeLeagueId, switchLeague, isDemoLeague } = useLeague();
 
-  const [isEmbedded, setIsEmbedded] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get("embed") === "true" || sp.get("demo") === "true";
+    }
+    return false;
+  });
+
+  const isEffectiveDemo = isDemoLeague || isEmbedded || leagueIdParam === "default" || leagueIdParam === "demo";
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      if (sp.get("embed") === "true") {
+      if (sp.get("embed") === "true" || sp.get("demo") === "true") {
         setIsEmbedded(true);
       }
     }
@@ -108,7 +115,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
   useEffect(() => {
     const fetchData = async () => {
-      if (isDemoLeague) {
+      if (isEffectiveDemo) {
         const loadDemoData = () => {
           const tList = getSandboxTeams().filter(isRealTeam);
           const pList = getSandboxPlayers();
@@ -148,16 +155,18 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             .filter((m) => !m.isHidden);
           mList.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           setMatches(mList);
+        }, (err) => {
+          console.warn("Matches snapshot permission warning:", err);
         });
 
         return () => unsub();
       } catch (e) {
-        console.error("Error loading dashboard data:", e);
+        console.warn("Non-critical: permission or network error loading dashboard data:", e);
       }
     };
 
     fetchData();
-  }, [isDemoLeague]);
+  }, [isEffectiveDemo]);
 
   // Compute Standings (strictly competitive teams only; free agents are not a team)
   const standingsMap: Record<
@@ -333,9 +342,18 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
     return gameClock + remainingPeriods * periodDuration;
   };
 
-  const activeNonCompletedMatches = matches.filter(
-    (m) => m.status !== "completed" && m.status !== "Final" && !m.isHidden
-  );
+  // Strictly deduplicate active matches so duplicate live games never appear
+  const seenNonCompIds = new Set<string>();
+  const seenNonCompMatchups = new Set<string>();
+  const activeNonCompletedMatches = matches.filter((m) => {
+    if (m.status === "completed" || m.status === "Final" || m.isHidden) return false;
+    if (m.id === "match_demo_1" || m.id === "match_demo_3") return false;
+    const matchupKey = `${m.week || ""}_${m.homeTeamId || ""}_${m.awayTeamId || ""}`;
+    if (seenNonCompIds.has(m.id) || seenNonCompMatchups.has(matchupKey)) return false;
+    seenNonCompIds.add(m.id);
+    seenNonCompMatchups.add(matchupKey);
+    return true;
+  });
 
   // Live games prioritized by LEAST time remaining first
   const liveMatches = activeNonCompletedMatches
@@ -356,7 +374,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const liveAndUpcomingGames = [...liveMatches, ...upcomingOnlyMatches].slice(0, 4);
 
   const upcomingMatches = activeNonCompletedMatches;
-  const nextGame = liveMatches[0] || upcomingOnlyMatches[0] || upcomingMatches[0];
 
   // Team Admin Data Computation
   const managedTeam =
@@ -596,7 +613,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
     setAddingPlayer(true);
     try {
-      if (isDemoLeague) {
+      if (isEffectiveDemo) {
         const newP = addSandboxPlayer({
           playerName: newPlayerName.trim(),
           number: num.toString(),
@@ -673,8 +690,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         <div className="absolute bottom-20 right-10 w-[35rem] h-[35rem] bg-blue-900/15 rounded-full blur-[170px]"></div>
       </div>
 
-      {/* Top Application Header */}
-      {!isEmbedded && <LeagueHeader activePage="league" />}
 
       {/* ========================================================================= */}
       {/* VIEW 1: LEAGUE ADMIN VIEW (LEAGUE COMMAND CENTER)                        */}
@@ -743,16 +758,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   <Plus className="w-4 h-4" />
                   <span>Create Match</span>
                 </Link>
-
-                {nextGame && (
-                  <Link
-                    href={`/matches/${nextGame.id}/play-by-play`}
-                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/30"
-                  >
-                    <PlayCircle className="w-4 h-4" />
-                    <span>Launch Scorekeeper</span>
-                  </Link>
-                )}
 
                 <Link
                   href="/teams"
@@ -2842,8 +2847,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         </div>
       )}
 
-      {/* Branded League Footer */}
-      {!isEmbedded && <LeagueFooter />}
     </div>
   );
 }

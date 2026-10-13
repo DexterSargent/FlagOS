@@ -27,8 +27,6 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { getSandboxTeams, updateSandboxTeam, subscribeDemoSandbox } from "@/lib/demoSandbox";
 
@@ -131,33 +129,25 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="teams" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
+        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!team || !isRealTeam(team)) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="teams" />
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-          <p className="text-neutral-400 mb-6 max-w-md">
-            The requested franchise does not exist or has been removed. Free agents are an unassigned draft pool, not a franchise.
-          </p>
-          <Link
-            href="/teams"
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
-          >
-            Back to Teams
-          </Link>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
+        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+        <p className="text-neutral-400 mb-6 max-w-md">
+          The requested franchise does not exist or has been removed. Free agents are an unassigned draft pool, not a franchise.
+        </p>
+        <Link
+          href="/teams"
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+        >
+          Back to Teams
+        </Link>
       </div>
     );
   }
@@ -166,8 +156,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 selection:text-cyan-200 relative font-sans flex flex-col">
-      {/* Branded League Navigation Bar */}
-      <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background with ambient glows */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -410,8 +398,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* Branded League Footer */}
-      <LeagueFooter />
     </div>
   );
 }

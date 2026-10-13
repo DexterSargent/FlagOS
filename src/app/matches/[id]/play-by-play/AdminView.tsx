@@ -24,6 +24,7 @@ import {
   deleteSandboxPlay,
   deleteSandboxPlaysForMatch,
   subscribeDemoSandbox,
+  isDemoMatch,
 } from "@/lib/demoSandbox";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
@@ -31,13 +32,21 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const matchId = unwrappedParams.id;
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
-  const isDemo = isDemoLeague || matchId.startsWith("match_demo_");
-  const [isEmbedded, setIsEmbedded] = useState(false);
+
+  const [isEmbedded, setIsEmbedded] = useState(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get("embed") === "true" || sp.get("demo") === "true";
+    }
+    return false;
+  });
+
+  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      if (sp.get("embed") === "true") setIsEmbedded(true);
+      if (sp.get("embed") === "true" || sp.get("demo") === "true") setIsEmbedded(true);
     }
   }, []);
 
@@ -190,11 +199,23 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           if (!mData) return;
           allP = getSandboxPlayers();
         } else {
-          const matchDoc = await getDoc(doc(db, "matches", matchId));
-          if (!matchDoc.exists()) return;
-          mData = matchDoc.data() as any;
-          const playersSnap = await getDocs(collection(db, "players"));
-          allP = playersSnap.docs.map(d => d.data());
+          try {
+            const matchDoc = await getDoc(doc(db, "matches", matchId));
+            if (!matchDoc.exists()) {
+              mData = getSandboxMatch(matchId);
+              if (!mData) return;
+              allP = getSandboxPlayers();
+            } else {
+              mData = matchDoc.data() as any;
+              const playersSnap = await getDocs(collection(db, "players"));
+              allP = playersSnap.docs.map(d => d.data());
+            }
+          } catch (err) {
+            console.warn("Unable to fetch live match from Firestore, falling back to sandbox:", err);
+            mData = getSandboxMatch(matchId);
+            if (!mData) return;
+            allP = getSandboxPlayers();
+          }
         }
 
         setHomeTeamName(mData.homeTeamName || "HOME");
@@ -1083,13 +1104,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
       {/* TIMEOUT MODAL */}
       {isTimeoutActive && (
-        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center">
-          <Timer className="w-32 h-32 text-white mb-8 animate-pulse" />
-          <h2 className="text-5xl font-black mb-12 uppercase tracking-widest text-neutral-300">Timeout</h2>
-          <span className="text-[12rem] font-black leading-none text-white tabular-nums mb-12">{timeoutClock}</span>
+        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4">
+          <Timer className="w-16 h-16 sm:w-24 sm:h-24 md:w-32 md:h-32 text-white mb-4 sm:mb-8 animate-pulse" />
+          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-12 uppercase tracking-widest text-neutral-300">Timeout</h2>
+          <span className="text-6xl sm:text-9xl md:text-[12rem] font-black leading-none text-white tabular-nums mb-6 sm:mb-12">{timeoutClock}</span>
           <button
             onClick={() => setTimeoutClock(0)}
-            className="py-6 px-12 bg-white/10 hover:bg-white/20 text-white font-bold text-2xl rounded-full transition-colors"
+            className="py-3.5 sm:py-6 px-6 sm:px-12 bg-white/10 hover:bg-white/20 text-white font-bold text-sm sm:text-xl md:text-2xl rounded-full transition-colors"
           >
             END TIMEOUT EARLY
           </button>
@@ -1098,10 +1119,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
       {/* SUB MODAL */}
       {isSubModalOpen && (
-        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-8">
-          <div className="bg-neutral-900 border border-white/10 rounded-[3rem] p-8 max-w-xl w-full flex flex-col max-h-[80vh]">
-            <div className="flex justify-between items-center mb-6 shrink-0">
-              <h2 className="text-3xl font-black uppercase tracking-widest">Add Sub</h2>
+        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-8">
+          <div className="bg-neutral-900 border border-white/10 rounded-2xl sm:rounded-3xl md:rounded-[3rem] p-4 sm:p-8 max-w-xl w-full flex flex-col max-h-[85vh]">
+            <div className="flex justify-between items-center mb-4 sm:mb-6 shrink-0">
+              <h2 className="text-xl sm:text-3xl font-black uppercase tracking-widest">Add Sub</h2>
               <button onClick={() => { setIsSubModalOpen(false); setSubModalTeam(null); }} className="text-neutral-500 hover:text-white p-2 bg-white/5 rounded-full">
                 <X className="w-6 h-6" />
               </button>
@@ -1347,23 +1368,23 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 </div>
 
                 {isFirstPlayOfHalf ? (
-                  <div className="bg-neutral-900 border border-cyan-500/30 p-12 rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] max-w-xl text-center">
-                    <AlertCircle className="w-20 h-20 text-emerald-500 mb-6" />
-                    <h2 className="text-3xl font-black mb-6 uppercase tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
+                  <div className="bg-neutral-900 border border-cyan-500/30 p-6 sm:p-10 md:p-12 rounded-3xl sm:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] max-w-xl text-center">
+                    <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-emerald-500 mb-4 sm:mb-6" />
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black mb-4 sm:mb-6 uppercase tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
                     <button
                       onClick={() => { handleSpotBall(); setIsFirstPlayOfHalf(false); }}
-                      className="py-6 px-10 bg-white hover:bg-neutral-200 text-black font-black text-xl md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform"
+                      className="py-4 sm:py-6 px-6 sm:px-10 bg-white hover:bg-neutral-200 text-black font-black text-base sm:text-xl md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform"
                     >
                       CLICK WHEN SNAPPED
                     </button>
                   </div>
                 ) : (
-                  <div className="bg-neutral-900 border border-amber-500/30 p-12 rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center">
-                    <AlertCircle className="w-20 h-20 text-amber-500 mb-6" />
-                    <h2 className="text-3xl font-black mb-6 uppercase tracking-widest">Awaiting Spot</h2>
+                  <div className="bg-neutral-900 border border-amber-500/30 p-6 sm:p-10 md:p-12 rounded-3xl sm:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center">
+                    <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 text-amber-500 mb-4 sm:mb-6" />
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-black mb-4 sm:mb-6 uppercase tracking-widest">Awaiting Spot</h2>
                     <button
                       onClick={handleSpotBall}
-                      className="py-6 px-10 bg-white hover:bg-neutral-200 text-black font-black text-xl md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform"
+                      className="py-4 sm:py-6 px-6 sm:px-10 bg-white hover:bg-neutral-200 text-black font-black text-base sm:text-xl md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform"
                     >
                       CLICK WHEN SPOTTED
                     </button>
@@ -1643,9 +1664,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
                     {/* OOB Prompt Logic */}
                     {isOobPrompt && (
-                      <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-2">
-                        <button onClick={() => handleSavePlay('First Down')} className="py-6 rounded-3xl bg-blue-600 text-white font-black text-xl">OOB - FIRST DOWN</button>
-                        <button onClick={() => handleSavePlay('Short')} className="py-6 rounded-3xl bg-neutral-800 text-white font-black text-xl border border-white/10">OOB - SHORT</button>
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in slide-in-from-bottom-2">
+                        <button onClick={() => handleSavePlay('First Down')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-blue-600 text-white font-black text-sm sm:text-base md:text-xl">OOB - FIRST DOWN</button>
+                        <button onClick={() => handleSavePlay('Short')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-sm sm:text-base md:text-xl border border-white/10">OOB - SHORT</button>
                       </div>
                     )}
 
@@ -1654,30 +1675,30 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       <>
                         {/* Immediate Touchdown & OOB for Complete/Gain */}
                         {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length === 0 && (
-                          <div className="grid grid-cols-2 gap-4 animate-in fade-in">
-                            <button onClick={() => handleSavePlay('Touchdown')} className="py-6 rounded-3xl bg-emerald-600 text-white font-black text-xl">TOUCHDOWN</button>
-                            <button onClick={() => setIsOobPrompt(true)} className="py-6 rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-xl border border-white/10 hover:text-white">OUT OF BOUNDS</button>
+                          <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in fade-in">
+                            <button onClick={() => handleSavePlay('Touchdown')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-emerald-600 text-white font-black text-sm sm:text-base md:text-xl">TOUCHDOWN</button>
+                            <button onClick={() => setIsOobPrompt(true)} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-sm sm:text-base md:text-xl border border-white/10 hover:text-white">OUT OF BOUNDS</button>
                           </div>
                         )}
 
                         {/* Normal Complete/Gain with Flagger */}
                         {isPlayReadyToSave() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length > 0 && (
-                          <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-2">
-                            <button onClick={() => handleSavePlay('First Down')} className="py-6 rounded-3xl bg-blue-600 text-white font-black text-xl">FIRST DOWN</button>
-                            <button onClick={() => handleSavePlay('Short')} className="py-6 rounded-3xl bg-neutral-800 text-white font-black text-xl border border-white/10">SHORT OF THE LINE TO GAIN</button>
+                          <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in slide-in-from-bottom-2">
+                            <button onClick={() => handleSavePlay('First Down')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-blue-600 text-white font-black text-sm sm:text-base md:text-xl">FIRST DOWN</button>
+                            <button onClick={() => handleSavePlay('Short')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-sm sm:text-base md:text-xl border border-white/10">SHORT OF LINE</button>
                           </div>
                         )}
 
                         {/* Interception Results */}
                         {hasOffenseSelected() && outcome === 'Interception' && defenders.length === 1 && (
-                          <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-2">
+                          <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in slide-in-from-bottom-2">
                             {flaggers.length === 0 ? (
                               <>
-                                <button onClick={() => handleSavePlay('Pick 6')} className="py-6 rounded-3xl bg-emerald-600 text-white font-black text-xl">PICK 6</button>
-                                <button onClick={() => handleSavePlay('Turnover')} className="py-6 rounded-3xl bg-amber-600 text-white font-black text-xl border border-white/10">OOB / DOWNED</button>
+                                <button onClick={() => handleSavePlay('Pick 6')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-emerald-600 text-white font-black text-sm sm:text-base md:text-xl">PICK 6</button>
+                                <button onClick={() => handleSavePlay('Turnover')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-amber-600 text-white font-black text-sm sm:text-base md:text-xl border border-white/10">OOB / DOWNED</button>
                               </>
                             ) : (
-                              <button onClick={() => handleSavePlay('Turnover')} className="col-span-2 py-6 rounded-3xl bg-amber-600 text-white font-black text-xl">FLAGGED (Save Turnover)</button>
+                              <button onClick={() => handleSavePlay('Turnover')} className="col-span-2 py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-amber-600 text-white font-black text-sm sm:text-base md:text-xl">FLAGGED (Save Turnover)</button>
                             )}
                           </div>
                         )}

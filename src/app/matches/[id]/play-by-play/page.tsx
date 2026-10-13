@@ -8,7 +8,7 @@ import AsyncPlayByPlayManager from "@/components/AsyncPlayByPlayManager";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
-import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox, isDemoMatch } from "@/lib/demoSandbox";
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
   const { isLeagueAdmin, isTeamAdmin, canManageTeam, loading } = useAuth();
@@ -18,7 +18,15 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   const [matchData, setMatchData] = useState<any>(null);
   const [isFetching, setIsFetching] = useState(true);
 
-  const isDemo = isDemoLeague || matchId.startsWith("match_demo_");
+  const [isEmbedded, setIsEmbedded] = useState(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get("embed") === "true" || sp.get("demo") === "true";
+    }
+    return false;
+  });
+
+  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId);
 
   useEffect(() => {
     const loadMatch = async () => {
@@ -28,9 +36,15 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
         setIsFetching(false);
         return;
       }
-      const snap = await getDoc(doc(db, "matches", matchId));
-      if (snap.exists()) {
-        setMatchData(snap.data());
+      try {
+        const snap = await getDoc(doc(db, "matches", matchId));
+        if (snap.exists()) {
+          setMatchData(snap.data());
+        }
+      } catch (err) {
+        console.warn("Unable to load remote match from Firestore, falling back to sandbox:", err);
+        const m = getSandboxMatch(matchId);
+        if (m) setMatchData(m);
       }
       setIsFetching(false);
     };
@@ -65,8 +79,6 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
     );
   }
 
-  const isDemoMatch = isDemoLeague || matchId.startsWith("match_demo_");
-  const isEmbedded = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true";
   // In demo matches / play-by-play wizard demo:
   // - If embedded on the landing page showcase (embed=true), allow interactive testing of the wizard
   // - In full app, ONLY league admin can administer the game
@@ -74,7 +86,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   //   show the play-by-play / box score view for the game they were in.
   const canAdministerMatch = isEmbedded
     ? true
-    : isDemoMatch
+    : isDemo
     ? isLeagueAdmin
     : (isLeagueAdmin ||
        (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) ||

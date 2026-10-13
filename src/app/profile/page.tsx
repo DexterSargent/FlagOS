@@ -30,8 +30,6 @@ import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { getTeamShortcode } from "@/components/TeamAssets";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -343,7 +341,6 @@ export default function PlayerProfilePage() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
-      <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -1070,7 +1067,6 @@ export default function PlayerProfilePage() {
         )}
       </main>
 
-      <LeagueFooter />
     </div>
   );
 }

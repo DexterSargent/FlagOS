@@ -41,7 +41,6 @@ import {
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
-import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/lib/themeContext";
@@ -66,7 +65,7 @@ export default function FlagOSPlatformLandingPage() {
   const getFeatureUrl = () => {
     switch (activeFeatureTab) {
       case "stats":
-        return `/matches/match_demo_3/play-by-play?embed=true&mode=${wizardMode}`;
+        return `/matches/match_w16_12/play-by-play?embed=true&demo=true&mode=${wizardMode}`;
       case "playbook":
         return `/teams/team_kc/playbook?embed=true&demo=true`;
       case "live-clock":
@@ -79,7 +78,7 @@ export default function FlagOSPlatformLandingPage() {
   const getDisplayUrl = () => {
     switch (activeFeatureTab) {
       case "stats":
-        return `flagos.ca/matches/match_demo_3/play-by-play?mode=${wizardMode}`;
+        return `flagos.ca/matches/match_w16_12/play-by-play?mode=${wizardMode}`;
       case "playbook":
         return `flagos.ca/teams/team_kc/playbook`;
       case "live-clock":
@@ -758,7 +757,7 @@ export default function FlagOSPlatformLandingPage() {
           {/* INTERACTIVE APPLICATION FRAME */}
           <div className="bg-[#090D16] border border-white/15 rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative">
             {/* Embedded Real Feature App Frame */}
-            <div className="relative w-full h-[500px] md:h-[600px] bg-black">
+            <div className="relative w-full h-[560px] md:h-[680px] bg-black">
               <iframe
                 key={`${activeFeatureTab}-${wizardMode}-${frameKey}`}
                 src={getFeatureUrl()}
@@ -1033,7 +1032,6 @@ export default function FlagOSPlatformLandingPage() {
           )}
         </section>
       </main>
-      <LeagueFooter />
     </div>
   );
 }

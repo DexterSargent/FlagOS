@@ -32,8 +32,6 @@ import {
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { db } from "@/lib/firebase";
 import { collection, addDoc } from "firebase/firestore";
 
@@ -414,7 +412,6 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
-      <LeagueHeader activePage="pricing" />
 
       {/* Ambient background glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -1032,7 +1029,6 @@ export default function PricingPage() {
         </div>
       )}
 
-      <LeagueFooter />
     </div>
   );
 }

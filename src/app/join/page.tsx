@@ -8,8 +8,6 @@ import { collection, getDocs, addDoc, query, where } from "firebase/firestore";
 import { Check, Search, Shield, UserPlus, ArrowRight, Mail, Lock } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { getSandboxPlayers, addSandboxPlayer } from "@/lib/demoSandbox";
 
@@ -134,8 +132,7 @@ export default function JoinLeague() {
   // NOT ELIGIBLE FOR FREE AGENT JOIN (ALREADY AN ADMIN, TEAM ADMIN, OR ROSTERED PLAYER)
   if (!canRegisterAsPlayer) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
-        <LeagueHeader activePage="join" />
+      <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-center items-center">
         <div className="max-w-md mx-auto my-auto p-8 text-center bg-[#0B0F19] border border-cyan-500/30 rounded-3xl shadow-2xl space-y-6 my-20">
           <div className="w-16 h-16 mx-auto rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
             <Check className="w-8 h-8" />
@@ -175,7 +172,6 @@ export default function JoinLeague() {
             </Link>
           </div>
         </div>
-        <LeagueFooter />
       </div>
     );
   }
@@ -183,8 +179,7 @@ export default function JoinLeague() {
   // REGISTRATION CLOSED NOTICE IF TOGGLED OFF BY ADMIN
   if (settings.rules?.enableFreeAgents === false) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
-        <LeagueHeader activePage="join" />
+      <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-center items-center">
         <div className="max-w-md mx-auto my-auto p-8 text-center bg-[#0B0F19] border border-white/10 rounded-3xl shadow-2xl space-y-6 my-20">
           <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
             <Lock className="w-8 h-8" />
@@ -207,14 +202,12 @@ export default function JoinLeague() {
             </Link>
           </div>
         </div>
-        <LeagueFooter />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
-      <LeagueHeader activePage="join" />
 
       {/* Background Glow */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -424,8 +417,6 @@ export default function JoinLeague() {
         </div>
       </div>
 
-      {/* Branded League Footer */}
-      <LeagueFooter />
     </div>
   );
 }

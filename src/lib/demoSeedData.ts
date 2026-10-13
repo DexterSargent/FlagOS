@@ -60,6 +60,9 @@ export interface DemoPlay {
   passOutcome?: string;
   isTouchdown?: boolean;
   isConversion?: boolean;
+  conversionSuccess?: boolean;
+  conversionPasser?: string | null;
+  conversionReceiver?: string | null;
   isPick6?: boolean;
   isSafety?: boolean;
   turnover?: boolean;
@@ -71,6 +74,7 @@ export interface DemoPlay {
   timestamp?: string;
   half?: number;
   gameClock?: number;
+  [key: string]: any;
 }
 
 // ---------------------------------------------------------------------------

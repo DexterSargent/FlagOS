@@ -26,8 +26,6 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague, PlayoffFormat } from "@/lib/leagueContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
 import {
@@ -35,6 +33,8 @@ import {
   getSandboxMatches,
   addSandboxMatch,
   updateSandboxMatch,
+  deleteSandboxMatch,
+  deleteSandboxPlaysForMatch,
   setSandboxMatches,
   clearSandboxMatches,
   subscribeDemoSandbox,
@@ -85,17 +85,23 @@ export default function Calendar() {
   // Week Filter for Regular Season view (defaults to Week 16 for active live slate)
   const [selectedWeekFilter, setSelectedWeekFilter] = useState<string | null>("Week 16");
 
-  const [isEmbedded, setIsEmbedded] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get("embed") === "true" || sp.get("demo") === "true";
+    }
+    return false;
+  });
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      if (sp.get("embed") === "true") setIsEmbedded(true);
+      if (sp.get("embed") === "true" || sp.get("demo") === "true") setIsEmbedded(true);
       if (sp.get("view") === "playoffs") setActiveView("playoffs");
       if (sp.get("week")) setSelectedWeekFilter(sp.get("week"));
     }
   }, []);
 
-  const canManageSchedule = isLeagueAdmin || isDemoLeague || isEmbedded;
+  const canManageSchedule = Boolean(isLeagueAdmin);
 
   // Manual Match Edit/Create Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -177,6 +183,8 @@ export default function Calendar() {
           .map((d) => ({ id: d.id, ...d.data() }))
           .filter(isRealTeam)
       );
+    }).catch((err) => {
+      console.warn("Failed to fetch teams from firestore:", err);
     });
 
     // Listen to matches in real-time
@@ -191,7 +199,7 @@ export default function Calendar() {
         setLoading(false);
       },
       (error) => {
-        console.error(error);
+        console.warn("Schedule onSnapshot warning:", error);
         setLoading(false);
       }
     );
@@ -347,6 +355,36 @@ export default function Calendar() {
     }
   };
 
+  const handleDeleteSingleMatch = async (matchId: string) => {
+    if (!canManageSchedule) return;
+    if (!window.confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) {
+      return;
+    }
+
+    if (isDemoLeague || isEmbedded) {
+      deleteSandboxPlaysForMatch(matchId);
+      deleteSandboxMatch(matchId);
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+      if (editingMatch?.id === matchId) {
+        setIsModalOpen(false);
+        setEditingMatch(null);
+      }
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "matches", matchId));
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+      if (editingMatch?.id === matchId) {
+        setIsModalOpen(false);
+        setEditingMatch(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete match:", err);
+      alert("Failed to delete match. Please check permissions.");
+    }
+  };
+
   const handleClearSchedule = async () => {
     if (isDemoLeague || isEmbedded) {
       clearSandboxMatches();
@@ -464,8 +502,6 @@ export default function Calendar() {
 
   return (
     <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
-      {!isEmbedded && <LeagueHeader activePage="schedule" />}
-
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-cyan-900/15 rounded-full blur-[160px]" />
@@ -792,16 +828,33 @@ export default function Calendar() {
                             </Link>
 
                             {canManageSchedule && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setEditingMatch(match);
-                                  setIsModalOpen(true);
-                                }}
-                                className="absolute top-6 right-6 p-2 bg-neutral-900 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors z-20"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
+                              <div className="absolute top-6 right-6 flex items-center gap-1.5 z-20">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setEditingMatch(match);
+                                    setIsModalOpen(true);
+                                  }}
+                                  title="Edit Event"
+                                  className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDeleteSingleMatch(match.id);
+                                  }}
+                                  title="Delete Event"
+                                  className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             )}
                           </div>
                         ))}
@@ -915,16 +968,33 @@ export default function Calendar() {
                         </Link>
 
                         {canManageSchedule && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setEditingMatch(match);
-                              setIsModalOpen(true);
-                            }}
-                            className="absolute top-6 right-6 p-2 bg-neutral-900 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors z-20"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                          <div className="absolute top-6 right-6 flex items-center gap-1.5 z-20">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingMatch(match);
+                                setIsModalOpen(true);
+                              }}
+                              title="Edit Event"
+                              className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDeleteSingleMatch(match.id);
+                              }}
+                              title="Delete Event"
+                              className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -1058,20 +1128,67 @@ export default function Calendar() {
                 </label>
               </div>
 
-              <div className="pt-4 border-t border-white/10 flex justify-end gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-3 font-semibold text-neutral-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30"
-                >
-                  {editingMatch.id ? "Save Changes" : "Create Match"}
-                </button>
+              {editingMatch.id && (
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-400 mb-1">Home Score</label>
+                    <input
+                      type="number"
+                      value={editingMatch.homeScore ?? 0}
+                      onChange={(e) => setEditingMatch({ ...editingMatch, homeScore: parseInt(e.target.value, 10) || 0 })}
+                      className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-400 mb-1">Away Score</label>
+                    <input
+                      type="number"
+                      value={editingMatch.awayScore ?? 0}
+                      onChange={(e) => setEditingMatch({ ...editingMatch, awayScore: parseInt(e.target.value, 10) || 0 })}
+                      className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-400 mb-1">Status</label>
+                    <select
+                      value={editingMatch.status || "scheduled"}
+                      onChange={(e) => setEditingMatch({ ...editingMatch, status: e.target.value as any })}
+                      className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                    >
+                      <option value="scheduled">Scheduled</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3 mt-4">
+                {editingMatch.id ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSingleMatch(editingMatch.id!)}
+                    className="px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 font-semibold rounded-xl transition-all flex items-center gap-2 text-xs cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Event</span>
+                  </button>
+                ) : <div />}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-5 py-3 font-semibold text-neutral-400 hover:text-white text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
+                  >
+                    {editingMatch.id ? "Save Changes" : "Create Match"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1133,8 +1250,6 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Branded League Footer */}
-      {!isEmbedded && <LeagueFooter />}
     </div>
   );
 }

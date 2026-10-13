@@ -42,7 +42,7 @@ interface ScoringDrive {
 /**
  * Exactly partitions any score >= 0 into valid flag football scoring drives.
  */
-function decomposeScore(score: number): ScoringDrive[] {
+export function decomposeScore(score: number): ScoringDrive[] {
   if (score <= 0) return [];
   const drives: ScoringDrive[] = [];
   let remaining = score;
@@ -125,8 +125,8 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
   const awayRoster = rosters[match.awayTeamId];
   if (!homeRoster || !awayRoster) return [];
 
-  const homeDrives = decomposeScore(match.homeScore);
-  const awayDrives = decomposeScore(match.awayScore);
+  const homeDrives = decomposeScore(match.homeScore ?? 0);
+  const awayDrives = decomposeScore(match.awayScore ?? 0);
 
   const plays: DemoPlay[] = [];
   let playIndex = 1;

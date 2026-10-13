@@ -2,17 +2,17 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ChevronLeft, ShieldAlert, Clock, MapPin } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ShieldAlert, Clock, MapPin, Edit2, Trash2, X } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
-import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague } = useLeague();
@@ -20,6 +20,76 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
   const [matchData, setMatchData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const openEditModal = () => {
+    setEditForm({
+      week: matchData.week || "",
+      date: matchData.date || "",
+      time: matchData.time || "",
+      location: matchData.location || settings.defaultLocation || "Turf Field 1",
+      homeTeamName: matchData.homeTeamName || "",
+      awayTeamName: matchData.awayTeamName || "",
+      homeScore: matchData.homeScore ?? 0,
+      awayScore: matchData.awayScore ?? 0,
+      status: matchData.status || "scheduled",
+      isPreseason: matchData.isPreseason || false,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLeagueAdmin || !editForm) return;
+
+    const updatedData = {
+      ...matchData,
+      ...editForm,
+      matchdayIndex: parseInt(editForm.week?.replace(/\D/g, "") || "0", 10) || matchData.matchdayIndex || 1,
+    };
+
+    if (isDemoLeague) {
+      updateSandboxMatch(matchId, updatedData);
+      setMatchData(updatedData);
+      setIsEditModalOpen(false);
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "matches", matchId), updatedData);
+      setMatchData(updatedData);
+      setIsEditModalOpen(false);
+    } catch (err) {
+      console.error("Failed to update match:", err);
+      alert("Failed to save changes. Please try again.");
+    }
+  };
+
+  const handleDeleteMatch = async () => {
+    if (!isLeagueAdmin) return;
+    if (!window.confirm("Are you sure you want to permanently delete this event? This action will remove the match and all recorded plays.")) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      if (isDemoLeague) {
+        deleteSandboxPlaysForMatch(matchId);
+        deleteSandboxMatch(matchId);
+        router.push("/schedule");
+        return;
+      }
+
+      await deleteDoc(doc(db, "matches", matchId));
+      router.push("/schedule");
+    } catch (err) {
+      console.error("Failed to delete match:", err);
+      alert("Failed to delete match. Please check permissions.");
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchMatch = async () => {
@@ -67,8 +137,6 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col">
-      {/* Branded League Navigation Bar */}
-      <LeagueHeader activePage="schedule" />
 
       <div className="max-w-4xl mx-auto space-y-8 flex-1 w-full p-6 md:p-12">
 
@@ -139,31 +207,49 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 </p>
               </div>
             </div>
-            <div className="flex gap-4 items-center">
+            <div className="flex gap-2.5 items-center flex-wrap">
               {isLeagueAdmin && (
-                <button
-                  onClick={async () => {
-                    try {
-                      const newValue = !matchData.isPreseason;
-                      if (isDemoLeague) {
-                        updateSandboxMatch(matchId, { isPreseason: newValue });
+                <>
+                  <button
+                    onClick={openEditModal}
+                    className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-xl border border-white/10 transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit Event</span>
+                  </button>
+
+                  <button
+                    onClick={handleDeleteMatch}
+                    disabled={isDeleting}
+                    className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 font-semibold rounded-xl border border-rose-500/20 transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isDeleting ? "Deleting..." : "Delete Event"}</span>
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      try {
+                        const newValue = !matchData.isPreseason;
+                        if (isDemoLeague) {
+                          updateSandboxMatch(matchId, { isPreseason: newValue });
+                          setMatchData({ ...matchData, isPreseason: newValue });
+                          return;
+                        }
+                        await updateDoc(doc(db, 'matches', matchId), { isPreseason: newValue });
                         setMatchData({ ...matchData, isPreseason: newValue });
-                        return;
-                      }
-                      const { updateDoc, doc } = await import('firebase/firestore');
-                      await updateDoc(doc(db, 'matches', matchId), { isPreseason: newValue });
-                      setMatchData({ ...matchData, isPreseason: newValue });
-                    } catch (e) { console.error(e) }
-                  }}
-                  className={`px-4 py-3 font-semibold rounded-xl transition-all whitespace-nowrap border ${matchData.isPreseason ? 'bg-amber-500/20 text-amber-500 border-amber-500/50 hover:bg-amber-500/30' : 'bg-neutral-800 text-neutral-400 border-white/10 hover:bg-neutral-700'}`}
-                >
-                  {matchData.isPreseason ? "★ Preseason" : "Mark as Preseason"}
-                </button>
+                      } catch (e) { console.error(e) }
+                    }}
+                    className={`px-3.5 py-2.5 font-semibold rounded-xl transition-all whitespace-nowrap border text-xs cursor-pointer ${matchData.isPreseason ? 'bg-amber-500/20 text-amber-500 border-amber-500/50 hover:bg-amber-500/30' : 'bg-neutral-800 text-neutral-400 border-white/10 hover:bg-neutral-700'}`}
+                  >
+                    {matchData.isPreseason ? "★ Preseason" : "Mark as Preseason"}
+                  </button>
+                </>
               )}
               {matchData.status !== 'completed' ? (
                 <Link
                   href={`/matches/${matchId}/play-by-play`}
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap"
+                  className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                 >
                   {matchData.isAsyncStatKeeping ? "Async Stat Keeper" : "Play-by-Play Manager"}
                 </Link>
@@ -174,7 +260,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                       updateSandboxMatch(matchId, { status: "in_progress" });
                       window.location.href = `/matches/${matchId}/play-by-play`;
                     }}
-                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap"
+                    className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                   >
                     Reopen Play-by-Play
                   </button>
@@ -191,7 +277,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                       });
                       window.location.reload();
                     }}
-                    className="px-4 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold rounded-xl border border-white/10 transition-all whitespace-nowrap"
+                    className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold rounded-xl border border-white/10 transition-all whitespace-nowrap text-xs"
                   >
                     Reset Match
                   </button>
@@ -220,8 +306,172 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
       </div>
 
-      {/* Branded League Footer */}
-      <LeagueFooter />
+      {/* Edit Event Modal (League Admin Only) */}
+      {isEditModalOpen && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white">Edit Event Details</h2>
+                <p className="text-xs text-neutral-400 mt-0.5">League Admin Event Management</p>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-neutral-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-400 mb-1">Week / Round Label</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.week}
+                  onChange={(e) => setEditForm({ ...editForm, week: e.target.value })}
+                  className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                  placeholder="e.g. 'Week 1', 'Championship'"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Home Team</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.homeTeamName}
+                    onChange={(e) => setEditForm({ ...editForm, homeTeamName: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Away Team</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.awayTeamName}
+                    onChange={(e) => setEditForm({ ...editForm, awayTeamName: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Date</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.date}
+                    onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                    placeholder="YYYY-MM-DD"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Kickoff Time</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.time}
+                    onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                    placeholder="e.g. 10:00 AM"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-neutral-400 mb-1">Venue / Field</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.location}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                  className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Home Score</label>
+                  <input
+                    type="number"
+                    value={editForm.homeScore}
+                    onChange={(e) => setEditForm({ ...editForm, homeScore: parseInt(e.target.value, 10) || 0 })}
+                    className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Away Score</label>
+                  <input
+                    type="number"
+                    value={editForm.awayScore}
+                    onChange={(e) => setEditForm({ ...editForm, awayScore: parseInt(e.target.value, 10) || 0 })}
+                    className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Status</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white text-sm"
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/10 mt-2">
+                <input
+                  type="checkbox"
+                  id="editPreseason"
+                  checked={editForm.isPreseason}
+                  onChange={(e) => setEditForm({ ...editForm, isPreseason: e.target.checked })}
+                  className="w-5 h-5 accent-amber-500 rounded bg-black border-white/20"
+                />
+                <label htmlFor="editPreseason" className="text-white font-semibold text-sm cursor-pointer">
+                  Mark as Preseason Game
+                </label>
+              </div>
+
+              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={handleDeleteMatch}
+                  className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 font-semibold rounded-xl transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Event</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-4 py-2.5 font-semibold text-neutral-400 hover:text-white text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

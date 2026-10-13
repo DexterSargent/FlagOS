@@ -20,8 +20,6 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import { renderFlagOS } from "@/components/FlagOSText";
 import {
   getSandboxTeams,
@@ -53,7 +51,13 @@ export default function StatsAndStandings() {
         let matches: any[];
         let plays: any[];
 
-        if (isDemoLeague) {
+        const isEffectiveDemo =
+          isDemoLeague ||
+          (typeof window !== "undefined" &&
+            (new URLSearchParams(window.location.search).get("embed") === "true" ||
+              new URLSearchParams(window.location.search).get("demo") === "true"));
+
+        if (isEffectiveDemo) {
           teams = getSandboxTeams().filter(isRealTeam);
           players = getSandboxPlayers();
           matches = getSandboxMatches().filter(
@@ -61,19 +65,29 @@ export default function StatsAndStandings() {
           );
           plays = getSandboxPlays();
         } else {
-          const [teamsSnap, playersSnap, matchesSnap, playsSnap] = await Promise.all([
-            getDocs(collection(db, "teams")),
-            getDocs(collection(db, "players")),
-            getDocs(collection(db, "matches")),
-            getDocs(collection(db, "plays")),
-          ]);
+          try {
+            const [teamsSnap, playersSnap, matchesSnap, playsSnap] = await Promise.all([
+              getDocs(collection(db, "teams")),
+              getDocs(collection(db, "players")),
+              getDocs(collection(db, "matches")),
+              getDocs(collection(db, "plays")),
+            ]);
 
-          teams = teamsSnap.docs
-            .map((d) => ({ id: d.id, ...(d.data() as any) }))
-            .filter(isRealTeam);
-          players = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-          matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-          plays = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            teams = teamsSnap.docs
+              .map((d) => ({ id: d.id, ...(d.data() as any) }))
+              .filter(isRealTeam);
+            players = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            plays = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          } catch (err) {
+            console.warn("Unable to fetch stats from Firestore, falling back to sandbox:", err);
+            teams = getSandboxTeams().filter(isRealTeam);
+            players = getSandboxPlayers();
+            matches = getSandboxMatches().filter(
+              (m: any) => m.homeTeamId !== "team_free_agents" && m.awayTeamId !== "team_free_agents"
+            );
+            plays = getSandboxPlays();
+          }
         }
 
         // === TEAM STANDINGS ===
@@ -434,19 +448,14 @@ export default function StatsAndStandings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="stats" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
+        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
-      <LeagueHeader activePage="stats" />
 
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -715,13 +724,13 @@ export default function StatsAndStandings() {
                     </div>
 
                     {/* Sub-Tabs for Stats Categories */}
-                    <div className="flex bg-black rounded-xl border border-white/10 p-1">
+                    <div className="flex overflow-x-auto max-w-full bg-black rounded-xl border border-white/10 p-1 shrink-0 scrollbar-none">
                       <button
                         onClick={() => {
                           setIndividualTab("passing");
                           setSortIndiv({ key: "passTD", direction: "desc" });
                         }}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                           individualTab === "passing" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
                         }`}
                       >
@@ -732,7 +741,7 @@ export default function StatsAndStandings() {
                           setIndividualTab("receiving");
                           setSortIndiv({ key: "receptions", direction: "desc" });
                         }}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                           individualTab === "receiving" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
                         }`}
                       >
@@ -743,7 +752,7 @@ export default function StatsAndStandings() {
                           setIndividualTab("defense");
                           setSortIndiv({ key: "flagPulls", direction: "desc" });
                         }}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                           individualTab === "defense" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
                         }`}
                       >
@@ -913,8 +922,6 @@ export default function StatsAndStandings() {
         </div>
       </div>
 
-      {/* Branded League Footer */}
-      <LeagueFooter />
     </div>
   );
 }

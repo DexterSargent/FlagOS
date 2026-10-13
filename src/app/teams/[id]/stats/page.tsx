@@ -6,8 +6,6 @@ import { ChevronLeft, Activity, Trophy, Crosshair, Shield, Flame } from "lucide-
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -195,12 +193,8 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="teams" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
+        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -209,8 +203,6 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
-      {/* Branded League Navigation Bar */}
-      <LeagueHeader activePage="teams" />
 
       {/* Dynamic Background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -287,8 +279,6 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      {/* Branded League Footer */}
-      <LeagueFooter />
     </div>
   );
 }

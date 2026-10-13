@@ -12,11 +12,12 @@ import { formatPlaySentence as formatPlaySentenceEngine } from "@/lib/playSenten
 import {
   getSandboxMatches,
   getSandboxMatch,
-  getSandboxPlays,
   getSandboxPlayers,
+  getSandboxPlays,
   updateSandboxMatch,
   deleteSandboxPlaysForMatch,
   subscribeDemoSandbox,
+  isDemoMatch as checkIsDemoMatch,
 } from "@/lib/demoSandbox";
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
@@ -24,14 +25,22 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague } = useLeague();
   const { isLeagueAdmin, managedTeamId, playerTeamId } = useAuth();
-  const isDemoMatch = isDemoLeague || matchId.startsWith("match_demo_");
+
+  const [isEmbedded, setIsEmbedded] = useState(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      return sp.get("embed") === "true" || sp.get("demo") === "true";
+    }
+    return false;
+  });
+
+  const isDemoMatch = isDemoLeague || isEmbedded || checkIsDemoMatch(matchId);
 
   const [matchData, setMatchData] = useState<any>(null);
   const [plays, setPlays] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'play-by-play' | 'box-score'>('play-by-play');
   const [boxScoreTab, setBoxScoreTab] = useState<'home' | 'away'>('home');
-  const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -63,6 +72,9 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     }
     const unsub = onSnapshot(collection(db, "players"), (snap) => {
       setPlayers(snap.docs.map(d => d.data()));
+    }, (err) => {
+      console.warn("ViewerView players snapshot warning:", err);
+      setPlayers(getSandboxPlayers());
     });
     return () => unsub();
   }, [isDemoMatch]);
@@ -227,6 +239,10 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       if (docSnap.exists()) {
         setMatchData(docSnap.data());
       }
+    }, (err) => {
+      console.warn("ViewerView match snapshot warning:", err);
+      const m = getSandboxMatch(matchId);
+      if (m) setMatchData(m);
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
@@ -258,6 +274,10 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         return tB - tA;
       });
       setPlays(p);
+    }, (err) => {
+      console.warn("ViewerView plays snapshot warning:", err);
+      const pList = getSandboxPlays(matchId);
+      setPlays(pList);
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
@@ -381,49 +401,49 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         </div>
       </header>
 
-      <div className="bg-neutral-950 p-3 sm:p-8 border-b border-white/10 shrink-0">
-        <div className="max-w-4xl mx-auto flex flex-row items-center justify-between gap-2 md:gap-0">
+      <div className="bg-neutral-950 p-2 sm:p-6 md:p-8 border-b border-white/10 shrink-0">
+        <div className="max-w-4xl mx-auto flex flex-row items-center justify-between gap-1 sm:gap-2 md:gap-0">
           <div className="flex flex-col items-center gap-1 md:gap-4 w-1/3">
             <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center">
-              <FootballIcon active={s.possession === (matchData.homeTeamName || "HOME")} className={`w-4 h-4 md:w-8 md:h-8 ${s.possession === (matchData.homeTeamName || "HOME") ? 'text-cyan-400' : 'text-neutral-500'}`} />
-              <span className="text-xs md:text-2xl font-black text-white uppercase leading-tight line-clamp-2">{matchData.homeTeamName || "HOME"}</span>
+              <FootballIcon active={s.possession === (matchData.homeTeamName || "HOME")} className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-8 md:h-8 ${s.possession === (matchData.homeTeamName || "HOME") ? 'text-cyan-400' : 'text-neutral-500'}`} />
+              <span className="text-[11px] sm:text-base md:text-2xl font-black text-white uppercase leading-tight line-clamp-2">{matchData.homeTeamName || "HOME"}</span>
             </div>
-            <span className="text-5xl md:text-[6rem] font-black text-cyan-400 leading-none">{s.homeScore}</span>
+            <span className="text-3xl sm:text-5xl md:text-[6rem] font-black text-cyan-400 leading-none">{s.homeScore}</span>
             {!matchData.isAsyncStatKeeping && !matchData.isIndependent && (
               <div className="flex gap-1 md:gap-2">
                 {Array.from({ length: settings.rules?.timeoutsPerTeam ?? 2 }).map((_, i) => (
-                  <div key={i} className={`w-2 h-2 md:w-3.5 md:h-3.5 rounded-full ${i < (s.homeTimeouts ?? 0) ? 'bg-cyan-400' : 'bg-neutral-800'}`}></div>
+                  <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3.5 md:h-3.5 rounded-full ${i < (s.homeTimeouts ?? 0) ? 'bg-cyan-400' : 'bg-neutral-800'}`}></div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-1 md:gap-2 w-1/3">
-            <span className="text-xs md:text-xl font-bold uppercase tracking-widest text-cyan-400 whitespace-nowrap">
+          <div className="flex flex-col items-center gap-0.5 sm:gap-1 md:gap-2 w-1/3">
+            <span className="text-[10px] sm:text-xs md:text-xl font-bold uppercase tracking-widest text-cyan-400 whitespace-nowrap">
               {getOrdinal(s.half)} {settings.rules?.periodType === 'quarters' ? 'Quarter' : 'Half'}
             </span>
             {s.gameClock != null && !matchData.isAsyncStatKeeping && !matchData.isIndependent ? (
-              <span className="text-4xl md:text-[5rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(s.gameClock)}</span>
+              <span className="text-2xl sm:text-4xl md:text-[5rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(s.gameClock)}</span>
             ) : (
-              <span className="text-xl md:text-3xl font-black leading-none text-emerald-400 uppercase tracking-widest">
+              <span className="text-base sm:text-xl md:text-3xl font-black leading-none text-emerald-400 uppercase tracking-widest">
                 {s.half === 2 ? "2nd Half" : "1st Half"}
               </span>
             )}
-            <div className="mt-1 md:mt-4 bg-black border border-white/10 rounded-full px-3 py-1 md:px-6 md:py-2 flex gap-4 text-xs md:text-lg font-bold">
+            <div className="mt-0.5 sm:mt-1 md:mt-4 bg-black border border-white/10 rounded-full px-2 py-0.5 sm:px-3 sm:py-1 md:px-6 md:py-2 flex gap-2 sm:gap-4 text-[10px] sm:text-xs md:text-lg font-bold">
               <span className="text-neutral-500 whitespace-nowrap">{getOrdinal(s.currentDown)} Down</span>
             </div>
           </div>
 
           <div className="flex flex-col items-center gap-1 md:gap-4 w-1/3">
             <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center">
-              <span className="text-xs md:text-2xl font-black text-white uppercase leading-tight line-clamp-2 order-2 md:order-1">{matchData.awayTeamName || "AWAY"}</span>
-              <FootballIcon active={s.possession === (matchData.awayTeamName || "AWAY")} className={`w-4 h-4 md:w-8 md:h-8 order-1 md:order-2 ${s.possession === (matchData.awayTeamName || "AWAY") ? 'text-blue-500' : 'text-neutral-500'}`} />
+              <span className="text-[11px] sm:text-base md:text-2xl font-black text-white uppercase leading-tight line-clamp-2 order-2 md:order-1">{matchData.awayTeamName || "AWAY"}</span>
+              <FootballIcon active={s.possession === (matchData.awayTeamName || "AWAY")} className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-8 md:h-8 order-1 md:order-2 ${s.possession === (matchData.awayTeamName || "AWAY") ? 'text-blue-500' : 'text-neutral-500'}`} />
             </div>
-            <span className="text-5xl md:text-[6rem] font-black text-blue-500 leading-none">{s.awayScore}</span>
+            <span className="text-3xl sm:text-5xl md:text-[6rem] font-black text-blue-500 leading-none">{s.awayScore}</span>
             {!matchData.isAsyncStatKeeping && !matchData.isIndependent && (
               <div className="flex gap-1 md:gap-2">
                 {Array.from({ length: settings.rules?.timeoutsPerTeam ?? 2 }).map((_, i) => (
-                  <div key={i} className={`w-2 h-2 md:w-3.5 md:h-3.5 rounded-full ${i < (s.awayTimeouts ?? 0) ? 'bg-blue-500' : 'bg-neutral-800'}`}></div>
+                  <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-3.5 md:h-3.5 rounded-full ${i < (s.awayTimeouts ?? 0) ? 'bg-blue-500' : 'bg-neutral-800'}`}></div>
                 ))}
               </div>
             )}
@@ -435,29 +455,29 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         <div className="max-w-4xl mx-auto flex">
           <button
             onClick={() => setActiveTab('play-by-play')}
-            className={`flex-1 py-4 font-bold tracking-widest uppercase text-sm transition-colors ${activeTab === 'play-by-play' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-500 hover:text-white'}`}
+            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'play-by-play' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-500 hover:text-white'}`}
           >
             Play-by-Play
           </button>
           <button
             onClick={() => setActiveTab('box-score')}
-            className={`flex-1 py-4 font-bold tracking-widest uppercase text-sm transition-colors ${activeTab === 'box-score' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-500 hover:text-white'}`}
+            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'box-score' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-neutral-500 hover:text-white'}`}
           >
             Live Box Score
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8 bg-black">
-        <div className="max-w-4xl mx-auto flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 bg-black">
+        <div className="max-w-4xl mx-auto flex flex-col gap-3 sm:gap-4">
           {activeTab === 'play-by-play' && (
             <>
               {plays.length === 0 && (
                 <div className="text-neutral-600 text-center font-bold">No plays logged yet.</div>
               )}
               {plays.map((play, idx) => (
-                <div key={idx} className="bg-neutral-900 border border-white/5 p-6 rounded-2xl flex flex-col gap-2 shadow-lg">
-                  <div className="flex justify-between items-center text-sm font-bold tracking-widest text-neutral-500 uppercase">
+                <div key={idx} className="bg-neutral-900 border border-white/5 p-4 sm:p-6 rounded-2xl flex flex-col gap-2 shadow-lg">
+                  <div className="flex justify-between items-center text-xs sm:text-sm font-bold tracking-widest text-neutral-500 uppercase">
                     <span>
                       {play.half
                         ? settings.rules?.periodType === "quarters" || play.half > 2
@@ -472,7 +492,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                     </span>
                     <span>{(play.points || play.pointsScored) > 0 ? `+${play.points || play.pointsScored} PTS` : ''}</span>
                   </div>
-                  <p className="text-xl text-white font-medium whitespace-pre-wrap">
+                  <p className="text-base sm:text-xl text-white font-medium whitespace-pre-wrap">
                     {formatPlaySentence(play)}
                   </p>
                 </div>
@@ -486,7 +506,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setBoxScoreTab('home')}
-                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
                     boxScoreTab === 'home'
                       ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-sm'
                       : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
@@ -496,7 +516,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                 </button>
                 <button
                   onClick={() => setBoxScoreTab('away')}
-                  className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all border ${
                     boxScoreTab === 'away'
                       ? 'bg-blue-500/20 border-blue-500 text-blue-300 shadow-sm'
                       : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
@@ -506,8 +526,8 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                 </button>
               </div>
 
-              <div className="bg-neutral-900 border border-white/5 rounded-2xl p-6 shadow-lg overflow-x-auto">
-                <table className="w-full text-left text-sm whitespace-nowrap">
+              <div className="bg-neutral-900 border border-white/5 rounded-2xl p-3 sm:p-6 shadow-lg overflow-x-auto scrollbar-thin">
+                <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-white/10 text-neutral-500 font-bold uppercase tracking-widest">
                       <th className="pb-4 pr-4">Player</th>

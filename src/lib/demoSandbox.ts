@@ -11,15 +11,16 @@ import {
   SEED_DEMO_MATCHES,
   SEED_DEMO_PLAYS,
 } from "./demoSeedData";
+import { getGeneratedSeasonPlays } from "./demoPlayGenerator";
 
 export type { DemoTeam, DemoPlayer, DemoMatch, DemoPlay };
-export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS };
+export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS, getGeneratedSeasonPlays };
 
 // ---------------------------------------------------------------------------
 // Session Storage Keys & Helper Functions
 // ---------------------------------------------------------------------------
 
-const KEY_INIT = "flagos_demo_initialized_17weeks_nfl_v1";
+const KEY_INIT = "flagos_demo_initialized_17weeks_nfl_v2";
 const KEY_SETTINGS = "flagos_demo_settings";
 const KEY_TEAMS = "flagos_demo_teams";
 const KEY_PLAYERS = "flagos_demo_players";
@@ -40,8 +41,41 @@ export interface ScheduleBackup {
 export const DEMO_EVENT = "flagos_demo_sandbox_updated";
 
 export const isDemoLeague = (leagueId?: string | null): boolean => {
+  if (typeof window !== "undefined") {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("embed") === "true" || sp.get("demo") === "true") {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
   if (!leagueId) return true;
   return leagueId === "default" || leagueId === "demo";
+};
+
+export const isDemoMatch = (matchId?: string | null, leagueId?: string | null): boolean => {
+  if (typeof window !== "undefined") {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("embed") === "true" || sp.get("demo") === "true") {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  if (isDemoLeague(leagueId)) return true;
+  if (!matchId) return false;
+  if (
+    matchId.startsWith("match_demo_") ||
+    matchId.startsWith("match_w") ||
+    matchId.startsWith("match_playoff_")
+  ) {
+    return true;
+  }
+  return !!getSandboxMatch(matchId);
 };
 
 export const initDemoSandbox = (): void => {
@@ -94,7 +128,7 @@ export const initDemoSandbox = (): void => {
     sessionStorage.setItem(KEY_MATCHES, JSON.stringify(SEED_DEMO_MATCHES));
     sessionStorage.setItem(KEY_PLAYS, JSON.stringify(SEED_DEMO_PLAYS));
   } else {
-    // Clean up any legacy team_free_agents from existing session storage
+    // 1. Clean up any legacy team_free_agents from existing session storage
     try {
       if (rawTeams) {
         const teamsList: DemoTeam[] = JSON.parse(rawTeams);
@@ -103,6 +137,30 @@ export const initDemoSandbox = (): void => {
         );
         if (filtered.length !== teamsList.length) {
           sessionStorage.setItem(KEY_TEAMS, JSON.stringify(filtered));
+        }
+      }
+    } catch {}
+
+    // 2. Clean up duplicate matches and legacy aliases from existing session storage
+    try {
+      if (rawMatches) {
+        const matchesList: DemoMatch[] = JSON.parse(rawMatches);
+        const seenIds = new Set<string>();
+        const seenKeys = new Set<string>();
+        const cleaned: DemoMatch[] = [];
+
+        for (const m of matchesList) {
+          if (m.id === "match_demo_1" || m.id === "match_demo_3") continue;
+          const key = `${m.week || ""}_${m.homeTeamId || ""}_${m.awayTeamId || ""}`;
+          if (!seenIds.has(m.id) && !seenKeys.has(key)) {
+            seenIds.add(m.id);
+            seenKeys.add(key);
+            cleaned.push(m);
+          }
+        }
+
+        if (cleaned.length !== matchesList.length) {
+          sessionStorage.setItem(KEY_MATCHES, JSON.stringify(cleaned));
         }
       }
     } catch {}
@@ -297,22 +355,38 @@ export const deleteSandboxPlayer = (id: string): void => {
 
 export const getSandboxMatches = (): DemoMatch[] => {
   initDemoSandbox();
-  if (typeof window === "undefined") return SEED_DEMO_MATCHES;
-  const raw = sessionStorage.getItem(KEY_MATCHES);
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch {}
+  let list = SEED_DEMO_MATCHES;
+  if (typeof window !== "undefined") {
+    const raw = sessionStorage.getItem(KEY_MATCHES);
+    if (raw) {
+      try {
+        list = JSON.parse(raw);
+      } catch {}
+    }
   }
-  return SEED_DEMO_MATCHES;
+
+  // Strict deduplication by match ID and matchup (week, home, away)
+  const seenIds = new Set<string>();
+  const seenMatchups = new Set<string>();
+  const deduplicated: DemoMatch[] = [];
+
+  for (const m of list) {
+    if (m.id === "match_demo_1" || m.id === "match_demo_3") continue;
+    const matchupKey = `${m.week || ""}_${m.homeTeamId || ""}_${m.awayTeamId || ""}`;
+    if (!seenIds.has(m.id) && !seenMatchups.has(matchupKey)) {
+      seenIds.add(m.id);
+      seenMatchups.add(matchupKey);
+      deduplicated.push(m);
+    }
+  }
+  return deduplicated;
 };
 
 export const getSandboxMatch = (id: string): DemoMatch | undefined => {
   const matches = getSandboxMatches();
-  const m = matches.find((match) => match.id === id);
+  const canonicalId = id === "match_demo_1" ? "match_w16_11" : id === "match_demo_3" ? "match_w16_12" : id;
+  const m = matches.find((match) => match.id === canonicalId || match.id === id);
   if (m) return m;
-  if (id === "match_demo_1") return matches.find((match) => match.id === "match_w16_11");
-  if (id === "match_demo_3") return matches.find((match) => match.id === "match_w16_12");
   return undefined;
 };
 
@@ -402,14 +476,32 @@ export const clearSandboxMatches = (): void => {
 
 export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
   initDemoSandbox();
-  if (typeof window === "undefined") return SEED_DEMO_PLAYS;
+  const baselineSeasonPlays = getGeneratedSeasonPlays();
+  const combinedBaseline = [...baselineSeasonPlays, ...SEED_DEMO_PLAYS];
+
+  if (typeof window === "undefined") {
+    if (matchId) {
+      const targetId = matchId === "match_demo_1" ? "match_w16_11" : matchId === "match_demo_3" ? "match_w16_12" : matchId;
+      const reverseAlias = matchId === "match_w16_11" ? "match_demo_1" : matchId === "match_w16_12" ? "match_demo_3" : matchId;
+      return combinedBaseline.filter((p) => p.matchId === matchId || p.matchId === targetId || p.matchId === reverseAlias);
+    }
+    return combinedBaseline;
+  }
+
   const raw = sessionStorage.getItem(KEY_PLAYS);
-  let all: DemoPlay[] = SEED_DEMO_PLAYS;
+  let sessionPlays: DemoPlay[] = [];
   if (raw) {
     try {
-      all = JSON.parse(raw);
+      sessionPlays = JSON.parse(raw);
     } catch {}
   }
+
+  // Combine baseline season plays with session additions/overrides
+  const playMap = new Map<string, DemoPlay>();
+  combinedBaseline.forEach((p) => playMap.set(p.id, p));
+  sessionPlays.forEach((p) => playMap.set(p.id, p));
+  const all = Array.from(playMap.values());
+
   if (matchId) {
     const targetId = matchId === "match_demo_1" ? "match_w16_11" : matchId === "match_demo_3" ? "match_w16_12" : matchId;
     const reverseAlias = matchId === "match_w16_11" ? "match_demo_1" : matchId === "match_w16_12" ? "match_demo_3" : matchId;

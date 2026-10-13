@@ -29,8 +29,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
 import CreatePlaybookModal from "@/components/playbook/CreatePlaybookModal";
 import CreateFormationModal from "@/components/playbook/CreateFormationModal";
@@ -151,18 +149,35 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const teamSnap = await getDoc(doc(db, "teams", teamId));
-        if (teamSnap.exists()) {
-          const tData = { id: teamSnap.id, ...(teamSnap.data() as any) };
-          if (isRealTeam(tData)) {
-            setTeam(tData);
-          }
-        } else if (isEffectDemo) {
+        if (isEmbedded) {
           const sTeam = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
           if (sTeam) {
             setTeam({ id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) });
           } else {
             setTeam({ id: teamId, name: "Kansas City", shortcode: "KC" });
+          }
+        } else {
+          try {
+            const teamSnap = await getDoc(doc(db, "teams", teamId));
+            if (teamSnap.exists()) {
+              const tData = { id: teamSnap.id, ...(teamSnap.data() as any) };
+              if (isRealTeam(tData)) {
+                setTeam(tData);
+              }
+            } else if (isEffectDemo) {
+              const sTeam = getSandboxTeams().find((t) => t.id === teamId);
+              if (sTeam) {
+                setTeam({ id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) });
+              } else {
+                setTeam({ id: teamId, name: "Apex Predators", shortcode: "APX" });
+              }
+            }
+          } catch (e) {
+            console.warn("Unable to fetch live team from Firestore:", e);
+            const sTeam = getSandboxTeams().find((t) => t.id === teamId);
+            if (sTeam) {
+              setTeam({ id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) });
+            }
           }
         }
 
@@ -172,15 +187,21 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           return;
         }
 
-        const playbookDocSnap = await getDoc(doc(db, "teams", teamId, "meta", "playbook"));
         let loadedPlaybooks: Playbook[] = [];
 
-        if (playbookDocSnap.exists()) {
-          const data = playbookDocSnap.data();
-          if (data?.playbooks && Array.isArray(data.playbooks)) {
-            loadedPlaybooks = data.playbooks;
-          } else if (data?.plays && Array.isArray(data.plays)) {
-            loadedPlaybooks = migrateRawPlaysToPlaybooks(data.plays, teamId);
+        if (!isEmbedded) {
+          try {
+            const playbookDocSnap = await getDoc(doc(db, "teams", teamId, "meta", "playbook"));
+            if (playbookDocSnap.exists()) {
+              const data = playbookDocSnap.data();
+              if (data?.playbooks && Array.isArray(data.playbooks)) {
+                loadedPlaybooks = data.playbooks;
+              } else if (data?.plays && Array.isArray(data.plays)) {
+                loadedPlaybooks = migrateRawPlaysToPlaybooks(data.plays, teamId);
+              }
+            }
+          } catch (e) {
+            console.warn("Unable to fetch live playbook from Firestore:", e);
           }
         }
 
@@ -534,33 +555,25 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="playbook" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
+        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if ((!team && !isDemoMode && !isDemoTeam) || (team && !isRealTeam(team)) || teamId === "team_free_agents") {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-between font-sans">
-        <LeagueHeader activePage="playbook" />
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-          <p className="text-neutral-400 mb-6 max-w-md">
-            The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
-          </p>
-          <Link
-            href="/teams"
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
-          >
-            Back to Teams
-          </Link>
-        </div>
-        <LeagueFooter />
+      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
+        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+        <p className="text-neutral-400 mb-6 max-w-md">
+          The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
+        </p>
+        <Link
+          href="/teams"
+          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+        >
+          Back to Teams
+        </Link>
       </div>
     );
   }
@@ -573,7 +586,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (isBlockedLeagueAdmin) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-        <LeagueHeader activePage="playbook" />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-red-500/30 rounded-3xl shadow-2xl space-y-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-red-500/5 via-transparent to-transparent pointer-events-none" />
@@ -615,7 +627,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
-        <LeagueFooter />
       </div>
     );
   }
@@ -624,7 +635,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (!isEmbedded && isOpponentCoach) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-        <LeagueHeader activePage="playbook" />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-amber-500/30 rounded-3xl shadow-2xl space-y-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
@@ -657,7 +667,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
-        <LeagueFooter />
       </div>
     );
   }
@@ -666,7 +675,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (!isEmbedded && isOpponentPlayer) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-        <LeagueHeader activePage="playbook" />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-amber-500/30 rounded-3xl shadow-2xl space-y-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
@@ -697,7 +705,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
-        <LeagueFooter />
       </div>
     );
   }
@@ -706,7 +713,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (!isEmbedded && !canViewPlaybook) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-        <LeagueHeader activePage="playbook" />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-cyan-500/30 rounded-3xl shadow-2xl space-y-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
@@ -737,15 +743,90 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
-        <LeagueFooter />
+      </div>
+    );
+  }
+
+  // Dedicated Embedded Layout for Showcase (Directly renders PlayCanvas with compact controls)
+  if (isEmbedded) {
+    return (
+      <div className="min-h-screen bg-black text-white font-sans p-2 sm:p-4 flex flex-col gap-3 selection:bg-cyan-500/30 selection:text-cyan-200">
+        {/* Compact Header for Embedded Showcase */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 bg-[#0B0F19] p-3 rounded-2xl border border-white/10 shadow-lg">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>{teamName} Playbook Studio</span>
+            </span>
+            {activePlaybook && (
+              <span className="text-xs font-bold text-neutral-400 hidden sm:inline">
+                {activePlaybook.title}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Quick Play Switcher Buttons */}
+            <div className="flex items-center gap-1 overflow-x-auto max-w-md scrollbar-thin">
+              {(activePlaybook?.plays || []).slice(0, 5).map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setActivePlayId(p.id)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all whitespace-nowrap border cursor-pointer ${
+                    activePlay?.id === p.id
+                      ? "bg-cyan-500 text-black font-black border-cyan-400 shadow-sm"
+                      : "bg-white/5 text-neutral-400 hover:text-white border-white/5"
+                  }`}
+                >
+                  {p.name.replace(/^\d+v\d+\s+/, "")}
+                </button>
+              ))}
+            </div>
+
+            {/* Playbook Switcher (Offense vs Defense) */}
+            {playbooks.length > 1 && (
+              <select
+                value={activePlaybook?.id || ""}
+                onChange={(e) => {
+                  const book = playbooks.find((b) => b.id === e.target.value);
+                  if (book) {
+                    setActivePlaybookId(book.id);
+                    if (book.plays.length > 0) setActivePlayId(book.plays[0].id);
+                  }
+                }}
+                className="bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 rounded-xl px-2.5 py-1 outline-none cursor-pointer"
+              >
+                {playbooks.map((b) => (
+                  <option key={b.id} value={b.id} className="bg-neutral-900 text-white">
+                    {b.type === "offense" ? "⚡ " : "🛡️ "}
+                    {b.title}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+
+        {/* Tactical Playmaker Canvas Workspace */}
+        {activePlay ? (
+          <PlayCanvas
+            play={activePlay}
+            onChange={handleUpdateActivePlay}
+            readOnly={false}
+            playbook={activePlaybook}
+          />
+        ) : (
+          <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-12 text-center text-neutral-400">
+            <BookOpen className="w-12 h-12 mx-auto text-neutral-600 mb-4" />
+            <h3 className="text-xl font-bold uppercase text-white mb-2">Loading Playbook Studio...</h3>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
-      {/* Branded League Navigation Bar */}
-      {!isEmbedded && <LeagueHeader activePage="playbook" />}
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -1440,8 +1521,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         />
       )}
 
-      {/* Branded League Footer */}
-      {!isEmbedded && <LeagueFooter />}
     </div>
   );
 }
