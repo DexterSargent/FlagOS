@@ -965,6 +965,8 @@ html.light .bg-\[\#102319\] {
 html.light svg text[fill="#FFFFFF"],
 html.light svg text[fill="#ffffff"] {
   fill: #FFFFFF !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
