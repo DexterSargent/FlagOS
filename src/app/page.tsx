@@ -258,7 +258,10 @@ export default function FlagOSPlatformLandingPage() {
 
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-white">
-            <a href="#features" className="hover:text-cyan-400 transition-colors" style={{ color: "#7ED321" }}>
+            <a
+              href="#features"
+              className="text-white hover:text-[#3CA505] transition-colors"
+            >
               Features
             </a>
             <Link
@@ -269,15 +272,21 @@ export default function FlagOSPlatformLandingPage() {
                   localStorage.setItem("flagos_demo_active", "true");
                 }
               }}
-              className="hover:text-cyan-400 transition-colors"
+              className="text-white hover:text-[#3CA505] transition-colors"
             >
               Demo League
             </Link>
-            <a href="#league-directory" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90">
+            <a
+              href="#league-directory"
+              className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
+            >
               <span>League Directory</span>
             </a>
-            <Link href="/pricing" className="text-amber-400/90 hover:text-amber-300 transition-colors flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Link
+              href="/pricing"
+              className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
               <span>Pricing</span>
             </Link>
           </nav>
@@ -310,7 +319,7 @@ export default function FlagOSPlatformLandingPage() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/login"
-                  className="px-3 py-2 text-neutral-400 hover:text-white text-xs font-semibold transition-colors"
+                  className="px-3 py-2 text-white hover:text-[#3CA505] text-xs font-semibold transition-colors"
                 >
                   Sign In
                 </Link>
@@ -347,9 +356,9 @@ export default function FlagOSPlatformLandingPage() {
             <a
               href="#features"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-neutral-300 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
             >
-              <Zap className="w-4 h-4 text-cyan-400" />
+              <Zap className="w-4 h-4" />
               <span>Features</span>
             </a>
             <Link
@@ -361,25 +370,25 @@ export default function FlagOSPlatformLandingPage() {
                   localStorage.setItem("flagos_demo_active", "true");
                 }
               }}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-neutral-300 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
             >
-              <PlayCircle className="w-4 h-4 text-cyan-400" />
+              <PlayCircle className="w-4 h-4" />
               <span>Demo League</span>
             </Link>
             <a
               href="#league-directory"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-emerald-400 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
             >
-              <Globe className="w-4 h-4 text-emerald-400" />
+              <Globe className="w-4 h-4" />
               <span>League Directory</span>
             </a>
             <Link
               href="/pricing"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-white/5 transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
             >
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4" />
               <span>Pricing</span>
             </Link>
           </div>
