@@ -72,6 +72,13 @@
   /* Explicit brand color tokens */
   --color-league-primary: var(--league-primary);
   --color-league-accent: var(--league-accent);
+
+  /* Theme-aware surface and border tokens (values set per theme below) */
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-muted: var(--surface-muted);
+  --color-line: var(--line);
+  --color-line-subtle: var(--line-subtle);
 }
 
 body {
@@ -116,12 +123,22 @@ html.dark {
   color-scheme: dark;
   --background: #000000;
   --foreground: #ededed;
+  --surface-base: #07090e;
+  --surface-raised: #0b0f19;
+  --surface-muted: rgba(255, 255, 255, 0.05);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-subtle: rgba(255, 255, 255, 0.05);
 }
 
 html.light {
   color-scheme: light;
   --background: #f8fafc;
   --foreground: #0f172a;
+  --surface-base: #f8fafc;
+  --surface-raised: #ffffff;
+  --surface-muted: #f1f5f9;
+  --line: #e2e8f0;
+  --line-subtle: #f1f5f9;
 }
 
 /* Base Body Adaptation */

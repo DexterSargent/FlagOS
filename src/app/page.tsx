@@ -257,15 +257,14 @@ export default function FlagOSPlatformLandingPage() {
           </Link>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-neutral-300">
-            <a href="#features" className="hover:text-cyan-400 transition-colors">
+          <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-white">
+            <a href="#features" className="hover:text-cyan-400 transition-colors" style={{ color: "#7ED321" }}>
               Features
             </a>
             <a href="#interactive-demo" className="hover:text-cyan-400 transition-colors">
               Interactive Demo
             </a>
             <a href="#league-directory" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-emerald-400/90">
-              <Globe className="w-3.5 h-3.5 text-emerald-400" />
               <span>League Directory</span>
             </a>
             <Link href="/pricing" className="text-amber-400/90 hover:text-amber-300 transition-colors flex items-center gap-1.5">
@@ -398,7 +397,7 @@ export default function FlagOSPlatformLandingPage() {
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight text-white leading-none">
-            The Operating System for Modern <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 via-cyan-400 to-cyan-700"><br></br>Flag Football</span>
+            The Operating System for Modern <span className="text-[#7ED321] border border-white"><br></br>Flag Football</span>
           </h1>
 
           {/* Primary Action Buttons */}
@@ -1032,6 +1031,36 @@ export default function FlagOSPlatformLandingPage() {
           )}
         </section>
       </main>
+
+      <footer className="relative z-10 border-t border-white/10 bg-black px-6 py-10 text-xs text-neutral-400">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="space-y-3">
+            <span className="text-lg font-black uppercase tracking-wider text-white">
+              FLAG<span style={{ color: "#3CA505" }}>OS</span>
+            </span>
+            <p className="leading-relaxed text-neutral-500">The Flag Football Operating System</p>
+          </div>
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-white">Explore</h4>
+            <ul className="space-y-2">
+              <li><a href="#features" className="hover:text-cyan-400 transition-colors">Features</a></li>
+              <li><a href="#interactive-demo" className="hover:text-cyan-400 transition-colors">Interactive Demo</a></li>
+              <li><a href="#league-directory" className="hover:text-emerald-400 transition-colors">League Directory</a></li>
+            </ul>
+          </div>
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-white">Get Started</h4>
+            <ul className="space-y-2">
+              <li><Link href="/pricing" className="hover:text-amber-300 transition-colors">Pricing</Link></li>
+              <li><Link href="/login" className="hover:text-cyan-400 transition-colors">Sign In</Link></li>
+              <li><Link href="/league/default?demo=true" className="hover:text-cyan-400 transition-colors">Try the Demo</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-white/10 text-neutral-500">
+          <span>© {new Date().getFullYear()} FlagOS. All rights reserved.</span>
+        </div>
+      </footer>
     </div>
   );
 }

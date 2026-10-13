@@ -683,7 +683,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const isSpectatorView = !isPlayerView && !isTeamAdminView && !isLeagueAdminView;
 
   return (
-    <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
+    <div className="min-h-screen bg-surface-base text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute top-10 left-10 w-[40rem] h-[40rem] bg-cyan-900/15 rounded-full blur-[160px]"></div>
@@ -697,8 +697,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       {isLeagueAdminView && (
         <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
           {/* League Command Center Hero Banner */}
-          <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/10">
+          <div className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-[10px] font-bold text-amber-300 uppercase tracking-widest">
@@ -761,7 +761,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                 <Link
                   href="/teams"
-                  className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-neutral-200 text-xs font-bold uppercase tracking-wider rounded-xl border border-white/10 transition-colors flex items-center gap-2"
+                  className="px-4 py-2.5 bg-surface-muted hover:bg-white/10 text-neutral-200 text-xs font-bold uppercase tracking-wider rounded-xl border border-line transition-colors flex items-center gap-2"
                 >
                   <Users className="w-4 h-4 text-cyan-400" />
                   <span>Manage Teams</span>
@@ -771,13 +771,13 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
             {/* League Executive KPI Strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Teams Registered</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">{teams.length}</div>
                 <span className="text-[11px] text-cyan-400 mt-1 block">Active Teams in League</span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Season Schedule Progress</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">
                   {completedMatches.length} / {matches.length}
@@ -792,13 +792,13 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Total Roster Athletes</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">{players.length}</div>
                 <span className="text-[11px] text-emerald-400 mt-1 block">Active Competitors</span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">League Scoring Leader</span>
                 <div className="text-xl font-black text-white mt-1 truncate">
                   {topScorer.name !== "-" ? topScorer.name : "No stats yet"}
@@ -820,9 +820,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           {/* Section: 2-Column Standings & League Superstars */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Standings Table */}
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-amber-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">Official Standings</h3>
@@ -836,7 +836,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="overflow-x-auto hide-scrollbar">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="text-neutral-500 border-b border-white/5 font-mono uppercase">
+                      <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
                         <th className="pb-2 w-8">#</th>
                         <th className="pb-2">Team</th>
                         <th className="pb-2 text-center">W</th>
@@ -850,14 +850,14 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       {sortedStandings.slice(0, 6).map((row, idx) => {
                         const teamObj = teams.find((t) => t.id === row.id);
                         return (
-                          <tr key={row.id} className="hover:bg-white/5 transition-colors">
+                          <tr key={row.id} className="hover:bg-surface-muted transition-colors">
                             <td className="py-3 font-mono font-bold text-neutral-400">{idx + 1}</td>
                             <td className="py-3">
                               <Link
                                 href={`/teams/${row.id}`}
                                 className="font-bold text-white hover:text-cyan-400 transition-colors flex items-center gap-2.5"
                               >
-                                <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
+                                <div className="w-6 h-6 rounded-lg bg-black/60 border border-line p-0.5 flex items-center justify-center shrink-0">
                                   <TeamLogo
                                     teamName={row.name}
                                     logoUrl={teamObj?.logoUrl}
@@ -891,10 +891,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-white/5">
+              <div className="pt-4 mt-4 border-t border-line-subtle">
                 <Link
                   href="/stats"
-                  className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center justify-center gap-2"
                 >
                   <span>View Full Standings & Calculations</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -903,9 +903,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             </div>
 
             {/* League Stat Leaders */}
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-cyan-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">League Stat Leaders</h3>
@@ -917,7 +917,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Passing TDs</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topPasser.name !== "-" ? topPasser.name : "No stats"}
@@ -928,7 +928,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     </div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Receiving TDs</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topReceiver.name !== "-" ? topReceiver.name : "No stats"}
@@ -939,7 +939,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     </div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Total Touchdowns</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topScorer.name !== "-" ? topScorer.name : "No stats"}
@@ -950,7 +950,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     </div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flag Pulls (Def)</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
@@ -963,10 +963,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-white/5">
+              <div className="pt-4 mt-4 border-t border-line-subtle">
                 <Link
                   href="/stats"
-                  className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2.5 px-4 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center justify-center gap-2"
                 >
                   <span>View Full Stat Leaderboards</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -976,8 +976,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           </div>
 
           {/* Section: Team Operations Registry */}
-          <section className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between mb-6 pb-3 border-b border-white/5">
+          <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-line-subtle">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">
                   <Shield className="w-5 h-5 text-amber-400" />
@@ -1001,11 +1001,11 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 return (
                   <div
                     key={team.id}
-                    className="p-5 bg-black/60 border border-white/5 hover:border-amber-500/40 rounded-2xl transition-all flex flex-col justify-between"
+                    className="p-5 bg-black/60 border border-line-subtle hover:border-amber-500/40 rounded-2xl transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-start justify-between mb-4">
-                        <div className="w-16 h-16 rounded-2xl bg-black/60 border border-white/10 p-2.5 flex items-center justify-center shadow-md shrink-0">
+                        <div className="w-16 h-16 rounded-2xl bg-black/60 border border-line p-2.5 flex items-center justify-center shadow-md shrink-0">
                           <TeamLogo
                             teamName={team.name}
                             logoUrl={team.logoUrl}
@@ -1013,7 +1013,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             className="w-full h-full object-contain"
                           />
                         </div>
-                        <span className="font-mono text-xs font-bold text-neutral-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                        <span className="font-mono text-xs font-bold text-neutral-400 bg-surface-muted px-2 py-0.5 rounded border border-line-subtle">
                           {team.shortcode || getTeamShortcode(team)}
                         </span>
                       </div>
@@ -1025,10 +1025,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       </div>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-white/5 grid grid-cols-2 gap-2 text-xs">
+                    <div className="pt-4 mt-4 border-t border-line-subtle grid grid-cols-2 gap-2 text-xs">
                       <Link
                         href={`/teams/${team.id}/roster`}
-                        className="py-1.5 px-2.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white rounded-lg text-center font-semibold border border-white/10 transition-colors"
+                        className="py-1.5 px-2.5 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white rounded-lg text-center font-semibold border border-line transition-colors"
                       >
                         Roster
                       </Link>
@@ -1054,7 +1054,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
           {/* Team Clubhouse Hero Banner */}
           <div className="bg-gradient-to-br from-[#0B132B]/95 via-[#0B0F19] to-[#07090E] border-2 border-cyan-500/40 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/10">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
               <div className="flex items-start sm:items-center gap-5">
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-black/80 border-2 border-cyan-500/50 p-3 flex items-center justify-center shrink-0 shadow-[0_0_35px_rgba(var(--league-primary-rgb),0.3)]">
                   <TeamLogo
@@ -1118,7 +1118,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                     <Link
                       href={`/teams/${managedTeam.id}`}
-                      className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-white/10 transition-colors flex items-center gap-2"
+                      className="px-4 py-2.5 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-line transition-colors flex items-center gap-2"
                     >
                       <Shield className="w-4 h-4 text-amber-400" />
                       <span>Edit Team Info</span>
@@ -1130,7 +1130,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
             {/* Team Performance Strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Season Record</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">
                   {managedTeamStanding ? `${managedTeamStanding.w}-${managedTeamStanding.l}-${managedTeamStanding.t}` : "0-0-0"}
@@ -1140,13 +1140,13 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Active Roster</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">{managedTeamPlayers.length}</div>
                 <span className="text-[11px] text-cyan-400 mt-1 block">Athletes Signed</span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Point Differential</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">
                   {managedTeamStanding
@@ -1160,7 +1160,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Next Opponent</span>
                 <div className="text-base font-black text-white mt-1 truncate">
                   {nextOpponentName}
@@ -1175,7 +1175,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           {/* NEXT MATCHUP SPOTLIGHT (Head-to-Head Banner) */}
           {managedTeamUpcoming ? (
             <div className="bg-gradient-to-r from-cyan-950/40 via-[#0B0F19] to-blue-950/40 border border-cyan-500/30 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-line">
                 <div className="flex items-center gap-2">
                   <Flame className="w-5 h-5 text-amber-400" />
                   <span className="text-sm font-black uppercase tracking-wider text-white">Next Matchup Spotlight</span>
@@ -1206,7 +1206,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 {/* VS Badge & Match Time */}
-                <div className="flex flex-col items-center justify-center px-6 py-2 bg-black/70 rounded-2xl border border-white/10 shrink-0 text-center">
+                <div className="flex flex-col items-center justify-center px-6 py-2 bg-black/70 rounded-2xl border border-line shrink-0 text-center">
                   <span className="text-2xl font-black text-amber-400 tracking-wider">VS</span>
                   <div className="text-xs font-bold text-white mt-1">{managedTeamUpcoming.date}</div>
                   <div className="text-[11px] font-mono text-cyan-400">{managedTeamUpcoming.time || "TBD"}</div>
@@ -1227,7 +1227,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         : "Opposing Team"}
                     </p>
                   </div>
-                  <div className="w-16 h-16 rounded-2xl bg-black/60 border border-white/10 p-2.5 flex items-center justify-center shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-black/60 border border-line p-2.5 flex items-center justify-center shrink-0">
                     <TeamLogo
                       teamName={nextOpponentName}
                       logoUrl={nextOpponentTeam?.logoUrl}
@@ -1238,7 +1238,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-end">
+              <div className="mt-6 pt-4 border-t border-line flex items-center justify-end">
                 <Link
                   href={`/matches/${managedTeamUpcoming.id}`}
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl border border-white/15 transition-all flex items-center gap-2"
@@ -1248,7 +1248,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
             </div>
           ) : (
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 text-center text-neutral-400 text-xs italic">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 text-center text-neutral-400 text-xs italic">
               No upcoming matches scheduled for your team.
             </div>
           )}
@@ -1265,9 +1265,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           {/* 2-COLUMN SECTION: MY TEAM ROSTER & MY TEAM STAT LEADERS */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Column 1 & 2: Active Roster Quick Management */}
-            <div className="lg:col-span-2 bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="lg:col-span-2 bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <Shirt className="w-4 h-4 text-cyan-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">
@@ -1295,14 +1295,14 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 {managedTeamPlayers.length === 0 ? (
-                  <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-white/5">
+                  <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-line-subtle">
                     No players signed to your roster yet. Click "Add Player" to register your athletes.
                   </div>
                 ) : (
                   <div className="overflow-x-auto hide-scrollbar">
                     <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="text-neutral-500 border-b border-white/5 font-mono uppercase">
+                        <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
                           <th className="pb-2 w-12">#</th>
                           <th className="pb-2">Athlete Name</th>
                           <th className="pb-2">Positions</th>
@@ -1315,7 +1315,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         {managedTeamPlayers.slice(0, 8).map((p) => {
                           const pStat = playerStats[p.playerName] || { totalTD: 0, flagPulls: 0 };
                           return (
-                            <tr key={p.id} className="hover:bg-white/5 transition-colors">
+                            <tr key={p.id} className="hover:bg-surface-muted transition-colors">
                               <td className="py-2.5 font-mono font-bold text-cyan-400">
                                 #{p.playerNumber || "0"}
                               </td>
@@ -1347,10 +1347,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {managedTeam && (
-                <div className="pt-4 mt-4 border-t border-white/5">
+                <div className="pt-4 mt-4 border-t border-line-subtle">
                   <Link
                     href={`/teams/${managedTeam.id}/roster`}
-                    className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center justify-center gap-2"
                   >
                     <span>Manage Full Team Roster & Edit Numbers</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1360,9 +1360,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             </div>
 
             {/* Column 3: Team Stat Leaders */}
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-cyan-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">Team Leaders</h3>
@@ -1378,7 +1378,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 <div className="space-y-3">
-                  <div className="bg-black/50 border border-white/5 p-3.5 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
                       Team Passing Leader
                     </span>
@@ -1388,7 +1388,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     <div className="text-xs text-cyan-400 font-bold mt-1">{teamTopPasser.passTD} Passing TDs</div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-3.5 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
                       Team Receiving Leader
                     </span>
@@ -1398,7 +1398,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     <div className="text-xs text-blue-400 font-bold mt-1">{teamTopReceiver.recTD} Receiving TDs</div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-3.5 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
                       Team Touchdown Leader
                     </span>
@@ -1408,7 +1408,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     <div className="text-xs text-yellow-400 font-bold mt-1">{teamTopScorer.totalTD} Total TDs</div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-3.5 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
                       Top Flag Puller (Defense)
                     </span>
@@ -1421,10 +1421,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {managedTeam && (
-                <div className="pt-4 mt-4 border-t border-white/5">
+                <div className="pt-4 mt-4 border-t border-line-subtle">
                   <Link
                     href={`/teams/${managedTeam.id}/stats`}
-                    className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center justify-center gap-2"
                   >
                     <span>View All Team Individual Stats</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1435,8 +1435,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           </div>
 
           {/* Section: Standings with Highlighted Team Row */}
-          <section className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+          <section className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-400" />
                 <h3 className="text-base font-black uppercase tracking-wider text-white">
@@ -1452,7 +1452,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             <div className="overflow-x-auto hide-scrollbar">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="text-neutral-500 border-b border-white/5 font-mono uppercase">
+                  <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
                     <th className="pb-2 w-8">#</th>
                     <th className="pb-2">Team</th>
                     <th className="pb-2 text-center">W</th>
@@ -1472,7 +1472,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         key={row.id}
                         className={`transition-colors ${isMyTeam
                           ? "bg-cyan-500/15 font-bold border-l-4 border-cyan-400"
-                          : "hover:bg-white/5"
+                          : "hover:bg-surface-muted"
                           }`}
                       >
                         <td className="py-3 font-mono font-bold text-neutral-400">{idx + 1}</td>
@@ -1481,7 +1481,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             href={`/teams/${row.id}`}
                             className="font-bold text-white hover:text-cyan-400 transition-colors flex items-center gap-2.5"
                           >
-                            <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
+                            <div className="w-6 h-6 rounded-lg bg-black/60 border border-line p-0.5 flex items-center justify-center shrink-0">
                               <TeamLogo
                                 teamName={row.name}
                                 logoUrl={teamObj?.logoUrl}
@@ -1526,7 +1526,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/10 relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line relative z-10">
               <div className="flex items-start sm:items-center gap-5">
                 {/* Athlete Jersey Number / Logo Shield */}
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-black/80 border-2 border-emerald-500/50 p-2 flex flex-col items-center justify-center shrink-0 shadow-[0_0_35px_rgba(16,185,129,0.3)] relative group">
@@ -1585,7 +1585,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     {pPositions.map((pos) => (
                       <span
                         key={pos}
-                        className="px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono font-bold text-neutral-300 uppercase"
+                        className="px-2.5 py-0.5 rounded-lg bg-surface-muted border border-line text-[10px] font-mono font-bold text-neutral-300 uppercase"
                       >
                         {pos}
                       </span>
@@ -1617,7 +1617,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                     <Link
                       href={`/teams/${myPlayerTeam.id}/roster`}
-                      className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-white/10 transition-colors flex items-center gap-2"
+                      className="px-4 py-2.5 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-line transition-colors flex items-center gap-2"
                     >
                       <Users className="w-4 h-4 text-emerald-400" />
                       <span>Squad Roster</span>
@@ -1645,7 +1645,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
             {/* Athlete Performance Quick Strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 relative z-10">
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl hover:border-emerald-500/30 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-emerald-500/30 transition-all">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
                   Season Touchdowns
                 </span>
@@ -1657,7 +1657,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl hover:border-cyan-500/30 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-cyan-500/30 transition-all">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
                   Defensive Impact
                 </span>
@@ -1669,7 +1669,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl hover:border-amber-500/30 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-amber-500/30 transition-all">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
                   Team Standing
                 </span>
@@ -1683,7 +1683,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl hover:border-white/20 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-white/20 transition-all">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
                   Games Played
                 </span>
@@ -1752,7 +1752,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           {/* NEXT MATCHDAY SPOTLIGHT (Head-to-Head Banner) */}
           {myPlayerUpcomingMatch ? (
             <div className="bg-gradient-to-r from-emerald-950/40 via-[#0B0F19] to-cyan-950/40 border border-emerald-500/30 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-line">
                 <div className="flex items-center gap-2">
                   <Flame className="w-5 h-5 text-amber-400" />
                   <span className="text-sm font-black uppercase tracking-wider text-white">
@@ -1792,7 +1792,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 {/* VS Badge & Match Time */}
-                <div className="flex flex-col items-center justify-center px-6 py-2 bg-black/70 rounded-2xl border border-white/10 shrink-0 text-center">
+                <div className="flex flex-col items-center justify-center px-6 py-2 bg-black/70 rounded-2xl border border-line shrink-0 text-center">
                   <span className="text-2xl font-black text-amber-400 tracking-wider">VS</span>
                   <div className="text-xs font-bold text-white mt-1">{myPlayerUpcomingMatch.date}</div>
                   <div className="text-[11px] font-mono text-emerald-400">{myPlayerUpcomingMatch.time || "TBD"}</div>
@@ -1815,7 +1815,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         : "Opposing Team"}
                     </p>
                   </div>
-                  <div className="w-16 h-16 rounded-2xl bg-black/60 border border-white/10 p-2.5 flex items-center justify-center shrink-0">
+                  <div className="w-16 h-16 rounded-2xl bg-black/60 border border-line p-2.5 flex items-center justify-center shrink-0">
                     <TeamLogo
                       teamName={myPlayerOpponentName}
                       logoUrl={myPlayerOpponentTeam?.logoUrl}
@@ -1826,7 +1826,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-3">
+              <div className="mt-6 pt-4 border-t border-line flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-neutral-400 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-cyan-400" />
                   <span>
@@ -1856,7 +1856,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
             </div>
           ) : (
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 text-center text-neutral-400 text-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 text-center text-neutral-400 text-xs flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-neutral-300">
                 <CalendarDays className="w-4 h-4 text-emerald-400" />
                 <span>
@@ -1865,7 +1865,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
               <Link
                 href="/schedule"
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 bg-surface-muted hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center gap-1.5"
               >
                 <span>View Full League Schedule</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -1883,8 +1883,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           />
 
           {/* ATHLETE STATS MATRIX (Individual Season Breakdown) */}
-          <section className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
+          <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-line-subtle">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="w-4 h-4 text-emerald-400" />
@@ -1900,7 +1900,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               <div className="flex items-center gap-3">
                 <Link
                   href="/stats"
-                  className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center gap-1.5"
                 >
                   <Trophy className="w-3.5 h-3.5 text-amber-400" />
                   <span>League Leaderboards</span>
@@ -1918,7 +1918,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             {/* 4 Stat Category Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Card 1: Touchdowns & Scoring */}
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
                     Touchdown Production
@@ -1928,7 +1928,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="text-3xl font-black text-amber-300 tabular-nums">
                   {myStats.totalTDs} <span className="text-xs font-normal text-neutral-500">Total TDs</span>
                 </div>
-                <div className="space-y-1.5 mt-3 pt-3 border-t border-white/5 text-xs">
+                <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
                   <div className="flex justify-between text-neutral-400">
                     <span>Passing TDs:</span>
                     <strong className="text-white font-mono">{myStats.passTD}</strong>
@@ -1945,7 +1945,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {/* Card 2: Passing */}
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
                     Air Attack (Passing)
@@ -1955,7 +1955,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="text-3xl font-black text-cyan-300 tabular-nums">
                   {myStats.passComp} <span className="text-xs font-normal text-neutral-500">/ {myStats.passAtt} Comp</span>
                 </div>
-                <div className="space-y-1.5 mt-3 pt-3 border-t border-white/5 text-xs">
+                <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
                   <div className="flex justify-between text-neutral-400">
                     <span>Comp Rate:</span>
                     <strong className="text-white font-mono">
@@ -1976,7 +1976,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {/* Card 3: Receiving & Rushing */}
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
                     Target Share & Carries
@@ -1986,7 +1986,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="text-3xl font-black text-blue-300 tabular-nums">
                   {myStats.receptions} <span className="text-xs font-normal text-neutral-500">Receptions</span>
                 </div>
-                <div className="space-y-1.5 mt-3 pt-3 border-t border-white/5 text-xs">
+                <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
                   <div className="flex justify-between text-neutral-400">
                     <span>Rec TDs:</span>
                     <strong className="text-white font-mono">{myStats.recTD}</strong>
@@ -2003,7 +2003,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {/* Card 4: Defense */}
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
                     Defensive Stops
@@ -2013,7 +2013,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="text-3xl font-black text-emerald-400 tabular-nums">
                   {myStats.flagPulls} <span className="text-xs font-normal text-neutral-500">Flag Pulls</span>
                 </div>
-                <div className="space-y-1.5 mt-3 pt-3 border-t border-white/5 text-xs">
+                <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
                   <div className="flex justify-between text-neutral-400">
                     <span>Interceptions (INT):</span>
                     <strong className="text-white font-mono">{myStats.int}</strong>
@@ -2034,9 +2034,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           {/* 2-COLUMN SECTION: Team CLUBHOUSE & PLAYBOOK ARMBAND */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Column 1 & 2: Team Locker Room & Squad Mates */}
-            <div className="lg:col-span-2 bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="lg:col-span-2 bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <Shirt className="w-4 h-4 text-emerald-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">
@@ -2056,7 +2056,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 {myPlayerTeammates.length === 0 ? (
-                  <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-white/5">
+                  <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-line-subtle">
                     {myPlayerTeam
                       ? "No other players rostered on this team yet."
                       : "You are currently unassigned to a team. Join a team or await commissioner draft assignment."}
@@ -2065,7 +2065,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   <div className="overflow-x-auto hide-scrollbar">
                     <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="text-neutral-500 border-b border-white/5 font-mono uppercase">
+                        <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
                           <th className="pb-2 w-12">#</th>
                           <th className="pb-2">Athlete Name</th>
                           <th className="pb-2">Positions</th>
@@ -2083,7 +2083,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                               key={p.id}
                               className={`transition-colors ${isCurrentActivePlayer
                                 ? "bg-emerald-500/15 font-bold border-l-4 border-emerald-400"
-                                : "hover:bg-white/5"
+                                : "hover:bg-surface-muted"
                                 }`}
                             >
                               <td className="py-2.5 font-mono font-bold text-emerald-400">
@@ -2115,7 +2115,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {myPlayerTeam && (
-                <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between gap-3">
+                <div className="pt-4 mt-4 border-t border-line-subtle flex items-center justify-between gap-3">
                   <div className="text-xs text-neutral-400">
                     Squad Record:{" "}
                     <strong className="text-white">
@@ -2124,7 +2124,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   </div>
                   <Link
                     href={`/teams/${myPlayerTeam.id}`}
-                    className="py-2 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-2"
+                    className="py-2 px-4 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center gap-2"
                   >
                     <span>View Team Clubhouse</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -2134,9 +2134,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             </div>
 
             {/* Column 3: Playbook & Tactical Armband */}
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-cyan-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">
@@ -2160,7 +2160,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 <div className="space-y-3">
-                  <div className="bg-black/50 border border-white/5 p-3.5 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
                       Field Configuration
                     </span>
@@ -2172,7 +2172,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     </div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-3.5 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
                       Gameday Wristband
                     </span>
@@ -2186,7 +2186,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
               </div>
 
-              <div className="pt-4 mt-4 border-t border-white/5">
+              <div className="pt-4 mt-4 border-t border-line-subtle">
                 {myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) ? (
                   <Link
                     href={`/teams/${myPlayerTeam.id}/playbook`}
@@ -2209,8 +2209,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           </div>
 
           {/* Section: Standings with Highlighted Player Team Row */}
-          <section className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+          <section className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
               <div className="flex items-center gap-2">
                 <Trophy className="w-4 h-4 text-amber-400" />
                 <h3 className="text-base font-black uppercase tracking-wider text-white">
@@ -2226,7 +2226,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             <div className="overflow-x-auto hide-scrollbar">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="text-neutral-500 border-b border-white/5 font-mono uppercase">
+                  <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
                     <th className="pb-2 w-8">#</th>
                     <th className="pb-2">Team</th>
                     <th className="pb-2 text-center">W</th>
@@ -2246,7 +2246,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         key={row.id}
                         className={`transition-colors ${isMyTeam
                           ? "bg-emerald-500/15 font-bold border-l-4 border-emerald-400"
-                          : "hover:bg-white/5"
+                          : "hover:bg-surface-muted"
                           }`}
                       >
                         <td className="py-3 font-mono font-bold text-neutral-400">{idx + 1}</td>
@@ -2255,7 +2255,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             href={`/teams/${row.id}`}
                             className="font-bold text-white hover:text-cyan-400 transition-colors flex items-center gap-2.5"
                           >
-                            <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
+                            <div className="w-6 h-6 rounded-lg bg-black/60 border border-line p-0.5 flex items-center justify-center shrink-0">
                               <TeamLogo
                                 teamName={row.name}
                                 logoUrl={teamObj?.logoUrl}
@@ -2289,7 +2289,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
           {/* Quick Athlete Switcher (Localhost / Testing Mode) */}
           {players.length > 0 && (
-            <div className="p-4 rounded-2xl bg-black/40 border border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="p-4 rounded-2xl bg-black/40 border border-line-subtle flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2 text-neutral-400">
                 <Sliders className="w-4 h-4 text-emerald-400" />
                 <span>
@@ -2307,7 +2307,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       setDevRole("player", chosen.teamId, chosen.id);
                     }
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-neutral-900 border border-line text-white text-xs outline-none focus:border-emerald-500 cursor-pointer"
                 >
                   {players.map((p) => {
                     const tm = teams.find((t) => t.id === p.teamId);
@@ -2330,8 +2330,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       {isSpectatorView && (
         <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
           {/* Fan & Spectator Hero Banner */}
-          <div className="bg-gradient-to-r from-[#0C1222] via-[#0B0F19] to-[#0A101D] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/10">
+          <div className="bg-gradient-to-r from-[#0C1222] via-[#0B0F19] to-[#0A101D] border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
@@ -2386,19 +2386,19 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
             {/* Spectator Snapshot Tiles */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Active Teams</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">{teams.length}</div>
                 <span className="text-[11px] text-cyan-400 mt-1 block">Competing Teams</span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Upcoming Games</span>
                 <div className="text-3xl font-black text-white mt-1 tabular-nums">{upcomingMatches.length}</div>
                 <span className="text-[11px] text-neutral-400 mt-1 block">Scheduled on Calendar</span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">League Top Scorer</span>
                 <div className="text-lg font-black text-white mt-1 truncate">
                   {topScorer.name !== "-" ? topScorer.name : "None yet"}
@@ -2406,7 +2406,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <span className="text-[11px] text-yellow-400 mt-1 block">{topScorer.totalTD} Touchdowns</span>
               </div>
 
-              <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+              <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Passing Leader</span>
                 <div className="text-lg font-black text-white mt-1 truncate">
                   {topPasser.name !== "-" ? topPasser.name : "None yet"}
@@ -2429,9 +2429,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           {/* 2-Column: Fan Standings & Stat Leaders */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Fan Standings */}
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-amber-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">League Standings</h3>
@@ -2445,7 +2445,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="overflow-x-auto hide-scrollbar">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="text-neutral-500 border-b border-white/5 font-mono uppercase">
+                      <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
                         <th className="pb-2 w-8">#</th>
                         <th className="pb-2">Team</th>
                         <th className="pb-2 text-center">W</th>
@@ -2459,12 +2459,12 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       {sortedStandings.slice(0, 5).map((row, idx) => {
                         const teamObj = teams.find((t) => t.id === row.id);
                         return (
-                          <tr key={row.id} className="hover:bg-white/5 transition-colors">
+                          <tr key={row.id} className="hover:bg-surface-muted transition-colors">
                             <td className="py-3 font-mono font-bold text-neutral-400">{idx + 1}</td>
                             <td className="py-3">
                               {isEmbedded ? (
                                 <div className="font-bold text-white flex items-center gap-2.5">
-                                  <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
+                                  <div className="w-6 h-6 rounded-lg bg-black/60 border border-line p-0.5 flex items-center justify-center shrink-0">
                                     <TeamLogo
                                       teamName={row.name}
                                       logoUrl={teamObj?.logoUrl}
@@ -2480,7 +2480,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                   href={`/teams/${row.id}`}
                                   className="font-bold text-white hover:text-cyan-400 transition-colors flex items-center gap-2.5"
                                 >
-                                  <div className="w-6 h-6 rounded-lg bg-black/60 border border-white/10 p-0.5 flex items-center justify-center shrink-0">
+                                  <div className="w-6 h-6 rounded-lg bg-black/60 border border-line p-0.5 flex items-center justify-center shrink-0">
                                     <TeamLogo
                                       teamName={row.name}
                                       logoUrl={teamObj?.logoUrl}
@@ -2509,10 +2509,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {!isEmbedded && (
-                <div className="pt-4 mt-4 border-t border-white/5">
+                <div className="pt-4 mt-4 border-t border-line-subtle">
                   <Link
                     href="/stats"
-                    className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center justify-center gap-2"
                   >
                     <span>View Full Standings & Calculations</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -2522,9 +2522,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             </div>
 
             {/* Fan Stat Leaders */}
-            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/5">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
                     <Activity className="w-4 h-4 text-cyan-400" />
                     <h3 className="text-base font-black uppercase tracking-wider text-white">League Leaders</h3>
@@ -2540,7 +2540,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Passing TDs</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topPasser.name !== "-" ? topPasser.name : "No stats"}
@@ -2551,7 +2551,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     </div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Receiving TDs</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topReceiver.name !== "-" ? topReceiver.name : "No stats"}
@@ -2562,7 +2562,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     </div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Total Touchdowns</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topScorer.name !== "-" ? topScorer.name : "No stats"}
@@ -2573,7 +2573,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     </div>
                   </div>
 
-                  <div className="bg-black/50 border border-white/5 p-4 rounded-2xl">
+                  <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flag Pulls (Def)</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
@@ -2587,10 +2587,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               </div>
 
               {!isEmbedded && (
-                <div className="pt-4 mt-4 border-t border-white/5">
+                <div className="pt-4 mt-4 border-t border-line-subtle">
                   <Link
                     href="/stats"
-                    className="w-full py-2.5 px-4 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-2.5 px-4 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center justify-center gap-2"
                   >
                     <span>View Full Stat Leaderboards</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -2601,8 +2601,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           </div>
 
           {/* Team Showcase */}
-          <section className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
-            <div className="flex items-center justify-between mb-6 pb-3 border-b border-white/5">
+          <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-line-subtle">
               <div>
                 <h2 className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">
                   <Users className="w-5 h-5 text-cyan-400" />
@@ -2628,11 +2628,11 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 return isEmbedded ? (
                   <div
                     key={team.id}
-                    className="p-5 bg-black/60 border border-white/5 rounded-2xl flex flex-col justify-between"
+                    className="p-5 bg-black/60 border border-line-subtle rounded-2xl flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-start justify-between mb-4">
-                        <div className="w-16 h-16 rounded-2xl bg-black/60 border border-white/10 p-2.5 flex items-center justify-center shadow-md shrink-0">
+                        <div className="w-16 h-16 rounded-2xl bg-black/60 border border-line p-2.5 flex items-center justify-center shadow-md shrink-0">
                           <TeamLogo
                             teamName={team.name}
                             logoUrl={team.logoUrl}
@@ -2640,7 +2640,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             className="w-full h-full object-contain"
                           />
                         </div>
-                        <span className="font-mono text-xs font-bold text-neutral-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                        <span className="font-mono text-xs font-bold text-neutral-400 bg-surface-muted px-2 py-0.5 rounded border border-line-subtle">
                           {team.shortcode || getTeamShortcode(team)}
                         </span>
                       </div>
@@ -2651,7 +2651,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       <p className="text-xs text-neutral-400 mt-0.5">{teamRosterCount} Athletes</p>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                    <div className="pt-4 mt-4 border-t border-line-subtle flex items-center justify-between text-xs">
                       <div>
                         <span className="text-[10px] text-neutral-500 uppercase font-mono block">Record</span>
                         <span className="font-bold text-white tabular-nums">
@@ -2667,11 +2667,11 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   <Link
                     key={team.id}
                     href={`/teams/${team.id}`}
-                    className="p-5 bg-black/60 border border-white/5 hover:border-cyan-500/40 rounded-2xl transition-all group flex flex-col justify-between hover:-translate-y-0.5"
+                    className="p-5 bg-black/60 border border-line-subtle hover:border-cyan-500/40 rounded-2xl transition-all group flex flex-col justify-between hover:-translate-y-0.5"
                   >
                     <div>
                       <div className="flex items-start justify-between mb-4">
-                        <div className="w-16 h-16 rounded-2xl bg-black/60 border border-white/10 p-2.5 flex items-center justify-center group-hover:scale-105 group-hover:border-cyan-500/40 transition-all shadow-md shrink-0">
+                        <div className="w-16 h-16 rounded-2xl bg-black/60 border border-line p-2.5 flex items-center justify-center group-hover:scale-105 group-hover:border-cyan-500/40 transition-all shadow-md shrink-0">
                           <TeamLogo
                             teamName={team.name}
                             logoUrl={team.logoUrl}
@@ -2679,7 +2679,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             className="w-full h-full object-contain"
                           />
                         </div>
-                        <span className="font-mono text-xs font-bold text-neutral-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                        <span className="font-mono text-xs font-bold text-neutral-400 bg-surface-muted px-2 py-0.5 rounded border border-line-subtle">
                           {team.shortcode || getTeamShortcode(team)}
                         </span>
                       </div>
@@ -2690,7 +2690,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       <p className="text-xs text-neutral-400 mt-0.5">{teamRosterCount} Athletes</p>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between text-xs">
+                    <div className="pt-4 mt-4 border-t border-line-subtle flex items-center justify-between text-xs">
                       <div>
                         <span className="text-[10px] text-neutral-500 uppercase font-mono block">Record</span>
                         <span className="font-bold text-white tabular-nums">
@@ -2733,14 +2733,14 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       {isAddPlayerModalOpen && managedTeam && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0D121F] border border-cyan-500/40 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative">
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-line">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-lg font-black uppercase text-white">Add Player to Roster</h3>
               </div>
               <button
                 onClick={() => setIsAddPlayerModalOpen(false)}
-                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-white/5"
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-surface-muted"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2751,7 +2751,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <label className="text-[11px] uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
                   Team
                 </label>
-                <div className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 text-white text-xs font-bold">
+                <div className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-line text-white text-xs font-bold">
                   {managedTeam.name}
                 </div>
               </div>
@@ -2766,7 +2766,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   value={newPlayerName}
                   onChange={(e) => setNewPlayerName(e.target.value)}
                   placeholder="e.g. Marcus Williams"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-line focus:border-cyan-500 text-white text-xs outline-none transition-colors"
                 />
               </div>
 
@@ -2782,7 +2782,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   value={newPlayerNumber}
                   onChange={(e) => setNewPlayerNumber(e.target.value)}
                   placeholder="e.g. 7"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-line focus:border-cyan-500 text-white text-xs outline-none transition-colors"
                 />
               </div>
 
@@ -2800,7 +2800,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         onClick={() => togglePosition(pos)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isSelected
                           ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20"
-                          : "bg-black/50 text-neutral-400 border border-white/10 hover:border-white/20"
+                          : "bg-black/50 text-neutral-400 border border-line hover:border-white/20"
                           }`}
                       >
                         {pos}
@@ -2817,7 +2817,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <select
                   value={newPlayerExperience}
                   onChange={(e) => setNewPlayerExperience(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/50 border border-line focus:border-cyan-500 text-white text-xs outline-none transition-colors cursor-pointer"
                 >
                   <option value="Rookie" className="bg-neutral-900 text-white">Rookie (First Season)</option>
                   <option value="1-2 Years" className="bg-neutral-900 text-white">1-2 Years Experience</option>
@@ -2830,7 +2830,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <button
                   type="button"
                   onClick={() => setIsAddPlayerModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 text-xs font-bold transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-surface-muted hover:bg-white/10 text-neutral-400 text-xs font-bold transition-colors"
                 >
                   Cancel
                 </button>
@@ -2878,8 +2878,8 @@ function LiveAndUpcomingGamesSection({
     m.status !== "Final";
 
   return (
-    <section className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
+    <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-line-subtle">
         <div>
           <div className="flex items-center gap-2.5">
             <Radio className="w-5 h-5 text-red-500 animate-pulse" />
@@ -2903,7 +2903,7 @@ function LiveAndUpcomingGamesSection({
 
         <Link
           href="/schedule"
-          className="px-4 py-2 bg-white/5 hover:bg-white/10 text-neutral-200 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-white/10 transition-colors flex items-center gap-2 shrink-0 self-start sm:self-auto"
+          className="px-4 py-2 bg-surface-muted hover:bg-white/10 text-neutral-200 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-line transition-colors flex items-center gap-2 shrink-0 self-start sm:self-auto"
         >
           <CalendarDays className="w-3.5 h-3.5 text-cyan-400" />
           <span>View Full Schedule</span>
@@ -2912,7 +2912,7 @@ function LiveAndUpcomingGamesSection({
       </div>
 
       {games.length === 0 ? (
-        <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center gap-3">
+        <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-line-subtle flex flex-col items-center justify-center gap-3">
           <CalendarDays className="w-8 h-8 text-neutral-600" />
           <p>No live or upcoming games scheduled at the moment.</p>
           <Link
@@ -2944,7 +2944,7 @@ function LiveAndUpcomingGamesSection({
                 key={m.id}
                 className={`p-5 rounded-2xl transition-all flex flex-col justify-between relative overflow-hidden group ${live
                   ? "bg-gradient-to-br from-[#1C0B0E]/95 via-[#0D101A] to-[#07090E] border-2 border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.2)] hover:border-red-400"
-                  : "bg-black/60 border border-white/10 hover:border-cyan-500/40"
+                  : "bg-black/60 border border-line hover:border-cyan-500/40"
                   }`}
               >
                 {/* Live Accent Glow */}
@@ -2954,7 +2954,7 @@ function LiveAndUpcomingGamesSection({
 
                 <div>
                   {/* Card Status & Timing Header */}
-                  <div className="flex items-center justify-between text-[11px] mb-3 pb-2.5 border-b border-white/5">
+                  <div className="flex items-center justify-between text-[11px] mb-3 pb-2.5 border-b border-line-subtle">
                     {live ? (
                       <div className="flex items-center gap-2">
                         {/* Flashing Red Dot Live Symbol */}
@@ -2993,12 +2993,12 @@ function LiveAndUpcomingGamesSection({
                     {/* Home Team */}
                     <div
                       className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${live
-                        ? "bg-black/50 border-white/5"
-                        : "bg-white/5 border-white/5 hover:bg-white/10"
+                        ? "bg-black/50 border-line-subtle"
+                        : "bg-surface-muted border-line-subtle hover:bg-white/10"
                         }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-black/60 border border-white/10 p-1 flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-black/60 border border-line p-1 flex items-center justify-center shrink-0">
                           <TeamLogo
                             teamName={m.homeTeamName}
                             logoUrl={hTeam?.logoUrl}
@@ -3027,12 +3027,12 @@ function LiveAndUpcomingGamesSection({
                     {/* Away Team */}
                     <div
                       className={`flex items-center justify-between p-2 rounded-xl border transition-colors ${live
-                        ? "bg-black/50 border-white/5"
-                        : "bg-white/5 border-white/5 hover:bg-white/10"
+                        ? "bg-black/50 border-line-subtle"
+                        : "bg-surface-muted border-line-subtle hover:bg-white/10"
                         }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-black/60 border border-white/10 p-1 flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-black/60 border border-line p-1 flex items-center justify-center shrink-0">
                           <TeamLogo
                             teamName={m.awayTeamName}
                             logoUrl={aTeam?.logoUrl}
@@ -3061,7 +3061,7 @@ function LiveAndUpcomingGamesSection({
 
                   {/* Situational indicator for Live Games */}
                   {live && m.matchState && (
-                    <div className="text-[10px] text-neutral-400 font-mono flex items-center justify-between mb-3 px-1 py-1 rounded bg-black/30 border border-white/5">
+                    <div className="text-[10px] text-neutral-400 font-mono flex items-center justify-between mb-3 px-1 py-1 rounded bg-black/30 border border-line-subtle">
                       <span>
                         Ball:{" "}
                         <strong className="text-cyan-400">
@@ -3086,7 +3086,7 @@ function LiveAndUpcomingGamesSection({
                 </div>
 
                 {/* Action CTA */}
-                <div className="pt-2.5 border-t border-white/5">
+                <div className="pt-2.5 border-t border-line-subtle">
                   {live ? (
                     <Link
                       href={isEmbedded ? `/matches/${m.id}/play-by-play?embed=true&demo=true` : `/matches/${m.id}/play-by-play`}
@@ -3096,13 +3096,13 @@ function LiveAndUpcomingGamesSection({
                       <span>{isLeagueAdmin ? "Manage Scorekeeper" : "Watch Live Play-by-Play"}</span>
                     </Link>
                   ) : isEmbedded ? (
-                    <div className="w-full py-2.5 px-3 bg-white/5 text-neutral-400 text-xs font-bold rounded-xl border border-white/10 text-center flex items-center justify-center gap-1.5 cursor-default">
+                    <div className="w-full py-2.5 px-3 bg-surface-muted text-neutral-400 text-xs font-bold rounded-xl border border-line text-center flex items-center justify-center gap-1.5 cursor-default">
                       <span>Match Scheduled</span>
                     </div>
                   ) : (
                     <Link
                       href={isLeagueAdmin ? `/matches/${m.id}/play-by-play` : `/matches/${m.id}`}
-                      className="w-full py-2.5 px-3 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-white/10 text-center transition-colors flex items-center justify-center gap-1.5"
+                      className="w-full py-2.5 px-3 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-bold rounded-xl border border-line text-center transition-colors flex items-center justify-center gap-1.5"
                     >
                       <span>{isLeagueAdmin ? "Launch Scorekeeper" : "Match Preview & Details"}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
