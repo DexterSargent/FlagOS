@@ -9,14 +9,35 @@ import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
+import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
-  const { settings, isDemoLeague } = useLeague();
-  const { isLeagueAdmin, canManageTeam } = useAuth();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const { user, isLeagueAdmin, canManageTeam } = useAuth();
+
+  const isPrivateMatch =
+    activeLeagueId === "league_private_live" ||
+    matchId.startsWith("match_live_") ||
+    (settings?.visibility === "private" && !isDemoLeague);
+
+  const isUserAuthorized =
+    !isPrivateMatch ||
+    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
+    (settings?.adminEmails &&
+      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
+
+  if (isPrivateMatch && !isUserAuthorized) {
+    return (
+      <PrivateLeagueAccessDenied
+        requiredEmail="dextersargent@gmail.com"
+        leagueName={settings?.leagueName || "Apex Private League"}
+      />
+    );
+  }
 
   const [matchData, setMatchData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

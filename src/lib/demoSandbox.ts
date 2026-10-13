@@ -66,8 +66,10 @@ export const isDemoMatch = (matchId?: string | null, leagueId?: string | null): 
       // ignore
     }
   }
+  if (leagueId && !isDemoLeague(leagueId)) return false;
   if (isDemoLeague(leagueId)) return true;
   if (!matchId) return false;
+  if (matchId.startsWith("match_live_")) return false;
   if (
     matchId.startsWith("match_demo_") ||
     matchId.startsWith("match_w") ||

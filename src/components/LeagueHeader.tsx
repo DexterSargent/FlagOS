@@ -38,7 +38,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
   const { settings, openCustomizer, activeLeagueId, userLeagues, switchLeague, isDemoLeague } = useLeague();
-  const { role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId } = useAuth();
+  const { user, role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId } = useAuth();
 
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -170,7 +170,18 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 </div>
 
                 <div className="space-y-1 max-h-56 overflow-y-auto">
-                  {userLeagues.map((l) => {
+                  {userLeagues
+                    .filter((l) => {
+                      if (l.visibility === "private" || l.id === "league_private_live") {
+                        const userEmail = (user?.email || "").trim().toLowerCase();
+                        return (
+                          userEmail === "dextersargent@gmail.com" ||
+                          (l.adminEmails && l.adminEmails.some((e) => e.toLowerCase() === userEmail))
+                        );
+                      }
+                      return true;
+                    })
+                    .map((l) => {
                     const isActive = l.id === activeLeagueId;
                     return (
                       <button

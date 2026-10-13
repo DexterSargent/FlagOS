@@ -42,6 +42,7 @@ import { collection, getDocs, onSnapshot, addDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
+import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -87,6 +88,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   }, [leagueIdParam, activeLeagueId, switchLeague]);
 
   const {
+    user,
     role,
     isLeagueAdmin,
     isTeamAdmin,
@@ -112,6 +114,26 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const [newPlayerExperience, setNewPlayerExperience] = useState("Rookie");
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [copiedLeagueLink, setCopiedLeagueLink] = useState(false);
+
+  const isPrivateLeague =
+    leagueIdParam === "league_private_live" ||
+    activeLeagueId === "league_private_live" ||
+    (settings.visibility === "private" && !isEffectiveDemo);
+
+  const isUserAuthorized =
+    !isPrivateLeague ||
+    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
+    (settings.adminEmails &&
+      settings.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
+
+  if (isPrivateLeague && !isUserAuthorized) {
+    return (
+      <PrivateLeagueAccessDenied
+        requiredEmail="dextersargent@gmail.com"
+        leagueName={settings.leagueName || "Apex Private League"}
+      />
+    );
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -140,10 +162,13 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           getDocs(collection(db, "plays")),
         ]);
 
+        const targetLeagueId = leagueIdParam || activeLeagueId;
         const tList = teamsSnap.docs
           .map((d) => ({ id: d.id, ...(d.data() as any) }))
-          .filter(isRealTeam);
-        const pList = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          .filter((t) => isRealTeam(t) && (!t.leagueId || t.leagueId === targetLeagueId));
+        const pList = playersSnap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+          .filter((p) => !p.leagueId || p.leagueId === targetLeagueId || tList.some((t) => t.id === p.teamId));
         const plList = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         setTeams(tList);
         setPlayers(pList);
@@ -152,7 +177,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         const unsub = onSnapshot(collection(db, "matches"), (snap) => {
           const mList = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as any) }))
-            .filter((m) => !m.isHidden);
+            .filter((m) => !m.isHidden && (!m.leagueId || m.leagueId === targetLeagueId));
           mList.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           setMatches(mList);
         }, (err) => {

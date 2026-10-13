@@ -20,7 +20,9 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
+import { useAuth } from "@/lib/authContext";
 import { renderFlagOS } from "@/components/FlagOSText";
+import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -30,7 +32,8 @@ import {
 } from "@/lib/demoSandbox";
 
 export default function StatsAndStandings() {
-  const { settings, isDemoLeague } = useLeague();
+  const { user } = useAuth();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
   const [activeTab, setActiveTab] = useState<"team" | "individual">("team");
   const [indivViewMode, setIndivViewMode] = useState<"leaders" | "table">("leaders");
   const [individualTab, setIndividualTab] = useState<"passing" | "receiving" | "defense">("passing");
@@ -42,6 +45,25 @@ export default function StatsAndStandings() {
   const [individualStats, setIndividualStats] = useState<any[]>([]);
   const [teamsData, setTeamsData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+
+  const isPrivateLeague =
+    activeLeagueId === "league_private_live" ||
+    (settings?.visibility === "private" && !isDemoLeague);
+
+  const isUserAuthorized =
+    !isPrivateLeague ||
+    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
+    (settings?.adminEmails &&
+      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
+
+  if (isPrivateLeague && !isUserAuthorized) {
+    return (
+      <PrivateLeagueAccessDenied
+        requiredEmail="dextersargent@gmail.com"
+        leagueName={settings?.leagueName || "Apex Private League"}
+      />
+    );
+  }
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -75,9 +97,13 @@ export default function StatsAndStandings() {
 
             teams = teamsSnap.docs
               .map((d) => ({ id: d.id, ...(d.data() as any) }))
-              .filter(isRealTeam);
-            players = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-            matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+              .filter((t) => isRealTeam(t) && (!t.leagueId || t.leagueId === activeLeagueId));
+            players = playersSnap.docs
+              .map((d) => ({ id: d.id, ...(d.data() as any) }))
+              .filter((p) => !p.leagueId || p.leagueId === activeLeagueId || teams.some((t) => t.id === p.teamId));
+            matches = matchesSnap.docs
+              .map((d) => ({ id: d.id, ...(d.data() as any) }))
+              .filter((m) => !m.leagueId || m.leagueId === activeLeagueId);
             plays = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
           } catch (err) {
             console.warn("Unable to fetch stats from Firestore, falling back to sandbox:", err);
@@ -330,7 +356,7 @@ export default function StatsAndStandings() {
       const unsub = subscribeDemoSandbox(() => fetchAllData());
       return () => unsub();
     }
-  }, [isDemoLeague]);
+  }, [isDemoLeague, activeLeagueId]);
 
   // Helper for Top 3 in any category
   const getTop3 = (key: string) => {

@@ -12,7 +12,7 @@ import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox, isDemoMatch }
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
   const { isLeagueAdmin, isTeamAdmin, canManageTeam, loading } = useAuth();
-  const { isDemoLeague } = useLeague();
+  const { isDemoLeague, activeLeagueId } = useLeague();
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const [matchData, setMatchData] = useState<any>(null);
@@ -26,7 +26,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
     return false;
   });
 
-  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId);
+  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId);
 
   useEffect(() => {
     const loadMatch = async () => {

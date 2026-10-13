@@ -7,6 +7,8 @@ import { ChevronLeft, Zap, RotateCcw, Flag, Maximize, Minimize, Play, Pause, Ale
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
+import { useAuth } from "@/lib/authContext";
+import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
 import {
   PENALTY_CATALOG,
@@ -31,7 +33,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const router = useRouter();
-  const { settings, isDemoLeague } = useLeague();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const { user } = useAuth();
 
   const [isEmbedded, setIsEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -41,7 +44,27 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return false;
   });
 
-  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId);
+  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId);
+
+  const isPrivateMatch =
+    activeLeagueId === "league_private_live" ||
+    matchId.startsWith("match_live_") ||
+    (settings?.visibility === "private" && !isDemo);
+
+  const isUserAuthorized =
+    !isPrivateMatch ||
+    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
+    (settings?.adminEmails &&
+      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
+
+  if (isPrivateMatch && !isUserAuthorized) {
+    return (
+      <PrivateLeagueAccessDenied
+        requiredEmail="dextersargent@gmail.com"
+        leagueName={settings?.leagueName || "Apex Private League"}
+      />
+    );
+  }
 
   useEffect(() => {
     if (typeof window !== "undefined") {

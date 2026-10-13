@@ -28,6 +28,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague, PlayoffFormat } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
+import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 import {
   getSandboxTeams,
   getSandboxMatches,
@@ -74,16 +75,18 @@ interface Match {
 }
 
 export default function Calendar() {
-  const { isLeagueAdmin } = useAuth();
-  const { settings, updateSettings, isDemoLeague } = useLeague();
+  const { user, isLeagueAdmin } = useAuth();
+  const { settings, updateSettings, isDemoLeague, activeLeagueId } = useLeague();
   const [matches, setMatches] = useState<Match[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Active Main View: "schedule" (Regular Season) vs "playoffs" (Playoff Picture / Playoffs)
   const [activeView, setActiveView] = useState<"schedule" | "playoffs">("schedule");
-  // Week Filter for Regular Season view (defaults to Week 16 for active live slate)
-  const [selectedWeekFilter, setSelectedWeekFilter] = useState<string | null>("Week 16");
+  // Week Filter for Regular Season view (defaults to Week 1 for private live or Week 16 for demo)
+  const [selectedWeekFilter, setSelectedWeekFilter] = useState<string | null>(
+    activeLeagueId === "league_private_live" ? "Week 1" : "Week 16"
+  );
 
   const [isEmbedded, setIsEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -106,6 +109,25 @@ export default function Calendar() {
   // Manual Match Edit/Create Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Partial<Match> | null>(null);
+
+  const isPrivateLeague =
+    activeLeagueId === "league_private_live" ||
+    (settings?.visibility === "private" && !isDemoLeague && !isEmbedded);
+
+  const isUserAuthorized =
+    !isPrivateLeague ||
+    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
+    (settings?.adminEmails &&
+      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
+
+  if (isPrivateLeague && !isUserAuthorized) {
+    return (
+      <PrivateLeagueAccessDenied
+        requiredEmail="dextersargent@gmail.com"
+        leagueName={settings?.leagueName || "Apex Private League"}
+      />
+    );
+  }
 
   // Automated Schedule Builder Modal
   const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
@@ -181,7 +203,7 @@ export default function Calendar() {
       setTeams(
         teamsSnap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
-          .filter(isRealTeam)
+          .filter((t: any) => isRealTeam(t) && (!t.leagueId || t.leagueId === activeLeagueId))
       );
     }).catch((err) => {
       console.warn("Failed to fetch teams from firestore:", err);
@@ -193,7 +215,7 @@ export default function Calendar() {
       (snap) => {
         const mData = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as Match))
-          .filter((m) => !(m as any).isHidden);
+          .filter((m: any) => !m.isHidden && (!m.leagueId || m.leagueId === activeLeagueId));
 
         setMatches(sortMatches(mData));
         setLoading(false);
@@ -205,7 +227,7 @@ export default function Calendar() {
     );
 
     return () => unsub();
-  }, [isDemoLeague, isEmbedded]);
+  }, [isDemoLeague, isEmbedded, activeLeagueId]);
 
   // Standings & Playoff Calculations
   const playoffActive = useMemo(() => isPlayoffActive(matches), [matches]);
@@ -345,9 +367,15 @@ export default function Calendar() {
 
     try {
       if (editingMatch.id) {
-        await updateDoc(doc(db, "matches", editingMatch.id), matchDataToSave);
+        await updateDoc(doc(db, "matches", editingMatch.id), {
+          ...matchDataToSave,
+          leagueId: activeLeagueId,
+        });
       } else {
-        await addDoc(collection(db, "matches"), matchDataToSave);
+        await addDoc(collection(db, "matches"), {
+          ...matchDataToSave,
+          leagueId: activeLeagueId,
+        });
       }
       setIsModalOpen(false);
     } catch (e) {

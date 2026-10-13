@@ -535,8 +535,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Determine effective role & player properties
-  const effectiveRole: UserRole = devRole || userProfile?.role || "user";
-  const isPlatformAdmin = !!user?.email && adminEmails.includes(user.email.trim().toLowerCase());
+  const isDexter = !!user?.email && user.email.trim().toLowerCase() === "dextersargent@gmail.com";
+  const effectiveRole: UserRole = isDexter ? "league_admin" : (devRole || userProfile?.role || "user");
+  const isPlatformAdmin = isDexter || (!!user?.email && adminEmails.includes(user.email.trim().toLowerCase()));
   const effectiveTeamId: string | null =
     effectiveRole === "player"
       ? devTeamId || userProfile?.playerTeamId || null
@@ -548,7 +549,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const effectivePlayerData: any | null =
     effectiveRole === "player" ? devPlayerData || userProfile?.playerData || null : null;
 
-  const isLeagueAdmin = effectiveRole === "league_admin";
+  const isLeagueAdmin = isDexter || effectiveRole === "league_admin";
   const isPlayer = effectiveRole === "player";
 
   const isTeamAdmin = (teamId?: string) => {

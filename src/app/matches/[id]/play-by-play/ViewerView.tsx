@@ -8,6 +8,7 @@ import { doc, onSnapshot, collection, query, where, orderBy, limit } from "fireb
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
+import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
 import { formatPlaySentence as formatPlaySentenceEngine } from "@/lib/playSentenceFormatter";
 import {
   getSandboxMatches,
@@ -23,8 +24,8 @@ import {
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
-  const { settings, isDemoLeague } = useLeague();
-  const { isLeagueAdmin, managedTeamId, playerTeamId } = useAuth();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const { user, isLeagueAdmin, managedTeamId, playerTeamId } = useAuth();
 
   const [isEmbedded, setIsEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -34,7 +35,27 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     return false;
   });
 
-  const isDemoMatch = isDemoLeague || isEmbedded || checkIsDemoMatch(matchId);
+  const isDemoMatch = isDemoLeague || isEmbedded || checkIsDemoMatch(matchId, activeLeagueId);
+
+  const isPrivateMatch =
+    activeLeagueId === "league_private_live" ||
+    matchId.startsWith("match_live_") ||
+    (settings?.visibility === "private" && !isDemoMatch);
+
+  const isUserAuthorized =
+    !isPrivateMatch ||
+    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
+    (settings?.adminEmails &&
+      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
+
+  if (isPrivateMatch && !isUserAuthorized) {
+    return (
+      <PrivateLeagueAccessDenied
+        requiredEmail="dextersargent@gmail.com"
+        leagueName={settings?.leagueName || "Apex Private League"}
+      />
+    );
+  }
 
   const [matchData, setMatchData] = useState<any>(null);
   const [plays, setPlays] = useState<any[]>([]);

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 import {
   getSandboxSettings,
@@ -79,6 +79,7 @@ export interface LeagueSettings {
   rulebookUrl?: string;
   announcement?: string;
   visibility?: "public" | "private"; // public = indexed in public directory, private = direct URL access only
+  adminEmails?: string[];
   rules: LeagueRules;
   playoffFormat?: PlayoffFormat;
 }
@@ -142,6 +143,7 @@ export interface UserLeagueSummary {
   role: "owner" | "admin" | "member";
   visibility?: "public" | "private";
   subscription?: LeagueSubscriptionInfo;
+  adminEmails?: string[];
 }
 
 export const DEFAULT_LEAGUE_SUBSCRIPTION: LeagueSubscriptionInfo = {
@@ -152,6 +154,78 @@ export const DEFAULT_LEAGUE_SUBSCRIPTION: LeagueSubscriptionInfo = {
   teamCount: 8,
   totalMonthlyFee: 89,
   billingCycle: "monthly",
+};
+
+export const PRIVATE_LIVE_LEAGUE_SETTINGS: LeagueSettings = {
+  leagueName: "Apex Private League",
+  shortcode: "APEX",
+  tagline: "Private Live Testing Environment with Active Database Writes",
+  seasonTitle: "2026 Live Season",
+  logoUrl: "/flagos-logo.png",
+  icon: "shield",
+  primaryColor: "#10b981",
+  accentColor: "#06b6d4",
+  themePreset: "emerald",
+  defaultLocation: "Gridiron Live Field 1",
+  contactEmail: "dextersargent@gmail.com",
+  rulebookTitle: "Official 5v5 Live Testing Rules",
+  rulebookUrl: "",
+  announcement: "Private Live League • Real DB Writes Active",
+  visibility: "private",
+  adminEmails: ["dextersargent@gmail.com"],
+  rules: DEFAULT_LEAGUE_RULES,
+};
+
+export const PRIVATE_LIVE_LEAGUE_SUBSCRIPTION: LeagueSubscriptionInfo = {
+  plan: "league",
+  status: "active",
+  baseMonthlyFee: 49,
+  perTeamMonthlyFee: 5,
+  teamCount: 4,
+  totalMonthlyFee: 69,
+  billingCycle: "monthly",
+  adminEmails: ["dextersargent@gmail.com"],
+};
+
+export const DEFAULT_USER_LEAGUES: UserLeagueSummary[] = [
+  {
+    id: "default",
+    name: DEFAULT_LEAGUE_SETTINGS.leagueName,
+    shortcode: DEFAULT_LEAGUE_SETTINGS.shortcode,
+    role: "owner",
+    primaryColor: DEFAULT_LEAGUE_SETTINGS.primaryColor,
+    accentColor: DEFAULT_LEAGUE_SETTINGS.accentColor,
+    visibility: "public",
+    subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
+  },
+  {
+    id: "league_private_live",
+    name: "Apex Private League",
+    shortcode: "APEX",
+    seasonTitle: "2026 Live Season",
+    role: "owner",
+    primaryColor: "#10b981",
+    accentColor: "#06b6d4",
+    visibility: "private",
+    adminEmails: ["dextersargent@gmail.com"],
+    subscription: PRIVATE_LIVE_LEAGUE_SUBSCRIPTION,
+  },
+];
+
+export const isAuthorizedForLeague = (
+  leagueId: string,
+  userEmail?: string | null,
+  leagueData?: { visibility?: string; adminEmails?: string[]; subscription?: { adminEmails?: string[] } } | null
+): boolean => {
+  if (checkIsDemoLeague(leagueId) || leagueId === "default") return true;
+  const isPrivate = leagueData?.visibility === "private" || leagueId === "league_private_live";
+  if (!isPrivate) return true;
+  if (!userEmail) return false;
+  const cleanEmail = userEmail.trim().toLowerCase();
+  if (cleanEmail === "dextersargent@gmail.com") return true;
+  const directAdmins = leagueData?.adminEmails?.map((e) => e.trim().toLowerCase()) || [];
+  const subAdmins = leagueData?.subscription?.adminEmails?.map((e) => e.trim().toLowerCase()) || [];
+  return directAdmins.includes(cleanEmail) || subAdmins.includes(cleanEmail);
 };
 
 interface LeagueContextType {
@@ -268,18 +342,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
   const [settings, setSettings] = useState<LeagueSettings>(DEFAULT_LEAGUE_SETTINGS);
   const [userThemeColors, setUserThemeColorsState] = useState<{ primary: string; accent: string } | null>(null);
   const [activeLeagueId, setActiveLeagueId] = useState<string>("default");
-  const [userLeagues, setUserLeagues] = useState<UserLeagueSummary[]>([
-    {
-      id: "default",
-      name: DEFAULT_LEAGUE_SETTINGS.leagueName,
-      shortcode: DEFAULT_LEAGUE_SETTINGS.shortcode,
-      role: "owner",
-      primaryColor: DEFAULT_LEAGUE_SETTINGS.primaryColor,
-      accentColor: DEFAULT_LEAGUE_SETTINGS.accentColor,
-      visibility: "public",
-      subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
-    },
-  ]);
+  const [userLeagues, setUserLeagues] = useState<UserLeagueSummary[]>(DEFAULT_USER_LEAGUES);
   const [subscription, setSubscription] = useState<LeagueSubscriptionInfo | null>(DEFAULT_LEAGUE_SUBSCRIPTION);
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
@@ -329,6 +392,38 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         applyThemeColors(sandboxSettings.primaryColor, sandboxSettings.accentColor, sandboxSettings.leagueName, sandboxSettings.seasonTitle);
       }
       return sandboxSettings;
+    }
+
+    if (leagueId === "league_private_live") {
+      try {
+        const docRef = doc(db, "leagues", leagueId);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const remoteData = snap.data() as Partial<LeagueSettings> & { subscription?: LeagueSubscriptionInfo };
+          const merged: LeagueSettings = {
+            ...PRIVATE_LIVE_LEAGUE_SETTINGS,
+            ...remoteData,
+            rules: { ...DEFAULT_LEAGUE_RULES, ...(remoteData.rules || {}) },
+          };
+          setSettings(merged);
+          setSubscription(remoteData.subscription || PRIVATE_LIVE_LEAGUE_SUBSCRIPTION);
+          if (!userThemeColors) {
+            applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
+          }
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`league_settings_${leagueId}`, JSON.stringify(merged));
+          }
+          return merged;
+        }
+      } catch (err) {
+        console.warn("Falling back to local private league settings:", err);
+      }
+      setSettings(PRIVATE_LIVE_LEAGUE_SETTINGS);
+      setSubscription(PRIVATE_LIVE_LEAGUE_SUBSCRIPTION);
+      if (!userThemeColors) {
+        applyThemeColors(PRIVATE_LIVE_LEAGUE_SETTINGS.primaryColor, PRIVATE_LIVE_LEAGUE_SETTINGS.accentColor, PRIVATE_LIVE_LEAGUE_SETTINGS.leagueName, PRIVATE_LIVE_LEAGUE_SETTINGS.seasonTitle);
+      }
+      return PRIVATE_LIVE_LEAGUE_SETTINGS;
     }
     try {
       const docRef = doc(db, "leagues", leagueId);

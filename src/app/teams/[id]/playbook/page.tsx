@@ -65,13 +65,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const [activePlayId, setActivePlayId] = useState<string>("");
 
   const isDemoTeam =
-    teamId === "team_apex" ||
-    teamId === "team_cyber" ||
-    teamId === "team_raptors" ||
-    teamId === "team_vipers" ||
-    teamId === "demo" ||
-    teamId.startsWith("team_demo_") ||
-    teamId.startsWith("team_");
+    !teamId.startsWith("team_live_") &&
+    (teamId === "team_apex" ||
+      teamId === "team_cyber" ||
+      teamId === "team_raptors" ||
+      teamId === "team_vipers" ||
+      teamId === "demo" ||
+      teamId.startsWith("team_demo_") ||
+      (teamId.startsWith("team_") && !teamId.startsWith("team_live_")));
 
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
