@@ -12,8 +12,8 @@
  * visual emblem everywhere without altering the text styling.
  */
 
-export const FLAGOS_LOGO_LIGHT = "/flagos-emblem-light.png";
-export const FLAGOS_LOGO_DARK = "/flagos-emblem-dark.png";
+export const FLAGOS_LOGO_LIGHT = "/flagos-emblem.png";
+export const FLAGOS_LOGO_DARK = "/flagos-emblem.png";
 
 /**
  * Returns the active FlagOS logo file path based on the given theme ("light" | "dark").
