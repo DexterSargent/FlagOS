@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Swords,
   Info,
+  XCircle,
 } from "lucide-react";
 import { PlayoffFormat } from "@/lib/leagueContext";
 import { TeamStanding, BracketRound, BracketMatchNode } from "@/lib/standingsEngine";
@@ -647,18 +648,32 @@ export default function PlayoffBracketView({
                           {team.streak}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          {isQualified ? (
+                          {team.clinchStatus === "clinched_bye" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-[10px] font-bold text-amber-300 shadow-sm shadow-amber-500/10">
+                              <Crown className="w-3 h-3 text-amber-400" />
+                              <span>Clinched #1 Seed (Bye)</span>
+                            </span>
+                          ) : team.clinchStatus === "clinched_playoffs" ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-bold text-emerald-300">
                               <CheckCircle2 className="w-3 h-3" />
-                              <span>Playoff Seed #{team.rank}</span>
+                              <span>Clinched Playoff Spot</span>
                             </span>
-                          ) : isBubble ? (
+                          ) : team.clinchStatus === "eliminated" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-[10px] font-bold text-rose-300">
+                              <XCircle className="w-3 h-3 text-rose-400" />
+                              <span>Eliminated</span>
+                            </span>
+                          ) : isBubble || team.clinchStatus === "on_bubble" ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold text-amber-300">
-                              <Flame className="w-3 h-3" />
+                              <Flame className="w-3 h-3 text-amber-400" />
                               <span>On the Bubble</span>
                             </span>
+                          ) : isQualified ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-300">
+                              <span>In Playoff Position</span>
+                            </span>
                           ) : (
-                            <span className="text-[10px] text-neutral-500 font-bold uppercase">Outside</span>
+                            <span className="text-[10px] text-neutral-500 font-bold uppercase">In the Hunt</span>
                           )}
                         </td>
                       </tr>

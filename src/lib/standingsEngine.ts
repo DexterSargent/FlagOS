@@ -1,6 +1,13 @@
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
 import { PlayoffFormat } from "./leagueContext";
 
+export type ClinchStatus =
+  | "clinched_bye"
+  | "clinched_playoffs"
+  | "in_hunt"
+  | "on_bubble"
+  | "eliminated";
+
 export interface TeamStanding {
   teamId: string;
   teamName: string;
@@ -18,6 +25,8 @@ export interface TeamStanding {
   rank: number;
   playoffSeed?: number;
   playoffStatus: "clinched_bye" | "in_spot" | "on_bubble" | "outside";
+  clinchStatus?: ClinchStatus;
+  clinchLabel?: string;
 }
 
 export interface BracketMatchNode {
@@ -175,16 +184,115 @@ export function calculateStandings(
     return a.teamName.localeCompare(b.teamName);
   });
 
-  // Assign Ranks and Playoff Seed Badges
+  // -------------------------------------------------------------------------
+  // Mathematical Clinching & Elimination Logic
+  // -------------------------------------------------------------------------
+  const regSeasonMatches = matches.filter(
+    (m) =>
+      !m.isPreseason &&
+      !m.isPlayoff &&
+      !m.week?.toString().toLowerCase().includes("playoff")
+  );
+
+  const totalScheduledByTeam: Record<string, number> = {};
+  regSeasonMatches.forEach((m) => {
+    if (m.homeTeamId) totalScheduledByTeam[m.homeTeamId] = (totalScheduledByTeam[m.homeTeamId] || 0) + 1;
+    if (m.awayTeamId) totalScheduledByTeam[m.awayTeamId] = (totalScheduledByTeam[m.awayTeamId] || 0) + 1;
+  });
+
+  const maxSeasonGames = Math.max(
+    ...Object.values(totalScheduledByTeam),
+    ...standingsList.map((t) => t.gamesPlayed),
+    1
+  );
+
+  const getRemainingGames = (teamId: string, played: number) => {
+    const scheduled = totalScheduledByTeam[teamId] || maxSeasonGames;
+    return Math.max(0, scheduled - played);
+  };
+
+  const isSeasonOver =
+    regSeasonMatches.length > 0 &&
+    regSeasonMatches.every((m) => m.status === "completed" || m.status === "Final");
+
+  // Maximum potential wins achievable by any team currently outside playoff threshold
+  const maxPossibleWinsOutside =
+    standingsList.length > playoffTeamsCount
+      ? Math.max(
+          ...standingsList
+            .slice(playoffTeamsCount)
+            .map((t) => t.wins + getRemainingGames(t.teamId, t.gamesPlayed))
+        )
+      : -1;
+
+  // Maximum potential wins of any team behind #1
+  const maxPossibleWinsBehindFirst =
+    standingsList.length > 1
+      ? Math.max(
+          ...standingsList
+            .slice(1)
+            .map((t) => t.wins + getRemainingGames(t.teamId, t.gamesPlayed))
+        )
+      : -1;
+
+  // Current wins of the team currently in the last qualifying playoff spot
+  const cutoffTeamWins =
+    playoffTeamsCount > 0 && standingsList.length >= playoffTeamsCount
+      ? standingsList[playoffTeamsCount - 1].wins
+      : 0;
+
   const bubbleThreshold = Math.min(playoffTeamsCount + 4, standingsList.length);
+
   return standingsList.map((item, idx) => {
     const rank = idx + 1;
+    const remaining = getRemainingGames(item.teamId, item.gamesPlayed);
+    const maxWins = item.wins + remaining;
+
+    let clinchStatus: ClinchStatus = "in_hunt";
+    let clinchLabel = "In Playoff Position";
     let playoffStatus: "clinched_bye" | "in_spot" | "on_bubble" | "outside" = "outside";
 
-    if (rank <= playoffTeamsCount) {
-      playoffStatus = "in_spot";
-    } else if (rank <= bubbleThreshold) {
-      playoffStatus = "on_bubble";
+    if (isSeasonOver) {
+      if (rank === 1) {
+        clinchStatus = "clinched_bye";
+        clinchLabel = "Clinched #1 Seed (Bye)";
+        playoffStatus = "clinched_bye";
+      } else if (rank <= playoffTeamsCount) {
+        clinchStatus = "clinched_playoffs";
+        clinchLabel = "Clinched Playoff Spot";
+        playoffStatus = "in_spot";
+      } else {
+        clinchStatus = "eliminated";
+        clinchLabel = "Mathematically Eliminated";
+        playoffStatus = "outside";
+      }
+    } else {
+      // In-season live calculation
+      if (rank === 1 && item.wins > maxPossibleWinsBehindFirst && item.gamesPlayed > 0) {
+        clinchStatus = "clinched_bye";
+        clinchLabel = "Clinched #1 Seed (Bye)";
+        playoffStatus = "clinched_bye";
+      } else if (rank <= playoffTeamsCount && item.wins > maxPossibleWinsOutside && item.gamesPlayed > 0) {
+        clinchStatus = "clinched_playoffs";
+        clinchLabel = "Clinched Playoff Spot";
+        playoffStatus = "in_spot";
+      } else if (rank > playoffTeamsCount && maxWins < cutoffTeamWins && item.gamesPlayed > 0) {
+        clinchStatus = "eliminated";
+        clinchLabel = "Mathematically Eliminated";
+        playoffStatus = "outside";
+      } else if (rank <= playoffTeamsCount) {
+        clinchStatus = "in_hunt";
+        clinchLabel = "In Playoff Position";
+        playoffStatus = "in_spot";
+      } else if (rank <= bubbleThreshold) {
+        clinchStatus = "on_bubble";
+        clinchLabel = "On the Bubble";
+        playoffStatus = "on_bubble";
+      } else {
+        clinchStatus = "in_hunt";
+        clinchLabel = "In the Hunt";
+        playoffStatus = "outside";
+      }
     }
 
     return {
@@ -192,6 +300,8 @@ export function calculateStandings(
       rank,
       playoffSeed: rank <= playoffTeamsCount ? rank : undefined,
       playoffStatus,
+      clinchStatus,
+      clinchLabel,
     };
   });
 }
