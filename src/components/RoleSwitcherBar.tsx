@@ -101,6 +101,9 @@ export default function RoleSwitcherBar() {
     if (resetConfirm) {
       resetDemoSession();
       setResetConfirm(false);
+      if (typeof window !== "undefined") {
+        window.location.reload();
+      }
     } else {
       setResetConfirm(true);
       setTimeout(() => setResetConfirm(false), 4000);

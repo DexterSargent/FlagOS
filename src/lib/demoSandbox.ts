@@ -84,88 +84,25 @@ export const initDemoSandbox = (): void => {
   if (typeof window === "undefined") return;
 
   const initialized = sessionStorage.getItem(KEY_INIT);
-  const rawTeams = sessionStorage.getItem(KEY_TEAMS);
-  const rawMatches = sessionStorage.getItem(KEY_MATCHES);
-  const rawSettings = sessionStorage.getItem(KEY_SETTINGS);
-  let shouldInit = !initialized;
-
-  if (rawTeams) {
-    try {
-      const parsed = JSON.parse(rawTeams);
-      if (!Array.isArray(parsed) || parsed.length < 30) {
-        shouldInit = true;
-      }
-    } catch {
-      shouldInit = true;
-    }
-  }
-
-  if (rawMatches) {
-    try {
-      const parsedMatches = JSON.parse(rawMatches);
-      if (!Array.isArray(parsedMatches) || parsedMatches.length < 250) {
-        shouldInit = true;
-      }
-    } catch {
-      shouldInit = true;
-    }
-  }
-
-  if (rawSettings) {
-    try {
-      const parsedSettings = JSON.parse(rawSettings);
-      if (parsedSettings?.playoffFormat?.teamsCount !== 14) {
-        shouldInit = true;
-      }
-    } catch {
-      shouldInit = true;
-    }
-  }
-
-  if (shouldInit) {
+  if (!initialized) {
     sessionStorage.setItem(KEY_INIT, "true");
+  }
+
+  // Ensure individual storage keys exist if completely missing (null)
+  if (sessionStorage.getItem(KEY_SETTINGS) === null) {
     sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(DEFAULT_LEAGUE_SETTINGS));
+  }
+  if (sessionStorage.getItem(KEY_TEAMS) === null) {
     sessionStorage.setItem(KEY_TEAMS, JSON.stringify(SEED_DEMO_TEAMS));
+  }
+  if (sessionStorage.getItem(KEY_PLAYERS) === null) {
     sessionStorage.setItem(KEY_PLAYERS, JSON.stringify(SEED_DEMO_PLAYERS));
+  }
+  if (sessionStorage.getItem(KEY_MATCHES) === null) {
     sessionStorage.setItem(KEY_MATCHES, JSON.stringify(SEED_DEMO_MATCHES));
+  }
+  if (sessionStorage.getItem(KEY_PLAYS) === null) {
     sessionStorage.setItem(KEY_PLAYS, JSON.stringify(SEED_DEMO_PLAYS));
-  } else {
-    // 1. Clean up any legacy team_free_agents from existing session storage
-    try {
-      if (rawTeams) {
-        const teamsList: DemoTeam[] = JSON.parse(rawTeams);
-        const filtered = teamsList.filter(
-          (t) => t.id !== "team_free_agents" && t.name?.trim().toLowerCase() !== "free agent" && t.name?.trim().toLowerCase() !== "free agents"
-        );
-        if (filtered.length !== teamsList.length) {
-          sessionStorage.setItem(KEY_TEAMS, JSON.stringify(filtered));
-        }
-      }
-    } catch {}
-
-    // 2. Clean up duplicate matches and legacy aliases from existing session storage
-    try {
-      if (rawMatches) {
-        const matchesList: DemoMatch[] = JSON.parse(rawMatches);
-        const seenIds = new Set<string>();
-        const seenKeys = new Set<string>();
-        const cleaned: DemoMatch[] = [];
-
-        for (const m of matchesList) {
-          if (m.id === "match_demo_1" || m.id === "match_demo_3") continue;
-          const key = `${m.week || ""}_${m.homeTeamId || ""}_${m.awayTeamId || ""}`;
-          if (!seenIds.has(m.id) && !seenKeys.has(key)) {
-            seenIds.add(m.id);
-            seenKeys.add(key);
-            cleaned.push(m);
-          }
-        }
-
-        if (cleaned.length !== matchesList.length) {
-          sessionStorage.setItem(KEY_MATCHES, JSON.stringify(cleaned));
-        }
-      }
-    } catch {}
   }
 };
 
@@ -182,6 +119,19 @@ export const resetDemoSession = (): void => {
   sessionStorage.removeItem(KEY_TEAM_ID);
   sessionStorage.removeItem(KEY_PLAYER_ID);
   sessionStorage.removeItem(KEY_PLAYER_DATA);
+  sessionStorage.removeItem(KEY_SCHEDULE_BACKUP);
+
+  try {
+    localStorage.removeItem(KEY_SCHEDULE_BACKUP);
+    localStorage.removeItem("dev_auth_role");
+    localStorage.removeItem("dev_managed_team_id");
+    localStorage.removeItem("dev_player_id");
+    localStorage.removeItem("dev_player_data");
+    localStorage.removeItem("flagos_user_colors");
+  } catch {}
+
+  // Keep demo active session flag so auth guards preserve access
+  sessionStorage.setItem("flagos_demo_active", "true");
 
   // Reinitialize pristine state
   initDemoSandbox();
@@ -459,6 +409,7 @@ export const deleteSandboxMatch = (id: string): void => {
 };
 
 export const setSandboxMatches = (matches: DemoMatch[]): void => {
+  initDemoSandbox();
   if (typeof window !== "undefined") {
     sessionStorage.setItem(KEY_MATCHES, JSON.stringify(matches));
     notifySandboxChange();
@@ -466,6 +417,7 @@ export const setSandboxMatches = (matches: DemoMatch[]): void => {
 };
 
 export const clearSandboxMatches = (): void => {
+  initDemoSandbox();
   if (typeof window !== "undefined") {
     sessionStorage.setItem(KEY_MATCHES, JSON.stringify([]));
     notifySandboxChange();

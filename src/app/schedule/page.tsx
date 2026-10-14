@@ -457,6 +457,8 @@ export default function Calendar() {
   const handleClearSchedule = async () => {
     if (isDemoLeague || isEmbedded) {
       clearSandboxMatches();
+      setMatches([]);
+      setSelectedWeekFilter(null);
       setIsClearConfirmOpen(false);
       return;
     }
@@ -466,6 +468,8 @@ export default function Calendar() {
       for (const d of snap.docs) {
         await deleteDoc(d.ref);
       }
+      setMatches([]);
+      setSelectedWeekFilter(null);
       setIsClearConfirmOpen(false);
     } catch (err) {
       console.error("Failed to clear matches:", err);
@@ -492,10 +496,14 @@ export default function Calendar() {
     if (isDemoLeague || isEmbedded) {
       if (clearExisting) {
         setSandboxMatches(generatedMatches);
+        setMatches(sortMatches(generatedMatches as Match[]));
       } else {
         const existing = getSandboxMatches();
-        setSandboxMatches([...existing, ...generatedMatches]);
+        const combined = [...existing, ...generatedMatches];
+        setSandboxMatches(combined);
+        setMatches(sortMatches(combined as Match[]));
       }
+      setSelectedWeekFilter(null);
       if (targetView) setActiveView(targetView);
       return;
     }

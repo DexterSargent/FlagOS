@@ -11,6 +11,9 @@ import {
   saveSandboxScheduleBackup,
   restoreSandboxScheduleBackup,
   getSandboxScheduleBackup,
+  clearSandboxMatches,
+  setSandboxMatches,
+  resetDemoSession,
 } from "@/lib/demoSandbox";
 
 describe("demoSandbox", () => {
@@ -154,6 +157,37 @@ describe("demoSandbox", () => {
       const restored = restoreSandboxScheduleBackup();
       expect(restored).toBe(true);
       expect(getSandboxMatches().length).toBe(matches.length);
+    });
+  });
+
+  describe("Schedule Clearing, Generation, and Reset Session", () => {
+    it("clearing schedule leaves 0 matches and does not revert to seed on subsequent reads", () => {
+      expect(getSandboxMatches().length).toBeGreaterThan(0);
+      clearSandboxMatches();
+      expect(getSandboxMatches().length).toBe(0);
+      // Verify subsequent read does not trigger aggressive re-seed
+      expect(getSandboxMatches().length).toBe(0);
+    });
+
+    it("persists a newly generated custom schedule with fewer than 250 matches", () => {
+      const customMatches: any[] = [
+        { id: "gen_match_1", week: "Week 1", homeTeamId: "team_kc", awayTeamId: "team_bal", date: "2026-10-15", time: "10:00 AM", status: "scheduled", homeScore: 0, awayScore: 0 },
+        { id: "gen_match_2", week: "Week 1", homeTeamId: "team_det", awayTeamId: "team_sf", date: "2026-10-15", time: "11:30 AM", status: "scheduled", homeScore: 0, awayScore: 0 },
+      ];
+      setSandboxMatches(customMatches);
+      const retrieved = getSandboxMatches();
+      expect(retrieved.length).toBe(2);
+      expect(retrieved[0].id).toBe("gen_match_1");
+    });
+
+    it("resetDemoSession cleanly restores original seed data", () => {
+      clearSandboxMatches();
+      expect(getSandboxMatches().length).toBe(0);
+
+      resetDemoSession();
+      const restored = getSandboxMatches();
+      expect(restored.length).toBe(272);
+      expect(getSandboxTeams().length).toBe(32);
     });
   });
 });
