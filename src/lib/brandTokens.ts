@@ -32,6 +32,8 @@ export const DEFAULT_FLAGOS_LOGO_URLS = [
   FLAGOS_LOGO_DARK,
   "/flagos-logo.png",
   "/flagos-emblem.png",
+  "/flagos-emblem-dark.png",
+  "/flagos-emblem-light.png",
   "/flagos-logo-original.png",
   "/logo.png",
 ] as const;
