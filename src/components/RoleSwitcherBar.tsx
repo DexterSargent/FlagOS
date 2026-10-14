@@ -10,26 +10,34 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RoleSwitcherBar() {
   const pathname = usePathname();
-  const { role, managedTeamId, playerId, setDevRole, isLeagueAdmin, isPlayer } = useAuth();
+  const { user, role, managedTeamId, playerId, setDevRole, isLeagueAdmin, isPlayer } = useAuth();
   const { isDemoLeague, openCustomizer, resetDemoSession } = useLeague();
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [players, setPlayers] = useState<Array<{ id: string; teamId: string; playerName: string; number?: string }>>([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [resetConfirm, setResetConfirm] = useState(false);
-  const [isLocalOrEmbed, setIsLocalOrEmbed] = useState(false);
 
-  useEffect(() => {
+  const [isLocalOrEmbed] = useState(() => {
     if (typeof window !== "undefined") {
-      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const isLocal =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname.endsWith(".local") ||
+        window.location.hostname.startsWith("192.168.") ||
+        window.location.hostname.startsWith("10.");
       const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
-      const isDemo = window.location.search.includes("demo=true") || sessionStorage.getItem("flagos_demo_active") === "true";
-      setIsLocalOrEmbed(isLocal || isEmbed || isDemo);
+      const isDemo =
+        window.location.search.includes("demo=true") ||
+        sessionStorage.getItem("flagos_demo_active") === "true";
+      return isLocal || isEmbed || isDemo;
     }
-  }, [pathname]);
+    return false;
+  });
 
-  // CRITICAL: Role Switcher MUST ONLY render inside localhost dev or embedded preview frame
-  // Never on marketing platform home (/), pricing (/pricing), or production domain (flagos.ca)
-  const isEligiblePage = isLocalOrEmbed && isDemoLeague && pathname !== "/" && pathname !== "/pricing" && pathname !== "/login";
+  const isPlatformOwner = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com";
+  const isEligibleHost = isLocalOrEmbed || isPlatformOwner || isDemoLeague;
+  const isEligiblePage =
+    isEligibleHost && pathname !== "/" && pathname !== "/pricing" && pathname !== "/login";
 
   useEffect(() => {
     if (!isEligiblePage) return;
@@ -63,16 +71,26 @@ export default function RoleSwitcherBar() {
   }
 
   const handleSelectRole = (newRole: UserRole, teamId?: string, targetPlayerId?: string) => {
+    const fallbackTeams = teams.length > 0 ? teams : getSandboxTeams().map((t) => ({ id: t.id, name: t.name }));
     if (newRole === "team_admin") {
-      const selectedTeam = teamId || managedTeamId || (teams[0] ? teams[0].id : undefined);
+      const selectedTeam = teamId || managedTeamId || fallbackTeams[0]?.id || "team_bears";
       setDevRole("team_admin", selectedTeam);
     } else if (newRole === "player") {
-      let selectedTeam = teamId || managedTeamId || (teams[0] ? teams[0].id : undefined);
-      let teamPlayers = players.filter((p) => p.teamId === selectedTeam);
-      let chosenPlayer = targetPlayerId || (teamPlayers[0] ? teamPlayers[0].id : players[0]?.id);
-      if (!teamPlayers[0] && players[0]) {
-        selectedTeam = players[0].teamId;
-        chosenPlayer = players[0].id;
+      const fallbackPlayers =
+        players.length > 0
+          ? players
+          : getSandboxPlayers().map((p) => ({
+              id: p.id,
+              teamId: p.teamId,
+              playerName: p.playerName || "Unnamed Athlete",
+              number: p.number || "00",
+            }));
+      let selectedTeam = teamId || managedTeamId || fallbackTeams[0]?.id || "team_bears";
+      let teamPlayers = fallbackPlayers.filter((p) => p.teamId === selectedTeam);
+      let chosenPlayer = targetPlayerId || (teamPlayers[0] ? teamPlayers[0].id : fallbackPlayers[0]?.id);
+      if (!teamPlayers[0] && fallbackPlayers[0]) {
+        selectedTeam = fallbackPlayers[0].teamId;
+        chosenPlayer = fallbackPlayers[0].id;
       }
       setDevRole("player", selectedTeam, chosenPlayer);
     } else {

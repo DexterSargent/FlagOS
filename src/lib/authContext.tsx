@@ -121,10 +121,35 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [devRole, setDevRoleState] = useState<UserRole | null>(null);
-  const [devTeamId, setDevTeamId] = useState<string | null>(null);
-  const [devPlayerId, setDevPlayerId] = useState<string | null>(null);
-  const [devPlayerData, setDevPlayerData] = useState<any | null>(null);
+  const [devRole, setDevRoleState] = useState<UserRole | null>(() => {
+    if (typeof window !== "undefined") {
+      return (sessionStorage.getItem("demo_dev_role") || localStorage.getItem("dev_auth_role")) as UserRole | null;
+    }
+    return null;
+  });
+  const [devTeamId, setDevTeamId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("demo_managed_team_id") || localStorage.getItem("dev_managed_team_id");
+    }
+    return null;
+  });
+  const [devPlayerId, setDevPlayerId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("demo_player_id") || localStorage.getItem("dev_player_id");
+    }
+    return null;
+  });
+  const [devPlayerData, setDevPlayerData] = useState<any | null>(() => {
+    if (typeof window !== "undefined") {
+      const savedData = sessionStorage.getItem("demo_player_data") || localStorage.getItem("dev_player_data");
+      if (savedData) {
+        try {
+          return JSON.parse(savedData);
+        } catch {}
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
   const pendingAccountEmails = useRef(new Set<string>());
 
@@ -132,11 +157,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedRole = (sessionStorage.getItem("demo_dev_role") || localStorage.getItem("dev_auth_role")) as UserRole | null;
-      if (savedRole) setDevRoleState(savedRole);
+      if (savedRole && savedRole !== devRole) setDevRoleState(savedRole);
       const savedTeam = sessionStorage.getItem("demo_managed_team_id") || localStorage.getItem("dev_managed_team_id");
-      if (savedTeam) setDevTeamId(savedTeam);
+      if (savedTeam && savedTeam !== devTeamId) setDevTeamId(savedTeam);
       const savedPlayer = sessionStorage.getItem("demo_player_id") || localStorage.getItem("dev_player_id");
-      if (savedPlayer) setDevPlayerId(savedPlayer);
+      if (savedPlayer && savedPlayer !== devPlayerId) setDevPlayerId(savedPlayer);
       const savedData = sessionStorage.getItem("demo_player_data") || localStorage.getItem("dev_player_data");
       if (savedData) {
         try {
@@ -536,7 +561,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Determine effective role & player properties
   const isDexter = !!user?.email && user.email.trim().toLowerCase() === "dextersargent@gmail.com";
-  const effectiveRole: UserRole = isDexter ? "league_admin" : (devRole || userProfile?.role || "user");
+  // Explicitly chosen role in dev Role Switcher takes precedence so admins/devs can simulate any persona
+  const effectiveRole: UserRole = devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));
   const isPlatformAdmin = isDexter || (!!user?.email && adminEmails.includes(user.email.trim().toLowerCase()));
   const effectiveTeamId: string | null =
     effectiveRole === "player"
@@ -549,7 +575,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const effectivePlayerData: any | null =
     effectiveRole === "player" ? devPlayerData || userProfile?.playerData || null : null;
 
-  const isLeagueAdmin = isDexter || effectiveRole === "league_admin";
+  const isLeagueAdmin = devRole ? devRole === "league_admin" : (isDexter || effectiveRole === "league_admin");
   const isPlayer = effectiveRole === "player";
 
   const isTeamAdmin = (teamId?: string) => {
