@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { isRealTeam } from "@/components/TeamAssets";
 import { PlayoffFormat } from "@/lib/leagueContext";
+import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 
 interface AutomatedScheduleBuilderModalProps {
   isOpen: boolean;
@@ -463,21 +464,91 @@ export default function AutomatedScheduleBuilderModal({
               {/* Season Parameters Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Regular Season Weeks */}
-                <div>
-                  <label className="text-xs font-mono text-neutral-400 font-bold block mb-1.5 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Regular Season Duration</span>
-                  </label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-mono text-neutral-400 font-bold flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Regular Season Duration</span>
+                      <FieldHelpTooltip
+                        title="Season Duration"
+                        content="Schedule any custom duration from 1 up to 24 game weeks. The round-robin builder automatically balances matchups and home/away splits."
+                      />
+                    </label>
+                    <span className="text-xs font-mono font-bold text-cyan-400">
+                      {weeksCount} {weeksCount === 1 ? "Week" : "Weeks"}
+                    </span>
+                  </div>
+
+                  {/* Stepper + Direct Number Input + Smooth Range Slider */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWeeksCount((w) => Math.max(1, w - 1))}
+                      className="w-9 h-9 rounded-xl bg-neutral-900 border border-white/10 text-white hover:border-cyan-400 hover:text-cyan-300 font-bold text-sm flex items-center justify-center transition-all cursor-pointer shrink-0"
+                      title="Decrease by 1 week"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={24}
+                      value={weeksCount}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val)) {
+                          setWeeksCount(Math.max(1, Math.min(24, val)));
+                        }
+                      }}
+                      className="w-16 bg-black/80 border border-white/10 rounded-xl py-2 text-center text-sm font-black text-white outline-none focus:border-cyan-400 font-mono"
+                      title="Enter any number of weeks from 1 to 24"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setWeeksCount((w) => Math.min(24, w + 1))}
+                      className="w-9 h-9 rounded-xl bg-neutral-900 border border-white/10 text-white hover:border-cyan-400 hover:text-cyan-300 font-bold text-sm flex items-center justify-center transition-all cursor-pointer shrink-0"
+                      title="Increase by 1 week"
+                    >
+                      +
+                    </button>
+                    <input
+                      type="range"
+                      min={1}
+                      max={24}
+                      value={weeksCount}
+                      onChange={(e) => setWeeksCount(Number(e.target.value))}
+                      className="flex-1 accent-cyan-400 cursor-pointer h-2 bg-neutral-800 rounded-lg ml-2"
+                      title="Slide to select duration (1-24 weeks)"
+                    />
+                  </div>
+
+                  {/* Complete 1-to-24 Weeks Select Dropdown */}
                   <select
                     value={weeksCount}
                     onChange={(e) => setWeeksCount(Number(e.target.value))}
-                    className="w-full bg-black/70 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-cyan-400 font-mono"
+                    className="w-full bg-black/70 border border-white/10 rounded-xl p-2.5 text-xs text-white outline-none focus:border-cyan-400 font-mono"
                   >
-                    <option value={4}>4 Weeks (Standard Showcase)</option>
-                    <option value={6}>6 Weeks (Championship Season)</option>
-                    <option value={8}>8 Weeks (Extended League)</option>
-                    <option value={10}>10 Weeks (Pro Season)</option>
-                    <option value={12}>12 Weeks (Full Season)</option>
+                    {Array.from({ length: 24 }, (_, i) => i + 1).map((w) => (
+                      <option key={w} value={w}>
+                        Week 1 to Week {w} ({w} {w === 1 ? "Week" : "Weeks"}
+                        {w === 4
+                          ? " - Showcase"
+                          : w === 6
+                          ? " - Standard Season"
+                          : w === 8
+                          ? " - Extended"
+                          : w === 10
+                          ? " - Pro League"
+                          : w === 12
+                          ? " - Full Season"
+                          : w === 17
+                          ? " - NFL 17-Week Slate"
+                          : w === 24
+                          ? " - Maximum 24-Week Marathon"
+                          : ""}
+                        )
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -486,6 +557,10 @@ export default function AutomatedScheduleBuilderModal({
                   <label className="text-xs font-mono text-neutral-400 font-bold block mb-1.5 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-cyan-400" />
                     <span>Opening Day / Start Date</span>
+                    <FieldHelpTooltip
+                      title="Opening Day"
+                      content="The calendar date for Week 1 matches. Subsequent regular season weeks will automatically schedule 7 days apart."
+                    />
                   </label>
                   <input
                     type="date"
@@ -501,8 +576,12 @@ export default function AutomatedScheduleBuilderModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-cyan-400" />
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                      Playoff Tournament Format
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Playoff Tournament Format</span>
+                      <FieldHelpTooltip
+                        title="Playoff Structure"
+                        content="Configure whether top seeded teams advance into single elimination or double elimination championship knockout brackets upon regular season conclusion."
+                      />
                     </h4>
                   </div>
                   <button
@@ -630,6 +709,10 @@ export default function AutomatedScheduleBuilderModal({
                 <label className="text-xs font-mono text-neutral-400 font-bold block flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Available Field Venues ({venues.length})</span>
+                  <FieldHelpTooltip
+                    title="Field Venues"
+                    content="Specify turf fields or courts. The automated scheduler balances matchups across all configured venues so teams get fair field distribution."
+                  />
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {venues.map((v, i) => (
@@ -674,6 +757,10 @@ export default function AutomatedScheduleBuilderModal({
                 <label className="text-xs font-mono text-neutral-400 font-bold block flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Kickoff Time Slots ({timeSlots.length})</span>
+                  <FieldHelpTooltip
+                    title="Kickoff Times"
+                    content="Game start times on matchdays. Games will be sequentially slated into these available slots."
+                  />
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {timeSlots.map((ts, i) => (

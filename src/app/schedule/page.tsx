@@ -54,6 +54,7 @@ import {
 import PlayoffBracketView from "@/components/schedule/PlayoffBracketView";
 import AutomatedScheduleBuilderModal from "@/components/schedule/AutomatedScheduleBuilderModal";
 import EditPlayoffFormatModal from "@/components/schedule/EditPlayoffFormatModal";
+import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 
 interface Match {
   id: string;
@@ -1134,7 +1135,13 @@ export default function Calendar() {
 
             <form onSubmit={handleSaveMatch} className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-neutral-400 mb-1">Week Title</label>
+                <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                  <span>Week Title</span>
+                  <FieldHelpTooltip
+                    title="Week / Round"
+                    content="Label for grouping games on the schedule (e.g. 'Week 1', 'Week 14', 'Wildcard Round', 'Championship')."
+                  />
+                </label>
                 <input
                   type="text"
                   required
@@ -1147,7 +1154,13 @@ export default function Calendar() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-400 mb-1">Home Team</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                    <span>Home Team</span>
+                    <FieldHelpTooltip
+                      title="Home Team"
+                      content="Host franchise with jersey color priority, coin toss call, and primary sideline."
+                    />
+                  </label>
                   <select
                     required
                     value={editingMatch.homeTeamId || ""}
@@ -1165,7 +1178,13 @@ export default function Calendar() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-400 mb-1">Away Team</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                    <span>Away Team</span>
+                    <FieldHelpTooltip
+                      title="Away Team"
+                      content="Visiting franchise traveling to compete in this match fixture."
+                    />
+                  </label>
                   <select
                     required
                     value={editingMatch.awayTeamId || ""}
@@ -1186,7 +1205,13 @@ export default function Calendar() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-400 mb-1">Date</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                    <span>Date</span>
+                    <FieldHelpTooltip
+                      title="Game Date"
+                      content="Calendar date scheduled for kickoff in YYYY-MM-DD or readable format (e.g. 2026-10-18)."
+                    />
+                  </label>
                   <input
                     type="text"
                     required
@@ -1197,7 +1222,13 @@ export default function Calendar() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-neutral-400 mb-1">Time</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                    <span>Time</span>
+                    <FieldHelpTooltip
+                      title="Kickoff Time"
+                      content="Scheduled match start time (e.g. 8:30 PM, 6:00 PM)."
+                    />
+                  </label>
                   <input
                     type="text"
                     required
@@ -1210,7 +1241,13 @@ export default function Calendar() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-neutral-400 mb-1">Location</label>
+                <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                  <span>Location</span>
+                  <FieldHelpTooltip
+                    title="Pitch / Venue"
+                    content="Field assignment or venue name (e.g. Field 1, Stadium Turf North)."
+                  />
+                </label>
                 <input
                   type="text"
                   required
@@ -1221,23 +1258,35 @@ export default function Calendar() {
                 />
               </div>
 
-              <div className="flex items-center gap-3 bg-white/5 p-4 rounded-xl border border-white/10 mt-2">
-                <input
-                  type="checkbox"
-                  id="preseasonCheck"
-                  checked={editingMatch.isPreseason || false}
-                  onChange={(e) => setEditingMatch({ ...editingMatch, isPreseason: e.target.checked })}
-                  className="w-5 h-5 accent-amber-500 rounded bg-black border-white/20"
+              <div className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10 mt-2">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="preseasonCheck"
+                    checked={editingMatch.isPreseason || false}
+                    onChange={(e) => setEditingMatch({ ...editingMatch, isPreseason: e.target.checked })}
+                    className="w-5 h-5 accent-amber-500 rounded bg-black border-white/20 cursor-pointer"
+                  />
+                  <label htmlFor="preseasonCheck" className="text-white font-semibold cursor-pointer text-sm">
+                    Mark as Preseason Game
+                  </label>
+                </div>
+                <FieldHelpTooltip
+                  title="Preseason Exhibition"
+                  content="Exhibition games support full live play-by-play scoring and stat tracking, but do not calculate into regular season standings points or playoff qualification."
                 />
-                <label htmlFor="preseasonCheck" className="text-white font-semibold cursor-pointer">
-                  Mark as Preseason Game
-                </label>
               </div>
 
               {editingMatch.id && (
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-400 mb-1">Home Score</label>
+                    <label className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
+                      <span>Home Score</span>
+                      <FieldHelpTooltip
+                        title="Home Score"
+                        content="Current points scored by the home team."
+                      />
+                    </label>
                     <input
                       type="number"
                       value={editingMatch.homeScore ?? 0}
@@ -1246,7 +1295,13 @@ export default function Calendar() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-400 mb-1">Away Score</label>
+                    <label className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
+                      <span>Away Score</span>
+                      <FieldHelpTooltip
+                        title="Away Score"
+                        content="Current points scored by the away team."
+                      />
+                    </label>
                     <input
                       type="number"
                       value={editingMatch.awayScore ?? 0}
@@ -1255,7 +1310,13 @@ export default function Calendar() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-neutral-400 mb-1">Status</label>
+                    <label className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
+                      <span>Status</span>
+                      <FieldHelpTooltip
+                        title="Game Status"
+                        content="'scheduled' (upcoming), 'in_progress' (live game), or 'completed' (final score recorded)."
+                      />
+                    </label>
                     <select
                       value={editingMatch.status || "scheduled"}
                       onChange={(e) => setEditingMatch({ ...editingMatch, status: e.target.value as any })}

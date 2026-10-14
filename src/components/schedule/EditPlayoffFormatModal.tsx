@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Trophy, X, Sparkles, Check, Shield } from "lucide-react";
+import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 
 interface EditPlayoffFormatModalProps {
   isOpen: boolean;
@@ -89,8 +90,12 @@ export default function EditPlayoffFormatModal({
 
           {/* Elimination Structure Selector */}
           <div className="space-y-2">
-            <label className="text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider block">
-              Elimination System
+            <label className="text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span>Elimination System</span>
+              <FieldHelpTooltip
+                title="Tournament Structure"
+                content="Choose Single Elimination (1 loss knockout) or Double Elimination (Winners and Losers bracket where teams must lose twice before being eliminated)."
+              />
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -144,8 +149,12 @@ export default function EditPlayoffFormatModal({
           {/* Teams Count Selector */}
           <div className="space-y-3 p-4 rounded-2xl bg-black/60 border border-white/10">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-mono font-bold text-neutral-300 uppercase tracking-wider">
-                Playoff Qualifiers
+              <label className="text-xs font-mono font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span>Playoff Qualifiers</span>
+                <FieldHelpTooltip
+                  title="Playoff Seed Size"
+                  content="The number of top regular season seeds that earn postseason tournament berths. Bye weeks are automatically granted to top seeds when field size is not a power of 2."
+                />
               </label>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-black text-cyan-400 font-mono">

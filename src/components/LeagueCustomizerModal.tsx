@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
+import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 
 const THEME_PRESETS = [
   { id: "gridiron-green", name: "Gridiron Turf (Default)", primary: "#3ca505", accent: "#22c55e" },
@@ -600,6 +601,10 @@ export default function LeagueCustomizerModal() {
                       <Lock className="w-4 h-4 text-amber-400" />
                     )}
                     <span>League Privacy & Directory Listing</span>
+                    <FieldHelpTooltip
+                      title="League Visibility"
+                      content="Public leagues appear in the global directory and search. Private leagues are hidden and accessible only via direct league URL."
+                    />
                   </span>
                   <p className="text-[11px] text-neutral-400 mt-0.5">
                     Choose whether this league appears in the public FlagOS league directory or is accessible only via direct URL.
@@ -740,8 +745,12 @@ export default function LeagueCustomizerModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    League Full Name *
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>League Full Name *</span>
+                    <FieldHelpTooltip
+                      title="League Name"
+                      content="The primary official organization title displayed on schedules, standings, game summaries, and public promotional pages."
+                    />
                   </label>
                   <input
                     type="text"
@@ -754,8 +763,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    League Shortcode
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>League Shortcode</span>
+                    <FieldHelpTooltip
+                      title="Shortcode"
+                      content="A 2 to 6 character acronym used in compact badges, box scores, and breadcrumb navigation (e.g. MFL, AFFL, NFL)."
+                    />
                   </label>
                   <input
                     type="text"
@@ -770,8 +783,12 @@ export default function LeagueCustomizerModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    Season Title / Edition
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>Season Title / Edition</span>
+                    <FieldHelpTooltip
+                      title="Season Edition"
+                      content="The active competition cycle or campaign name (e.g. 2026 Spring Championship, Fall Invitational)."
+                    />
                   </label>
                   <input
                     type="text"
@@ -783,8 +800,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    Tagline / Motto
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>Tagline / Motto</span>
+                    <FieldHelpTooltip
+                      title="Tagline"
+                      content="A descriptive slogan or division tier indicator shown below the league title across headers and cards."
+                    />
                   </label>
                   <input
                     type="text"
@@ -797,8 +818,12 @@ export default function LeagueCustomizerModal() {
               </div>
 
               <div>
-                <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                  League Crest / Logo Url
+                <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <span>League Crest / Logo URL</span>
+                  <FieldHelpTooltip
+                    title="League Crest"
+                    content="Direct image link for your official league emblem. If left empty, default FlagOS brand styling is displayed."
+                  />
                 </label>
                 <input
                   type="Url"
@@ -832,8 +857,12 @@ export default function LeagueCustomizerModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    Default Game Field / Complex
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>Default Game Field / Complex</span>
+                    <FieldHelpTooltip
+                      title="Default Venue"
+                      content="The primary sports complex or home turf used when games don't specify a custom location."
+                    />
                   </label>
                   <input
                     type="text"
@@ -845,8 +874,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    Rulebook Title
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>Rulebook Title</span>
+                    <FieldHelpTooltip
+                      title="Rulebook Title"
+                      content="Title shown on the public rulebook link and document download button."
+                    />
                   </label>
                   <input
                     type="text"
@@ -858,21 +891,29 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    Rulebook Link (Optional)
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>Rulebook Link (URL)</span>
+                    <FieldHelpTooltip
+                      title="Rulebook Link"
+                      content="Direct URL pointing to an official PDF or web page with your league's complete rules and constitution."
+                    />
                   </label>
                   <input
                     type="href"
                     value={rulebookUrl}
                     onChange={(e) => setRulebookUrl(e.target.value)}
-                    placeholder="e.g. Official 7v7 Flag Rules"
+                    placeholder="e.g. https://example.com/rules.pdf"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                    Commissioner / Contact Email
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                    <span>Commissioner Contact Email</span>
+                    <FieldHelpTooltip
+                      title="Contact Email"
+                      content="Public contact address for team managers, coaches, and athletes with inquiries."
+                    />
                   </label>
                   <input
                     type="email"
@@ -885,8 +926,12 @@ export default function LeagueCustomizerModal() {
               </div>
 
               <div>
-                <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                  Site-Wide Announcement Banner (Optional)
+                <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <span>Site-Wide Announcement Banner (Optional)</span>
+                  <FieldHelpTooltip
+                    title="Announcement Banner"
+                    content="A notice shown prominently across the dashboard (e.g. weather alerts, playoff seedings, registration deadlines)."
+                  />
                 </label>
                 <input
                   type="text"
@@ -936,8 +981,12 @@ export default function LeagueCustomizerModal() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
-                    Official Primary Color
+                  <label className="text-[10px] uppercase font-bold text-neutral-400 flex items-center gap-1.5 mb-1">
+                    <span>Official Primary Color</span>
+                    <FieldHelpTooltip
+                      title="Primary Brand Color"
+                      content="Used for primary buttons, active league navigation badges, headers, and major accent borders."
+                    />
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -956,8 +1005,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
-                    Official Accent Color
+                  <label className="text-[10px] uppercase font-bold text-neutral-400 flex items-center gap-1.5 mb-1">
+                    <span>Official Accent Color</span>
+                    <FieldHelpTooltip
+                      title="Accent Color"
+                      content="Secondary color used for glow highlights, tags, chart elements, and interactive accents."
+                    />
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1012,6 +1065,10 @@ export default function LeagueCustomizerModal() {
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" />
                   <span>1. Players on the Field (Per Side)</span>
+                  <FieldHelpTooltip
+                    title="Squad Format"
+                    content="Number of active athletes per squad on the field at one time (e.g. 5v5 for Olympic IFAF standard, 7v7 or 8v8 for contact/screen styles)."
+                  />
                 </span>
                 <span className="text-[10px] font-mono font-bold text-neutral-400">
                   {rules.playersOnField} vs {rules.playersOnField}
@@ -1054,6 +1111,10 @@ export default function LeagueCustomizerModal() {
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
                   <span>2. Game Periods & Clock Structure</span>
+                  <FieldHelpTooltip
+                    title="Game Clock Structure"
+                    content="Configure match timing, whether divided into two halves or four quarters, period length in minutes, and halftime duration."
+                  />
                 </span>
                 <span className="text-[10px] font-mono font-bold text-neutral-400">
                   {rules.periodsCount} {rules.periodType === "quarters" ? "Quarters" : "Halves"} @ {rules.periodDurationMinutes} mins
@@ -1062,8 +1123,12 @@ export default function LeagueCustomizerModal() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-2">
-                    Format
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-2">
+                    <span>Format</span>
+                    <FieldHelpTooltip
+                      title="Period Division"
+                      content="Halves (traditional 2 halves) or Quarters (4 shorter periods with breaks between)."
+                    />
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1095,8 +1160,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-2">
-                    Duration Per Period (Minutes)
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-2">
+                    <span>Duration Per Period (Minutes)</span>
+                    <FieldHelpTooltip
+                      title="Period Duration"
+                      content="Clock duration for each quarter or half of regulation play."
+                    />
                   </label>
                   <div className="flex items-center gap-2">
                     {[10, 12, 15, 20, 25].map((mins) => (
@@ -1138,7 +1207,13 @@ export default function LeagueCustomizerModal() {
               {/* Halftime break */}
               <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-neutral-300 block">Halftime Intermission Duration</span>
+                  <span className="text-xs font-bold text-neutral-300 flex items-center gap-1.5">
+                    <span>Halftime Intermission Duration</span>
+                    <FieldHelpTooltip
+                      title="Halftime Break"
+                      content="Countdown duration displayed on the scoreboard clock during the halftime break."
+                    />
+                  </span>
                   <span className="text-[10px] text-neutral-500">Break clock shown between periods</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -1165,12 +1240,20 @@ export default function LeagueCustomizerModal() {
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Timer className="w-3.5 h-3.5" />
                 <span>3. Timeouts & Stoppages</span>
+                <FieldHelpTooltip
+                  title="Timeouts & Stoppages"
+                  content="Number of charged timeouts permitted per team, clock stoppage duration, and reset rules per period."
+                />
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-2">
-                    Timeouts Per Team
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-2">
+                    <span>Timeouts Per Team</span>
+                    <FieldHelpTooltip
+                      title="Timeout Quota"
+                      content="Number of team timeouts allowed per game or period."
+                    />
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     {[1, 2, 3, 4].map((t) => (
@@ -1191,8 +1274,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-2">
-                    Timeout Duration
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-2">
+                    <span>Timeout Duration</span>
+                    <FieldHelpTooltip
+                      title="Timeout Duration"
+                      content="Length of timeout countdown in seconds before teams must return to the huddle."
+                    />
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[30, 60, 90].map((sec) => (
@@ -1215,7 +1302,13 @@ export default function LeagueCustomizerModal() {
 
               <div className="flex items-center justify-between p-3 rounded-xl bg-black/40 border border-white/10">
                 <div>
-                  <span className="text-xs font-bold text-white block">Reset Timeouts Each Period/Half</span>
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>Reset Timeouts Each Period/Half</span>
+                    <FieldHelpTooltip
+                      title="Timeout Reset Policy"
+                      content="If enabled, timeouts replenish to maximum after every intermission. If disabled, total timeouts are pooled across the full game."
+                    />
+                  </span>
                   <span className="text-[10px] text-neutral-500">
                     When enabled, teams get fresh timeouts each period; otherwise timeouts are for the entire game.
                   </span>
@@ -1235,12 +1328,20 @@ export default function LeagueCustomizerModal() {
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Flame className="w-3.5 h-3.5" />
                 <span>4. Downs & Scrimmage Rules</span>
+                <FieldHelpTooltip
+                  title="Downs & Scrimmage"
+                  content="Gridiron progression rules including series down count, defensive rush mark distance, and play clock interval."
+                />
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-2">
-                    Downs Per Series
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-2">
+                    <span>Downs Per Series</span>
+                    <FieldHelpTooltip
+                      title="Downs Allowed"
+                      content="Attempts allowed to cross midfield for a first down or score a touchdown (3 downs Canadian style, 4 downs American style)."
+                    />
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1272,8 +1373,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-2">
-                    Rush Distance
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-2">
+                    <span>Rush Distance</span>
+                    <FieldHelpTooltip
+                      title="Rush Line Marker"
+                      content="Minimum distance in yards behind the line of scrimmage from which defensive rushers must initiate their rush."
+                    />
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {[1, 5, 7, 10].map((yds) => (
@@ -1294,8 +1399,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-2">
-                    Play Clock Duration
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-2">
+                    <span>Play Clock Duration</span>
+                    <FieldHelpTooltip
+                      title="Play Clock"
+                      content="Time in seconds between official ball ready signal and snap before a delay of game penalty."
+                    />
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[25, 30, 40].map((clk) => (
@@ -1325,12 +1434,20 @@ export default function LeagueCustomizerModal() {
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" />
                 <span>5. Roster Size Limits & Compliance</span>
+                <FieldHelpTooltip
+                  title="Roster Sizes"
+                  content="Set minimum roster compliance thresholds and maximum athlete limits per team."
+                />
               </span>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2">
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block">
-                    Minimum Roster Size
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5">
+                    <span>Minimum Roster Size</span>
+                    <FieldHelpTooltip
+                      title="Minimum Roster"
+                      content="Minimum number of active athletes required on a team roster. Teams with fewer players show compliance warnings."
+                    />
                   </label>
                   <div className="flex items-center gap-3">
                     <input
@@ -1354,8 +1471,12 @@ export default function LeagueCustomizerModal() {
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-2">
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block">
-                    Maximum Roster Size
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5">
+                    <span>Maximum Roster Size</span>
+                    <FieldHelpTooltip
+                      title="Roster Cap"
+                      content="Hard cap on team roster size. Managers cannot add more players once this number is reached."
+                    />
                   </label>
                   <div className="flex items-center gap-3">
                     <input
@@ -1386,6 +1507,10 @@ export default function LeagueCustomizerModal() {
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>6. Free Agent Pool & Public Registration Form</span>
+                  <FieldHelpTooltip
+                    title="Free Agent Draft Pool"
+                    content="Allows prospective athletes to register independently through the public join form and pool together for team draft selection."
+                  />
                 </span>
                 <span
                   className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${rules.enableFreeAgents !== false
