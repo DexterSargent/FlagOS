@@ -162,4 +162,97 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
       expect(screen.getByRole("button", { name: /Cancel \/ Keep Game/i })).toBeInTheDocument();
     });
   });
+
+  it("vertically stacks player sections and auto-collapses on selection with reopen down arrow", async () => {
+    await renderAdmin();
+
+    // Snap the ball to enter play wizard
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    // 1. Select PASS
+    const passButton = screen.getByRole("button", { name: /PASS/i });
+    fireEvent.click(passButton);
+
+    // 2. Quarterback selection should be open vertically
+    expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
+    const marcusBtn = screen.getByRole("button", { name: "Marcus Vance" });
+    expect(marcusBtn).toBeInTheDocument();
+
+    // Select Marcus Vance as QB
+    fireEvent.click(marcusBtn);
+
+    // Quarterback list should now auto-collapse and display "Quarterback: Marcus Vance" with Change / down arrow
+    expect(screen.queryByText("Select Quarterback")).not.toBeInTheDocument();
+    const qbCollapsed = screen.getByRole("button", { name: /Quarterback: Marcus Vance/i });
+    expect(qbCollapsed).toBeInTheDocument();
+
+    // 3. Receiver selection should now be open vertically
+    expect(screen.getByText("Select Receiver")).toBeInTheDocument();
+    const leoBtn = screen.getByRole("button", { name: "Leo Sterling" });
+    expect(leoBtn).toBeInTheDocument();
+
+    // Select Leo Sterling as Receiver
+    fireEvent.click(leoBtn);
+
+    // Receiver list should auto-collapse and display "Receiver: Leo Sterling" with Change / down arrow
+    expect(screen.queryByText("Select Receiver")).not.toBeInTheDocument();
+    const receiverCollapsed = screen.getByRole("button", { name: /Receiver: Leo Sterling/i });
+    expect(receiverCollapsed).toBeInTheDocument();
+
+    // 4. Outcomes and Flaggers should now be presented
+    expect(screen.getByText("Flagger(s)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /TOUCHDOWN/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /OUT OF BOUNDS/i })).toBeInTheDocument();
+
+    // 5. Select a defender (David Kim) as flagger -> outcomes update to First Down / Short
+    const davidBtn = screen.getByRole("button", { name: "David Kim" });
+    fireEvent.click(davidBtn);
+    expect(screen.getByRole("button", { name: /FIRST DOWN/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /SHORT OF LINE/i })).toBeInTheDocument();
+
+    // 6. Test reopening collapsed sections: Click collapsed Quarterback button
+    fireEvent.click(qbCollapsed);
+    expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
+  });
+
+  it("handles RUN play type with auto-collapsing runner section and presented outcomes", async () => {
+    await renderAdmin();
+
+    // Snap the ball
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    // 1. Select RUN
+    const runButton = screen.getByRole("button", { name: /RUN/i });
+    fireEvent.click(runButton);
+
+    // 2. Runner selection should be open vertically
+    expect(screen.getByText("Select Runner")).toBeInTheDocument();
+    const marcusBtn = screen.getByRole("button", { name: "Marcus Vance" });
+    expect(marcusBtn).toBeInTheDocument();
+
+    // Select Marcus Vance as Runner
+    fireEvent.click(marcusBtn);
+
+    // Runner list should auto-collapse and display "Runner: Marcus Vance" with Change / down arrow
+    expect(screen.queryByText("Select Runner")).not.toBeInTheDocument();
+    const runnerCollapsed = screen.getByRole("button", { name: /Runner: Marcus Vance/i });
+    expect(runnerCollapsed).toBeInTheDocument();
+
+    // 3. Flaggers and Outcomes are now presented
+    expect(screen.getByText("Flagger(s)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /TOUCHDOWN/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /OUT OF BOUNDS/i })).toBeInTheDocument();
+
+    // Reopen Runner
+    fireEvent.click(runnerCollapsed);
+    expect(screen.getByText("Select Runner")).toBeInTheDocument();
+  });
 });
+
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -41,6 +41,7 @@ import {
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo } from "@/components/TeamAssets";
 import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
+import { getPlayerNumberMap, sortRosterWithNumbers } from "@/lib/playerNumberHelper";
 import {
   PENALTY_CATALOG,
   PenaltyDefinition,
@@ -95,6 +96,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [subModalTeam, setSubModalTeam] = useState<"HOME" | "AWAY" | null>(null);
   const [newSubInput, setNewSubInput] = useState("");
+
+  const playerNumberMap = useMemo(() => {
+    return getPlayerNumberMap(allPlayers, homePlayers, awayPlayers);
+  }, [allPlayers, homePlayers, awayPlayers]);
 
   // Game State (Zero clocks, zero timeouts)
   const [half, setHalf] = useState<1 | 2>(1); // 1 = First Half, 2 = Second Half
@@ -1052,6 +1057,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   downsPerSeries={downsPerSeries}
                   offenseRoster={offensePlayers}
                   defenseRoster={defensePlayers}
+                  playerNumbers={playerNumberMap}
                   onCancel={resetPlayForm}
                   onSavePenalty={handleSavePenalty}
                 />
@@ -1134,62 +1140,113 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
                 {/* Quarterback / Runner Selection */}
                 <div className="min-w-0">
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                    {playType === "Pass" ? "Quarterback" : "Ball Carrier"}
-                  </label>
-                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-20 md:max-h-24 overflow-y-auto">
-                    {offensePlayers.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setQbRunner(p)}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all border ${
-                          qbRunner === p
-                            ? "bg-white text-black font-black border-white"
-                            : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                      {playType === "Pass" ? "Quarterback" : "Ball Carrier"}
+                    </label>
+                    {qbRunner && (
+                      <span className="text-[10px] font-bold text-cyan-400">
+                        Selected: {playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ""}{qbRunner}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
+                    {sortRosterWithNumbers(offensePlayers, playerNumberMap).map((p) => {
+                      const pNum = playerNumberMap[p];
+                      const isSelected = qbRunner === p;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          aria-label={p}
+                          onClick={() => setQbRunner(p)}
+                          className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all border flex items-center justify-between gap-1.5 ${
+                            isSelected
+                              ? "bg-white text-black font-black border-white shadow-sm"
+                              : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {pNum && (
+                              <span className={`px-1 py-0.2 rounded font-mono font-bold text-[10px] shrink-0 ${
+                                isSelected ? "bg-black/15 text-black" : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                              }`}>
+                                #{pNum}
+                              </span>
+                            )}
+                            <span className="truncate">{p}</span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Receiver Selection (for Complete pass) */}
                 {playType === "Pass" && outcome === "Complete" && (
                   <div className="min-w-0">
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                      Target Receiver
-                    </label>
-                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-20 md:max-h-24 overflow-y-auto">
-                      {offensePlayers.map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setReceiver(p)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                            receiver === p
-                              ? "bg-emerald-400 text-black font-black border-emerald-400"
-                              : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                        Target Receiver
+                      </label>
+                      {receiver && (
+                        <span className="text-[10px] font-bold text-emerald-400">
+                          Selected: {playerNumberMap[receiver] ? `#${playerNumberMap[receiver]} ` : ""}{receiver}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
+                      {sortRosterWithNumbers(offensePlayers, playerNumberMap).map((p) => {
+                        const pNum = playerNumberMap[p];
+                        const isSelected = receiver === p;
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            aria-label={p}
+                            onClick={() => setReceiver(p)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-between gap-1.5 ${
+                              isSelected
+                                ? "bg-emerald-400 text-black font-black border-emerald-400 shadow-sm"
+                                : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {pNum && (
+                                <span className={`px-1 py-0.2 rounded font-mono font-bold text-[10px] shrink-0 ${
+                                  isSelected ? "bg-black/15 text-black" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                }`}>
+                                  #{pNum}
+                                </span>
+                              )}
+                              <span className="truncate">{p}</span>
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
 
                 {/* Defenders / Flag Pullers */}
                 <div className="md:col-span-2">
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
-                    Defenders Involved / Flag Pull
-                  </label>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-1 max-h-20 md:max-h-24 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                      Defenders Involved / Flag Pull
+                    </label>
+                    {defenders.length > 0 && (
+                      <span className="text-[10px] font-bold text-amber-400">
+                        Selected: {defenders.map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(" & ")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => handleDefenders("TEAM")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                      className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                         defenders.includes("TEAM")
                           ? "bg-amber-400 text-black font-black border-amber-400"
                           : "bg-neutral-800 border-white/10 text-neutral-300"
@@ -1197,20 +1254,35 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     >
                       Team Defense
                     </button>
-                    {defensePlayers.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => handleDefenders(p)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                          defenders.includes(p)
-                            ? "bg-red-500 text-white font-black border-red-500"
-                            : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    {sortRosterWithNumbers(defensePlayers, playerNumberMap).map((p) => {
+                      const pNum = playerNumberMap[p];
+                      const isSelected = defenders.includes(p);
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          aria-label={p}
+                          onClick={() => handleDefenders(p)}
+                          className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-between gap-1.5 ${
+                            isSelected
+                              ? "bg-red-500 text-white font-black border-red-500 shadow-sm"
+                              : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {pNum && (
+                              <span className={`px-1 py-0.2 rounded font-mono font-bold text-[10px] shrink-0 ${
+                                isSelected ? "bg-white/20 text-white" : "bg-red-500/20 text-red-300 border border-red-500/30"
+                              }`}>
+                                #{pNum}
+                              </span>
+                            )}
+                            <span className="truncate">{p}</span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

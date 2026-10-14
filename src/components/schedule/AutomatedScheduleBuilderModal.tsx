@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   X,
   Zap,
@@ -18,7 +18,7 @@ import {
   Layers,
 } from "lucide-react";
 import { isRealTeam } from "@/components/TeamAssets";
-import { PlayoffFormat } from "@/lib/leagueContext";
+import { PlayoffFormat, getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 
 interface AutomatedScheduleBuilderModalProps {
@@ -79,14 +79,42 @@ export default function AutomatedScheduleBuilderModal({
   const [newTimeInput, setNewTimeInput] = useState("");
 
   // Playoff Format State
-  const [playoffTeamsCount, setPlayoffTeamsCount] = useState<number>(
-    initialPlayoffFormat?.teamsCount || (eligibleTeams.length >= 16 ? 8 : 4)
-  );
+  const defaultPlayoffCount = useMemo(() => {
+    return getNearestSimplePlayoffBracket(eligibleTeams.length);
+  }, [eligibleTeams.length]);
+
+  const [playoffTeamsCount, setPlayoffTeamsCount] = useState<number>(() => {
+    if (initialPlayoffFormat?.teamsCount) {
+      if (initialPlayoffFormat.teamsCount === 14 && eligibleTeams.length !== 32) {
+        return getNearestSimplePlayoffBracket(eligibleTeams.length);
+      }
+      if (initialPlayoffFormat.teamsCount <= eligibleTeams.length) {
+        return initialPlayoffFormat.teamsCount;
+      }
+    }
+    return getNearestSimplePlayoffBracket(eligibleTeams.length);
+  });
   const [playoffStructure, setPlayoffStructure] = useState<"single_elimination" | "double_elimination">(
     initialPlayoffFormat?.structure || "single_elimination"
   );
   const [includePlayoffs, setIncludePlayoffs] = useState<boolean>(true);
   const [clearExisting, setClearExisting] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialPlayoffFormat?.teamsCount) {
+        if (initialPlayoffFormat.teamsCount === 14 && eligibleTeams.length !== 32) {
+          setPlayoffTeamsCount(getNearestSimplePlayoffBracket(eligibleTeams.length));
+        } else if (initialPlayoffFormat.teamsCount <= eligibleTeams.length) {
+          setPlayoffTeamsCount(initialPlayoffFormat.teamsCount);
+        } else {
+          setPlayoffTeamsCount(getNearestSimplePlayoffBracket(eligibleTeams.length));
+        }
+      } else {
+        setPlayoffTeamsCount(getNearestSimplePlayoffBracket(eligibleTeams.length));
+      }
+    }
+  }, [isOpen, eligibleTeams.length, initialPlayoffFormat]);
 
   // Live Synthesis Progress State
   const [buildProgress, setBuildProgress] = useState(0);
@@ -678,7 +706,9 @@ export default function AutomatedScheduleBuilderModal({
                                 : "bg-black/50 text-neutral-400 hover:text-white border-white/10"
                             }`}
                           >
-                            {c === eligibleTeams.length ? `All (${c})` : `${c} Teams`}
+                            {c === eligibleTeams.length
+                              ? `All (${c})`
+                              : `${c} Teams${c === defaultPlayoffCount ? " (Default)" : ""}`}
                           </button>
                         ))}
                     </div>

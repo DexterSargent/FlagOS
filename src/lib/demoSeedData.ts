@@ -141,8 +141,8 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_buf_2", teamId: "team_buf", playerName: "James Cook", number: "4", position: "RB", positions: ["RB", "ATH"], status: "Active" },
   { id: "p_buf_3", teamId: "team_buf", playerName: "Khalil Shakir", number: "10", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_buf_4", teamId: "team_buf", playerName: "Keon Coleman", number: "0", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_buf_5", teamId: "team_buf", playerName: "Curtis Samuel", number: "1", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
-  { id: "p_buf_6", teamId: "team_buf", playerName: "Rasul Douglas", number: "31", position: "DB", positions: ["DB"], status: "Active" },
+  { id: "p_buf_5", teamId: "team_buf", playerName: "Amari Cooper", number: "18", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
+  { id: "p_buf_6", teamId: "team_buf", playerName: "Christian Benford", number: "47", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_buf_7", teamId: "team_buf", playerName: "Greg Rousseau", number: "50", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 2. Miami (Dolphins)
@@ -150,15 +150,15 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_mia_2", teamId: "team_mia", playerName: "Tyreek Hill", number: "10", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_mia_3", teamId: "team_mia", playerName: "Jaylen Waddle", number: "17", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_mia_4", teamId: "team_mia", playerName: "De'Von Achane", number: "28", position: "RB", positions: ["RB", "ATH"], status: "Active" },
-  { id: "p_mia_5", teamId: "team_mia", playerName: "Raheem Mostert", number: "31", position: "ATH", positions: ["ATH", "RB"], status: "Active" },
+  { id: "p_mia_5", teamId: "team_mia", playerName: "Jonnu Smith", number: "9", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
   { id: "p_mia_6", teamId: "team_mia", playerName: "Jalen Ramsey", number: "5", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_mia_7", teamId: "team_mia", playerName: "Jaelan Phillips", number: "15", position: "RUSH", positions: ["RUSH"], status: "Active" },
+  { id: "p_mia_7", teamId: "team_mia", playerName: "Chop Robinson", number: "44", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 3. New England (Patriots)
   { id: "p_ne_1", teamId: "team_ne", playerName: "Drake Maye", number: "10", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_ne_2", teamId: "team_ne", playerName: "Rhamondre Stevenson", number: "38", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_ne_3", teamId: "team_ne", playerName: "Demario Douglas", number: "3", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_ne_4", teamId: "team_ne", playerName: "Kendrick Bourne", number: "84", position: "WR", positions: ["WR"], status: "Active" },
+  { id: "p_ne_4", teamId: "team_ne", playerName: "Kayshon Boutte", number: "80", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_ne_5", teamId: "team_ne", playerName: "Hunter Henry", number: "85", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
   { id: "p_ne_6", teamId: "team_ne", playerName: "Christian Gonzalez", number: "6", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_ne_7", teamId: "team_ne", playerName: "Keion White", number: "99", position: "RUSH", positions: ["RUSH"], status: "Active" },
@@ -168,7 +168,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_nye_2", teamId: "team_nye", playerName: "Breece Hall", number: "20", position: "RB", positions: ["RB", "ATH"], status: "Active" },
   { id: "p_nye_3", teamId: "team_nye", playerName: "Garrett Wilson", number: "5", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_nye_4", teamId: "team_nye", playerName: "Davante Adams", number: "17", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_nye_5", teamId: "team_nye", playerName: "Allen Lazard", number: "10", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
+  { id: "p_nye_5", teamId: "team_nye", playerName: "Braelon Allen", number: "0", position: "ATH", positions: ["ATH", "RB"], status: "Active" },
   { id: "p_nye_6", teamId: "team_nye", playerName: "Sauce Gardner", number: "1", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_nye_7", teamId: "team_nye", playerName: "Will McDonald IV", number: "99", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
@@ -200,7 +200,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_cle_7", teamId: "team_cle", playerName: "Myles Garrett", number: "95", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 8. Pittsburgh (Steelers)
-  { id: "p_pit_1", teamId: "team_pit", playerName: "Justin Fields", number: "2", position: "QB", positions: ["QB"], status: "Active" },
+  { id: "p_pit_1", teamId: "team_pit", playerName: "Russell Wilson", number: "3", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_pit_2", teamId: "team_pit", playerName: "George Pickens", number: "14", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_pit_3", teamId: "team_pit", playerName: "Najee Harris", number: "22", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_pit_4", teamId: "team_pit", playerName: "Jaylen Warren", number: "30", position: "RB", positions: ["RB", "ATH"], status: "Active" },
@@ -212,8 +212,8 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_hou_1", teamId: "team_hou", playerName: "C.J. Stroud", number: "7", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_hou_2", teamId: "team_hou", playerName: "Joe Mixon", number: "28", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_hou_3", teamId: "team_hou", playerName: "Nico Collins", number: "12", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_hou_4", teamId: "team_hou", playerName: "Stefon Diggs", number: "1", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_hou_5", teamId: "team_hou", playerName: "Tank Dell", number: "3", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
+  { id: "p_hou_4", teamId: "team_hou", playerName: "Tank Dell", number: "3", position: "WR", positions: ["WR"], status: "Active" },
+  { id: "p_hou_5", teamId: "team_hou", playerName: "Stefon Diggs", number: "1", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
   { id: "p_hou_6", teamId: "team_hou", playerName: "Derek Stingley Jr.", number: "24", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_hou_7", teamId: "team_hou", playerName: "Will Anderson Jr.", number: "51", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
@@ -224,7 +224,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_ind_4", teamId: "team_ind", playerName: "Josh Downs", number: "1", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_ind_5", teamId: "team_ind", playerName: "Alec Pierce", number: "14", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
   { id: "p_ind_6", teamId: "team_ind", playerName: "Kenny Moore II", number: "23", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_ind_7", teamId: "team_ind", playerName: "Kwity Paye", number: "51", position: "RUSH", positions: ["RUSH"], status: "Active" },
+  { id: "p_ind_7", teamId: "team_ind", playerName: "Laiatu Latu", number: "97", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 11. Jacksonville (Jaguars)
   { id: "p_jax_1", teamId: "team_jax", playerName: "Trevor Lawrence", number: "16", position: "QB", positions: ["QB"], status: "Active" },
@@ -239,7 +239,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_ten_1", teamId: "team_ten", playerName: "Will Levis", number: "8", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_ten_2", teamId: "team_ten", playerName: "Tony Pollard", number: "20", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_ten_3", teamId: "team_ten", playerName: "Calvin Ridley", number: "0", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_ten_4", teamId: "team_ten", playerName: "Tyler Boyd", number: "83", position: "WR", positions: ["WR"], status: "Active" },
+  { id: "p_ten_4", teamId: "team_ten", playerName: "Nick Westbrook-Ikhine", number: "15", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_ten_5", teamId: "team_ten", playerName: "Chig Okonkwo", number: "85", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
   { id: "p_ten_6", teamId: "team_ten", playerName: "L'Jarius Sneed", number: "38", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_ten_7", teamId: "team_ten", playerName: "Harold Landry III", number: "58", position: "RUSH", positions: ["RUSH"], status: "Active" },
@@ -248,8 +248,8 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_kc_1", teamId: "team_kc", playerName: "Patrick Mahomes", number: "15", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_kc_2", teamId: "team_kc", playerName: "Travis Kelce", number: "87", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
   { id: "p_kc_3", teamId: "team_kc", playerName: "Xavier Worthy", number: "1", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_kc_4", teamId: "team_kc", playerName: "Isiah Pacheco", number: "10", position: "RB", positions: ["RB"], status: "Active" },
-  { id: "p_kc_5", teamId: "team_kc", playerName: "Rashee Rice", number: "4", position: "WR", positions: ["WR"], status: "Active" },
+  { id: "p_kc_4", teamId: "team_kc", playerName: "DeAndre Hopkins", number: "8", position: "WR", positions: ["WR"], status: "Active" },
+  { id: "p_kc_5", teamId: "team_kc", playerName: "Isiah Pacheco", number: "10", position: "RB", positions: ["RB", "ATH"], status: "Active" },
   { id: "p_kc_6", teamId: "team_kc", playerName: "Trent McDuffie", number: "22", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_kc_7", teamId: "team_kc", playerName: "Chris Jones", number: "95", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
@@ -285,7 +285,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_dal_2", teamId: "team_dal", playerName: "CeeDee Lamb", number: "88", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_dal_3", teamId: "team_dal", playerName: "Jake Ferguson", number: "87", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
   { id: "p_dal_4", teamId: "team_dal", playerName: "Rico Dowdle", number: "23", position: "RB", positions: ["RB"], status: "Active" },
-  { id: "p_dal_5", teamId: "team_dal", playerName: "Brandin Cooks", number: "3", position: "WR", positions: ["WR"], status: "Active" },
+  { id: "p_dal_5", teamId: "team_dal", playerName: "Jalen Tolbert", number: "1", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_dal_6", teamId: "team_dal", playerName: "Trevon Diggs", number: "7", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_dal_7", teamId: "team_dal", playerName: "Micah Parsons", number: "11", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
@@ -295,17 +295,17 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_phi_3", teamId: "team_phi", playerName: "A.J. Brown", number: "11", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_phi_4", teamId: "team_phi", playerName: "DeVonta Smith", number: "6", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_phi_5", teamId: "team_phi", playerName: "Dallas Goedert", number: "88", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
-  { id: "p_phi_6", teamId: "team_phi", playerName: "Darius Slay", number: "2", position: "DB", positions: ["DB"], status: "Active" },
+  { id: "p_phi_6", teamId: "team_phi", playerName: "Quinyon Mitchell", number: "27", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_phi_7", teamId: "team_phi", playerName: "Jalen Carter", number: "98", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 19. New York Empire (Giants)
-  { id: "p_nyg_1", teamId: "team_nyg", playerName: "Daniel Jones", number: "8", position: "QB", positions: ["QB"], status: "Active" },
+  { id: "p_nyg_1", teamId: "team_nyg", playerName: "Drew Lock", number: "2", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_nyg_2", teamId: "team_nyg", playerName: "Malik Nabers", number: "1", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_nyg_3", teamId: "team_nyg", playerName: "Tyrone Tracy Jr.", number: "29", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_nyg_4", teamId: "team_nyg", playerName: "Wan'Dale Robinson", number: "17", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_nyg_5", teamId: "team_nyg", playerName: "Darius Slayton", number: "86", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
   { id: "p_nyg_6", teamId: "team_nyg", playerName: "Deonte Banks", number: "25", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_nyg_7", teamId: "team_nyg", playerName: "Kayvon Thibodeaux", number: "5", position: "RUSH", positions: ["RUSH"], status: "Active" },
+  { id: "p_nyg_7", teamId: "team_nyg", playerName: "Brian Burns", number: "0", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 20. Washington (Commanders)
   { id: "p_was_1", teamId: "team_was", playerName: "Jayden Daniels", number: "5", position: "QB", positions: ["QB"], status: "Active" },
@@ -314,7 +314,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_was_4", teamId: "team_was", playerName: "Austin Ekeler", number: "30", position: "RB", positions: ["RB", "ATH"], status: "Active" },
   { id: "p_was_5", teamId: "team_was", playerName: "Zach Ertz", number: "86", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
   { id: "p_was_6", teamId: "team_was", playerName: "Mike Sainristil", number: "2", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_was_7", teamId: "team_was", playerName: "Dorance Armstrong", number: "92", position: "RUSH", positions: ["RUSH"], status: "Active" },
+  { id: "p_was_7", teamId: "team_was", playerName: "Frankie Luvu", number: "4", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 21. Chicago (Bears)
   { id: "p_chi_1", teamId: "team_chi", playerName: "Caleb Williams", number: "18", position: "QB", positions: ["QB"], status: "Active" },
@@ -339,12 +339,12 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_gb_2", teamId: "team_gb", playerName: "Josh Jacobs", number: "8", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_gb_3", teamId: "team_gb", playerName: "Jayden Reed", number: "11", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_gb_4", teamId: "team_gb", playerName: "Romeo Doubs", number: "87", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_gb_5", teamId: "team_gb", playerName: "Christian Watson", number: "9", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
-  { id: "p_gb_6", teamId: "team_gb", playerName: "Jaire Alexander", number: "23", position: "DB", positions: ["DB"], status: "Active" },
+  { id: "p_gb_5", teamId: "team_gb", playerName: "Tucker Kraft", number: "85", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
+  { id: "p_gb_6", teamId: "team_gb", playerName: "Xavier McKinney", number: "29", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_gb_7", teamId: "team_gb", playerName: "Rashan Gary", number: "52", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 24. Minnesota (Vikings)
-  { id: "p_min_1", teamId: "team_min", playerName: "Sam Darnold", number: "14", position: "QB", positions: ["QB"], status: "Active" },
+  { id: "p_min_1", teamId: "team_min", playerName: "J.J. McCarthy", number: "9", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_min_2", teamId: "team_min", playerName: "Justin Jefferson", number: "18", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_min_3", teamId: "team_min", playerName: "Aaron Jones", number: "33", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_min_4", teamId: "team_min", playerName: "Jordan Addison", number: "3", position: "WR", positions: ["WR"], status: "Active" },
@@ -353,7 +353,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_min_7", teamId: "team_min", playerName: "Jonathan Greenard", number: "58", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 25. Atlanta (Falcons)
-  { id: "p_atl_1", teamId: "team_atl", playerName: "Kirk Cousins", number: "18", position: "QB", positions: ["QB"], status: "Active" },
+  { id: "p_atl_1", teamId: "team_atl", playerName: "Michael Penix Jr.", number: "9", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_atl_2", teamId: "team_atl", playerName: "Bijan Robinson", number: "7", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_atl_3", teamId: "team_atl", playerName: "Drake London", number: "5", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_atl_4", teamId: "team_atl", playerName: "Darnell Mooney", number: "1", position: "WR", positions: ["WR"], status: "Active" },
@@ -377,7 +377,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_no_4", teamId: "team_no", playerName: "Rashid Shaheed", number: "22", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_no_5", teamId: "team_no", playerName: "Taysom Hill", number: "7", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
   { id: "p_no_6", teamId: "team_no", playerName: "Tyrann Mathieu", number: "32", position: "DB", positions: ["DB"], status: "Active" },
-  { id: "p_no_7", teamId: "team_no", playerName: "Cameron Jordan", number: "94", position: "RUSH", positions: ["RUSH"], status: "Active" },
+  { id: "p_no_7", teamId: "team_no", playerName: "Chase Young", number: "99", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 28. Tampa Bay (Buccaneers)
   { id: "p_tb_1", teamId: "team_tb", playerName: "Baker Mayfield", number: "6", position: "QB", positions: ["QB"], status: "Active" },
@@ -411,8 +411,8 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_sf_2", teamId: "team_sf", playerName: "Christian McCaffrey", number: "23", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_sf_3", teamId: "team_sf", playerName: "Deebo Samuel", number: "1", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_sf_4", teamId: "team_sf", playerName: "George Kittle", number: "85", position: "ATH", positions: ["ATH", "TE"], status: "Active" },
-  { id: "p_sf_5", teamId: "team_sf", playerName: "Jauan Jennings", number: "15", position: "WR", positions: ["WR"], status: "Active" },
-  { id: "p_sf_6", teamId: "team_sf", playerName: "Charvarius Ward", number: "7", position: "DB", positions: ["DB"], status: "Active" },
+  { id: "p_sf_5", teamId: "team_sf", playerName: "Ricky Pearsall", number: "14", position: "WR", positions: ["WR"], status: "Active" },
+  { id: "p_sf_6", teamId: "team_sf", playerName: "Fred Warner", number: "54", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_sf_7", teamId: "team_sf", playerName: "Nick Bosa", number: "97", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // 32. Seattle (Seahawks)
@@ -421,7 +421,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_sea_3", teamId: "team_sea", playerName: "Jaxon Smith-Njigba", number: "11", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_sea_4", teamId: "team_sea", playerName: "Kenneth Walker III", number: "9", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_sea_5", teamId: "team_sea", playerName: "Tyler Lockett", number: "16", position: "ATH", positions: ["ATH", "WR"], status: "Active" },
-  { id: "p_sea_6", teamId: "team_sea", playerName: "Tariq Woolen", number: "27", position: "DB", positions: ["DB"], status: "Active" },
+  { id: "p_sea_6", teamId: "team_sea", playerName: "Devon Witherspoon", number: "21", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_sea_7", teamId: "team_sea", playerName: "Boye Mafe", number: "53", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
   // Free Agents Pool (Unassigned draft athletes)

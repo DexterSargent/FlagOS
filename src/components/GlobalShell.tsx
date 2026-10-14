@@ -28,15 +28,16 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const isLogin = pathname === "/login";
   const isAdminSandbox = pathname === "/admin/sandbox";
   const isLandingPage = pathname === "/" || pathname === "" || pathname === null;
+  const isPricingPage = pathname === "/pricing";
   const hideChrome = isEmbedded || isPlayByPlay || isLogin || isAdminSandbox;
 
   return (
     <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
-      {!hideChrome && !isLandingPage && <LeagueHeader />}
+      {!hideChrome && !isLandingPage && !isPricingPage && <LeagueHeader />}
       <main className="flex-1 w-full max-w-full overflow-x-hidden">
         {children}
       </main>
-      {!hideChrome && !isLandingPage && <LeagueFooter />}
+      {!hideChrome && !isLandingPage && !isPricingPage && <LeagueFooter />}
     </div>
   );
 }

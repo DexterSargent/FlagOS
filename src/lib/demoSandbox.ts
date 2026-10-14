@@ -20,7 +20,7 @@ export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS,
 // Session Storage Keys & Helper Functions
 // ---------------------------------------------------------------------------
 
-const KEY_INIT = "flagos_demo_initialized_17weeks_nfl_v2";
+const KEY_INIT = "flagos_demo_initialized_2026_nfl_v3";
 const KEY_SETTINGS = "flagos_demo_settings";
 const KEY_TEAMS = "flagos_demo_teams";
 const KEY_PLAYERS = "flagos_demo_players";
@@ -86,6 +86,12 @@ export const initDemoSandbox = (): void => {
   const initialized = sessionStorage.getItem(KEY_INIT);
   if (!initialized) {
     sessionStorage.setItem(KEY_INIT, "true");
+    sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(DEFAULT_LEAGUE_SETTINGS));
+    sessionStorage.setItem(KEY_TEAMS, JSON.stringify(SEED_DEMO_TEAMS));
+    sessionStorage.setItem(KEY_PLAYERS, JSON.stringify(SEED_DEMO_PLAYERS));
+    sessionStorage.setItem(KEY_MATCHES, JSON.stringify(SEED_DEMO_MATCHES));
+    sessionStorage.setItem(KEY_PLAYS, JSON.stringify(SEED_DEMO_PLAYS));
+    return;
   }
 
   // Ensure individual storage keys exist if completely missing (null)

@@ -37,6 +37,20 @@ describe("GlobalShell", () => {
     expect(screen.queryByText("League Header")).not.toBeInTheDocument();
   });
 
+  it("omits the league header and footer from the pricing page", () => {
+    usePathnameMock.mockReturnValue("/pricing");
+
+    render(
+      <GlobalShell>
+        <div>Pricing content</div>
+      </GlobalShell>
+    );
+
+    expect(screen.getByText("Pricing content")).toBeInTheDocument();
+    expect(screen.queryByText("League Header")).not.toBeInTheDocument();
+    expect(screen.queryByText("League Footer")).not.toBeInTheDocument();
+  });
+
   it("keeps the league header on other pages", () => {
     usePathnameMock.mockReturnValue("/schedule");
 
@@ -47,5 +61,6 @@ describe("GlobalShell", () => {
     );
 
     expect(screen.getByText("League Header")).toBeInTheDocument();
+    expect(screen.getByText("League Footer")).toBeInTheDocument();
   });
 });

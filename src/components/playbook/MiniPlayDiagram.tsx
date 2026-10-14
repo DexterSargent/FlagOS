@@ -27,11 +27,19 @@ export default function MiniPlayDiagram({
   const rushY = losY - rushDistanceY;
   const isLight = theme === "light";
 
+  // Unique IDs for SVG definitions to prevent collisions when multiple plays render on one page
+  const playUid = (play.id || "play").replace(/[^a-zA-Z0-9_-]/g, "");
+  const turfPatternId = `turf-${playUid}-${theme}`;
+  const markerPassId = `arr-pass-${playUid}-${theme}`;
+  const markerRushId = `arr-rush-${playUid}-${theme}`;
+  const markerDefId = `arr-def-${playUid}-${theme}`;
+  const markerMotId = `arr-mot-${playUid}-${theme}`;
+
   // Background and line colors for print vs screen
-  const turfBg = isLight ? "#F8FAFC" : "#102319";
-  const turfStripe = isLight ? "#F1F5F9" : "#0D1E16";
-  const yardLineColor = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.12)";
-  const sidelineColor = isLight ? "#94A3B8" : "rgba(255, 255, 255, 0.4)";
+  const turfBg = isLight ? "#FFFFFF" : "#102319";
+  const turfStripe = isLight ? "#F8FAFC" : "#0D1E16";
+  const yardLineColor = isLight ? "#CBD5E1" : "rgba(255, 255, 255, 0.12)";
+  const sidelineColor = isLight ? "#475569" : "rgba(255, 255, 255, 0.4)";
   const losColor = "#0284C7"; // Cyan / Blue LOS
   const rushColor = "#D97706"; // Amber Rush line
 
@@ -43,35 +51,35 @@ export default function MiniPlayDiagram({
     >
       <defs>
         {/* Striped grass pattern */}
-        <pattern id={`turf-${theme}`} width="1000" height="70" patternUnits="userSpaceOnUse">
+        <pattern id={turfPatternId} width="1000" height="70" patternUnits="userSpaceOnUse">
           <rect width="1000" height="35" fill={turfBg} />
           <rect y="35" width="1000" height="35" fill={turfStripe} />
         </pattern>
 
         {/* Arrowheads for routes */}
-        <marker id={`arr-pass-${theme}`} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <marker id={markerPassId} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 1 L 10 5 L 0 9 z" fill={isLight ? "#0284C7" : "#38BDF8"} />
         </marker>
-        <marker id={`arr-rush-${theme}`} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <marker id={markerRushId} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 1 L 10 5 L 0 9 z" fill="#DC2626" />
         </marker>
-        <marker id={`arr-def-${theme}`} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <marker id={markerDefId} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 1 L 10 5 L 0 9 z" fill={isLight ? "#7C3AED" : "#C084FC"} />
         </marker>
-        <marker id={`arr-mot-${theme}`} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <marker id={markerMotId} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M 0 1 L 10 5 L 0 9 z" fill="#D97706" />
         </marker>
       </defs>
 
       {/* Field Turf */}
-      <rect width="1000" height="700" fill={`url(#turf-${theme})`} />
+      <rect width="1000" height="700" fill={`url(#${turfPatternId})`} />
 
       {/* Endzone */}
-      <rect x="0" y="0" width="1000" height="84" fill={isLight ? "#E2E8F0" : "#08140E"} stroke={yardLineColor} strokeWidth="1" />
+      <rect x="0" y="0" width="1000" height="84" fill={isLight ? "#F1F5F9" : "#08140E"} stroke={yardLineColor} strokeWidth="1.5" />
       <text
         x="500"
-        y="50"
-        fill={isLight ? "#94A3B8" : "rgba(255,255,255,0.18)"}
+        y="52"
+        fill={isLight ? "#64748B" : "rgba(255,255,255,0.18)"}
         fontSize="28"
         fontWeight="900"
         textAnchor="middle"
@@ -204,12 +212,12 @@ export default function MiniPlayDiagram({
             : (isLight ? "#0284C7" : "#38BDF8");
 
           const markerId = isMotion
-            ? `url(#arr-mot-${theme})`
+            ? `url(#${markerMotId})`
             : isRush
-            ? `url(#arr-rush-${theme})`
+            ? `url(#${markerRushId})`
             : isDef
-            ? `url(#arr-def-${theme})`
-            : `url(#arr-pass-${theme})`;
+            ? `url(#${markerDefId})`
+            : `url(#${markerPassId})`;
 
           return (
             <path

@@ -86,12 +86,87 @@ export interface LeagueSettings {
 }
 
 export interface PlayoffFormat {
-  teamsCount: number; // 4, 6, 8, 12, 14, 16
+  teamsCount: number; // 2, 4, 8, 16, 32, etc.
   structure: "single_elimination" | "double_elimination";
   hasByes?: boolean;
   byesCount?: number;
   playoffWeeks?: number;
   championshipName?: string;
+}
+
+/**
+ * Calculates the nearest simple playoff bracket size based on the total teams in the league.
+ * Simple brackets are standard power-of-2 tournament sizes (2, 4, 8, 16, 32...) with no byes.
+ * e.g.
+ *   5 teams -> 4 team playoff
+ *   22 teams -> 16 team playoff
+ *   4 teams -> 4 team playoff
+ *   8 teams -> 8 team playoff
+ *   12 teams -> 8 team playoff
+ *   16 teams -> 16 team playoff
+ */
+export function getNearestSimplePlayoffBracket(totalTeams: number): number {
+  const count = Math.floor(Number(totalTeams) || 0);
+  if (count <= 0) return 4;
+  if (count < 4) return 2;
+
+  let p = 2;
+  while (p * 2 <= count && p * 2 <= 64) {
+    p *= 2;
+  }
+  return p;
+}
+
+export function getDefaultPlayoffFormat(
+  totalTeams: number,
+  isDemoLeague: boolean = false
+): PlayoffFormat {
+  if (isDemoLeague && totalTeams === 32) {
+    return {
+      teamsCount: 14,
+      structure: "single_elimination",
+      hasByes: true,
+      byesCount: 2,
+      playoffWeeks: 4,
+      championshipName: "FlagOS League Championship",
+    };
+  }
+
+  const teamsCount = getNearestSimplePlayoffBracket(totalTeams);
+  const playoffWeeks = Math.max(1, Math.round(Math.log2(teamsCount)));
+
+  return {
+    teamsCount,
+    structure: "single_elimination",
+    hasByes: false,
+    byesCount: 0,
+    playoffWeeks,
+    championshipName: "FlagOS League Championship",
+  };
+}
+
+export function resolveLeaguePlayoffFormat(
+  playoffFormat?: PlayoffFormat | null,
+  totalTeams?: number,
+  isDemoLeague: boolean = false
+): PlayoffFormat {
+  const count = Number(totalTeams) || 0;
+  const fallback = getDefaultPlayoffFormat(count, isDemoLeague);
+
+  if (!playoffFormat) {
+    return fallback;
+  }
+
+  // Legacy NFL default was 14 teams with 2 byes; on non-NFL leagues, or if teamsCount exceeds total teams,
+  // revert to the dynamic simple bracket.
+  const isLegacyNflDefault = playoffFormat.teamsCount === 14 && !(isDemoLeague && count === 32);
+  const exceedsTeams = count > 0 && playoffFormat.teamsCount > count;
+
+  if (isLegacyNflDefault || exceedsTeams) {
+    return fallback;
+  }
+
+  return playoffFormat;
 }
 
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
@@ -112,11 +187,11 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   visibility: "public",
   rules: DEFAULT_LEAGUE_RULES,
   playoffFormat: {
-    teamsCount: 14,
+    teamsCount: 4,
     structure: "single_elimination",
-    hasByes: true,
-    byesCount: 2,
-    playoffWeeks: 4,
+    hasByes: false,
+    byesCount: 0,
+    playoffWeeks: 2,
     championshipName: "FlagOS League Championship",
   },
 };
@@ -573,6 +648,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       primaryColor: pColor,
       accentColor: aColor,
       rules: DEFAULT_LEAGUE_RULES,
+      playoffFormat: getDefaultPlayoffFormat(teams),
       subscription: newSub,
     };
 

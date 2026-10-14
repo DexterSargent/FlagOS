@@ -11,20 +11,24 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Mock League Context
-vi.mock("@/lib/leagueContext", () => ({
-  useLeague: () => ({
-    settings: {
-      leagueName: "FlagOS League",
-      shortcode: "FLAG",
-      primaryColor: "#3ca505",
-      accentColor: "#22c55e",
-      defaultLocation: "Turf Field 1",
-      announcement: "",
-    },
-    updateSettings: vi.fn(),
-    isDemoLeague: true,
-  }),
-}));
+vi.mock("@/lib/leagueContext", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/leagueContext")>();
+  return {
+    ...actual,
+    useLeague: () => ({
+      settings: {
+        leagueName: "FlagOS League",
+        shortcode: "FLAG",
+        primaryColor: "#3ca505",
+        accentColor: "#22c55e",
+        defaultLocation: "Turf Field 1",
+        announcement: "",
+      },
+      updateSettings: vi.fn(),
+      isDemoLeague: true,
+    }),
+  };
+});
 
 // Mock Auth
 let mockIsLeagueAdmin = true;

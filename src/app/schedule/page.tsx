@@ -25,7 +25,7 @@ import {
 import { db } from "@/lib/firebase";
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
-import { useLeague, PlayoffFormat } from "@/lib/leagueContext";
+import { useLeague, PlayoffFormat, resolveLeaguePlayoffFormat } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -261,17 +261,8 @@ export default function Calendar() {
   const playoffTabLabel = playoffActive ? "Playoffs" : "Playoff Picture";
 
   const playoffFormat: PlayoffFormat = useMemo(() => {
-    return (
-      settings?.playoffFormat || {
-        teamsCount: 14,
-        structure: "single_elimination",
-        hasByes: true,
-        byesCount: 2,
-        playoffWeeks: 4,
-        championshipName: "FlagOS League Championship",
-      }
-    );
-  }, [settings.playoffFormat]);
+    return resolveLeaguePlayoffFormat(settings?.playoffFormat, teams.length, isDemoLeague);
+  }, [settings?.playoffFormat, teams.length, isDemoLeague]);
 
   const standings = useMemo(() => {
     return calculateStandings(teams, matches, playoffFormat.teamsCount);

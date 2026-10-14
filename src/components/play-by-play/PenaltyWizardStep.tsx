@@ -19,6 +19,7 @@ import {
   formatPenaltyStatement,
   getOrdinal,
 } from "@/lib/playSentenceFormatter";
+import { sortRosterWithNumbers } from "@/lib/playerNumberHelper";
 
 interface PenaltyWizardStepProps {
   possessionTeamName: string;
@@ -27,6 +28,7 @@ interface PenaltyWizardStepProps {
   downsPerSeries?: number;
   offenseRoster: string[];
   defenseRoster: string[];
+  playerNumbers?: Record<string, string>;
   onCancel: () => void;
   onSavePenalty: (penaltyData: {
     side: "offense" | "defense";
@@ -47,6 +49,7 @@ export default function PenaltyWizardStep({
   downsPerSeries = 4,
   offenseRoster,
   defenseRoster,
+  playerNumbers = {},
   onCancel,
   onSavePenalty,
 }: PenaltyWizardStepProps) {
@@ -364,7 +367,11 @@ export default function PenaltyWizardStep({
         <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 flex items-center justify-between">
           <span>Athlete Responsible (Optional):</span>
           <span className="text-[10px] text-neutral-500 font-normal">
-            Selected: <strong className="text-white">{player}</strong>
+            Selected:{" "}
+            <strong className="text-white">
+              {player !== "TEAM" && playerNumbers[player] ? `#${playerNumbers[player]} ` : ""}
+              {player}
+            </strong>
           </span>
         </label>
         <div className="flex flex-wrap gap-1 overflow-y-auto md:max-h-16">
@@ -379,20 +386,35 @@ export default function PenaltyWizardStep({
           >
             TEAM Infraction
           </button>
-          {currentRoster.map((pName) => (
-            <button
-              key={pName}
-              type="button"
-              onClick={() => setPlayer(pName)}
-              className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all border ${
-                player === pName
-                  ? "bg-amber-500 text-black border-amber-500 font-black"
-                  : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
-              }`}
-            >
-              {pName}
-            </button>
-          ))}
+          {sortRosterWithNumbers(currentRoster.filter((p) => p !== "TEAM"), playerNumbers).map((pName) => {
+            const pNum = playerNumbers[pName];
+            return (
+              <button
+                key={pName}
+                type="button"
+                aria-label={pName}
+                onClick={() => setPlayer(pName)}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all border flex items-center gap-1.5 ${
+                  player === pName
+                    ? "bg-amber-500 text-black border-amber-500 font-black"
+                    : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
+                }`}
+              >
+                {pNum && (
+                  <span
+                    className={`px-1 py-0.2 rounded font-mono font-bold text-[9px] ${
+                      player === pName
+                        ? "bg-black/15 text-black"
+                        : "bg-amber-500/20 text-amber-300"
+                    }`}
+                  >
+                    #{pNum}
+                  </span>
+                )}
+                <span>{pName}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

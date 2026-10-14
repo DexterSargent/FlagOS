@@ -9,6 +9,7 @@ import {
   Zap,
   Sliders,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   Building2,
   Users,
@@ -28,9 +29,21 @@ import {
   Minus,
   HelpCircle,
   FileText,
+  BadgePercent,
+  Layers,
+  Clock,
+  Menu,
 } from "lucide-react";
+import { useLeague } from "@/lib/leagueContext";
+import { useAuth } from "@/lib/authContext";
+import { FlagOSText } from "@/components/FlagOSText";
+import { FlagOSLogo } from "@/components/FlagOSLogo";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function PricingPage() {
+  const { activeLeagueId, settings } = useLeague();
+  const { isAuthorized, isPlatformAdmin } = useAuth();
+
   // League interactive slider
   const [teamCount, setTeamCount] = useState<number>(8);
   const baseLeagueFee = 40;
@@ -39,6 +52,12 @@ export default function PricingPage() {
 
   // Active comparison tab / category filter
   const [activeMatrixTab, setActiveMatrixTab] = useState<"all" | "stats" | "playbook" | "league">("all");
+
+  // Mobile nav state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // FAQ Accordion open states
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(0);
 
   const [showDevelopmentNotice, setShowDevelopmentNotice] = useState(false);
   const [isLeagueModalOpen, setIsLeagueModalOpen] = useState(false);
@@ -49,7 +68,6 @@ export default function PricingPage() {
   const [isSubmittingLeague, setIsSubmittingLeague] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [teamShortcode, setTeamShortcode] = useState("");
-  const [teamIcon, setTeamIcon] = useState("shield");
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
 
   const handleSubscribeLeague = (e: React.FormEvent) => {
@@ -63,134 +81,6 @@ export default function PricingPage() {
     setIsTeamModalOpen(false);
     setShowDevelopmentNotice(true);
   };
-
-  // Exact 6 Team Features from Public Home Page
-  const teamFeaturesList = [
-    {
-      icon: Play,
-      badge: "Dynamic Play-by-Play Wizard",
-      title: "Asynchronous Game Logging",
-      description:
-        "Log games and scrimmages with access to a dynamic play-by-play wizard built specifically for streamlining flag football stat-tracking during or after the game.",
-    },
-    {
-      icon: Activity,
-      badge: "Live Updating",
-      title: "Full Play-by-Play & Box Scores",
-      description:
-        "Live updating play-by-play and box scores for every game. Parents and fans can follow along from anywhere with service, no log-in needed.",
-    },
-    {
-      icon: BookOpen,
-      badge: "Playbook Studio",
-      title: "Build & Share Up to 5 Custom Playbooks",
-      description:
-        "Intuitive play design interface for offensive and defensive playbooks. Interactive visual route designer with route presets and custom routes. Defensive zone presets and man coverage tools.",
-    },
-    {
-      icon: Users,
-      badge: "Roster Hub",
-      title: "Private Team Portal",
-      description:
-        "Dedicated team portal with depth charts, customizable team statistics & trends dashboard, contact information, and your teams playbooks. Unauthorized users will see only your teams roster, schedule, and individual player statistics when viewing your portal.",
-    },
-    {
-      icon: Trophy,
-      badge: "Career Records",
-      title: "Athlete Career Profiles & Game Logs",
-      description:
-        "Individual player stats from every game follow athletes across all FlagOS seasons, teams, and leagues building comprehensive career histories.",
-    },
-    {
-      icon: Sliders,
-      badge: "100% Autonomy",
-      title: "Full Independence",
-      description:
-        "Full club autonomy for travel squads, intramural clubs, and tournament teams without needing a parent league.",
-    },
-  ];
-
-  // Exact 6 League Features from Public Home Page
-  const leagueFeaturesList = [
-    {
-      icon: Sparkles,
-      badge: "50% Off Team Subscriptions",
-      title: "All Team Features Included",
-      description:
-        "Every team in your league automatically gets their private team portal, complete team and player stats, and up to 5 custom playbooks.",
-    },
-    {
-      icon: Timer,
-      badge: "Live Gameday",
-      title: "Official Game Management With Live Clocks",
-      description:
-        "Synchronized game clock and play clock, possession indicator, down counter, and interactive timeouts.",
-    },
-    {
-      icon: Building2,
-      badge: "Branding",
-      title: "Customizable League Portal",
-      description:
-        "Make the league your own with custom branding, themes, and league information. The only FlagOS branding on your league is a brief \"Powered by FlagOS\" disclaimer in the footer.",
-    },
-    {
-      icon: Calendar,
-      badge: "Automation",
-      title: "Automated Seasonal Scheduler",
-      description:
-        "Generate a full season schedule, drag-and-drop to reorder game slots, and assign fields automatically. Playoff brackets are automatically generated based on your league's playoff structure and seeding rules.",
-    },
-    {
-      icon: Trophy,
-      badge: "Competition",
-      title: "Automated Standings & Stat Leaderboards",
-      description:
-        "Real-time standings, and automated league-wide rankings for various statistical categories.",
-    },
-    {
-      icon: Flame,
-      badge: "Recruitment",
-      title: "Registration Portal & Free Agent Board (Optional)",
-      description:
-        "Public registration pipeline for incoming players. Players who complete the form are added to the free-agent pool viewable by league and team admins.",
-    },
-  ];
-
-  // Powerhouse Capabilities from Homepage Interactive Frame
-  const powerhouseFeatures = [
-    {
-      title: "Dynamic Play-by-Play Wizard",
-      category: "Gameday Stat-Tracking",
-      tagline: "Dual Operating Modes",
-      desc: "Full gameday stat tracker with dual operating modes: live countdown clocks & buzzer (synchronous) or clockless rapid-logging for sideline operators (asynchronous).",
-      icon: Play,
-      color: "emerald",
-    },
-    {
-      title: "Playbook Studio",
-      category: "Strategy & Tactical Tools",
-      tagline: "Up to 5 Playbooks per Team",
-      desc: "Up to 5 custom offensive & defensive playbooks per team, interactive visual route designer with route presets, custom routes, player notes & armband PDF export.",
-      icon: BookOpen,
-      color: "emerald",
-    },
-    {
-      title: "Automated Seasonal Scheduler",
-      category: "Tournament Operations",
-      tagline: "Scheduling & Brackets",
-      desc: "Round-robin scheduling engine, drag-and-drop game slot ordering, field assignments, and automatically generated playoff elimination brackets.",
-      icon: Calendar,
-      color: "cyan",
-    },
-    {
-      title: "FlagOS League Dashboard",
-      category: "Public Portal & Standings",
-      tagline: "Live Score Tickers & Leaders",
-      desc: "Real-time standings, cumulative season-long statistics, live score tickers, player leaderboards, and custom public spectator portal.",
-      icon: Building2,
-      color: "cyan",
-    },
-  ];
 
   // Comprehensive Feature Comparison Matrix items
   const matrixRows = [
@@ -341,42 +231,233 @@ export default function PricingPage() {
       ? matrixRows
       : matrixRows.filter((r) => r.category === activeMatrixTab);
 
+  const faqs = [
+    {
+      q: "How does the per-team pricing work for leagues?",
+      a: "A League Subscription has a predictable $40/month baseline fee plus $15/month for each active team. You can easily adjust your team count as divisions expand or contract. Most importantly, every team in your league receives their own private Team Portal (complete with stats, roster hub, and up to 5 playbooks) at no extra charge to the coaches.",
+    },
+    {
+      q: "What happens during the off-season? Can we pause our subscription?",
+      a: "Yes. FlagOS is built specifically for seasonal flag football circuits. You can pause or cancel your subscription at the conclusion of a season. All your league historical data, player career records, box scores, and playbooks remain safely stored and immediately reactivate when your next season begins.",
+    },
+    {
+      q: "Do coaches or players have to pay anything if our league is subscribed?",
+      a: "No! When the league is subscribed, all member teams and coaches receive full Team Plan access for free through the league license. Coaches can manage their rosters, build playbooks, and export wristbands without paying a cent.",
+    },
+    {
+      q: "Can an independent team join a league later without losing playbooks or stats?",
+      a: "Absolutely. Player stats and team playbooks are portable throughout FlagOS. If a team begins as an independent squad and subsequently enters a FlagOS league, their roster and playbooks seamlessly link to their new league division.",
+    },
+    {
+      q: "Do parents, fans, or spectators need a subscription to view games?",
+      a: "Never. Public box scores, live play-by-play tickers, league standings, and stat leaderboards are 100% free and open for fans, parents, and recruiters to follow on any device with no login required.",
+    },
+    {
+      q: "Are there any hidden setup fees, contracts, or per-player roster charges?",
+      a: "None. All FlagOS plans are month-to-month with zero contract lock-ins, zero roster headcount fees, and zero per-player surcharges. What you see on this page is all you ever pay.",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
-
       {/* Ambient background glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[55rem] h-[32rem] bg-gradient-to-b from-cyan-600/20 via-blue-600/10 to-transparent rounded-full blur-[150px] pointer-events-none"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[60rem] h-[35rem] bg-gradient-to-b from-cyan-600/15 via-emerald-600/10 to-transparent rounded-full blur-[160px] pointer-events-none"></div>
         <div className="absolute top-96 -left-40 w-[35rem] h-[35rem] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none"></div>
+        <div className="absolute top-[45rem] -right-40 w-[35rem] h-[35rem] bg-cyan-600/10 rounded-full blur-[140px] pointer-events-none"></div>
       </div>
 
+      {/* DEDICATED FLAGOS MARKETING NAV HEADER (Replaces League Header) */}
+      <header className="border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <Link href="/" className="flex items-center gap-2.5 sm:gap-3.5 group min-w-0 shrink">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0">
+              <FlagOSLogo
+                variant="emblem"
+                size="md"
+                className="w-full h-full object-contain drop-shadow"
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <FlagOSText className="text-xl sm:text-2xl leading-none" />
+              </div>
+              <span className="text-[10px] text-neutral-400 font-mono tracking-widest uppercase hidden sm:block mt-1">
+                The Flag Football Operating System
+              </span>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation Links */}
+          <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-white">
+            <Link
+              href="/#features"
+              className="text-neutral-300 hover:text-[#3CA505] transition-colors"
+            >
+              Features
+            </Link>
+            <Link
+              href="/league/default?demo=true"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("flagos_demo_active", "true");
+                  localStorage.setItem("flagos_demo_active", "true");
+                }
+              }}
+              className="text-neutral-300 hover:text-[#3CA505] transition-colors"
+            >
+              Demo League
+            </Link>
+            <Link
+              href="/#league-directory"
+              className="text-neutral-300 hover:text-[#3CA505] transition-colors"
+            >
+              League Directory
+            </Link>
+            <Link
+              href="/pricing"
+              className="text-emerald-400 font-extrabold flex items-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Pricing</span>
+            </Link>
+          </nav>
+
+          {/* Desktop Action CTAs */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <ThemeToggle size="md" />
+
+            {isPlatformAdmin && (
+              <Link
+                href="/admin"
+                aria-label="Platform Admin"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Platform Admin</span>
+              </Link>
+            )}
+
+            {isAuthorized ? (
+              <Link
+                href={`/league/${activeLeagueId || "default"}`}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-white/10 transition-colors flex items-center gap-1.5"
+              >
+                <Trophy className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="hidden sm:inline">League Portal:</span>
+                <span className="text-cyan-300 truncate max-w-[80px] sm:max-w-none">{settings?.shortcode || "Active"}</span>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Link
+                  href="/login"
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-white hover:text-[#3CA505] text-xs font-semibold transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/league/default?demo=true"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      sessionStorage.setItem("flagos_demo_active", "true");
+                      localStorage.setItem("flagos_demo_active", "true");
+                    }
+                  }}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5"
+                >
+                  <Play className="w-3.5 h-3.5 fill-black" />
+                  <span className="hidden xs:inline">Try Demo</span>
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile Menu Toggle Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Dropdown Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/10 bg-[#07090E] px-4 py-4 space-y-3">
+            <Link
+              href="/#features"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block text-sm font-bold text-neutral-300 hover:text-white py-1"
+            >
+              Features
+            </Link>
+            <Link
+              href="/league/default?demo=true"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block text-sm font-bold text-neutral-300 hover:text-white py-1"
+            >
+              Demo League
+            </Link>
+            <Link
+              href="/#league-directory"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block text-sm font-bold text-neutral-300 hover:text-white py-1"
+            >
+              League Directory
+            </Link>
+            <Link
+              href="/pricing"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block text-sm font-bold text-emerald-400 py-1"
+            >
+              Pricing
+            </Link>
+          </div>
+        )}
+      </header>
+
+      {/* MAIN PRICING CONTENT */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-16 flex-1 w-full max-w-full overflow-hidden relative z-10 space-y-12 sm:space-y-16">
         {/* Page Hero Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold uppercase tracking-widest">
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Subscription Breakdown</span>
+            <span>Transparent, Predictable Rates</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight text-white">
             Plans Available for Teams &amp; Leagues
           </h1>
           <p className="text-neutral-400 text-base md:text-lg leading-relaxed">
-            Run an independent team with in-depth stats &amp; up to 5 custom playbooks, or scale an entire league where <strong className="text-white">every team gets those exact same features</strong> plus live gameday clocks, automated scheduling, and centralized league infrastructure.
+            Run an independent club with elite stats and up to 5 custom playbooks, or scale an entire league where <strong className="text-white">every franchise gets full Team Plan access at 50% off</strong> alongside automated scheduling and live gameday clocks.
           </p>
+
+          {/* Key Value Guarantee Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300">
+              <Check className="w-3.5 h-3.5 text-emerald-400" /> Month-to-month, cancel anytime
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300">
+              <Check className="w-3.5 h-3.5 text-emerald-400" /> Zero per-player or roster surcharges
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300">
+              <Check className="w-3.5 h-3.5 text-cyan-400" /> Free spectator &amp; parent access
+            </span>
+          </div>
         </div>
 
         {/* The Platform Multiplier Architecture Banner */}
         <div className="rounded-3xl bg-gradient-to-r from-emerald-500/10 via-cyan-500/15 to-blue-500/10 border border-cyan-500/30 p-6 md:p-8 text-neutral-200 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>The Platform Multiplier</span>
+              <BadgePercent className="w-3.5 h-3.5 text-cyan-400" />
+              <span>The 50% League Bundle Advantage</span>
             </div>
             <h2 className="text-xl md:text-2xl font-black uppercase text-white tracking-tight">
               Leagues Include Full Team Plan Hubs For Every Team
             </h2>
             <p className="text-neutral-300 text-sm leading-relaxed">
-              When you subscribe to a League, you aren&apos;t just getting commissioner tools. <strong className="text-white">Every single team in your organization receives their own full Team Plan access</strong> — complete player stats, career records, and up to 5 custom playbooks — at <strong>$15/team/mo (50% off the standalone team subscription)</strong>.
+              When you subscribe to a League, you aren&apos;t just buying admin scheduling tools. <strong className="text-white">Every single team in your organization receives their own private Team Portal</strong> — complete player stats, career records, and up to 5 custom playbooks — at <strong>$15/team/mo (50% off the standalone team subscription)</strong>.
             </p>
           </div>
           <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto">
@@ -392,7 +473,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* SIDE-BY-SIDE PLANS GRID (ALIGNED WITH HOME PAGE) */}
+        {/* SIDE-BY-SIDE PLANS GRID (TEAM VS LEAGUE) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
           {/* TIER 1: THE TEAM PLAN (LEFT) */}
           <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-emerald-500/40 rounded-3xl p-5 sm:p-8 space-y-6 relative shadow-[0_0_50px_rgba(16,185,129,0.12)] flex flex-col justify-between backdrop-blur-xl hover:border-emerald-500/60 transition-all">
@@ -408,8 +489,8 @@ export default function PricingPage() {
               </div>
 
               <div>
-                <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                  A dedicated private headquarters for travel teams, tournament squads, and coaches, complete with roster management, highly efficent stat tracking, and up to 5 custom playbooks.
+                <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                  Dedicated digital headquarters for independent clubs, travel tournament squads, and coaches. Includes complete stat-tracking, private roster management, and up to 5 custom playbooks with printable wristband inserts.
                 </p>
               </div>
 
@@ -429,41 +510,50 @@ export default function PricingPage() {
                 </p>
               </div>
 
-              {/* Exact Features from Home Page */}
+              {/* What You Get Inclusions */}
               <div className="space-y-3 pt-2">
                 <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
-                    What You Get With a Team Subscription
+                    Included in Team Subscription
                   </span>
-                  <span className="text-neutral-500 text-[10px]">Key Features</span>
+                  <span className="text-neutral-500 text-[10px]">All-Inclusive</span>
                 </div>
 
-                <div className="space-y-2.5">
-                  {teamFeaturesList.map((feat, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] transition-all group"
-                    >
-                      <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-emerald-500/20 transition-all">
-                        <feat.icon className="w-4 h-4" />
-                      </div>
-                      <div className="space-y-0.5 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap justify-between">
-                          <span className="text-xs font-bold text-white tracking-wide group-hover:text-emerald-300 transition-colors">
-                            {feat.title}
-                          </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold shrink-0">
-                            {feat.badge}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-neutral-400 leading-relaxed group-hover:text-neutral-300 transition-colors">
-                          {feat.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <ul className="space-y-2.5 text-xs text-neutral-300">
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Private Team Portal:</strong> Depth charts, roster management, contact directory, and player game logs.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Up to 5 Custom Playbooks:</strong> Offensive &amp; defensive schemes with progression notes.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Visual Route Designer:</strong> 10+ route presets plus up to 20 custom route slots per team.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Printable Wristband Inserts:</strong> Export print-ready 8, 12, or 16-play gameday inserts.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Dynamic Play-by-Play Wizard:</strong> Rapid clockless stat logging during games or scrimmages.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Public Box Scores:</strong> Live updating play-by-play for parents &amp; fans (no login required).</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Multi-Season Career Logs:</strong> Player stats follow athletes across seasons and leagues.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">100% Autonomy:</strong> Log non-league scrimmages and travel tournament matches anytime.</span>
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -479,7 +569,7 @@ export default function PricingPage() {
           </div>
 
           {/* TIER 2: THE LEAGUE PLAN (RIGHT) */}
-          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-5 sm:p-8 space-y-6 relative shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
+          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-5 sm:p-8 space-y-6 relative shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="p-3 flex items-center gap-4 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
@@ -492,8 +582,8 @@ export default function PricingPage() {
               </div>
 
               <div>
-                <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                  A complete league management system for commissioners and organizers, complete with role-based access control for commissioners, coaches, and players, and a public-facing league portal for spectators and fans.
+                <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                  The complete flag football operating system for commissioners and organizers. Centralizes scheduling, official live clocks, standings, and automatically provisions full Team Portals for every franchise.
                 </p>
               </div>
 
@@ -512,7 +602,7 @@ export default function PricingPage() {
                 {/* Team slider */}
                 <div className="pt-2 border-t border-white/10 space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-neutral-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="text-neutral-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5 text-cyan-400" />
                       Active Teams: <span className="text-white font-mono">{teamCount} Teams</span>
                     </span>
@@ -543,50 +633,67 @@ export default function PricingPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Bulk Savings Badge */}
+                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-2.5 text-[11px] flex items-center justify-between text-cyan-300">
+                  <span>Standalone Value: ${teamCount * 30}/mo</span>
+                  <span className="font-bold text-white bg-cyan-500/20 px-2 py-0.5 rounded font-mono">
+                    Save ${teamCount * 15}/mo (50% Off)
+                  </span>
+                </div>
               </div>
 
-              {/* Exact Features from Home Page */}
+              {/* What You Get Inclusions */}
               <div className="space-y-3 pt-2">
                 <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
-                    What you get with a league subscription
+                    Included in League Subscription
                   </span>
-                  <span className="text-neutral-500 text-[10px]">Key Features</span>
+                  <span className="text-neutral-500 text-[10px]">Turnkey League Engine</span>
                 </div>
 
-                <div className="space-y-2.5">
-                  {leagueFeaturesList.map((feat, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/[0.03] transition-all group"
-                    >
-                      <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-cyan-500/20 transition-all">
-                        <feat.icon className="w-4 h-4" />
-                      </div>
-                      <div className="space-y-0.5 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap justify-between">
-                          <span className="text-xs font-bold text-white tracking-wide group-hover:text-cyan-300 transition-colors">
-                            {feat.title}
-                          </span>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold shrink-0">
-                            {feat.badge}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-neutral-400 leading-relaxed group-hover:text-neutral-300 transition-colors">
-                          {feat.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <ul className="space-y-2.5 text-xs text-neutral-300">
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">All Team Features Included:</strong> Every team gets their private portal, full stats, and up to 5 playbooks.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Official Gameday Clocks:</strong> Synchronized 20-min countdown clocks, 25s play clock, and timeouts.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Automated Seasonal Scheduler:</strong> Generate round-robin match slates, reorder slots, and assign fields.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Standings &amp; Playoff Brackets:</strong> Automated tiebreaker logic, point differential, and seeded brackets.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">League Stat Leaderboards:</strong> Automatic leaderboards for passers, receivers, flaggers, and scorers.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Customizable League Portal:</strong> Custom brand colors, logo, season titles, and custom shortcodes.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Registration Pipeline:</strong> Optional public registration intake &amp; free agent recruit pool.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <span><strong className="text-white">Multi-Division Ready:</strong> Run recreational, competitive, and co-ed divisions seamlessly.</span>
+                  </li>
+                </ul>
               </div>
             </div>
 
             <div className="pt-6 border-t border-white/10 mt-6">
               <button
                 onClick={() => setShowDevelopmentNotice(true)}
-                className="w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.3)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                className="w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <span>Launch &amp; Subscribe League (${totalLeagueMonthly}/mo)</span>
                 <ArrowRight className="w-4 h-4" />
@@ -595,60 +702,130 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* THE 4 POWERHOUSE CAPABILITIES SECTION (FROM HOMEPAGE INTERACTIVE SHOWCASE) */}
+        {/* VALUE COMPARISON: WHY FLAGOS REPLACES FRAGMENTED TOOLS */}
         <section className="space-y-8 pt-8 border-t border-white/10">
           <div className="text-center space-y-3 max-w-3xl mx-auto">
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
-              Interactive Capabilities
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
+              Total Cost of Ownership
             </span>
             <h2 className="text-2xl md:text-4xl font-black uppercase text-white tracking-tight">
-              FlagOS Powerhouse Features
+              One Unified OS vs 4 Fragmented Subscriptions
             </h2>
             <p className="text-neutral-400 text-xs md:text-sm">
-              The flagship systems that make FlagOS the premier operating software for modern flag football.
+              Most leagues juggle multiple single-purpose subscriptions with disconnected rosters and manual spreadsheet work. FlagOS unifies your entire circuit under one predictable rate.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {powerhouseFeatures.map((f, i) => (
-              <div
-                key={i}
-                className="p-6 rounded-3xl bg-[#0B0F19] border border-white/10 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-4 shadow-xl"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                        <f.icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">
-                          {f.category}
-                        </span>
-                        <h3 className="text-lg font-black text-white uppercase">{f.title}</h3>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-cyan-300">
-                      {f.tagline}
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-400 leading-relaxed">{f.desc}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Column 1: Fragmented Apps */}
+            <div className="p-6 rounded-3xl bg-[#0B0F19] border border-red-500/20 space-y-4 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+                  <X className="w-5 h-5" />
                 </div>
-
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-                  <span className="text-[11px] font-mono text-neutral-500">
-                    Included in: <strong className="text-white">{i < 2 ? "Team & League Plans" : "League Plan"}</strong>
-                  </span>
-                  <Link
-                    href="/#interactive-demo"
-                    className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 text-[11px]"
-                  >
-                    <span>Test in Sandbox</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
+                <div>
+                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">Traditional Way</span>
+                  <h3 className="text-base font-black text-white uppercase">Fragmented Software</h3>
                 </div>
               </div>
-            ))}
+
+              <div className="space-y-2 text-xs text-neutral-400 border-t border-white/5 pt-3">
+                <div className="flex justify-between">
+                  <span>Sports Stat Tracking App:</span>
+                  <span className="text-white font-mono">$75 - $120/mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Team Communication Tool:</span>
+                  <span className="text-white font-mono">$20 - $35/team</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tournament / League Scheduler:</span>
+                  <span className="text-white font-mono">$30 - $60/mo</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Playbook &amp; Armband Software:</span>
+                  <span className="text-white font-mono">$15/mo per coach</span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-white/10">
+                <div className="text-xs text-red-400 font-bold">Result: Disconnected data, duplicate rosters, $200+/mo.</div>
+              </div>
+            </div>
+
+            {/* Column 2: FlagOS Standalone Team */}
+            <div className="p-6 rounded-3xl bg-[#0B0F19] border border-emerald-500/30 space-y-4 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">Single Team</span>
+                  <h3 className="text-base font-black text-white uppercase">FlagOS Team Plan</h3>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs text-neutral-300 border-t border-white/5 pt-3">
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Dynamic Stat-Tracking Wizard included</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Up to 5 Playbooks &amp; Wristband export</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Public live updating box scores</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Persistent career player records</span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex justify-between items-baseline">
+                <span className="text-xs text-neutral-400">Total Flat Cost:</span>
+                <span className="text-xl font-black text-emerald-400 font-mono">$30 / month</span>
+              </div>
+            </div>
+
+            {/* Column 3: FlagOS Bundled League */}
+            <div className="p-6 rounded-3xl bg-gradient-to-b from-[#0B0F19] to-cyan-950/20 border border-cyan-500/40 space-y-4 shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <Crown className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-wider block">Ultimate Value</span>
+                  <h3 className="text-base font-black text-white uppercase">FlagOS League Plan</h3>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs text-neutral-300 border-t border-white/5 pt-3">
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-cyan-400" />
+                  <span>Turnkey scheduling &amp; live gameday clocks</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-cyan-400" />
+                  <span>Full Team Plan hubs for <strong>every team</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-cyan-400" />
+                  <span>50% bulk discount ($15 vs $30/team)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-cyan-400" />
+                  <span>Automated standings, brackets &amp; leaders</span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-white/10 flex justify-between items-baseline">
+                <span className="text-xs text-neutral-400">Starts At (8 Teams):</span>
+                <span className="text-xl font-black text-cyan-400 font-mono">$160 / month</span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -758,6 +935,50 @@ export default function PricingPage() {
           </div>
         </section>
 
+        {/* FREQUENTLY ASKED QUESTIONS (FAQ ACCORDION) */}
+        <section className="space-y-6 pt-8 border-t border-white/10">
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
+              Got Questions?
+            </span>
+            <h2 className="text-2xl md:text-3xl font-black uppercase text-white tracking-tight">
+              Pricing &amp; Billing FAQ
+            </h2>
+            <p className="text-neutral-400 text-xs md:text-sm">
+              Everything you need to know about team portals, season billing pauses, and data retention.
+            </p>
+          </div>
+
+          <div className="max-w-3xl mx-auto space-y-3">
+            {faqs.map((faq, index) => {
+              const isOpen = expandedFaq === index;
+              return (
+                <div
+                  key={index}
+                  className="rounded-2xl bg-[#0B0F19] border border-white/10 overflow-hidden transition-all"
+                >
+                  <button
+                    onClick={() => setExpandedFaq(isOpen ? null : index)}
+                    className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <span className="font-bold text-white text-sm">{faq.q}</span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-neutral-400 shrink-0 transition-transform ${
+                        isOpen ? "rotate-180 text-cyan-400" : ""
+                      }`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-4 text-xs text-neutral-300 leading-relaxed border-t border-white/5 pt-3">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* Multi-League & Tenancy Explanation Banner */}
         <div className="rounded-3xl bg-[#0B0F19] border border-white/10 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="flex items-start gap-4">
@@ -772,13 +993,58 @@ export default function PricingPage() {
             </div>
           </div>
           <Link
-            href="/"
+            href="/league/default?demo=true"
             className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold whitespace-nowrap border border-white/10 transition-colors"
           >
-            Go to Active League
+            Explore Active Demo
           </Link>
         </div>
       </main>
+
+      {/* DEDICATED MARKETING FOOTER */}
+      <footer className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400 mt-12">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="space-y-3">
+            <span className="text-lg font-black uppercase tracking-wider text-white">
+              FLAG<span style={{ color: "#3CA505" }}>OS</span>
+            </span>
+            <p className="leading-relaxed text-neutral-500">The Flag Football Operating System</p>
+          </div>
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-white">Explore</h4>
+            <ul className="space-y-2">
+              <li><Link href="/#features" className="hover:text-cyan-400 transition-colors">Key Features</Link></li>
+              <li>
+                <Link
+                  href="/league/default?demo=true"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      sessionStorage.setItem("flagos_demo_active", "true");
+                      localStorage.setItem("flagos_demo_active", "true");
+                    }
+                  }}
+                  className="hover:text-cyan-400 transition-colors"
+                >
+                  Demo League
+                </Link>
+              </li>
+              <li><Link href="/#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</Link></li>
+            </ul>
+          </div>
+          <div className="space-y-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-white">Get Started</h4>
+            <ul className="space-y-2">
+              <li><Link href="/pricing" className="hover:text-emerald-400 transition-colors text-emerald-400 font-bold">Pricing Plans</Link></li>
+              <li><Link href="/login" className="hover:text-cyan-400 transition-colors">Sign In</Link></li>
+              <li><Link href="/league/default?demo=true" className="hover:text-cyan-400 transition-colors">Try the Demo</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-white/10 text-neutral-500 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span>© {new Date().getFullYear()} FlagOS. All rights reserved.</span>
+          <span className="text-neutral-600 text-[11px]">Empowering flag football teams and leagues worldwide.</span>
+        </div>
+      </footer>
 
       {/* LEAGUE CHECKOUT MODAL */}
       {isLeagueModalOpen && (
@@ -1009,7 +1275,6 @@ export default function PricingPage() {
           </section>
         </div>
       )}
-
     </div>
   );
 }

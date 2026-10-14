@@ -1,5 +1,16 @@
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
-import { PlayoffFormat } from "./leagueContext";
+import {
+  PlayoffFormat,
+  getNearestSimplePlayoffBracket,
+  getDefaultPlayoffFormat,
+  resolveLeaguePlayoffFormat,
+} from "./leagueContext";
+
+export {
+  getNearestSimplePlayoffBracket,
+  getDefaultPlayoffFormat,
+  resolveLeaguePlayoffFormat,
+};
 
 export type ClinchStatus =
   | "clinched_bye"
@@ -62,9 +73,13 @@ export interface BracketRound {
 export function calculateStandings(
   teams: any[],
   matches: any[],
-  playoffTeamsCount: number = 8
+  playoffTeamsCount?: number
 ): TeamStanding[] {
   const eligibleTeams = teams.filter(isRealTeam);
+  const targetPlayoffCount =
+    typeof playoffTeamsCount === "number" && playoffTeamsCount > 0
+      ? playoffTeamsCount
+      : getNearestSimplePlayoffBracket(eligibleTeams.length);
   const teamMap: Record<string, TeamStanding> = {};
 
   eligibleTeams.forEach((t) => {
@@ -217,10 +232,10 @@ export function calculateStandings(
 
   // Maximum potential wins achievable by any team currently outside playoff threshold
   const maxPossibleWinsOutside =
-    standingsList.length > playoffTeamsCount
+    standingsList.length > targetPlayoffCount
       ? Math.max(
           ...standingsList
-            .slice(playoffTeamsCount)
+            .slice(targetPlayoffCount)
             .map((t) => t.wins + getRemainingGames(t.teamId, t.gamesPlayed))
         )
       : -1;
@@ -237,11 +252,11 @@ export function calculateStandings(
 
   // Current wins of the team currently in the last qualifying playoff spot
   const cutoffTeamWins =
-    playoffTeamsCount > 0 && standingsList.length >= playoffTeamsCount
-      ? standingsList[playoffTeamsCount - 1].wins
+    targetPlayoffCount > 0 && standingsList.length >= targetPlayoffCount
+      ? standingsList[targetPlayoffCount - 1].wins
       : 0;
 
-  const bubbleThreshold = Math.min(playoffTeamsCount + 4, standingsList.length);
+  const bubbleThreshold = Math.min(targetPlayoffCount + 4, standingsList.length);
 
   return standingsList.map((item, idx) => {
     const rank = idx + 1;
@@ -257,7 +272,7 @@ export function calculateStandings(
         clinchStatus = "clinched_bye";
         clinchLabel = "Clinched #1 Seed (Bye)";
         playoffStatus = "clinched_bye";
-      } else if (rank <= playoffTeamsCount) {
+      } else if (rank <= targetPlayoffCount) {
         clinchStatus = "clinched_playoffs";
         clinchLabel = "Clinched Playoff Spot";
         playoffStatus = "in_spot";
@@ -272,15 +287,15 @@ export function calculateStandings(
         clinchStatus = "clinched_bye";
         clinchLabel = "Clinched #1 Seed (Bye)";
         playoffStatus = "clinched_bye";
-      } else if (rank <= playoffTeamsCount && item.wins > maxPossibleWinsOutside && item.gamesPlayed > 0) {
+      } else if (rank <= targetPlayoffCount && item.wins > maxPossibleWinsOutside && item.gamesPlayed > 0) {
         clinchStatus = "clinched_playoffs";
         clinchLabel = "Clinched Playoff Spot";
         playoffStatus = "in_spot";
-      } else if (rank > playoffTeamsCount && maxWins < cutoffTeamWins && item.gamesPlayed > 0) {
+      } else if (rank > targetPlayoffCount && maxWins < cutoffTeamWins && item.gamesPlayed > 0) {
         clinchStatus = "eliminated";
         clinchLabel = "Mathematically Eliminated";
         playoffStatus = "outside";
-      } else if (rank <= playoffTeamsCount) {
+      } else if (rank <= targetPlayoffCount) {
         clinchStatus = "in_hunt";
         clinchLabel = "In Playoff Position";
         playoffStatus = "in_spot";
@@ -298,7 +313,7 @@ export function calculateStandings(
     return {
       ...item,
       rank,
-      playoffSeed: rank <= playoffTeamsCount ? rank : undefined,
+      playoffSeed: rank <= targetPlayoffCount ? rank : undefined,
       playoffStatus,
       clinchStatus,
       clinchLabel,
@@ -350,7 +365,12 @@ export function generatePlayoffBracket(
   }
 
   // Clamped between 2 and standings.length
-  const teamsCount = Math.max(2, Math.min(standings.length, format?.teamsCount || 8));
+  const defaultCount = getNearestSimplePlayoffBracket(standings.length);
+  const effectiveFormatCount =
+    format?.teamsCount && (format.teamsCount !== 14 || standings.length === 32)
+      ? format.teamsCount
+      : defaultCount;
+  const teamsCount = Math.max(2, Math.min(standings.length, effectiveFormatCount));
   const playoffMatches = matches.filter(
     (m) => m.isPlayoff || m.week?.toString().toLowerCase().includes("playoff")
   );
@@ -598,7 +618,12 @@ export function generateDoubleEliminationBracket(
   format: PlayoffFormat,
   matches: any[] = []
 ): BracketRound[] {
-  const teamsCount = Math.max(2, Math.min(standings.length, format?.teamsCount || 8));
+  const defaultCount = getNearestSimplePlayoffBracket(standings.length);
+  const effectiveFormatCount =
+    format?.teamsCount && (format.teamsCount !== 14 || standings.length === 32)
+      ? format.teamsCount
+      : defaultCount;
+  const teamsCount = Math.max(2, Math.min(standings.length, effectiveFormatCount));
   const playoffMatches = matches.filter(
     (m) => m.isPlayoff || m.week?.toString().toLowerCase().includes("playoff")
   );

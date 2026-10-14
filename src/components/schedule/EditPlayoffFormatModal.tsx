@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Trophy, X, Sparkles, Check, Shield } from "lucide-react";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
+import { getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 
 interface EditPlayoffFormatModalProps {
   isOpen: boolean;
@@ -21,11 +22,28 @@ export default function EditPlayoffFormatModal({
   currentStructure = "single_elimination",
   onSave,
 }: EditPlayoffFormatModalProps) {
-  const [selectedCount, setSelectedCount] = useState<number>(currentTeamsCount || 8);
+  const defaultCount = getNearestSimplePlayoffBracket(totalTeams);
+  const [selectedCount, setSelectedCount] = useState<number>(() => {
+    if (currentTeamsCount && (currentTeamsCount !== 14 || totalTeams === 32) && currentTeamsCount <= totalTeams) {
+      return currentTeamsCount;
+    }
+    return defaultCount;
+  });
   const [selectedStructure, setSelectedStructure] = useState<"single_elimination" | "double_elimination">(
     currentStructure
   );
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (currentTeamsCount && (currentTeamsCount !== 14 || totalTeams === 32) && currentTeamsCount <= totalTeams) {
+        setSelectedCount(currentTeamsCount);
+      } else {
+        setSelectedCount(getNearestSimplePlayoffBracket(totalTeams));
+      }
+      setSelectedStructure(currentStructure);
+    }
+  }, [isOpen, currentTeamsCount, totalTeams, currentStructure]);
 
   if (!isOpen) return null;
 
@@ -199,7 +217,7 @@ export default function EditPlayoffFormatModal({
                       : "bg-white/5 text-neutral-400 hover:text-white border-white/10"
                   }`}
                 >
-                  {p === totalTeams ? `All (${p})` : `${p} Teams`}
+                  {p === totalTeams ? `All (${p})` : `${p} Teams${p === defaultCount ? " (Default)" : ""}`}
                 </button>
               ))}
             </div>

@@ -9,6 +9,8 @@ import {
   ArrowLeft,
   Building2,
   Check,
+  ChevronDown,
+  ChevronUp,
   Edit3,
   ExternalLink,
   Layers,
@@ -182,15 +184,61 @@ export default function PlatformAdminPage() {
     return () => clearTimeout(timer);
   }, [successMessage]);
 
+  // Collapsible dropdown state for leagues (key: leagueId, value: true if collapsed)
+  // By default, leagues start with their member teams dropdown sublist expanded
+  const [collapsedLeagues, setCollapsedLeagues] = useState<Record<string, boolean>>({});
+
+  const toggleLeagueDropdown = useCallback((leagueId: string) => {
+    setCollapsedLeagues((prev) => ({
+      ...prev,
+      [leagueId]: !prev[leagueId],
+    }));
+  }, []);
+
   const filteredLeagues = useMemo(
-    () => leagues.filter((league) => `${league.name} ${league.shortcode} ${league.id}`.toLowerCase().includes(search.toLowerCase())),
-    [leagues, search]
+    () =>
+      leagues.filter((league) => {
+        const query = search.toLowerCase();
+        const matchesLeague = `${league.name} ${league.shortcode} ${league.id}`.toLowerCase().includes(query);
+        const matchesMemberTeam = teams
+          .filter((t) => t.leagueId === league.id)
+          .some((t) => `${t.name} ${t.shortcode} ${t.id}`.toLowerCase().includes(query));
+        return matchesLeague || matchesMemberTeam;
+      }),
+    [leagues, teams, search]
   );
 
   const filteredTeams = useMemo(
     () => teams.filter((team) => `${team.name} ${team.shortcode} ${team.id} ${team.leagueId || ""}`.toLowerCase().includes(search.toLowerCase())),
     [teams, search]
   );
+
+  // Tab for the Teams column: "independent" (teams not in a league) or "all"
+  const [teamTab, setTeamTab] = useState<"independent" | "all">("independent");
+
+  const independentTeams = useMemo(
+    () => filteredTeams.filter((team) => !team.leagueId || !leagues.some((l) => l.id === team.leagueId)),
+    [filteredTeams, leagues]
+  );
+
+  const displayedTeams = teamTab === "independent" ? independentTeams : filteredTeams;
+
+  const areAllCollapsed = useMemo(() => {
+    if (!filteredLeagues.length) return false;
+    return filteredLeagues.every((l) => !!collapsedLeagues[l.id]);
+  }, [filteredLeagues, collapsedLeagues]);
+
+  const toggleAllLeagues = useCallback(() => {
+    if (areAllCollapsed) {
+      setCollapsedLeagues({});
+    } else {
+      const nextCollapsed: Record<string, boolean> = {};
+      filteredLeagues.forEach((l) => {
+        nextCollapsed[l.id] = true;
+      });
+      setCollapsedLeagues(nextCollapsed);
+    }
+  }, [areAllCollapsed, filteredLeagues]);
 
   // Helper for cascading team subscription
   const getTeamSubscriptionInfo = useCallback((team: ManagedRecord) => {
@@ -549,14 +597,25 @@ export default function PlatformAdminPage() {
           <div className="mt-8 grid gap-8 xl:grid-cols-2">
             {/* LEAGUES COLUMN */}
             <section>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-lg font-black">
                   <Building2 className="h-5 w-5 text-cyan-300" /> Leagues ({filteredLeagues.length})
                 </h2>
+                {filteredLeagues.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleAllLeagues}
+                    className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors"
+                  >
+                    {areAllCollapsed ? "Expand all sublists" : "Collapse all sublists"}
+                  </button>
+                )}
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {filteredLeagues.map((league) => {
                   const memberTeams = teams.filter((t) => t.leagueId === league.id);
+                  const isCollapsed = !!collapsedLeagues[league.id];
+
                   return (
                     <article key={league.id} className="rounded-2xl border border-white/10 bg-neutral-900 p-5 transition-colors hover:border-white/20">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -594,12 +653,23 @@ export default function PlatformAdminPage() {
 
                       {/* League Metadata stats */}
                       <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-white/5 pt-3 text-xs text-neutral-400">
-                        <div className="flex items-center gap-1.5">
-                          <Layers className="h-3.5 w-3.5 text-cyan-400" />
+                        <button
+                          type="button"
+                          onClick={() => toggleLeagueDropdown(league.id)}
+                          className="flex items-center gap-1.5 rounded-lg bg-cyan-500/10 px-2.5 py-1 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+                          aria-expanded={!isCollapsed}
+                          aria-label={`Toggle teams sublist for ${league.name}`}
+                        >
+                          <Shield className="h-3.5 w-3.5 text-cyan-400" />
                           <span>
-                            <strong className="text-white">{memberTeams.length}</strong> {memberTeams.length === 1 ? "team" : "teams"} cascading
+                            <strong className="text-white">{memberTeams.length}</strong> {memberTeams.length === 1 ? "member team" : "member teams"}
                           </span>
-                        </div>
+                          {isCollapsed ? (
+                            <ChevronDown className="h-3.5 w-3.5 text-cyan-300" />
+                          ) : (
+                            <ChevronUp className="h-3.5 w-3.5 text-cyan-300" />
+                          )}
+                        </button>
                         <div className="flex items-center gap-1.5">
                           <Users className="h-3.5 w-3.5 text-emerald-400" />
                           <span>
@@ -640,12 +710,103 @@ export default function PlatformAdminPage() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => toggleLeagueDropdown(league.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-xs font-bold text-cyan-200 hover:bg-cyan-500/15"
+                          aria-expanded={!isCollapsed}
+                        >
+                          <Shield className="h-3.5 w-3.5" /> Teams ({memberTeams.length}) {isCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openDeleteModal(league)}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/15"
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Delete
                         </button>
                       </div>
+
+                      {/* Cascading Member Teams Collapsible Dropdown Sublist */}
+                      {!isCollapsed && (
+                        <div className="mt-4 border-t border-white/10 pt-3">
+                          <div className="mb-2.5 flex items-center justify-between text-xs text-neutral-400">
+                            <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-cyan-300">
+                              <Layers className="h-3.5 w-3.5" />
+                              <span>Member Teams Dropdown ({memberTeams.length})</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleLeagueDropdown(league.id)}
+                              className="text-[11px] text-neutral-400 hover:text-white transition-colors"
+                            >
+                              Hide sublist
+                            </button>
+                          </div>
+
+                          {memberTeams.length === 0 ? (
+                            <p className="rounded-xl border border-dashed border-white/10 p-3.5 text-xs text-neutral-500">
+                              No member teams enrolled in this league yet.
+                            </p>
+                          ) : (
+                            <div className="space-y-2.5 border-l-2 border-cyan-500/30 pl-3">
+                              {memberTeams.map((team) => {
+                                const subInfo = getTeamSubscriptionInfo(team);
+                                return (
+                                  <div
+                                    key={team.id}
+                                    className="rounded-xl border border-white/10 bg-neutral-950/80 p-3.5 transition-colors hover:border-cyan-500/30"
+                                  >
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
+                                          <h4 className="truncate text-sm font-bold text-white">{team.name}</h4>
+                                          {team.shortcode && (
+                                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-mono text-neutral-300">
+                                              {team.shortcode}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="mt-0.5 font-mono text-[11px] text-neutral-500">{team.id}</p>
+                                      </div>
+
+                                      <div className="flex flex-col items-end gap-1 text-right">
+                                        <span
+                                          className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                            subInfo.isCovered
+                                              ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
+                                              : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                                          }`}
+                                        >
+                                          {subInfo.badgeLabel}
+                                        </span>
+                                        <span className="text-[10px] text-neutral-400 font-medium">
+                                          Cascaded from league
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-2.5 flex items-center justify-between border-t border-white/5 pt-2 text-xs">
+                                      <span className="text-[11px] text-neutral-400">
+                                        {team.adminEmails?.length ? (
+                                          <span>{team.adminEmails.length} team admin{team.adminEmails.length > 1 ? "s" : ""}</span>
+                                        ) : (
+                                          <span className="text-neutral-500">No team admins</span>
+                                        )}
+                                      </span>
+                                      <Link
+                                        href={`/teams/${team.id}`}
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+                                      >
+                                        Manage team <ExternalLink className="h-3 w-3" />
+                                      </Link>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </article>
                   );
                 })}
@@ -655,13 +816,39 @@ export default function PlatformAdminPage() {
 
             {/* TEAMS COLUMN */}
             <section>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-lg font-black">
-                  <Shield className="h-5 w-5 text-emerald-300" /> Teams ({filteredTeams.length})
+                  <Shield className="h-5 w-5 text-emerald-300" />
+                  {teamTab === "independent" ? `Independent Teams (${independentTeams.length})` : `All Teams (${filteredTeams.length})`}
                 </h2>
+                <div className="flex rounded-lg border border-white/10 bg-neutral-900 p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setTeamTab("independent")}
+                    className={`rounded-md px-3 py-1 font-bold transition-colors ${
+                      teamTab === "independent"
+                        ? "bg-emerald-500/20 text-emerald-300"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    Independent ({independentTeams.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTeamTab("all")}
+                    className={`rounded-md px-3 py-1 font-bold transition-colors ${
+                      teamTab === "all"
+                        ? "bg-emerald-500/20 text-emerald-300"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    All ({filteredTeams.length})
+                  </button>
+                </div>
               </div>
+
               <div className="space-y-3">
-                {filteredTeams.map((team) => {
+                {displayedTeams.map((team) => {
                   const subInfo = getTeamSubscriptionInfo(team);
                   return (
                     <article key={team.id} className="rounded-2xl border border-white/10 bg-neutral-900 p-5 transition-colors hover:border-white/20">
@@ -717,7 +904,29 @@ export default function PlatformAdminPage() {
                     </article>
                   );
                 })}
-                {!filteredTeams.length && <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-neutral-500">No teams found.</p>}
+
+                {!displayedTeams.length && (
+                  teamTab === "independent" ? (
+                    <div className="rounded-2xl border border-dashed border-white/10 bg-neutral-900/50 p-6 text-center text-sm text-neutral-400">
+                      <Shield className="mx-auto h-8 w-8 text-neutral-600 mb-2" />
+                      <p className="font-semibold text-neutral-300">No independent teams</p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        All teams belong to leagues and cascade in the Leagues dropdown sublists on the left.
+                      </p>
+                      {filteredTeams.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setTeamTab("all")}
+                          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-neutral-300 hover:bg-white/10"
+                        >
+                          View all teams directory ({filteredTeams.length})
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-neutral-500">No teams found.</p>
+                  )
+                )}
               </div>
             </section>
           </div>

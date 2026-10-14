@@ -20,7 +20,7 @@ import {
   Info,
   XCircle,
 } from "lucide-react";
-import { PlayoffFormat } from "@/lib/leagueContext";
+import { PlayoffFormat, getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 import { TeamStanding, BracketRound, BracketMatchNode } from "@/lib/standingsEngine";
 
 interface PlayoffBracketViewProps {
@@ -45,7 +45,8 @@ export default function PlayoffBracketView({
   const [activeTab, setActiveTab] = useState<"bracket" | "standings">("bracket");
   const [doubleElimSection, setDoubleElimSection] = useState<"all" | "winners" | "losers" | "finals">("all");
 
-  const playoffSpots = format?.teamsCount || 8;
+  const playoffSpots =
+    format?.teamsCount || getNearestSimplePlayoffBracket(standings.length);
   const isDoubleElim = format?.structure === "double_elimination";
   const bubbleThreshold = Math.min(playoffSpots + 4, standings.length);
 

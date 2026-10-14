@@ -180,4 +180,29 @@ describe("Platform management page", () => {
       expect(screen.queryByText("Customer League")).not.toBeInTheDocument();
     });
   });
+
+  it("renders member teams as a collapsible dropdown sublist of its parent league", async () => {
+    render(<PlatformAdminPage />);
+
+    expect(await screen.findByText("Customer League")).toBeInTheDocument();
+
+    // Member team is visible inside the cascading dropdown sublist initially
+    expect(screen.getByText("Customer Team")).toBeInTheDocument();
+    expect(screen.getByText("Member Teams Dropdown (1)")).toBeInTheDocument();
+
+    // Click collapse / hide button to collapse the sublist
+    const hideBtn = screen.getByRole("button", { name: /Hide sublist/i });
+    fireEvent.click(hideBtn);
+
+    // Customer Team should now be collapsed / hidden from the sublist
+    expect(screen.queryByText("Customer Team")).not.toBeInTheDocument();
+
+    // Click toggle button to expand the sublist again
+    const toggleBtn = screen.getByRole("button", { name: /Toggle teams sublist for Customer League/i });
+    fireEvent.click(toggleBtn);
+
+    // Customer Team should be visible again
+    expect(await screen.findByText("Customer Team")).toBeInTheDocument();
+  });
 });
+
