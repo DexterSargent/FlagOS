@@ -60,7 +60,7 @@ export default function JoinLeague() {
       setLoading(false);
     };
     fetchPlayers();
-  }, []);
+  }, [isDemoLeague]);
 
   const handleToggleFriend = (player: Player) => {
     if (selectedFriends.find(p => p.id === player.id)) {

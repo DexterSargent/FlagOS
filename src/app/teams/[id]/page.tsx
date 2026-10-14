@@ -29,6 +29,7 @@ import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/compo
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { getSandboxTeams, updateSandboxTeam, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 
 export default function TeamPortalHome({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -43,6 +44,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
   const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
   const canAccessPlaybook = !isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
+  const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -126,6 +128,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   };
 
   const hasEditAccess = canManageTeam(teamId);
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   if (loading) {
     return (

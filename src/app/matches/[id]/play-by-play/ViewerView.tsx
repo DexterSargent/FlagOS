@@ -8,7 +8,7 @@ import { doc, onSnapshot, collection, query, where, orderBy, limit } from "fireb
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
-import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { formatPlaySentence as formatPlaySentenceEngine } from "@/lib/playSentenceFormatter";
 import {
   getSandboxMatches,
@@ -37,25 +37,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
 
   const isDemoMatch = isDemoLeague || isEmbedded || checkIsDemoMatch(matchId, activeLeagueId);
 
-  const isPrivateMatch =
-    activeLeagueId === "league_private_live" ||
-    matchId.startsWith("match_live_") ||
-    (settings?.visibility === "private" && !isDemoMatch);
+  const { isDenied, deniedElement } = usePrivateLeagueAccess({
+    isPrivateOverride: matchId.startsWith("match_live_"),
+  });
 
-  const isUserAuthorized =
-    !isPrivateMatch ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
-    (settings?.adminEmails &&
-      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
 
-  if (isPrivateMatch && !isUserAuthorized) {
-    return (
-      <PrivateLeagueAccessDenied
-        requiredEmail="dextersargent@gmail.com"
-        leagueName={settings?.leagueName || "Apex Private League"}
-      />
-    );
-  }
 
   const [matchData, setMatchData] = useState<any>(null);
   const [plays, setPlays] = useState<any[]>([]);
@@ -302,6 +288,10 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   if (!matchData) {
     return (

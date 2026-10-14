@@ -22,7 +22,7 @@ import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { renderFlagOS } from "@/components/FlagOSText";
-import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -34,6 +34,7 @@ import {
 export default function StatsAndStandings() {
   const { user } = useAuth();
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [activeTab, setActiveTab] = useState<"team" | "individual">("team");
   const [indivViewMode, setIndivViewMode] = useState<"leaders" | "table">("leaders");
   const [individualTab, setIndividualTab] = useState<"passing" | "receiving" | "defense">("passing");
@@ -46,24 +47,7 @@ export default function StatsAndStandings() {
   const [teamsData, setTeamsData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
-  const isPrivateLeague =
-    activeLeagueId === "league_private_live" ||
-    (settings?.visibility === "private" && !isDemoLeague);
 
-  const isUserAuthorized =
-    !isPrivateLeague ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
-    (settings?.adminEmails &&
-      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
-
-  if (isPrivateLeague && !isUserAuthorized) {
-    return (
-      <PrivateLeagueAccessDenied
-        requiredEmail="dextersargent@gmail.com"
-        leagueName={settings?.leagueName || "Apex Private League"}
-      />
-    );
-  }
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -471,6 +455,10 @@ export default function StatsAndStandings() {
       </th>
     );
   };
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   if (loading) {
     return (

@@ -3,7 +3,6 @@ import {
   getSandboxMatches,
   getSandboxMatch,
   getSandboxTeams,
-  getSandboxPlayers,
   getSandboxPlays,
   addSandboxPlay,
   deleteSandboxPlay,

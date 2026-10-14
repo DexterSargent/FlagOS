@@ -20,9 +20,28 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>("dark");
-  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("dark");
-  const [mounted, setMounted] = useState(false);
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    if (typeof window === "undefined") return "dark";
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        return saved;
+      }
+    } catch {}
+    return "dark";
+  });
+
+  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
+      if (saved === "light" || saved === "dark") return saved;
+      if (saved === "system") {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    } catch {}
+    return "dark";
+  });
 
   // Apply theme class and data-theme attribute to <html>
   const applyTheme = (mode: ThemeMode) => {
@@ -40,21 +59,11 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useLayoutEffect(() => {
-    let initialMode: ThemeMode = "dark";
-    try {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
-      if (saved === "light" || saved === "dark") {
-        initialMode = saved;
-      }
-    } catch {}
-
-    setThemeModeState(initialMode);
-    applyTheme(initialMode);
-    setMounted(true);
+    applyTheme(themeMode);
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      let currentMode: ThemeMode = "dark";
+      let currentMode: ThemeMode = themeMode;
       try {
         const saved = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
         if (saved === "dark" || saved === "light" || saved === "system") currentMode = saved;
@@ -66,7 +75,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
+  }, [themeMode]);
 
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);

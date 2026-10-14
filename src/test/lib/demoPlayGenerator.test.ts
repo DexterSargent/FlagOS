@@ -4,7 +4,7 @@ import {
   generatePlaysForMatch,
   getGeneratedSeasonPlays,
 } from "@/lib/demoPlayGenerator";
-import { SEED_DEMO_MATCHES, SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS } from "@/lib/demoSeedData";
+import { SEED_DEMO_MATCHES, SEED_DEMO_PLAYERS } from "@/lib/demoSeedData";
 
 describe("demoPlayGenerator", () => {
   describe("decomposeScore", () => {

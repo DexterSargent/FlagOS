@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import TeamPlaybookPage from "@/app/teams/[id]/playbook/page";
 
 import { Suspense } from "react";

@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   formatPlaySentence,
   formatPenaltyStatement,
-  PENALTY_CATALOG,
 } from "@/lib/playSentenceFormatter";
 
 describe("playSentenceFormatter", () => {

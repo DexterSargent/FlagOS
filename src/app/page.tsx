@@ -27,7 +27,6 @@ import {
   Flame,
   Award,
   BadgeDollarSign,
-  UserGroup,
   UserPlus,
   RotateCw,
   ExternalLink,
@@ -496,7 +495,7 @@ export default function FlagOSPlatformLandingPage() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4 p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
-                    <UserGroup className="w-6 h-6" />
+                    <Users className="w-6 h-6" />
                     <h3 className="text-xl font-black uppercase text-white tracking-tight">Team Subscription</h3>
                   </div>
                   <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-mono font-bold border border-emerald-500/20">

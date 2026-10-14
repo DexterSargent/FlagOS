@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useRef } from "react";
+import { useState, useEffect, use, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Zap, RotateCcw, Flag, Maximize, Minimize, Play, Pause, AlertCircle, Timer, Save, Plus, Minus, X, ChevronRight, Undo, AlertTriangle, Shield, Check } from "lucide-react";
@@ -9,7 +9,7 @@ import { collection, addDoc, getDoc, getDocs, doc, serverTimestamp, updateDoc, d
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { simulateFullGame } from "@/lib/gameSimulator";
-import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
 import {
   PENALTY_CATALOG,
@@ -47,25 +47,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
   const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId);
 
-  const isPrivateMatch =
-    activeLeagueId === "league_private_live" ||
-    matchId.startsWith("match_live_") ||
-    (settings?.visibility === "private" && !isDemo);
+  const { isDenied, deniedElement } = usePrivateLeagueAccess({
+    isPrivateOverride: matchId.startsWith("match_live_"),
+  });
 
-  const isUserAuthorized =
-    !isPrivateMatch ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
-    (settings?.adminEmails &&
-      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
 
-  if (isPrivateMatch && !isUserAuthorized) {
-    return (
-      <PrivateLeagueAccessDenied
-        requiredEmail="dextersargent@gmail.com"
-        leagueName={settings?.leagueName || "Apex Private League"}
-      />
-    );
-  }
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -182,6 +168,37 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [isPlayLogDrawerOpen, setIsPlayLogDrawerOpen] = useState(false);
   const [matchPlaysList, setMatchPlaysList] = useState<any[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
+
+  const refreshPlays = useCallback(async () => {
+    try {
+      let pList: any[] = [];
+      if (isDemo) {
+        pList = getSandboxPlays(matchId);
+      } else {
+        const q = query(
+          collection(db, "plays"),
+          where("matchId", "==", matchId),
+          orderBy("timestamp", "asc")
+        );
+        const snap = await getDocs(q);
+        pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      }
+      setMatchPlaysList(pList);
+      if (pList.length > 0) {
+        const last = pList[pList.length - 1];
+        setLastLoggedPlayStatement(
+          formatPlaySentence(last, {
+            homeTeamName,
+            awayTeamName,
+            homeTeamId,
+            downsPerSeries,
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Error refreshing plays in admin:", e);
+    }
+  }, [matchId, isDemo, homeTeamName, awayTeamName, homeTeamId, downsPerSeries]);
 
   const isUnstartedGame =
     matchStatus === "scheduled" ||
@@ -336,36 +353,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     }
   }, [matchId, isDemo, homeTeamName, awayTeamName, homeTeamId, downsPerSeries]);
 
-  const refreshPlays = async () => {
-    try {
-      let pList: any[] = [];
-      if (isDemo) {
-        pList = getSandboxPlays(matchId);
-      } else {
-        const q = query(
-          collection(db, "plays"),
-          where("matchId", "==", matchId),
-          orderBy("timestamp", "asc")
-        );
-        const snap = await getDocs(q);
-        pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      }
-      setMatchPlaysList(pList);
-      if (pList.length > 0) {
-        const last = pList[pList.length - 1];
-        setLastLoggedPlayStatement(
-          formatPlaySentence(last, {
-            homeTeamName,
-            awayTeamName,
-            homeTeamId,
-            downsPerSeries,
-          })
-        );
-      }
-    } catch (e) {
-      console.error("Error refreshing plays in admin:", e);
-    }
-  };
 
   // Game Clock
   useEffect(() => {
@@ -1028,6 +1015,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     const roster = possession === homeTeamName ? awayPlayers : homePlayers;
     return [...roster, 'TEAM'];
   };
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   if (loadingData) {
     return (

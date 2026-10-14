@@ -28,7 +28,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague, PlayoffFormat } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
-import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import {
   getSandboxTeams,
@@ -151,24 +151,9 @@ export default function Calendar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Partial<Match> | null>(null);
 
-  const isPrivateLeague =
-    activeLeagueId === "league_private_live" ||
-    (settings?.visibility === "private" && !isDemoLeague && !isEmbedded);
+  const { isDenied, deniedElement } = usePrivateLeagueAccess();
 
-  const isUserAuthorized =
-    !isPrivateLeague ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
-    (settings?.adminEmails &&
-      settings?.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
 
-  if (isPrivateLeague && !isUserAuthorized) {
-    return (
-      <PrivateLeagueAccessDenied
-        requiredEmail="dextersargent@gmail.com"
-        leagueName={settings?.leagueName || "Apex Private League"}
-      />
-    );
-  }
 
   // Automated Schedule Builder Modal
   const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
@@ -285,7 +270,7 @@ export default function Calendar() {
         championshipName: "FlagOS League Championship",
       }
     );
-  }, [settings?.playoffFormat]);
+  }, [settings.playoffFormat]);
 
   const standings = useMemo(() => {
     return calculateStandings(teams, matches, playoffFormat.teamsCount);
@@ -576,6 +561,10 @@ export default function Calendar() {
     await updateSettings({ playoffFormat: updated });
     setIsEditPlayoffFormatOpen(false);
   };
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   return (
     <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">

@@ -42,7 +42,7 @@ import { collection, getDocs, onSnapshot, addDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
-import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -115,25 +115,9 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [copiedLeagueLink, setCopiedLeagueLink] = useState(false);
 
-  const isPrivateLeague =
-    leagueIdParam === "league_private_live" ||
-    activeLeagueId === "league_private_live" ||
-    (settings.visibility === "private" && !isEffectiveDemo);
+  const { isDenied, deniedElement } = usePrivateLeagueAccess(leagueIdParam);
 
-  const isUserAuthorized =
-    !isPrivateLeague ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
-    (settings.adminEmails &&
-      settings.adminEmails.some((e) => e.toLowerCase() === user?.email?.trim().toLowerCase()));
 
-  if (isPrivateLeague && !isUserAuthorized) {
-    return (
-      <PrivateLeagueAccessDenied
-        requiredEmail="dextersargent@gmail.com"
-        leagueName={settings.leagueName || "Apex Private League"}
-      />
-    );
-  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -706,6 +690,10 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const isTeamAdminView = !isPlayerView && role === "team_admin";
   const isLeagueAdminView = !isPlayerView && !isTeamAdminView && (isLeagueAdmin || role === "league_admin");
   const isSpectatorView = !isPlayerView && !isTeamAdminView && !isLeagueAdminView;
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   return (
     <div className="min-h-screen bg-surface-base text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">

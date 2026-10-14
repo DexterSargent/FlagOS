@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
   getSandboxTeams,
   addSandboxTeam,
@@ -57,7 +58,8 @@ export default function TeamsPage() {
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
   const { isAdmin, isLeagueAdmin, canManageTeam, canRegisterAsPlayer } = useAuth();
-  const { settings, isDemoLeague } = useLeague();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const { isDenied, deniedElement } = usePrivateLeagueAccess();
 
   // Admin States
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
@@ -104,7 +106,7 @@ export default function TeamsPage() {
       const teamsSnap = await getDocs(collection(db, "teams"));
       const tData = teamsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as Team))
-        .filter(isRealTeam);
+        .filter(t => isRealTeam(t) && (!((t as any).leagueId) || (t as any).leagueId === activeLeagueId));
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
 
@@ -113,7 +115,9 @@ export default function TeamsPage() {
       setPlayers(pData);
 
       const matchesSnap = await getDocs(collection(db, "matches"));
-      const mData = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const mData = matchesSnap.docs
+        .map(d => ({ id: d.id, ...d.data() } as any))
+        .filter(m => !m.isHidden && (!m.leagueId || m.leagueId === activeLeagueId));
       setMatches(mData);
 
       const playsSnap = await getDocs(collection(db, "plays"));
@@ -298,6 +302,7 @@ export default function TeamsPage() {
     try {
       const docRef = await addDoc(collection(db, "teams"), {
         name: newTeamName.trim(),
+        leagueId: activeLeagueId,
         createdAt: new Date().toISOString()
       });
       setTeams([...teams, { id: docRef.id, name: newTeamName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
@@ -475,6 +480,10 @@ export default function TeamsPage() {
     if (s.flagPulls > topFlags.val) topFlags = { name, val: s.flagPulls };
     if (s.int > topInts.val) topInts = { name, val: s.int };
   });
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   return (
     <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">

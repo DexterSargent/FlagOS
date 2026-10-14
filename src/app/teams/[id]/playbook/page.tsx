@@ -29,6 +29,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
+import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
 import CreatePlaybookModal from "@/components/playbook/CreatePlaybookModal";
 import CreateFormationModal from "@/components/playbook/CreateFormationModal";
@@ -56,6 +57,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
   const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId } = useAuth();
   const { settings, isDemoLeague } = useLeague();
+  const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const playersPerSide = settings?.rules?.playersOnField || 5;
 
   const [team, setTeam] = useState<any>(null);
@@ -553,6 +555,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
     setActivePlayId(cloned.id);
   };
+
+  if (isDenied) {
+    return deniedElement;
+  }
 
   if (loading) {
     return (
