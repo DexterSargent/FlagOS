@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  FLAGOS_LOGO,
   FLAGOS_LOGO_LIGHT,
   FLAGOS_LOGO_DARK,
   getFlagOSLogoPath,
@@ -8,18 +9,17 @@ import {
 } from "@/lib/brandTokens";
 
 describe("FlagOS Brand Tokens & Logo Architecture", () => {
-  it("exports single light and dark mode logo tokens as accessible file paths", () => {
-    expect(typeof FLAGOS_LOGO_LIGHT).toBe("string");
-    expect(typeof FLAGOS_LOGO_DARK).toBe("string");
-    expect(FLAGOS_LOGO_LIGHT.length).toBeGreaterThan(0);
-    expect(FLAGOS_LOGO_DARK.length).toBeGreaterThan(0);
+  it("exports a single unified logo token used across all themes", () => {
+    expect(FLAGOS_LOGO).toBe("/flagos-emblem.png");
+    expect(FLAGOS_LOGO_LIGHT).toBe(FLAGOS_LOGO);
+    expect(FLAGOS_LOGO_DARK).toBe(FLAGOS_LOGO);
   });
 
-  it("resolves the correct logo file path based on active theme", () => {
-    expect(getFlagOSLogoPath("light")).toBe(FLAGOS_LOGO_LIGHT);
-    expect(getFlagOSLogoPath("dark")).toBe(FLAGOS_LOGO_DARK);
-    expect(getFlagOSLogoPath(null)).toBe(FLAGOS_LOGO_DARK);
-    expect(getFlagOSLogoPath(undefined)).toBe(FLAGOS_LOGO_DARK);
+  it("resolves the unified logo file path regardless of active theme", () => {
+    expect(getFlagOSLogoPath("light")).toBe(FLAGOS_LOGO);
+    expect(getFlagOSLogoPath("dark")).toBe(FLAGOS_LOGO);
+    expect(getFlagOSLogoPath(null)).toBe(FLAGOS_LOGO);
+    expect(getFlagOSLogoPath(undefined)).toBe(FLAGOS_LOGO);
   });
 
   it("identifies default FlagOS logo URLs accurately", () => {
@@ -28,10 +28,8 @@ describe("FlagOS Brand Tokens & Logo Architecture", () => {
     expect(isDefaultFlagOSLogo(null)).toBe(true);
     expect(isDefaultFlagOSLogo(undefined)).toBe(true);
     expect(isDefaultFlagOSLogo("")).toBe(true);
-    expect(isDefaultFlagOSLogo("/flagos-logo.png")).toBe(true);
     expect(isDefaultFlagOSLogo("/flagos-emblem.png")).toBe(true);
-    expect(isDefaultFlagOSLogo("/flagos-emblem-dark.png")).toBe(true);
-    expect(isDefaultFlagOSLogo("/flagos-emblem-light.png")).toBe(true);
+    expect(isDefaultFlagOSLogo("/flagos-emblem.webp")).toBe(true);
 
     // Custom third-party team logos should NOT be marked as default
     expect(isDefaultFlagOSLogo("https://example.com/custom-team-logo.png")).toBe(false);

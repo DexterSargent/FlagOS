@@ -1,16 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useTheme } from "@/lib/themeContext";
+import React from "react";
 import { FlagOSText } from "./FlagOSText";
 import {
+  FLAGOS_LOGO,
   FLAGOS_LOGO_LIGHT,
   FLAGOS_LOGO_DARK,
   getFlagOSLogoPath,
   isDefaultFlagOSLogo,
 } from "@/lib/brandTokens";
 
-export { FLAGOS_LOGO_LIGHT, FLAGOS_LOGO_DARK, getFlagOSLogoPath, isDefaultFlagOSLogo };
+export {
+  FLAGOS_LOGO,
+  FLAGOS_LOGO_LIGHT,
+  FLAGOS_LOGO_DARK,
+  getFlagOSLogoPath,
+  isDefaultFlagOSLogo,
+};
 
 export interface FlagOSLogoProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   variant?: "emblem" | "full" | "hero";
@@ -31,50 +37,43 @@ const SIZE_MAP = {
 /**
  * FlagOS Official Brand Logo Component
  * 
- * Uses the single brand logo token defined in `@/lib/brandTokens`.
- * Automatically resolves light mode (`FLAGOS_LOGO_LIGHT`) or dark mode (`FLAGOS_LOGO_DARK`).
- * 
- * NOTE: The typography text is intentionally separated into `<FlagOSText />` in `@/components/FlagOSText`,
- * so updating the logo only requires updating the single file path token in brandTokens.ts.
+ * Uses the single unified high-res background-removed logo (`/flagos-emblem.png`).
+ * Works uniformly across both light and dark themes without separate variants.
+ * Typography text ("FLAG" + "OS") is kept strictly separate in `<FlagOSText />`.
  */
 export function FlagOSLogo({
-  variant = "emblem",
+  variant,
   size = "md",
   className = "",
   alt = "FlagOS Logo",
   style,
+  src,
   ...rest
 }: FlagOSLogoProps) {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const themeToUse = mounted ? resolvedTheme : "dark";
-  const logoSrc = getFlagOSLogoPath(themeToUse);
   const sizeConfig = SIZE_MAP[size] || SIZE_MAP.md;
+  const isHero = variant === "hero" || size === "hero";
+  const dropShadow = isHero
+    ? "drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300"
+    : "drop-shadow-[0_4px_16px_rgba(60,165,5,0.3)] transition-transform";
 
-  let variantStyles = "object-contain drop-shadow";
-  if (variant === "hero") {
-    variantStyles =
-      "object-contain drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300";
-  } else if (variant === "emblem") {
-    variantStyles =
-      "object-contain drop-shadow-[0_4px_16px_rgba(60,165,5,0.3)] transition-transform";
-  }
+  const logoSrc = src || FLAGOS_LOGO;
+  const webpSrc = logoSrc.replace(/\.png$/i, ".webp");
 
   return (
-    <img
-      src={logoSrc}
-      alt={alt}
-      width={rest.width || sizeConfig.width}
-      height={rest.height || sizeConfig.height}
-      className={`${variantStyles} ${className}`.trim()}
-      style={style}
-      {...rest}
-    />
+    <picture className="inline-flex items-center justify-center">
+      <source srcSet={webpSrc} type="image/webp" />
+      <img
+        src={logoSrc}
+        alt={alt}
+        width={rest.width || sizeConfig.width}
+        height={rest.height || sizeConfig.height}
+        loading={rest.loading || (isHero ? "eager" : "lazy")}
+        decoding="async"
+        className={`object-contain ${dropShadow} ${className}`.trim()}
+        style={style}
+        {...rest}
+      />
+    </picture>
   );
 }
 

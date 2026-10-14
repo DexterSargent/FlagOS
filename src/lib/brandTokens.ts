@@ -3,24 +3,24 @@
  * FlagOS Official Brand Tokens & Assets
  * ============================================================================
  * 
- * To change the FlagOS logo across the entire site, simply update these two file paths:
- * - FLAGOS_LOGO_LIGHT: Path to the logo image used in light mode.
- * - FLAGOS_LOGO_DARK:  Path to the logo image used in dark mode.
- * 
- * Note: The brand typography text ("FLAG" + "OS") is kept strictly separate in
- * `@/components/FlagOSText`, so changing either logo path here will update the
- * visual emblem everywhere without altering the text styling.
+ * Single Unified Brand Logo Asset:
+ * `/flagos-emblem.png` is the high-res, background-removed official FlagOS logo.
+ * There is no separate dark/light or emblem/logo distinction needed because the emblem
+ * IS the logo and works seamlessly across both light and dark themes.
+ * Typography text ("FLAG" + "OS") is rendered via `<FlagOSText />`.
  */
 
-export const FLAGOS_LOGO_LIGHT = "/flagos-emblem.png";
-export const FLAGOS_LOGO_DARK = "/flagos-emblem.png";
+export const FLAGOS_LOGO = "/flagos-emblem.png";
+
+// Backward-compatible aliases for legacy imports
+export const FLAGOS_LOGO_LIGHT = FLAGOS_LOGO;
+export const FLAGOS_LOGO_DARK = FLAGOS_LOGO;
 
 /**
- * Returns the active FlagOS logo file path based on the given theme ("light" | "dark").
- * Defaults to FLAGOS_LOGO_DARK if theme is not "light".
+ * Returns the unified FlagOS logo file path regardless of theme.
  */
-export function getFlagOSLogoPath(theme?: string | null): string {
-  return theme === "light" ? FLAGOS_LOGO_LIGHT : FLAGOS_LOGO_DARK;
+export function getFlagOSLogoPath(_theme?: string | null): string {
+  return FLAGOS_LOGO;
 }
 
 /**
@@ -28,14 +28,9 @@ export function getFlagOSLogoPath(theme?: string | null): string {
  * to recognize whether a league is using default FlagOS branding vs a custom team/circuit logo.
  */
 export const DEFAULT_FLAGOS_LOGO_URLS = [
-  FLAGOS_LOGO_LIGHT,
-  FLAGOS_LOGO_DARK,
-  "/flagos-logo.png",
+  FLAGOS_LOGO,
   "/flagos-emblem.png",
-  "/flagos-emblem-dark.png",
-  "/flagos-emblem-light.png",
-  "/flagos-logo-original.png",
-  "/logo.png",
+  "/flagos-emblem.webp",
 ] as const;
 
 /**

@@ -27,7 +27,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
-import { FlagOSLogo, getFlagOSLogoPath, isDefaultFlagOSLogo } from "@/components/FlagOSLogo";
+import { FlagOSLogo, FLAGOS_LOGO, isDefaultFlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/lib/themeContext";
 
@@ -109,7 +109,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      e.currentTarget.src = getFlagOSLogoPath(resolvedTheme);
+                      e.currentTarget.src = FLAGOS_LOGO;
                     }}
                   />
                 ) : (

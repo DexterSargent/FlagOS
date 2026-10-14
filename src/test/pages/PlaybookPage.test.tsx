@@ -34,7 +34,7 @@ vi.mock("@/lib/leagueContext", () => ({
     shortcode: "FLAG",
     tagline: "The Flag Football Operating System",
     seasonTitle: "2026 Season",
-    logoUrl: "/flagos-logo.png",
+    logoUrl: "/flagos-emblem.png",
     icon: "shield",
     primaryColor: "#3ca505",
     accentColor: "#22c55e",

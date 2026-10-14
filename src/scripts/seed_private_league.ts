@@ -22,7 +22,7 @@ const leagueDoc = {
   shortcode: "APEX",
   tagline: "Private Live Testing Environment with Active Database Writes",
   seasonTitle: "2026 Live Season",
-  logoUrl: "/flagos-logo.png",
+  logoUrl: "/flagos-emblem.png",
   icon: "shield",
   primaryColor: "#10b981",
   accentColor: "#06b6d4",

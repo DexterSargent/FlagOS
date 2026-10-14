@@ -21,7 +21,7 @@ describe("LeagueHeader Component", () => {
       shortcode: "FLAG",
       primaryColor: "#3ca505",
       accentColor: "#22c55e",
-      logoUrl: "/flagos-logo.png",
+      logoUrl: "/flagos-emblem.png",
       announcement: "",
       seasonTitle: "2026 Season",
       rules: { enableFreeAgents: true },

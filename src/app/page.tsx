@@ -41,7 +41,7 @@ import {
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
-import { FlagOSLogo, FLAGOS_LOGO_DARK } from "@/components/FlagOSLogo";
+import { FlagOSLogo, FLAGOS_LOGO } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/lib/themeContext";
 
@@ -138,7 +138,7 @@ export default function FlagOSPlatformLandingPage() {
       primaryColor: settings?.primaryColor || "#3ca505",
       accentColor: settings?.accentColor || "#22c55e",
       tagline: settings?.tagline || "The Flag Football Operating System",
-      logoUrl: settings?.logoUrl || "/flagos-logo.png",
+      logoUrl: settings?.logoUrl || FLAGOS_LOGO,
       visibility: settings?.visibility || "public",
     },
     ...userLeagues
@@ -154,7 +154,7 @@ export default function FlagOSPlatformLandingPage() {
         primaryColor: l.primaryColor || "#3ca505",
         accentColor: l.accentColor || "#22c55e",
         tagline: "Official FlagOS Circuit",
-        logoUrl: l.logoUrl || "/flagos-logo.png",
+        logoUrl: l.logoUrl || FLAGOS_LOGO,
         visibility: l.visibility || "public",
       })),
     {
@@ -168,7 +168,7 @@ export default function FlagOSPlatformLandingPage() {
       primaryColor: "#0284c7",
       accentColor: "#38bdf8",
       tagline: "Premier competitive 5v5 tournament circuit",
-      logoUrl: FLAGOS_LOGO_DARK,
+      logoUrl: FLAGOS_LOGO,
       visibility: "public" as const,
     },
     {
@@ -182,7 +182,7 @@ export default function FlagOSPlatformLandingPage() {
       primaryColor: "#d97706",
       accentColor: "#f59e0b",
       tagline: "Fast-tempo non-contact 7-on-7 division",
-      logoUrl: FLAGOS_LOGO_DARK,
+      logoUrl: FLAGOS_LOGO,
       visibility: "public" as const,
     },
     {
@@ -196,7 +196,7 @@ export default function FlagOSPlatformLandingPage() {
       primaryColor: "#059669",
       accentColor: "#10b981",
       tagline: "British Columbia collegiate and adult flag league",
-      logoUrl: FLAGOS_LOGO_DARK,
+      logoUrl: FLAGOS_LOGO,
       visibility: "public" as const,
     },
   ];
