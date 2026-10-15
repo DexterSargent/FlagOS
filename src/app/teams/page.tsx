@@ -92,7 +92,11 @@ export default function TeamsPage() {
   const fetchData = async () => {
     setLoading(true);
     if (isEffectiveDemo) {
-      const t = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
+      const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
+      const t = baseTeams.some(team => team.id === YORK_TEAM_ID || isYorkTeam(team.id))
+        ? baseTeams
+        : [...baseTeams, { ...YORK_LIONS_TEAM, id: YORK_TEAM_ID } as unknown as Team];
+      t.sort((a, b) => a.name.localeCompare(b.name));
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();
@@ -108,6 +112,12 @@ export default function TeamsPage() {
       const tData = teamsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as Team))
         .filter(t => isRealTeam(t) && (!((t as any).leagueId) || (t as any).leagueId === activeLeagueId));
+      if (!tData.some(t => t.id === YORK_TEAM_ID || isYorkTeam(t.id))) {
+        tData.push({
+          ...YORK_LIONS_TEAM,
+          id: YORK_TEAM_ID,
+        } as unknown as Team);
+      }
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
 
@@ -126,7 +136,11 @@ export default function TeamsPage() {
       setPlays(playData);
     } catch (e) {
       console.warn("Unable to fetch live teams data, falling back to sandbox:", e);
-      const t = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
+      const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
+      const t = baseTeams.some(team => team.id === YORK_TEAM_ID || isYorkTeam(team.id))
+        ? baseTeams
+        : [...baseTeams, { ...YORK_LIONS_TEAM, id: YORK_TEAM_ID } as unknown as Team];
+      t.sort((a, b) => a.name.localeCompare(b.name));
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();

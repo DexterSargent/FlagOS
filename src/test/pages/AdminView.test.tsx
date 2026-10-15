@@ -102,20 +102,26 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     });
   });
 
-  it("renders interactive down buttons (1st Down, 2nd Down, 3rd Down, 4th Down) and allows manual down changes", async () => {
+  it("renders down with extension underneath clock and allows manual adjustment with plus and minus buttons", async () => {
     await renderAdmin();
 
     await waitFor(() => {
-      // Down buttons rendered
-      const down3Buttons = screen.getAllByRole("button", { name: /3rd Down/i });
-      expect(down3Buttons.length).toBeGreaterThan(0);
-      const down3Button = down3Buttons[0];
-      expect(down3Button).toBeInTheDocument();
+      // Down indicator rendered underneath clock (starts at 1st)
+      expect(screen.getByText("1st")).toBeInTheDocument();
 
-      // Click Down 3
-      fireEvent.click(down3Button);
-      // Down 3 button becomes active with white bg
-      expect(down3Button).toHaveClass("bg-white");
+      // Click Increase Down button (+) to move to 2nd
+      const increaseBtn = screen.getByRole("button", { name: /Increase Down/i });
+      fireEvent.click(increaseBtn);
+      expect(screen.getByText("2nd")).toBeInTheDocument();
+
+      // Click Increase Down button (+) to move to 3rd
+      fireEvent.click(increaseBtn);
+      expect(screen.getByText("3rd")).toBeInTheDocument();
+
+      // Click Decrease Down button (-) to move back to 2nd
+      const decreaseBtn = screen.getByRole("button", { name: /Decrease Down/i });
+      fireEvent.click(decreaseBtn);
+      expect(screen.getByText("2nd")).toBeInTheDocument();
     });
   });
 

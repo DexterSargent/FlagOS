@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { db } from "@/lib/firebase";
+import { isYorkTeam, YORK_TEAM_ID, getYorkTeamData } from "@/lib/yorkTeamData";
 
 export interface ManagedRecord {
   id: string;
@@ -135,30 +136,57 @@ export default function PlatformAdminPage() {
           };
         })
       );
-      setTeams(
-        teamSnapshot.docs.map((record) => {
-          const data = record.data();
-          const rawAdmins = Array.isArray(data.adminEmails)
-            ? data.adminEmails
-            : [data.coachEmail, data.adminEmail, data.email].filter(Boolean);
-          const adminEmails = rawAdmins
-            .map((e: unknown) => String(e).trim().toLowerCase())
-            .filter(Boolean);
+      const loadedTeams: ManagedRecord[] = teamSnapshot.docs.map((record) => {
+        const data = record.data();
+        const rawAdmins = Array.isArray(data.adminEmails)
+          ? data.adminEmails
+          : [data.coachEmail, data.adminEmail, data.email].filter(Boolean);
+        const adminEmails = rawAdmins
+          .map((e: unknown) => String(e).trim().toLowerCase())
+          .filter(Boolean);
 
-          return {
-            ...data,
-            id: record.id,
-            name: getText(data.name ?? data.teamName, "Untitled team"),
-            shortcode: getText(data.shortcode, ""),
-            leagueId: getText(data.leagueId, ""),
-            subscriptionStatus: getText(data.subscription?.status, "Not set"),
-            subscription: typeof data.subscription === "object" && data.subscription !== null
-              ? (data.subscription as Record<string, unknown>)
-              : { status: getText(data.subscription?.status, "Not set") },
-            adminEmails,
-          };
-        })
-      );
+        return {
+          ...data,
+          id: record.id,
+          name: getText(data.name ?? data.teamName, "Untitled team"),
+          shortcode: getText(data.shortcode, ""),
+          leagueId: getText(data.leagueId, ""),
+          subscriptionStatus: getText(data.subscription?.status, "Not set"),
+          subscription: typeof data.subscription === "object" && data.subscription !== null
+            ? (data.subscription as Record<string, unknown>)
+            : { status: getText(data.subscription?.status, "Not set") },
+          adminEmails,
+        };
+      });
+
+      // Ensure York Lions is treated like a normal team in platform admin
+      const hasYork = loadedTeams.some((t) => t.id === YORK_TEAM_ID || isYorkTeam(t.id));
+      if (!hasYork) {
+        const yorkData = getYorkTeamData();
+        const rawAdmins = Array.isArray(yorkData.adminEmails)
+          ? yorkData.adminEmails
+          : [yorkData.coachEmail, yorkData.adminEmail, yorkData.email].filter(Boolean);
+        const adminEmails = (rawAdmins.length ? rawAdmins : ["dextersargent@gmail.com"])
+          .map((e: unknown) => String(e).trim().toLowerCase())
+          .filter(Boolean);
+
+        loadedTeams.push({
+          ...yorkData,
+          id: YORK_TEAM_ID,
+          name: getText(yorkData.name ?? yorkData.teamName, "York Lions Women's Flag Football"),
+          shortcode: getText(yorkData.shortcode, "YORK"),
+          leagueId: getText(yorkData.leagueId, ""),
+          subscriptionStatus: getText(yorkData.subscription?.status, "active"),
+          subscription: typeof yorkData.subscription === "object" && yorkData.subscription !== null
+            ? (yorkData.subscription as Record<string, unknown>)
+            : { status: "active", plan: "team_pro" },
+          adminEmails,
+          primaryColor: getText(yorkData.primaryColor, "#E31837"),
+          accentColor: getText(yorkData.secondaryColor, "#FFFFFF"),
+        });
+      }
+
+      setTeams(loadedTeams);
     } catch (loadError) {
       console.error("Failed to load platform records:", loadError);
       setError("Could not load leagues and teams. Check the Firebase connection and try again.");
@@ -562,7 +590,7 @@ export default function PlatformAdminPage() {
             <Shield className="h-8 w-8 text-emerald-300" />
             <div>
               <div className="text-2xl font-black">{teams.length}</div>
-              <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">Teams (Subscribed via League)</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">Teams (League & Independent)</div>
             </div>
           </div>
         </div>
@@ -881,7 +909,11 @@ export default function PlatformAdminPage() {
                               {subInfo.badgeLabel}
                             </span>
                           ) : (
-                            <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-300">
+                            <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                              subInfo.isCovered
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                : "border-white/10 bg-white/5 text-neutral-300"
+                            }`}>
                               {subInfo.badgeLabel}
                             </span>
                           )}
@@ -893,7 +925,14 @@ export default function PlatformAdminPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap gap-2 border-t border-white/5 pt-3">
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
+                        <span className="text-[11px] text-neutral-400">
+                          {team.adminEmails?.length ? (
+                            <span>{team.adminEmails.length} team admin{team.adminEmails.length > 1 ? "s" : ""}</span>
+                          ) : (
+                            <span className="text-neutral-500">No team admins</span>
+                          )}
+                        </span>
                         <Link
                           href={`/teams/${team.id}`}
                           className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/20"

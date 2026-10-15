@@ -7,6 +7,7 @@ import { useAuth, UserRole } from "@/lib/authContext";
 import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye, ArrowLeft } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { YORK_LIONS_TEAM } from "@/lib/yorkTeamData";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RoleSwitcherBar() {
@@ -72,6 +73,9 @@ export default function RoleSwitcherBar() {
     const loadData = () => {
       try {
         const tList = getSandboxTeams().map((t) => ({ id: t.id, name: t.name }));
+        if (!tList.some((t) => t.id === YORK_LIONS_TEAM.id)) {
+          tList.push({ id: YORK_LIONS_TEAM.id, name: YORK_LIONS_TEAM.name });
+        }
         tList.sort((a, b) => a.name.localeCompare(b.name));
         setTeams(tList);
 

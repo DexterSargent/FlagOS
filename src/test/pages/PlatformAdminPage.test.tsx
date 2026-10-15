@@ -84,7 +84,7 @@ describe("Platform management page", () => {
     expect(await screen.findByText("Customer League")).toBeInTheDocument();
     expect(screen.getByText("Customer Team")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Manage league/i })).toHaveAttribute("href", "/league/league_customer_1");
-    expect(screen.getByRole("link", { name: /Manage team/i })).toHaveAttribute("href", "/teams/team_customer_1");
+    expect(screen.getAllByRole("link", { name: /Manage team/i })[0]).toHaveAttribute("href", "/teams/team_customer_1");
 
     fireEvent.click(screen.getByRole("button", { name: /Make private/i }));
     await waitFor(() => expect(mockUpdateDoc).toHaveBeenCalled());
@@ -203,6 +203,18 @@ describe("Platform management page", () => {
 
     // Customer Team should be visible again
     expect(await screen.findByText("Customer Team")).toBeInTheDocument();
+  });
+
+  it("renders York Lions as an independent team in the platform admin portal", async () => {
+    render(<PlatformAdminPage />);
+
+    expect(await screen.findByText("York Lions Women's Flag Football")).toBeInTheDocument();
+    expect(screen.getByText(/YORK/)).toBeInTheDocument();
+    expect(screen.getByText("Independent Teams (1)")).toBeInTheDocument();
+    const manageLinks = screen.getAllByRole("link", { name: /Manage team/i });
+    const yorkLink = manageLinks.find((link) => link.getAttribute("href") === "/teams/york_lions");
+    expect(yorkLink).toBeDefined();
+    expect(yorkLink).toHaveAttribute("href", "/teams/york_lions");
   });
 });
 

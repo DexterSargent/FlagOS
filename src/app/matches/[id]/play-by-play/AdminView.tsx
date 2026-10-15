@@ -1384,41 +1384,49 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* AESTHETIC DOWN SWITCHER BUTTONS */}
-          <div className="flex items-center gap-0.5 sm:gap-1 bg-black/60 border border-white/10 rounded-xl p-0.5 sm:p-1 shrink-0 shadow-inner">
-            {Array.from({ length: downsPerSeries }, (_, i) => i + 1).map((d) => {
-              const isActive = currentDown === d;
-              return (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setCurrentDown(d)}
-                  aria-label={`${getOrdinal(d)} Down`}
-                  title={`Set to ${getOrdinal(d)} Down`}
-                  className={`px-1.5 sm:px-2.5 py-1 rounded-lg text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${isActive
-                    ? "bg-white text-black shadow-md font-black"
-                    : "text-neutral-400 hover:text-white hover:bg-white/10"
-                    }`}
-                >
-                  <span className="inline min-[380px]:hidden">{getOrdinal(d)}</span>
-                  <span className="hidden min-[380px]:inline">{getOrdinal(d)} Down</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* GAME CLOCK & DOWN ADJUSTER */}
+          <div className="flex flex-col items-center bg-black/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
+            {/* TOP: PERIOD & GAME CLOCK */}
+            <div className="flex items-center gap-0.5 sm:gap-1.5">
+              <span className="hidden sm:block text-[8px] md:text-[10px] font-bold uppercase text-neutral-500">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
+              <button onPointerDown={() => startAdjustingClock(-10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Remove 10 seconds">
+                <Minus className="w-3 h-3" />
+              </button>
+              <span className="text-sm sm:text-lg md:text-xl font-black tabular-nums text-white text-center leading-none">{formatTime(gameClock)}</span>
+              <button onPointerDown={() => startAdjustingClock(10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Add 10 seconds">
+                <Plus className="w-3 h-3" />
+              </button>
+              <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} aria-label={isGameClockRunning ? "Pause game clock" : "Start game clock"} className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? "bg-red-500/20 text-red-500" : "bg-emerald-500/20 text-emerald-500"}`}>
+                {isGameClockRunning ? <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" /> : <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />}
+              </button>
+            </div>
 
-          <div className="flex items-center gap-0.5 sm:gap-1.5 bg-black/40 px-1 sm:px-1.5 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
-            <span className="hidden sm:block text-[8px] md:text-[10px] font-bold uppercase text-neutral-500">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
-            <button onPointerDown={() => startAdjustingClock(-10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Remove 10 seconds">
-              <Minus className="w-3 h-3" />
-            </button>
-            <span className="text-sm sm:text-lg md:text-s font-black tabular-nums text-white text-center">{formatTime(gameClock)}</span>
-            <button onPointerDown={() => startAdjustingClock(10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Add 10 seconds">
-              <Plus className="w-3 h-3" />
-            </button>
-            <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} aria-label={isGameClockRunning ? "Pause game clock" : "Start game clock"} className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? "bg-red-500/20 text-red-500" : "bg-emerald-500/20 text-emerald-500"}`}>
-              {isGameClockRunning ? <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" /> : <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />}
-            </button>
+            {/* BOTTOM: UNDERNEATH THE CLOCK - COMPACT DOWN STEPPER */}
+            <div className="flex items-center justify-center gap-1 mt-0.5 pt-0.5 border-t border-white/10 w-full" title="Current Down (Use - and + to adjust)">
+              <button
+                type="button"
+                onClick={() => setCurrentDown((d) => Math.max(1, d - 1))}
+                disabled={currentDown <= 1}
+                aria-label="Decrease Down"
+                title="Decrease Down"
+                className="p-0.5 rounded text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+              </button>
+              <span className="text-[10px] sm:text-xs font-black text-white px-0.5 sm:px-1 tabular-nums tracking-wide">
+                {getOrdinal(currentDown)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentDown((d) => Math.min(downsPerSeries, d + 1))}
+                disabled={currentDown >= downsPerSeries}
+                aria-label="Increase Down"
+                title="Increase Down"
+                className="p-0.5 rounded text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+              </button>
+            </div>
           </div>
 
           {/* IFAF PLAY CLOCK CONTAINER WITH CONTROLS */}
@@ -1815,23 +1823,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   >
                     <ChevronLeft className="w-4 h-4" /> Back to Play Type
                   </button>
-                  <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10 shadow-inner">
-                    {Array.from({ length: downsPerSeries }, (_, i) => i + 1).map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setCurrentDown(d)}
-                        aria-label={`${getOrdinal(d)} Down`}
-                        title={`Set to ${getOrdinal(d)} Down`}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${currentDown === d
-                          ? "bg-white text-black shadow-md font-black"
-                          : "text-neutral-400 hover:text-white hover:bg-white/10"
-                          }`}
-                      >
-                        {getOrdinal(d)} Down
-                      </button>
-                    ))}
-                  </div>
+                  <span className="text-[10px] sm:text-xs font-mono font-bold text-cyan-400 uppercase bg-black/40 px-2 py-0.5 rounded-lg border border-white/10">
+                    {getOrdinal(currentDown)} Down
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 md:flex gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-white/10 rounded-2xl shrink-0 relative z-10 w-full">
                   {playType === 'Pass' && ['Complete', 'Incomplete', 'Interception', 'Sack'].map((res) => {
@@ -1873,10 +1867,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       {res === 'FFL' ? 'Flag For Loss (FFL)' : 'Positive / No Gain'}
                     </button>
                   ))}
-                  <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-12 md:gap-4 overflow-hidden w-full max-w-7xl mx-auto">
-                    {/* LEFT COLUMN: Player & Event Selections */}
-                    <div className="flex-1 min-h-0 md:col-span-7 flex flex-col gap-2.5 overflow-y-auto pr-1">
-                      {/* SECTION 1: QUARTERBACK / RUNNER */}
+                  <div className="flex-1 min-h-0 flex flex-col gap-2.5 overflow-y-auto pr-1 w-full max-w-3xl mx-auto">
+                    {/* SECTION 1: QUARTERBACK / RUNNER */}
                       {qbRunner && !isQbOpen ? (
                         <button
                           type="button"
@@ -2317,110 +2309,68 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                           </div>
                         </div>
                       )}
-                    </div>
-
-                    {/* RIGHT COLUMN (DESKTOP) / DOCKED ACTION CONSOLE (MOBILE): SECTION 8 RESULTS & OUTCOMES */}
+                    {/* SECTION 8: RESULTS & OUTCOMES ROW */}
                     {outcome !== 'Incomplete_Menu' && (
-                      <div className="shrink-0 md:flex-1 md:min-h-0 md:col-span-5 flex flex-col justify-between bg-neutral-900/95 border border-white/10 rounded-2xl p-2.5 sm:p-3.5 md:p-4 shadow-xl overflow-y-auto mt-2 md:mt-0">
-                        {/* Desktop Live Status Summary */}
-                        <div className="hidden md:flex flex-col gap-2 mb-2">
-                          <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
-                            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400">Play Action Console</span>
-                            <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-white/10 text-neutral-300 uppercase">
-                              {getOrdinal(currentDown)} Down
-                            </span>
+                      <div className="shrink-0 pt-2 pb-4 w-full min-h-[60px] md:min-h-[75px]">
+                        {/* OOB Prompt Logic */}
+                        {isOobPrompt && (
+                          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
+                            <button onClick={() => handleSavePlay('First Down')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">OOB - FIRST DOWN</button>
+                            <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">OOB - SHORT</button>
                           </div>
-                          <div className="bg-black/60 border border-white/10 rounded-xl p-2.5 space-y-1 text-xs">
-                            <div className="flex items-center justify-between">
-                              <span className="text-neutral-400 font-bold uppercase text-[10px]">Offense:</span>
-                              <span className="font-black text-white">{possession}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-neutral-400 font-bold uppercase text-[10px]">{playType === 'Run' ? 'Runner:' : 'Quarterback:'}</span>
-                              <span className="font-bold text-cyan-300">
-                                {qbRunner ? `${playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ''}${qbRunner}` : 'Select below'}
-                              </span>
-                            </div>
-                            {playType === 'Pass' && outcome === 'Complete' && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-neutral-400 font-bold uppercase text-[10px]">Target:</span>
-                                <span className="font-bold text-emerald-300">
-                                  {receiver ? `${playerNumberMap[receiver] ? `#${playerNumberMap[receiver]} ` : ''}${receiver}` : 'Select receiver'}
-                                </span>
+                        )}
+
+                        {/* Normal Results */}
+                        {!isOobPrompt && (
+                          <>
+                            {/* Immediate Touchdown & OOB for Complete/Gain */}
+                            {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length === 0 && (
+                              <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in fade-in">
+                                <button onClick={() => handleSavePlay('Touchdown')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">TOUCHDOWN</button>
+                                <button onClick={() => setIsOobPrompt(true)} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-xs sm:text-base md:text-lg border border-white/10 hover:text-white hover:bg-neutral-700 cursor-pointer">OUT OF BOUNDS</button>
                               </div>
                             )}
-                            {defenders.length > 0 && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-neutral-400 font-bold uppercase text-[10px]">{outcome === 'Interception' ? 'Interceptor:' : 'Flagger(s):'}</span>
-                                <span className="font-bold text-amber-300 truncate max-w-[160px]">
-                                  {defenders.map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(' & ')}
-                                </span>
+
+                            {/* Normal Complete/Gain with Flagger */}
+                            {isPlayReadyToSave() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length > 0 && (
+                              <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
+                                <button onClick={() => handleSavePlay('First Down')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">FIRST DOWN</button>
+                                <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">SHORT OF LINE</button>
                               </div>
                             )}
-                          </div>
-                        </div>
 
-                        {/* SECTION 8: RESULTS & OUTCOMES ROW */}
-                        <div className="shrink-0 pt-1 w-full min-h-[60px] md:min-h-[75px]">
-                          {/* OOB Prompt Logic */}
-                          {isOobPrompt && (
-                            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
-                              <button onClick={() => handleSavePlay('First Down')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">OOB - FIRST DOWN</button>
-                              <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">OOB - SHORT</button>
-                            </div>
-                          )}
-
-                          {/* Normal Results */}
-                          {!isOobPrompt && (
-                            <>
-                              {/* Immediate Touchdown & OOB for Complete/Gain */}
-                              {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length === 0 && (
-                                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in fade-in">
-                                  <button onClick={() => handleSavePlay('Touchdown')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">TOUCHDOWN</button>
-                                  <button onClick={() => setIsOobPrompt(true)} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-xs sm:text-base md:text-lg border border-white/10 hover:text-white hover:bg-neutral-700 cursor-pointer">OUT OF BOUNDS</button>
-                                </div>
-                              )}
-
-                              {/* Normal Complete/Gain with Flagger */}
-                              {isPlayReadyToSave() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length > 0 && (
-                                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
-                                  <button onClick={() => handleSavePlay('First Down')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">FIRST DOWN</button>
-                                  <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">SHORT OF LINE</button>
-                                </div>
-                              )}
-
-                              {/* Interception Results */}
-                              {hasOffenseSelected() && outcome === 'Interception' && defenders.length === 1 && (
-                                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
-                                  {flaggers.length === 0 ? (
-                                    <>
-                                      <button onClick={() => handleSavePlay('Pick 6')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">PICK 6</button>
-                                      <button onClick={() => handleSavePlay('Turnover')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 cursor-pointer">OOB / DOWNED</button>
-                                    </>
-                                  ) : (
-                                    <button onClick={() => handleSavePlay('Turnover')} className="col-span-2 py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs sm:text-base md:text-lg cursor-pointer">FLAGGED (Save Turnover)</button>
-                                  )}
-                                </div>
-                              )}
-
-                              {/* Other Outcomes (PBU, Missed, Sack, FFL) */}
-                              <div className={`transition-all duration-300 ${hasOffenseSelected() && (outcome === 'PBU' || outcome === 'Missed' || outcome === 'Sack' || outcome === 'FFL') && isPlayReadyToSave() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none hidden'}`}>
-                                {(outcome === 'PBU' || outcome === 'Missed') && (
-                                  <button onClick={() => handleSavePlay('Next Down')} className="w-full py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">SAVE & NEXT DOWN</button>
-                                )}
-                                {(outcome === 'Sack' || outcome === 'FFL') && (
-                                  <div className="grid grid-cols-2 gap-2 md:gap-3">
-                                    <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">Loss Of Yards</button>
-                                    <button onClick={() => handleSavePlay('Safety')} className="py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-red-600 hover:bg-red-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">Safety</button>
-                                  </div>
+                            {/* Interception Results */}
+                            {hasOffenseSelected() && outcome === 'Interception' && defenders.length === 1 && (
+                              <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
+                                {flaggers.length === 0 ? (
+                                  <>
+                                    <button onClick={() => handleSavePlay('Pick 6')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">PICK 6</button>
+                                    <button onClick={() => handleSavePlay('Turnover')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 cursor-pointer">OOB / DOWNED</button>
+                                  </>
+                                ) : (
+                                  <button onClick={() => handleSavePlay('Turnover')} className="col-span-2 py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs sm:text-base md:text-lg cursor-pointer">FLAGGED (Save Turnover)</button>
                                 )}
                               </div>
-                            </>
-                          )}
-                        </div>
+                            )}
+
+                            {/* Other Outcomes (PBU, Missed, Sack, FFL) */}
+                            <div className={`transition-all duration-300 ${hasOffenseSelected() && (outcome === 'PBU' || outcome === 'Missed' || outcome === 'Sack' || outcome === 'FFL') && isPlayReadyToSave() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none hidden'}`}>
+                              {(outcome === 'PBU' || outcome === 'Missed') && (
+                                <button onClick={() => handleSavePlay('Next Down')} className="w-full py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">SAVE & NEXT DOWN</button>
+                              )}
+                              {(outcome === 'Sack' || outcome === 'FFL') && (
+                                <div className="grid grid-cols-2 gap-2 md:gap-3">
+                                  <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">Loss Of Yards</button>
+                                  <button onClick={() => handleSavePlay('Safety')} className="py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-red-600 hover:bg-red-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">Safety</button>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
-                  </div>              </div>
+                  </div>
+                </div>
               </>
             )}
           </div>
