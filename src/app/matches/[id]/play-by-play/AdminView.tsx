@@ -411,14 +411,22 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return () => clearInterval(interval);
   }, [isGameClockRunning, gameClock]);
 
-  // Play Clock
+  // Play Clock (IFAF Rules: counts down independently of game clock on referee ready-for-play)
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isPlayClockRunning && isGameClockRunning) {
-      interval = setInterval(() => setPlayClock(c => Math.max(0, c - 1)), 1000);
+    if (isPlayClockRunning && playClock > 0) {
+      interval = setInterval(() => {
+        setPlayClock((c) => {
+          if (c <= 1) {
+            setIsPlayClockRunning(false);
+            return 0;
+          }
+          return c - 1;
+        });
+      }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPlayClockRunning, isGameClockRunning]);
+  }, [isPlayClockRunning, playClock]);
 
   // Timeout Clock
   useEffect(() => {
@@ -663,11 +671,19 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     setIsTimeoutActive(true);
   };
 
+  const handleResetPlayClock = () => {
+    setPlayClock(playClockSeconds);
+    setIsPlayClockRunning(false);
+  };
+
   const handleSpotBall = () => {
     setIsBallSpotted(true);
     setPlayClock(playClockSeconds);
     setIsPlayClockRunning(true);
-    if (gameClock > 120 && !isGameClockRunning) setIsGameClockRunning(true);
+    // In IFAF, if outside 2 minutes and not starting the period, game clock continues running on ready for play
+    if (gameClock > 120 && !isGameClockRunning && !isFirstPlayOfHalf) {
+      setIsGameClockRunning(true);
+    }
   };
 
   const resetPlay = () => {
@@ -785,6 +801,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   };
 
   const handlePlayTypeSelect = (type: "Pass" | "Run") => {
+    // IFAF Rule: Ball has been snapped, stop play clock immediately
+    setIsPlayClockRunning(false);
+    // If game clock was stopped (e.g. inside 2 minutes or start of half), start game clock on the snap
+    if (!isGameClockRunning && gameClock > 0) {
+      setIsGameClockRunning(true);
+    }
     setPlayType(type);
     setOutcome(type === "Pass" ? "Complete" : "Gain");
     setQbRunner("");
@@ -926,6 +948,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     if (result === 'Touchdown') {
       if (possession === homeTeamName) setHomeScore(s => s + 6);
       else setAwayScore(s => s + 6);
+      // IFAF: Game clock stops on score; start play clock for PAT conversion attempt
+      setIsGameClockRunning(false);
+      setPlayClock(playClockSeconds);
+      setIsPlayClockRunning(true);
       setStep('CONVERSION');
       return;
     }
@@ -935,6 +961,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       if (newPoss === homeTeamName) setHomeScore(s => s + 6);
       else setAwayScore(s => s + 6);
       setPossession(newPoss);
+      // IFAF: Game clock stops on score; start play clock for PAT conversion attempt
+      setIsGameClockRunning(false);
+      setPlayClock(playClockSeconds);
+      setIsPlayClockRunning(true);
       setStep('CONVERSION');
       return;
     }
@@ -1350,14 +1380,28 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center shrink-0 -space-y-0.5">
-            <button type="button" onClick={() => setCurrentDown((down) => Math.min(downsPerSeries, down + 1))} disabled={currentDown >= downsPerSeries} aria-label="Increase down" className="text-neutral-400 hover:text-white disabled:opacity-30 p-0 leading-none">
-              <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-            </button>
-            <span className="text-xs sm:text-sm md:text-base font-black leading-none tabular-nums" title={`${getOrdinal(currentDown)} down`}>{currentDown}</span>
-            <button type="button" onClick={() => setCurrentDown((down) => Math.max(1, down - 1))} disabled={currentDown <= 1} aria-label="Decrease down" className="text-neutral-400 hover:text-white disabled:opacity-30 p-0 leading-none">
-              <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-            </button>
+          {/* AESTHETIC DOWN SWITCHER BUTTONS */}
+          <div className="flex items-center gap-0.5 sm:gap-1 bg-black/60 border border-white/10 rounded-xl p-0.5 sm:p-1 shrink-0 shadow-inner">
+            {Array.from({ length: downsPerSeries }, (_, i) => i + 1).map((d) => {
+              const isActive = currentDown === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setCurrentDown(d)}
+                  aria-label={`${getOrdinal(d)} Down`}
+                  title={`Set to ${getOrdinal(d)} Down`}
+                  className={`px-1.5 sm:px-2.5 py-1 rounded-lg text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-white text-black shadow-md font-black"
+                      : "text-neutral-400 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <span className="inline min-[380px]:hidden">{getOrdinal(d)}</span>
+                  <span className="hidden min-[380px]:inline">{getOrdinal(d)} Down</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="flex items-center gap-0.5 sm:gap-1.5 bg-black/40 px-1 sm:px-1.5 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
@@ -1372,10 +1416,44 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} aria-label={isGameClockRunning ? "Pause game clock" : "Start game clock"} className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? "bg-red-500/20 text-red-500" : "bg-emerald-500/20 text-emerald-500"}`}>
               {isGameClockRunning ? <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" /> : <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />}
             </button>
-            <span className="border-l border-white/10 pl-1 flex flex-col items-center leading-none" title="Play clock">
-              <span className="text-[7px] md:text-[8px] uppercase text-neutral-500">Play</span>
-              <span className={`text-sm md:text-base font-black tabular-nums ${playClock <= 0 ? "text-red-500 animate-pulse" : "text-amber-500"}`}>{playClock}</span>
-            </span>
+          </div>
+
+          {/* IFAF PLAY CLOCK CONTAINER WITH CONTROLS */}
+          <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
+            <div className="flex flex-col items-center leading-none" title="IFAF Play Clock">
+              <span className="text-[7px] md:text-[8px] uppercase tracking-wider text-neutral-500 font-bold">Play</span>
+              <span className={`text-sm md:text-base font-black tabular-nums ${
+                playClock <= 0 ? "text-red-500 animate-pulse" : playClock <= 5 ? "text-amber-400 animate-pulse" : "text-amber-500"
+              }`}>
+                {playClock}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsPlayClockRunning((prev) => !prev)}
+              aria-label={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
+              title={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
+              className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 transition-colors ${
+                isPlayClockRunning ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-neutral-400 hover:text-white"
+              }`}
+            >
+              {isPlayClockRunning ? (
+                <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
+              ) : (
+                <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetPlayClock}
+              aria-label="Reset play clock"
+              title={`Reset play clock to ${playClockSeconds}s`}
+              className="p-0.5 sm:p-1 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer shrink-0 transition-colors"
+            >
+              <RotateCcw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            </button>
           </div>
 
           <div className="flex flex-col items-center flex-1 min-w-0 max-w-[7rem]">
@@ -1472,7 +1550,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     <AlertCircle className="w-6 h-6 sm:w-10 sm:h-10 text-emerald-500 mb-1 sm:mb-2 shrink-0" />
                     <h2 className="text-xl md:text-xl font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
                     <button
-                      onClick={() => { handleSpotBall(); setIsFirstPlayOfHalf(false); }}
+                      onClick={() => {
+                        setIsBallSpotted(true);
+                        setIsFirstPlayOfHalf(false);
+                        setIsGameClockRunning(true);
+                        setIsPlayClockRunning(false);
+                      }}
                       className="py-2 sm:py-3 md:py-5 px-4 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[10px] sm:text-base md:text-xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
                     >
                       CLICK WHEN SNAPPED
@@ -1652,6 +1735,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             variant="sync"
             possession={possession}
             currentDown={currentDown}
+            downsPerSeries={downsPerSeries}
+            onDownChange={setCurrentDown}
             accentColor={possessionTeamColors.tertiary}
             onSelectType={(type) => {
               if (type === "Penalty") {
@@ -1684,12 +1769,32 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               />
             ) : (
               <>
-                <button
-                  onClick={() => { setStep('PLAY_TYPE'); setPlayType(null); setOutcome(null); }}
-                  className="self-start flex items-center gap-2 text-neutral-400 hover:text-white text-sm font-bold uppercase tracking-widest mb-[-0.5rem] mt-[-0.5rem] z-10"
-                >
-                  <ChevronLeft className="w-4 h-4" /> Back to Play Type
-                </button>
+                <div className="flex items-center justify-between gap-2 self-stretch mb-[-0.25rem] mt-[-0.25rem] z-10">
+                  <button
+                    onClick={() => { setStep('PLAY_TYPE'); setPlayType(null); setOutcome(null); }}
+                    className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm font-bold uppercase tracking-widest cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Back to Play Type
+                  </button>
+                  <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10 shadow-inner">
+                    {Array.from({ length: downsPerSeries }, (_, i) => i + 1).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setCurrentDown(d)}
+                        aria-label={`${getOrdinal(d)} Down`}
+                        title={`Set to ${getOrdinal(d)} Down`}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                          currentDown === d
+                            ? "bg-white text-black shadow-md font-black"
+                            : "text-neutral-400 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {getOrdinal(d)} Down
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 md:flex gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-white/10 rounded-2xl shrink-0 relative z-10 w-full">
                   {playType === 'Pass' && ['Complete', 'Incomplete', 'Interception', 'Sack'].map((res) => {
                     const isActive = (res === 'Incomplete' && (outcome === 'Incomplete_Menu' || outcome === 'PBU' || outcome === 'Missed')) || outcome === res;

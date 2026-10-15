@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useLeague, LeagueRules, DEFAULT_LEAGUE_RULES, IFAF_5V5_RULES } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import {
@@ -31,16 +32,6 @@ import {
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
-
-const THEME_PRESETS = [
-  { id: "gridiron-green", name: "Gridiron Turf (Default)", primary: "#3ca505", accent: "#22c55e" },
-  { id: "cyber-cyan", name: "Cyber Cyan", primary: "#06B6D4", accent: "#3B82F6" },
-  { id: "emerald-arena", name: "Emerald Arena", primary: "#10B981", accent: "#059669" },
-  { id: "sunset-gold", name: "Sunset Gold", primary: "#F59E0B", accent: "#EF4444" },
-  { id: "electric-violet", name: "Electric Violet", primary: "#8B5CF6", accent: "#EC4899" },
-  { id: "midnight-crimson", name: "Crimson Blaze", primary: "#E11D48", accent: "#9333EA" },
-  { id: "stealth-neon", name: "Neon Lime", primary: "#84CC16", accent: "#10B981" },
-];
 
 const SAMPLE_LOGOS = [
   { name: "Shield Crest", Url: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=150&auto=format&fit=crop&q=80" },
@@ -83,12 +74,22 @@ export default function LeagueCustomizerModal() {
   const [announcement, setAnnouncement] = useState(settings.announcement || "");
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
   const [accentColor, setAccentColor] = useState(settings.accentColor);
-  const [selectedPreset, setSelectedPreset] = useState(settings.themePreset);
   const [visibility, setVisibility] = useState<"public" | "private">(settings.visibility || "public");
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedJoinLink, setCopiedJoinLink] = useState(false);
+
+  const customJoinPath = activeLeagueId && activeLeagueId !== "default"
+    ? `/join?league=${activeLeagueId}`
+    : `/join`;
+  const customJoinUrl = typeof window !== "undefined"
+    ? `${window.location.origin}${customJoinPath}`
+    : customJoinPath;
 
   // League Rules states
   const [rules, setRules] = useState<LeagueRules>(settings.rules || DEFAULT_LEAGUE_RULES);
+  const isFreeAgentRegistrationEnabled = rules.enableFreeAgents !== false;
+  // Join link is only viewable by league admin if turned off, and viewable to all if turned on
+  const canViewJoinLink = isFreeAgentRegistrationEnabled || isLeagueAdmin;
   const [saving, setSaving] = useState(false);
   const [ifafPresetNotice, setIfafPresetNotice] = useState(false);
 
@@ -110,7 +111,6 @@ export default function LeagueCustomizerModal() {
     setAnnouncement(settings.announcement || "");
     setPrimaryColor(settings.primaryColor);
     setAccentColor(settings.accentColor);
-    setSelectedPreset(settings.themePreset);
     setVisibility(settings.visibility || "public");
     setRules(settings.rules || DEFAULT_LEAGUE_RULES);
 
@@ -122,24 +122,15 @@ export default function LeagueCustomizerModal() {
   if (!isCustomizerOpen) return null;
 
   // League Admin handlers
-  const handleApplyPreset = (preset: typeof THEME_PRESETS[0]) => {
-    setSelectedPreset(preset.id);
-    setPrimaryColor(preset.primary);
-    setAccentColor(preset.accent);
-    previewThemeColors(preset.primary, preset.accent);
-  };
-
   const handlePrimaryChange = (val: string) => {
     setPrimaryColor(val);
-    setSelectedPreset("custom");
     if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
       previewThemeColors(val, accentColor);
     }
   };
 
-  const handleAccentChange = (val: string) => {
+  const handleSecondaryChange = (val: string) => {
     setAccentColor(val);
-    setSelectedPreset("custom");
     if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
       previewThemeColors(primaryColor, val);
     }
@@ -182,7 +173,7 @@ export default function LeagueCustomizerModal() {
         announcement: announcement.trim(),
         primaryColor,
         accentColor,
-        themePreset: selectedPreset,
+        themePreset: "custom",
         visibility,
         rules: {
           ...rules,
@@ -299,10 +290,7 @@ export default function LeagueCustomizerModal() {
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#07090E] border border-white/10">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white overflow-hidden p-1 shrink-0 border border-white/15 shadow-md"
-                    style={{
-                      background: `linear-gradient(135deg, ${primaryColor}, ${accentColor})`,
-                    }}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center bg-transparent overflow-hidden p-0.5 shrink-0"
                   >
                     {logoUrl ? (
                       <img
@@ -696,87 +684,143 @@ export default function LeagueCustomizerModal() {
               </div>
             </div>
 
-            {/* Section 3: Official Color Palette */}
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5 mb-3">
-                <Palette className="w-3.5 h-3.5" />
-                <span>3. Official League Colors</span>
-              </span>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
-                {THEME_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleApplyPreset(preset)}
-                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${selectedPreset === preset.id
-                      ? "border-amber-400 bg-amber-500/10 shadow-md shadow-amber-500/10"
-                      : "border-white/10 bg-black/40 hover:border-white/20"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex -space-x-1">
-                        <span
-                          className="w-4 h-4 rounded-full border border-black shadow"
-                          style={{ backgroundColor: preset.primary }}
-                        ></span>
-                        <span
-                          className="w-4 h-4 rounded-full border border-black shadow"
-                          style={{ backgroundColor: preset.accent }}
-                        ></span>
-                      </div>
-                      <span className="text-xs font-bold text-white">{preset.name}</span>
-                    </div>
-                    {selectedPreset === preset.id && <Check className="w-3.5 h-3.5 text-amber-400" />}
-                  </button>
-                ))}
+            {/* Section 3: Official League Colours */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5" />
+                  <span>3. Official League Colours</span>
+                </span>
+                <span className="text-[11px] text-neutral-400 font-mono">
+                  Primary & Secondary Brand Palette
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 flex items-center gap-1.5 mb-1">
-                    <span>Official Primary Color</span>
-                    <FieldHelpTooltip
-                      title="Primary Brand Color"
-                      content="Used for primary buttons, active league navigation badges, headers, and major accent borders."
-                    />
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => handlePrimaryChange(e.target.value)}
-                      className="w-8 h-8 rounded-lg bg-transparent cursor-pointer border border-white/20 p-0"
-                    />
+              {/* Live Preview Card */}
+              <div className="p-4 rounded-2xl bg-neutral-950/80 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm shadow-lg transition-transform hover:scale-105"
+                    style={{
+                      backgroundColor: primaryColor,
+                      color: "#ffffff",
+                      boxShadow: `0 4px 20px ${primaryColor}40`,
+                    }}
+                  >
+                    {shortcode || "FLG"}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-white tracking-wide">
+                        {leagueName || "League Title"}
+                      </span>
+                      <span
+                        className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+                        style={{
+                          backgroundColor: `${accentColor}20`,
+                          color: accentColor,
+                          borderColor: `${accentColor}40`,
+                        }}
+                      >
+                        Active
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">
+                      Live preview of your primary & secondary colour harmony
+                    </p>
+                  </div>
+                </div>
+
+                {/* Swatch gradient indicator */}
+                <div className="flex items-center gap-2 bg-black/60 px-3 py-2 rounded-xl border border-white/10 shrink-0">
+                  <span
+                    className="w-5 h-5 rounded-lg border border-white/20 shadow-sm"
+                    style={{ backgroundColor: primaryColor }}
+                    title={`Primary: ${primaryColor}`}
+                  />
+                  <span className="text-neutral-500 font-bold text-xs">+</span>
+                  <span
+                    className="w-5 h-5 rounded-lg border border-white/20 shadow-sm"
+                    style={{ backgroundColor: accentColor }}
+                    title={`Secondary: ${accentColor}`}
+                  />
+                  <div
+                    className="h-4 w-16 rounded-md ml-1 shadow-inner border border-white/10"
+                    style={{
+                      background: `linear-gradient(90deg, ${primaryColor}, ${accentColor})`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Dual Color Pickers */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                      <span>Primary Colour *</span>
+                      <FieldHelpTooltip
+                        title="Primary League Colour"
+                        content="The dominant brand colour used for primary buttons, active league navigation badges, headers, score displays, and key accents."
+                      />
+                    </label>
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase">
+                      {primaryColor}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative shrink-0">
+                      <input
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => handlePrimaryChange(e.target.value)}
+                        aria-label="Primary league colour"
+                        className="w-10 h-10 rounded-xl bg-transparent cursor-pointer border border-white/20 p-0 block overflow-hidden"
+                      />
+                    </div>
                     <input
                       type="text"
+                      maxLength={7}
                       value={primaryColor}
                       onChange={(e) => handlePrimaryChange(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/10 text-white font-mono text-xs uppercase"
+                      placeholder="#3CA505"
+                      aria-label="Primary league colour hex"
+                      className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-purple-400 text-white font-mono text-xs uppercase outline-none transition-colors"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 flex items-center gap-1.5 mb-1">
-                    <span>Official Accent Color</span>
-                    <FieldHelpTooltip
-                      title="Accent Color"
-                      content="Secondary color used for glow highlights, tags, chart elements, and interactive accents."
-                    />
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={accentColor}
-                      onChange={(e) => handleAccentChange(e.target.value)}
-                      className="w-8 h-8 rounded-lg bg-transparent cursor-pointer border border-white/20 p-0"
-                    />
+                <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                      <span>Secondary Colour *</span>
+                      <FieldHelpTooltip
+                        title="Secondary League Colour"
+                        content="Complementary secondary colour used for badges, subtle glow highlights, interactive elements, and contrasting borders."
+                      />
+                    </label>
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase">
+                      {accentColor}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative shrink-0">
+                      <input
+                        type="color"
+                        value={accentColor}
+                        onChange={(e) => handleSecondaryChange(e.target.value)}
+                        aria-label="Secondary league colour"
+                        className="w-10 h-10 rounded-xl bg-transparent cursor-pointer border border-white/20 p-0 block overflow-hidden"
+                      />
+                    </div>
                     <input
                       type="text"
+                      maxLength={7}
                       value={accentColor}
-                      onChange={(e) => handleAccentChange(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/10 text-white font-mono text-xs uppercase"
+                      onChange={(e) => handleSecondaryChange(e.target.value)}
+                      placeholder="#22C55E"
+                      aria-label="Secondary league colour hex"
+                      className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-purple-400 text-white font-mono text-xs uppercase outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -1274,9 +1318,73 @@ export default function LeagueCustomizerModal() {
                   {rules.enableFreeAgents !== false ? "Enabled" : "Disabled"}
                 </span>
               </div>
-              <p className="text-[11px] text-neutral-400">
-                Controls whether athletes can register online via the Join Form ({`{leagueUrl}/join`}) and whether the Free Agent pool of unassigned players appears on the Teams page for admins.
-              </p>
+              <div className="space-y-2">
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  Controls whether athletes can register online via the{" "}
+                  {canViewJoinLink ? (
+                    <Link
+                      href={customJoinPath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline font-bold inline-flex items-center gap-1"
+                      title="Open League Custom Join Form"
+                    >
+                      <span>Join Form</span>
+                      <ExternalLink className="w-3 h-3 inline" />
+                    </Link>
+                  ) : (
+                    <span className="font-bold text-neutral-300">Join Form</span>
+                  )}{" "}
+                  and whether the Free Agent pool of unassigned players appears on the Teams page for admins.
+                </p>
+
+                {canViewJoinLink && (
+                  <div className="p-3 rounded-xl bg-black/60 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <ExternalLink className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="text-[10px] uppercase font-bold text-neutral-400 shrink-0 font-mono">
+                        Custom Join Link:
+                      </span>
+                      <Link
+                        href={customJoinPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono text-cyan-300 hover:underline truncate"
+                      >
+                        {customJoinUrl}
+                      </Link>
+                      {!isFreeAgentRegistrationEnabled && isLeagueAdmin && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold shrink-0">
+                          Admin Preview (Disabled to Public)
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          navigator.clipboard?.writeText(customJoinUrl);
+                          setCopiedJoinLink(true);
+                          setTimeout(() => setCopiedJoinLink(false), 2000);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[11px] font-bold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedJoinLink ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-emerald-400 font-bold">Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Join Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -1588,10 +1696,58 @@ export default function LeagueCustomizerModal() {
                     {rules.enableFreeAgents !== false ? "Active / Open" : "Closed"}
                   </span>
                 </div>
-                <div className="p-3 rounded-xl bg-black/30 border border-white/5 text-[11px] text-neutral-300 leading-relaxed">
-                  {rules.enableFreeAgents !== false
-                    ? "The Free Agent Join Form is open for public registration, and unassigned players appear in the Free Agent pool ready to be claimed."
-                    : "The Free Agent Join Form and unassigned draft pool are currently closed by league administration."}
+                <div className="p-3 rounded-xl bg-black/30 border border-white/5 text-[11px] text-neutral-300 leading-relaxed space-y-2">
+                  <p>
+                    {rules.enableFreeAgents !== false ? (
+                      <>
+                        The Free Agent{" "}
+                        <Link
+                          href={customJoinPath}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-400 hover:text-cyan-300 underline font-bold inline-flex items-center gap-1"
+                          title="Open Free Agent Join Form"
+                        >
+                          <span>Join Form</span>
+                          <ExternalLink className="w-3 h-3 inline" />
+                        </Link>{" "}
+                        is open for public registration, and unassigned players appear in the Free Agent pool ready to be claimed.
+                      </>
+                    ) : (
+                      "The Free Agent Join Form and unassigned draft pool are currently closed by league administration."
+                    )}
+                  </p>
+
+                  {canViewJoinLink && rules.enableFreeAgents !== false && (
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-cyan-300 font-mono truncate">
+                        {customJoinUrl}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            navigator.clipboard?.writeText(customJoinUrl);
+                            setCopiedJoinLink(true);
+                            setTimeout(() => setCopiedJoinLink(false), 2000);
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 text-white text-[10px] font-bold shrink-0 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedJoinLink ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400 font-bold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy Link</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

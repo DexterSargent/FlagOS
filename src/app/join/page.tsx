@@ -21,7 +21,7 @@ interface Player {
 
 export default function JoinLeague() {
   const router = useRouter();
-  const { settings, isDemoLeague } = useLeague();
+  const { settings, isDemoLeague, activeLeagueId, switchLeague } = useLeague();
   const { isPlayer, playerData, isLeagueAdmin, role, canRegisterAsPlayer, managedTeamId } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +61,16 @@ export default function JoinLeague() {
     };
     fetchPlayers();
   }, [isDemoLeague]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const lId = sp.get("league");
+      if (lId && lId !== activeLeagueId) {
+        switchLeague(lId);
+      }
+    }
+  }, [activeLeagueId, switchLeague]);
 
   const handleToggleFriend = (player: Player) => {
     if (selectedFriends.find(p => p.id === player.id)) {
@@ -176,8 +186,8 @@ export default function JoinLeague() {
     );
   }
 
-  // REGISTRATION CLOSED NOTICE IF TOGGLED OFF BY ADMIN
-  if (settings.rules?.enableFreeAgents === false) {
+  // REGISTRATION CLOSED NOTICE IF TOGGLED OFF BY ADMIN (Only viewable by league admin if turned off, and viewable to all if turned on)
+  if (settings.rules?.enableFreeAgents === false && !isLeagueAdmin) {
     return (
       <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-center items-center">
         <div className="max-w-md mx-auto my-auto p-8 text-center bg-[#0B0F19] border border-white/10 rounded-3xl shadow-2xl space-y-6 my-20">
@@ -218,10 +228,7 @@ export default function JoinLeague() {
         <div className="w-full bg-[#0B0F19] backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative overflow-hidden">
           <div className="bg-cyan-500/10 border-b border-white/5 p-6 sm:p-8 flex items-center justify-center flex-col text-center">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg mb-4 overflow-hidden p-2"
-              style={{
-                background: `linear-gradient(135deg, var(--league-primary), var(--league-accent))`,
-              }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center bg-transparent mb-4 overflow-hidden p-1"
             >
               {settings.logoUrl ? (
                 <img
@@ -251,6 +258,20 @@ export default function JoinLeague() {
                 <Mail className="w-3.5 h-3.5" />
                 <span>Contact Commissioner: {settings.contactEmail}</span>
               </span>
+            )}
+
+            {settings.rules?.enableFreeAgents === false && isLeagueAdmin && (
+              <div className="mt-4 p-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3 text-left w-full">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>
+                    <strong>Admin Preview Mode:</strong> Public player registration is currently disabled in League Rules. You can view and test this form because you are a League Administrator.
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold shrink-0">
+                  Admin Only
+                </span>
+              </div>
             )}
           </div>
 

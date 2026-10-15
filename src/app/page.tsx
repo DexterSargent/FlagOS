@@ -975,10 +975,7 @@ export default function FlagOSPlatformLandingPage() {
                     {/* League Branding & Title */}
                     <div className="flex items-start gap-3.5">
                       <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center p-1.5 shrink-0 border border-white/15 shadow-md overflow-hidden"
-                        style={{
-                          background: `linear-gradient(135deg, ${league.primaryColor}, ${league.accentColor})`,
-                        }}
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center p-1 shrink-0 bg-transparent overflow-hidden"
                       >
                         {league.logoUrl ? (
                           <img

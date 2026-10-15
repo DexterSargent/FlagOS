@@ -16,6 +16,8 @@ type PlayEntryWizardProps =
       variant: Variant;
       possession: string;
       currentDown: number;
+      downsPerSeries?: number;
+      onDownChange?: (down: number) => void;
       accentColor?: string;
       onSelectType: (type: PlayType) => void;
       onCancel?: () => void;
@@ -50,7 +52,39 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
   if (props.step === "type") {
     if (props.variant === "sync") {
       return (
-        <PlayTypeSelector onSelect={props.onSelectType} variant="sync" accentColor={props.accentColor} />
+        <div className="flex flex-col flex-1 min-h-0 gap-2 md:gap-3 max-w-6xl mx-auto w-full">
+          {props.onDownChange && (
+            <div className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-2xl bg-neutral-900 border border-white/10 shrink-0 shadow-md">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-neutral-400">Offense:</span>
+                <span className="text-xs sm:text-sm font-black uppercase tracking-wide text-white">
+                  {props.possession}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-neutral-400 hidden sm:inline">Down:</span>
+                <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10">
+                  {Array.from({ length: props.downsPerSeries || 4 }, (_, i) => i + 1).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => props.onDownChange?.(d)}
+                      aria-label={`${getOrdinal(d)} Down`}
+                      className={`px-2 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                        props.currentDown === d
+                          ? "bg-white text-black shadow-md font-black"
+                          : "text-neutral-400 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {getOrdinal(d)} Down
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <PlayTypeSelector onSelect={props.onSelectType} variant="sync" accentColor={props.accentColor} />
+        </div>
       );
     }
 
@@ -63,14 +97,37 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
               {props.possession} • {getOrdinal(props.currentDown)} Down
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => props.onCancel?.()}
-            aria-label="Cancel play"
-            className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {props.onDownChange && (
+              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10">
+                {Array.from({ length: props.downsPerSeries || 4 }, (_, i) => i + 1).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => props.onDownChange?.(d)}
+                    aria-label={`${getOrdinal(d)} Down`}
+                    className={`px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      props.currentDown === d
+                        ? "bg-white text-black shadow-md font-black"
+                        : "text-neutral-400 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {getOrdinal(d)} Down
+                  </button>
+                ))}
+              </div>
+            )}
+            {props.onCancel && (
+              <button
+                type="button"
+                onClick={() => props.onCancel?.()}
+                aria-label="Cancel play"
+                className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
         <PlayTypeSelector onSelect={props.onSelectType} variant="async" accentColor={props.accentColor} />
       </div>

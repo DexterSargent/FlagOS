@@ -329,10 +329,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           )}
           <div className="flex items-center gap-2.5">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white shadow overflow-hidden p-1 shrink-0 border border-white/10"
-              style={{
-                background: `linear-gradient(135deg, var(--league-primary), var(--league-accent))`,
-              }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-transparent overflow-hidden p-0.5 shrink-0"
             >
               {settings.logoUrl ? (
                 <img

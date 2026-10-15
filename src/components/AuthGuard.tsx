@@ -106,7 +106,6 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
               variant="emblem"
               className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_4px_20px_rgba(60,165,5,0.4)]"
             />
-            <div className="absolute -inset-2 rounded-2xl bg-emerald-500/20 blur-md -z-10" />
           </div>
           <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mt-2" />
           <div>

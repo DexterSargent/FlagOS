@@ -144,6 +144,19 @@ export default function LeagueFooter() {
             <p className="text-xs text-neutral-400 leading-relaxed">
               Operating enterprise tournament management, real-time live scorekeeping, down-by-down play logs, and player statistics for <span className="text-white font-semibold">{renderFlagOS(settings.leagueName)}</span>.
             </p>
+            <div className="pt-2 flex flex-wrap items-center gap-2.5 text-xs font-bold">
+              <Link href="/" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                ← FlagOS Home
+              </Link>
+              <span className="text-neutral-600">•</span>
+              <Link href="/pricing" className="text-neutral-300 hover:text-white transition-colors">
+                Pricing
+              </Link>
+              <span className="text-neutral-600">•</span>
+              <Link href="/login" className="text-neutral-300 hover:text-white transition-colors">
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
 

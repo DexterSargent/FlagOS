@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/authContext";
 import {
   AlertTriangle,
   Archive,
+  ArrowLeft,
   CalendarDays,
   Users,
   Trophy,
@@ -134,12 +135,61 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
         </div>
       )}
 
+      {/* Demo League Notice & Exit Navigation Banner */}
+      {isDemoLeague && (
+        <div className="bg-emerald-950/90 dark:bg-emerald-950/50 border-b border-emerald-500/30 text-emerald-200 text-xs px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2.5 backdrop-blur-md">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="font-bold text-white text-xs">
+              Demo League Sandbox
+            </span>
+            <span className="hidden md:inline text-neutral-300 dark:text-neutral-400 text-[11px]">
+              • Exploring interactive league tools in sandbox mode
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold shrink-0">
+            <Link
+              href="/"
+              className="text-white hover:text-emerald-300 transition-colors flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-xs"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>FlagOS Home</span>
+            </Link>
+            <Link
+              href="/pricing"
+              className="text-amber-300 hover:text-amber-200 transition-colors flex items-center gap-1 px-2 py-1"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Pricing</span>
+            </Link>
+            <Link
+              href="/login"
+              className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase text-[10px] tracking-wider transition-all shadow-sm"
+            >
+              Sign In
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Main Luxury Navigation Bar */}
       <header className="border-b border-slate-200/80 dark:border-white/[0.08] bg-white/85 dark:bg-[#07090E]/90 backdrop-blur-xl transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.4)]">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-1.5 sm:gap-4">
 
           {/* Left: Integrated League Brand & Multi-Tenant Switcher */}
           <div className="flex items-center gap-1.5 sm:gap-2 relative shrink min-w-0" ref={switcherRef}>
+            <Link
+              href="/"
+              title="Return to FlagOS Platform Home"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/10 shrink-0 text-xs font-bold group"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-slate-400 dark:text-neutral-500 group-hover:text-emerald-500 group-hover:-translate-x-0.5 transition-all" />
+              <FlagOSLogo size="xs" />
+              <span className="hidden xl:inline">FlagOS</span>
+            </Link>
+            <div className="hidden sm:block h-5 w-px bg-slate-200 dark:bg-white/10 mx-0.5 shrink-0" />
+
             <button
               onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
               className="flex items-center gap-1.5 sm:gap-2.5 p-1 -ml-1 sm:p-1.5 sm:-ml-1.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-left group cursor-pointer min-w-0"
@@ -148,10 +198,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             >
               {/* League Emblem */}
               <div
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white shadow-md overflow-hidden p-1 shrink-0 border border-slate-200 dark:border-white/10 ring-1 ring-black/5 dark:ring-white/5 group-hover:scale-105 transition-transform"
-                style={{
-                  background: `linear-gradient(135deg, var(--league-primary), var(--league-accent))`,
-                }}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center bg-transparent overflow-hidden p-0.5 shrink-0 group-hover:scale-105 transition-transform"
               >
                 {!isDefaultFlagOSLogo(settings.logoUrl) ? (
                   <img
@@ -402,23 +449,41 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 <span className="truncate max-w-[70px] sm:max-w-[120px]">#{playerData?.number || "00"} {playerData?.playerName || "My Profile"}</span>
               </Link>
             ) : isDemoLeague ? (
-              <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-neutral-300 text-xs font-bold border border-slate-200 dark:border-white/10 shrink-0">
-                {isLeagueAdmin ? (
-                  <>
-                    <Crown className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                    <span className="hidden sm:inline">League Admin</span>
-                  </>
-                ) : role === "team_admin" ? (
-                  <>
-                    <Shield className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 shrink-0" />
-                    <span className="hidden sm:inline">Team Admin</span>
-                  </>
-                ) : (
-                  <>
-                    <Users className="w-3.5 h-3.5 text-slate-500 dark:text-neutral-400 shrink-0" />
-                    <span className="hidden sm:inline">Spectator</span>
-                  </>
-                )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-neutral-300 text-xs font-bold border border-slate-200 dark:border-white/10 shrink-0">
+                  {isLeagueAdmin ? (
+                    <>
+                      <Crown className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                      <span className="hidden sm:inline">League Admin</span>
+                    </>
+                  ) : role === "team_admin" ? (
+                    <>
+                      <Shield className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 shrink-0" />
+                      <span className="hidden sm:inline">Team Admin</span>
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-3.5 h-3.5 text-slate-500 dark:text-neutral-400 shrink-0" />
+                      <span className="hidden sm:inline">Spectator</span>
+                    </>
+                  )}
+                </div>
+
+                <Link
+                  href="/pricing"
+                  className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-xs font-bold transition-all shadow-sm shrink-0"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                  <span>Pricing</span>
+                </Link>
+
+                <Link
+                  href="/login"
+                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 text-xs font-bold transition-all shadow-sm shrink-0"
+                >
+                  <LogIn className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Sign In</span>
+                </Link>
               </div>
             ) : (
               <Link
@@ -526,6 +591,39 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 <UserPlus className="w-4 h-4" />
                 <span>Player Registration</span>
               </Link>
+            )}
+
+            {/* Public Platform Navigation (Easy exit from Demo League to unlogged-in pages) */}
+            {isDemoLeague && (
+              <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 space-y-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-neutral-500 font-bold px-3.5">
+                  FlagOS Platform Navigation
+                </span>
+                <Link
+                  href="/"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4 text-emerald-500" />
+                  <span>FlagOS Platform Home</span>
+                </Link>
+                <Link
+                  href="/pricing"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Pricing Plans</span>
+                </Link>
+                <Link
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Sign In / Register</span>
+                </Link>
+              </div>
             )}
           </div>
         )}

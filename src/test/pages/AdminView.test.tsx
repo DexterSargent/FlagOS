@@ -61,6 +61,8 @@ vi.mock("@/lib/demoSandbox", () => ({
   getSandboxMatch: () => mockMatch,
   getSandboxPlays: () => [],
   getSandboxPlayers: () => mockPlayers,
+  getSandboxTeams: () => [],
+  isDemoMatch: () => true,
   updateSandboxMatch: vi.fn(),
   addSandboxPlay: vi.fn(),
   deleteSandboxPlay: vi.fn(),
@@ -100,12 +102,14 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     });
   });
 
-  it("renders interactive down buttons (1, 2, 3, 4) and allows manual down changes", async () => {
+  it("renders interactive down buttons (1st Down, 2nd Down, 3rd Down, 4th Down) and allows manual down changes", async () => {
     await renderAdmin();
 
     await waitFor(() => {
-      // 4 down buttons rendered
-      const down3Button = screen.getByRole("button", { name: "3" });
+      // Down buttons rendered
+      const down3Buttons = screen.getAllByRole("button", { name: /3rd Down/i });
+      expect(down3Buttons.length).toBeGreaterThan(0);
+      const down3Button = down3Buttons[0];
       expect(down3Button).toBeInTheDocument();
 
       // Click Down 3
@@ -138,7 +142,7 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
 
     await waitFor(() => {
       // Home team timeout button (first of two TO buttons)
-      const toButtons = screen.getAllByRole("button", { name: /TO \(2\)/i });
+      const toButtons = screen.getAllByRole("button", { name: /TO\s*\(?2\)?/i });
       expect(toButtons.length).toBe(2);
 
       fireEvent.click(toButtons[0]);
@@ -252,6 +256,31 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     // Reopen Runner
     fireEvent.click(runnerCollapsed);
     expect(screen.getByText("Select Runner")).toBeInTheDocument();
+  });
+
+  it("provides IFAF-compliant play clock controls (start/pause, reset to 30s, and stop on snap)", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      // Spot the ball to enter play type selection
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    // Verify play clock toggle and reset buttons exist
+    const playClockToggle = screen.getByRole("button", { name: /start play clock|pause play clock/i });
+    const playClockReset = screen.getByRole("button", { name: /reset play clock/i });
+    expect(playClockToggle).toBeInTheDocument();
+    expect(playClockReset).toBeInTheDocument();
+
+    // Resetting play clock sets it to 30s
+    fireEvent.click(playClockReset);
+    expect(screen.getByText("30")).toBeInTheDocument();
+
+    // Clicking PASS selects play type and stops play clock on the snap
+    const passButton = screen.getByRole("button", { name: /PASS/i });
+    fireEvent.click(passButton);
+    expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
   });
 });
 

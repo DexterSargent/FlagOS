@@ -31,7 +31,7 @@ describe("LeagueHeader Component", () => {
     userLeagues: [],
     switchLeague: vi.fn(),
     subscription: null,
-    isDemoLeague: true,
+    isDemoLeague: false,
   };
 
   beforeEach(() => {
@@ -168,5 +168,40 @@ describe("LeagueHeader Component", () => {
     // Confirm pricing is still nowhere to be found
     const pricingLinks = screen.queryAllByRole("link", { name: /pricing/i });
     expect(pricingLinks.length).toBe(0);
+  });
+
+  it("renders easy navigation back to unlogged-in pages (Home, Pricing, Sign In) when in demo league", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isDemoLeague: true,
+    });
+
+    mockUseAuth.mockReturnValue({
+      role: null,
+      isLeagueAdmin: false,
+      isPlayer: false,
+      playerData: null,
+      canRegisterAsPlayer: true,
+      isAuthorized: false,
+      playerTeamId: null,
+      managedTeamId: null,
+    });
+
+    render(<LeagueHeader activePage="league" />);
+
+    // Demo banner is rendered
+    expect(screen.getByText("Demo League Sandbox")).toBeInTheDocument();
+
+    // Links to unlogged-in pages exist
+    const homeLinks = screen.getAllByRole("link", { name: /flagos/i });
+    expect(homeLinks.length).toBeGreaterThan(0);
+
+    const pricingLinks = screen.getAllByRole("link", { name: /pricing/i });
+    expect(pricingLinks.length).toBeGreaterThan(0);
+    expect(pricingLinks[0]).toHaveAttribute("href", "/pricing");
+
+    const signInLinks = screen.getAllByRole("link", { name: /sign in/i });
+    expect(signInLinks.length).toBeGreaterThan(0);
+    expect(signInLinks[0]).toHaveAttribute("href", "/login");
   });
 });

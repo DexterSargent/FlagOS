@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth, UserRole } from "@/lib/authContext";
-import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye } from "lucide-react";
+import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye, ArrowLeft } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -158,6 +159,16 @@ export default function RoleSwitcherBar() {
     return (
       <aside aria-label="Role Switcher" className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
         <ThemeToggle size="md" />
+        {isDemoLeague && (
+          <Link
+            href="/"
+            title="Exit Demo and return to FlagOS Home"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-black text-xs font-black uppercase tracking-wider shadow-lg transition-all"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Home</span>
+          </Link>
+        )}
         <button
           onClick={() => setIsCollapsed(false)}
           className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-neutral-900/95 border border-cyan-500/40 text-white shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.35)] backdrop-blur-md hover:border-cyan-400 transition-all text-xs font-bold"
@@ -192,6 +203,16 @@ export default function RoleSwitcherBar() {
             <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400 animate-pulse" />
             <span className="hidden sm:inline tracking-wide">ROLE SWITCHER</span>
           </div>
+          {isDemoLeague && (
+            <Link
+              href="/"
+              title="Exit Demo League and return to FlagOS Home"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-[10px] sm:text-[11px] transition-colors shrink-0"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              <span>Exit Demo</span>
+            </Link>
+          )}
           <span className="hidden 2xl:inline text-[11px] text-neutral-400 font-medium truncate">
             Switch League Context • Session Isolated
           </span>
