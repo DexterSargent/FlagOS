@@ -58,7 +58,7 @@ import {
   deleteSandboxPlay,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette } from "@/lib/teamColors";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette, TeamColorSource } from "@/lib/teamColors";
 
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
@@ -172,8 +172,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         setHomeTeamId(mData.homeTeamId || "home_id");
         setAwayTeamId(mData.awayTeamId || "away_id");
         setMatchStatus(mData.status || "scheduled");
-        let homeTeamData: Record<string, string> | undefined;
-        let awayTeamData: Record<string, string> | undefined;
+        let homeTeamData: TeamColorSource | undefined;
+        let awayTeamData: TeamColorSource | undefined;
         if (isDemo) {
           const teams = getSandboxTeams();
           homeTeamData = teams.find((team) => team.id === mData.homeTeamId);
