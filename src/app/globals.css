@@ -19,7 +19,7 @@ html.dark {
   --text-primary: #f4f7fb;
   --text-secondary: #a7b1c0;
   --text-muted: #778397;
-  --text-brand: #6dd4e5;
+  --text-brand: #6bbb41;
   --text-success: #63d297;
   --text-warning: #f2c66d;
   --text-danger: #ff858b;
@@ -32,8 +32,8 @@ html.dark {
   --overlay: rgb(3 7 12 / 78%);
   --shadow-color: 0 0 0;
 
-  --tint-brand: #102a32;
-  --tint-brand-border: #1d5260;
+  --tint-brand: #102a15;
+  --tint-brand-border: #285c28;
   --tint-success: #102a20;
   --tint-success-border: #235a40;
   --tint-warning: #302512;
@@ -84,7 +84,7 @@ html.light {
   --text-primary: #17212e;
   --text-secondary: #475569;
   --text-muted: #64748b;
-  --text-brand: #0e7490;
+  --text-brand: #286d03;
   --text-success: #047857;
   --text-warning: #a16207;
   --text-danger: #b4232d;
@@ -97,8 +97,8 @@ html.light {
   --overlay: rgb(15 23 42 / 58%);
   --shadow-color: 15 23 42;
 
-  --tint-brand: #e9f7fa;
-  --tint-brand-border: #b7e4ed;
+  --tint-brand: #f3faf0;
+  --tint-brand-border: #c1e2af;
   --tint-success: #eaf7ef;
   --tint-success-border: #b8e2c7;
   --tint-warning: #fff7e6;
@@ -817,7 +817,7 @@ html.light .lucide.text-white:not(button[class*="bg-"]:not(.bg-white\/5):not(.bg
 /* High-Contrast Brand Text in Light Mode (WCAG AA Compliant) */
 html.light .text-cyan-400,
 html.light .text-cyan-300 {
-  color: #0e7490 !important;
+  color: var(--text-brand) !important;
 }
 
 html.light .text-emerald-400,
@@ -856,8 +856,8 @@ html.light .bg-cyan-950\/30 {
 html.light .bg-cyan-500\/10,
 html.light .bg-cyan-500\/15,
 html.light .bg-cyan-500\/20 {
-  background-color: #ecfeff !important;
-  border-color: #bae6fd !important;
+  background-color: #f3faf0 !important;
+  border-color: #c1e2af !important;
 }
 
 html.light .bg-emerald-950\/40,

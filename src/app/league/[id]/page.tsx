@@ -762,7 +762,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={openCustomizer}
-                  className="px-4 py-2.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border border-amber-500/40 shadow-sm flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-black dark:text-amber-300 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border border-amber-500/40 shadow-sm flex items-center gap-2 cursor-pointer"
                 >
                   <Settings className="w-4 h-4 text-amber-400" />
                   <span>League Settings</span>

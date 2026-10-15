@@ -1016,7 +1016,10 @@ export default function PricingPage() {
                   className="rounded-2xl bg-[#0B0F19] border border-white/10 overflow-hidden transition-all"
                 >
                   <button
+                    id={`pricing-faq-question-${index}`}
                     onClick={() => setExpandedFaq(isOpen ? null : index)}
+                    aria-expanded={isOpen}
+                    aria-controls={`pricing-faq-answer-${index}`}
                     className="w-full px-5 py-4 text-left flex items-center justify-between gap-4 hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     <span className="font-bold text-white text-sm">{faq.q}</span>
@@ -1026,11 +1029,15 @@ export default function PricingPage() {
                       }`}
                     />
                   </button>
-                  {isOpen && (
-                    <div className="px-5 pb-4 text-xs text-neutral-300 leading-relaxed border-t border-white/5 pt-3">
-                      {faq.a}
-                    </div>
-                  )}
+                  <div
+                    id={`pricing-faq-answer-${index}`}
+                    role="region"
+                    aria-labelledby={`pricing-faq-question-${index}`}
+                    hidden={!isOpen}
+                    className="px-5 pb-4 text-xs text-neutral-300 leading-relaxed border-t border-white/5 pt-3"
+                  >
+                    {faq.a}
+                  </div>
                 </div>
               );
             })}

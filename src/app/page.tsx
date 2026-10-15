@@ -253,7 +253,7 @@ export default function FlagOSPlatformLandingPage() {
           </Link>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-white">
+          <nav className="hidden xl:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-white">
             <a
               href="#features"
               className="text-white hover:text-[#3CA505] transition-colors"
@@ -348,8 +348,10 @@ export default function FlagOSPlatformLandingPage() {
             {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors cursor-pointer shrink-0"
+              className="xl:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors cursor-pointer shrink-0"
               aria-label="Toggle Navigation Menu"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="landing-navigation-menu"
             >
               {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
@@ -358,7 +360,7 @@ export default function FlagOSPlatformLandingPage() {
 
         {/* Mobile Navigation Dropdown Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 bg-[#07090E]/98 px-6 py-4 space-y-2 animate-in slide-in-from-top-2">
+          <div id="landing-navigation-menu" className="xl:hidden border-t border-white/10 bg-[#07090E]/98 px-6 py-4 space-y-2 animate-in slide-in-from-top-2">
             <a
               href="#features"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -451,7 +453,7 @@ export default function FlagOSPlatformLandingPage() {
           </div>
 
           <h1 className="text-3xl sm:text-5xl md:text-7xl font-black uppercase tracking-tight text-white leading-tight sm:leading-none">
-            The Operating System for Modern <span className="text-[#7ED321]"><br className="hidden sm:inline" />Flag Football</span>
+            The Operating System for Modern <span className="text-[#3CA505]"><br className="hidden sm:inline" />Flag Football</span>
           </h1>
 
           {/* Primary Action Buttons */}
