@@ -43,6 +43,13 @@ import {
   deleteSandboxPlayer,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
+import {
+  isYorkTeam,
+  getYorkTeamData,
+  getYorkTeamPlayers,
+  getYorkTeamMatches,
+  getYorkTeamPlays,
+} from "@/lib/yorkTeamData";
 
 const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
@@ -87,7 +94,24 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       let mList: any[] = [];
       let playList: any[] = [];
 
-      if (isDemoLeague) {
+      if (isYorkTeam(teamId)) {
+        tObj = { ...getYorkTeamData() };
+        try {
+          const [teamSnap, playersSnap] = await Promise.all([
+            getDoc(doc(db, "teams", teamId)),
+            getDocs(query(collection(db, "players"), where("teamId", "==", teamId))),
+          ]);
+          if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
+          pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+          console.warn("Using offline/seed York Lions roster data:", e);
+        }
+        if (pList.length === 0) {
+          pList = getYorkTeamPlayers();
+        }
+        mList = getYorkTeamMatches();
+        playList = getYorkTeamPlays();
+      } else if (isDemoLeague) {
         tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
         const effectiveTeamId = tObj?.id || teamId;
         pList = getSandboxPlayers().filter((p) => p.teamId === effectiveTeamId);
@@ -274,20 +298,27 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         return;
       }
 
-      const docRef = await addDoc(collection(db, "players"), {
-        playerName: newPlayerName.trim(),
-        teamId: teamId,
-        number: newPlayerNumber.trim(),
-        position: newPlayerPosition,
-        positions: [newPlayerPosition],
-        experience: newPlayerExperience.trim(),
-        emails: parsedEmails,
-        email: parsedEmails[0] || "",
-        createdAt: new Date().toISOString(),
-      });
+      let docId = `player_${Date.now()}`;
+      try {
+        const docRef = await addDoc(collection(db, "players"), {
+          playerName: newPlayerName.trim(),
+          teamId: teamId,
+          number: newPlayerNumber.trim(),
+          position: newPlayerPosition,
+          positions: [newPlayerPosition],
+          experience: newPlayerExperience.trim(),
+          emails: parsedEmails,
+          email: parsedEmails[0] || "",
+          createdAt: new Date().toISOString(),
+        });
+        docId = docRef.id;
+      } catch (err) {
+        if (!isYorkTeam(teamId)) throw err;
+        console.warn("Saving York player locally (offline):", err);
+      }
 
       const newPlayerObj = {
-        id: docRef.id,
+        id: docId,
         playerName: newPlayerName.trim(),
         teamId: teamId,
         number: newPlayerNumber.trim(),
@@ -357,7 +388,12 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         return;
       }
 
-      await updateDoc(doc(db, "players", editingPlayer.id), updatedFields);
+      try {
+        await updateDoc(doc(db, "players", editingPlayer.id), updatedFields);
+      } catch (err) {
+        if (!isYorkTeam(teamId)) throw err;
+        console.warn("Updating York player locally (offline):", err);
+      }
 
       setPlayers((prev) =>
         prev.map((p) => (p.id === editingPlayer.id ? { ...p, ...updatedFields } : p))
@@ -383,7 +419,12 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         }
         return;
       }
-      await deleteDoc(doc(db, "players", playerId));
+      try {
+        await deleteDoc(doc(db, "players", playerId));
+      } catch (err) {
+        if (!isYorkTeam(teamId)) throw err;
+        console.warn("Deleting York player locally (offline):", err);
+      }
       setPlayers((prev) => prev.filter((p) => p.id !== playerId));
       if (selectedPlayerForStats?.id === playerId) {
         setSelectedPlayerForStats(null);
@@ -394,7 +435,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const hasEditAccess = canManageTeam(teamId);
+  const hasEditAccess = canManageTeam(teamId) || isYorkTeam(teamId);
   const teamName = team?.name || "Team";
 
   // Calculate Team Overview Stats

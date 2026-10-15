@@ -260,6 +260,17 @@ export default function MiniPlayDiagram({
 
         return (
           <g key={player.id}>
+            {isOffense && player.routeType === "motion" && (
+              <circle
+                cx={px}
+                cy={py}
+                r="21"
+                fill="none"
+                stroke="#D97706"
+                strokeWidth="1.8"
+                strokeDasharray="3 2"
+              />
+            )}
             <circle
               cx={px}
               cy={py}

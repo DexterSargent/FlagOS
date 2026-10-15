@@ -13,10 +13,18 @@ import {
   getSandboxPlays,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
+import {
+  isYorkTeam,
+  getYorkTeamData,
+  getYorkTeamPlayers,
+  getYorkTeamMatches,
+  getYorkTeamPlays,
+} from "@/lib/yorkTeamData";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
+  const isYork = isYorkTeam(teamId);
   const { settings, isDemoLeague } = useLeague();
 
   const [team, setTeam] = useState<any>(null);
@@ -31,7 +39,24 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         let matches: any[] = [];
         let plays: any[] = [];
 
-        if (isDemoLeague) {
+        if (isYork) {
+          tObj = { ...getYorkTeamData() };
+          try {
+            const [teamSnap, playersSnap] = await Promise.all([
+              getDoc(doc(db, "teams", teamId)),
+              getDocs(query(collection(db, "players"), where("teamId", "==", teamId))),
+            ]);
+            if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
+            if (!playersSnap.empty) {
+              players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            }
+          } catch {}
+          if (players.length === 0) {
+            players = getYorkTeamPlayers();
+          }
+          matches = getYorkTeamMatches();
+          plays = getYorkTeamPlays();
+        } else if (isDemoLeague) {
           tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
           const effectiveTeamId = tObj?.id || teamId;
           players = getSandboxPlayers().filter((p) => p.teamId === effectiveTeamId);

@@ -614,6 +614,42 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
     maxBreakYards: 3,
     description: "Sets up behind or at the scrimmage line for quick dump-off or lead block",
   },
+  {
+    name: "Jet Motion",
+    shortName: "Jet Motion",
+    category: "Cross & Motion",
+    defaultBreakYards: 0,
+    minBreakYards: 0,
+    maxBreakYards: 4,
+    description: "Pre-snap sprint across the backfield behind the quarterback before the snap",
+  },
+  {
+    name: "Orbit Motion",
+    shortName: "Orbit Motion",
+    category: "Cross & Motion",
+    defaultBreakYards: 4,
+    minBreakYards: 2,
+    maxBreakYards: 8,
+    description: "Pre-snap arc looping deep behind the QB into the opposite flat or backfield",
+  },
+  {
+    name: "Shift / Re-align",
+    shortName: "Shift",
+    category: "Cross & Motion",
+    defaultBreakYards: 0,
+    minBreakYards: 0,
+    maxBreakYards: 3,
+    description: "Pre-snap lateral shift across the alignment into bunch or stack formation",
+  },
+  {
+    name: "Return Motion",
+    shortName: "Return Motion",
+    category: "Cross & Motion",
+    defaultBreakYards: 1,
+    minBreakYards: 0,
+    maxBreakYards: 4,
+    description: "Fakes pre-snap motion toward center, then plants and resets to original flank",
+  },
 ];
 
 /**
@@ -753,6 +789,46 @@ export function generateRoutePreset(
     case "Screen":
     case "Block / Screen": {
       return [{ x: startX, y: breakY }];
+    }
+    case "Jet Motion": {
+      const targetSideX = isLeftSide ? Math.max(76, 100 - startX) : Math.min(24, 100 - startX);
+      const motionY = snapYToYard(losY + 2.5 * YARD_HEIGHT_PCT, losY);
+      return [
+        { x: 50, y: motionY },
+        { x: targetSideX, y: motionY },
+      ];
+    }
+    case "Orbit Motion": {
+      const targetSideX = isLeftSide ? 78 : 22;
+      const deepY = snapYToYard(losY + 5.5 * YARD_HEIGHT_PCT, losY);
+      const exitY = snapYToYard(losY + 3.0 * YARD_HEIGHT_PCT, losY);
+      return [
+        { x: (startX + 50) / 2, y: deepY },
+        { x: targetSideX, y: exitY },
+      ];
+    }
+    case "Shift":
+    case "Shift / Re-align": {
+      const shiftX = isLeftSide ? Math.min(startX + 14, 45) : Math.max(startX - 14, 55);
+      return [
+        { x: shiftX, y: startY },
+      ];
+    }
+    case "Return Motion": {
+      const insideX = isLeftSide ? startX + 12 : startX - 12;
+      return [
+        { x: insideX, y: startY + 1 * YARD_HEIGHT_PCT },
+        { x: startX, y: startY },
+      ];
+    }
+    case "Motion":
+    case "Pre-Snap Motion": {
+      const targetSideX = isLeftSide ? Math.max(76, 100 - startX) : Math.min(24, 100 - startX);
+      const motionY = snapYToYard(losY + 2.5 * YARD_HEIGHT_PCT, losY);
+      return [
+        { x: 50, y: motionY },
+        { x: targetSideX, y: motionY },
+      ];
     }
     default:
       return [{ x: startX, y: breakY }];

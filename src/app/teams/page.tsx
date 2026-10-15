@@ -23,6 +23,7 @@ import {
   getSandboxPlays,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
+import { YORK_TEAM_ID, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS } from "@/lib/yorkTeamData";
 
 interface Team {
   id: string;
@@ -598,6 +599,71 @@ export default function TeamsPage() {
 
           /* GRID VIEW */
           <div className="space-y-12 animate-in fade-in zoom-in-95 duration-300">
+            {/* Featured Standalone Team Portal: York Lions */}
+            <div className="bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-black border border-red-500/30 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-red-600/20 text-red-300 text-xs font-mono font-bold border border-red-500/30">
+                      Standalone Pro Team Portal
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-mono font-bold border border-emerald-500/30">
+                      Complimentary (Free Lifetime)
+                    </span>
+                    <span className="text-neutral-500 text-xs">•</span>
+                    <span className="text-xs text-neutral-300 font-semibold">Founder Varsity Club</span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight uppercase">
+                      York Lions Women&apos;s Flag Football
+                    </h3>
+                    <p className="text-xs md:text-sm text-neutral-300 max-w-2xl mt-1 leading-relaxed">
+                      Official digital headquarters for the York Lions varsity club. Includes private depth chart, 12-player roster, up to 5 custom playbooks with pre-snap motion, and clockless scrimmage stat tracking.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-400">
+                    <div>
+                      <span className="text-neutral-500">Coaches: </span>
+                      <strong className="text-white">Dexter Harvey</strong> (Head Coach &amp; DC) &amp; <strong className="text-white">Theo</strong> (OC)
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">Roster: </span>
+                      <strong className="text-white">12 Varsity Players</strong>
+                    </div>
+                    <div>
+                      <span className="text-neutral-500">Tier: </span>
+                      <strong className="text-emerald-400">Pro Team Subscription ($0/mo)</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
+                  <Link
+                    href={`/teams/${YORK_TEAM_ID}`}
+                    className="flex-1 sm:flex-initial px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.02]"
+                  >
+                    <span>Open Team Portal</span>
+                    <ArrowRightLeft className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href={`/teams/${YORK_TEAM_ID}/playbook`}
+                    className="flex-1 sm:flex-initial px-4 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-white/10"
+                  >
+                    <span>Playbooks</span>
+                  </Link>
+                  <Link
+                    href={`/teams/${YORK_TEAM_ID}/roster`}
+                    className="flex-1 sm:flex-initial px-4 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-white/10"
+                  >
+                    <span>Roster</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold uppercase tracking-wide text-neutral-300 flex items-center gap-2">

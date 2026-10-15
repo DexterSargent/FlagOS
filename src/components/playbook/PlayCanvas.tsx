@@ -5,6 +5,7 @@ import { useLeague } from "@/lib/leagueContext";
 import {
   PlayerNode,
   RoutePoint,
+  RouteType,
   ZoneBubble,
   PlayDiagram,
   Playbook,
@@ -75,6 +76,25 @@ import {
   Layers,
   MessageSquare,
 } from "lucide-react";
+
+const PRIMARY_FLAG_ROUTES = [
+  { name: "Slant", short: "Slant" },
+  { name: "Out", short: "Out" },
+  { name: "Dig / In", short: "Dig" },
+  { name: "Post", short: "Post" },
+  { name: "Corner", short: "Corner" },
+  { name: "Go / Streak", short: "Go" },
+  { name: "Curl / Hook", short: "Curl" },
+  { name: "Hitch", short: "Hitch" },
+  { name: "Flat", short: "Flat" },
+  { name: "Wheel", short: "Wheel" },
+  { name: "Drag / Cross", short: "Drag" },
+  { name: "Fade", short: "Fade" },
+  { name: "Whip / Pivot", short: "Whip" },
+  { name: "Screen", short: "Screen" },
+  { name: "Jet Motion", short: "Jet Motion" },
+  { name: "Orbit Motion", short: "Orbit Motion" },
+];
 
 interface PlayCanvasProps {
   play: PlayDiagram;
@@ -236,10 +256,20 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   };
 
   const handleApplyCustomPreset = (preset: CustomRoutePreset) => {
-    if (!selectedPlayer || readOnly) return;
-    const newRoute = applyCustomRoutePreset(preset, selectedPlayer.x, selectedPlayer.y);
+    if (readOnly) return;
+    const targetPlayer =
+      selectedPlayer ||
+      play.players.find((p) => p.side === "offense" && (p.role === "WR" || p.role === "TE" || p.role === "RB" || p.label === "X")) ||
+      play.players.find((p) => p.side === "offense");
+    if (!targetPlayer) return;
+
+    if (!selectedPlayer || selectedPlayer.id !== targetPlayer.id) {
+      setSelectedPlayerId(targetPlayer.id);
+    }
+
+    const newRoute = applyCustomRoutePreset(preset, targetPlayer.x, targetPlayer.y);
     const updated = play.players.map((p) =>
-      p.id === selectedPlayer.id
+      p.id === targetPlayer.id
         ? {
             ...p,
             route: newRoute,
@@ -716,15 +746,104 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
   // Apply Quick Route Preset to currently selected receiver
   const handleApplyPreset = (presetName: string) => {
-    if (readOnly || !selectedPlayer) return;
-    const pts = generateRoutePreset(presetName, selectedPlayer.x, selectedPlayer.y);
+    if (readOnly) return;
+    const targetPlayer =
+      selectedPlayer ||
+      play.players.find((p) => p.side === "offense" && (p.role === "WR" || p.role === "TE" || p.role === "RB" || p.label === "X")) ||
+      play.players.find((p) => p.side === "offense");
+    if (!targetPlayer) return;
+
+    if (!selectedPlayer || selectedPlayer.id !== targetPlayer.id) {
+      setSelectedPlayerId(targetPlayer.id);
+    }
+
+    const currentLosY = play.losY ?? DEFAULT_LOS_Y;
+    const pts = generateRoutePreset(presetName, targetPlayer.x, targetPlayer.y, currentLosY);
+    const isMotionPreset =
+      presetName.toLowerCase().includes("motion") ||
+      presetName.toLowerCase().includes("shift");
+    const targetRouteType: RouteType = isMotionPreset ? "motion" : "pass";
+
     const updatedPlayers = play.players.map((p) => {
-      if (p.id === selectedPlayer.id) {
+      if (p.id === targetPlayer.id) {
         return {
           ...p,
           route: pts,
           quickRouteName: presetName,
-          routeType: (presetName === "Pre-Snap Motion" ? "motion" : "pass") as any,
+          routeType: targetRouteType,
+          coverageType: undefined,
+          zoneId: undefined,
+          manTargetId: undefined,
+        };
+      }
+      // IFAF & Flag Rule: Only 1 player can be in pre-snap motion simultaneously
+      if (isMotionPreset && p.routeType === "motion" && p.side === "offense") {
+        return {
+          ...p,
+          routeType: "pass" as RouteType,
+          quickRouteName: p.quickRouteName?.replace(" (Motion)", ""),
+        };
+      }
+      return p;
+    });
+    onChange({ ...play, players: updatedPlayers });
+  };
+
+  // Toggle pre-snap motion on/off for selected offensive player
+  const handleToggleMotion = () => {
+    if (readOnly) return;
+    const targetPlayer =
+      selectedPlayer ||
+      play.players.find((p) => p.side === "offense" && (p.role === "WR" || p.role === "TE" || p.role === "RB" || p.label === "X")) ||
+      play.players.find((p) => p.side === "offense");
+    if (!targetPlayer) return;
+
+    if (!selectedPlayer || selectedPlayer.id !== targetPlayer.id) {
+      setSelectedPlayerId(targetPlayer.id);
+    }
+
+    const isCurrentlyMotion = targetPlayer.routeType === "motion";
+    const nextRouteType: RouteType = isCurrentlyMotion ? "pass" : "motion";
+
+    let updatedRoute = targetPlayer.route ? [...targetPlayer.route] : [];
+    let quickName = targetPlayer.quickRouteName;
+
+    if (!isCurrentlyMotion) {
+      // Toggling motion ON: if no route exists, generate a smart Jet Motion path across the backfield
+      if (updatedRoute.length === 0) {
+        const currentLosY = play.losY ?? DEFAULT_LOS_Y;
+        updatedRoute = generateRoutePreset("Jet Motion", targetPlayer.x, targetPlayer.y, currentLosY);
+        quickName = "Jet Motion";
+      } else if (!quickName || !quickName.toLowerCase().includes("motion")) {
+        quickName = quickName ? `${quickName} (Motion)` : "Custom Motion";
+      }
+    } else {
+      // Toggling motion OFF: clean up label
+      if (quickName?.includes(" (Motion)")) {
+        quickName = quickName.replace(" (Motion)", "");
+      } else if (quickName === "Jet Motion" || quickName === "Orbit Motion" || quickName === "Custom Motion") {
+        quickName = "Custom Route";
+      }
+    }
+
+    const updatedPlayers = play.players.map((p) => {
+      if (p.id === targetPlayer.id) {
+        return {
+          ...p,
+          routeType: nextRouteType,
+          route: updatedRoute,
+          quickRouteName: quickName,
+          coverageType: undefined,
+          zoneId: undefined,
+          manTargetId: undefined,
+        };
+      }
+      // Ensure single motion player adherence
+      if (nextRouteType === "motion" && p.routeType === "motion" && p.side === "offense") {
+        return {
+          ...p,
+          routeType: "pass" as RouteType,
+          quickRouteName: p.quickRouteName?.replace(" (Motion)", ""),
         };
       }
       return p;
@@ -1000,10 +1119,15 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
   // Calculate animated position of player given progress (0 to 1)
   const getAnimatedPlayerPos = (player: PlayerNode): { x: number; y: number } => {
+    const hasAnyMotion = play.players.some(
+      (p) => p.side === "offense" && p.routeType === "motion" && p.route && p.route.length > 0
+    );
+
     if (progress <= 0 || !player.route || player.route.length === 0) {
-      // QB subtle pocket drop
+      // QB subtle pocket drop after the snap
       if (animating && player.label === "QB") {
-        return { x: player.x, y: player.y + progress * 2.5 };
+        const qbProg = hasAnyMotion ? Math.max(0, (progress - 0.28) / 0.72) : progress;
+        return { x: player.x, y: player.y + qbProg * 2.5 };
       }
       return { x: player.x, y: player.y };
     }
@@ -1025,7 +1149,19 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
     if (totalDist === 0) return { x: player.x, y: player.y };
 
-    const targetDist = progress * totalDist;
+    // When a play features pre-snap motion:
+    // Motion player sweeps across between 0.0 and 0.35 of the timeline.
+    // Post-snap routes hold alignment until the snap at 0.28, then run downfield.
+    let effectiveProgress = progress;
+    if (hasAnyMotion) {
+      if (player.routeType === "motion") {
+        effectiveProgress = Math.min(1, progress / 0.35);
+      } else {
+        effectiveProgress = Math.max(0, (progress - 0.28) / 0.72);
+      }
+    }
+
+    const targetDist = effectiveProgress * totalDist;
     let accumulated = 0;
 
     for (let i = 0; i < dists.length; i++) {
@@ -1791,6 +1927,21 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                     strokeWidth={isSelected ? 3 : 2}
                   />
 
+                  {/* Pre-Snap Motion Halo Ring */}
+                  {isOffense && player.routeType === "motion" && (
+                    <circle
+                      cx={px}
+                      cy={py}
+                      r="23"
+                      fill="none"
+                      stroke="#F59E0B"
+                      strokeWidth="2.2"
+                      strokeDasharray="4 3"
+                      className="animate-pulse"
+                      opacity="0.95"
+                    />
+                  )}
+
                   {/* Player Label Text (QB, C, X, Y, Z, RUSH, etc.) */}
                   <text
                     x={px}
@@ -1803,6 +1954,34 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                   >
                     {player.label}
                   </text>
+
+                  {/* Pre-Snap Motion Mini Floating Badge */}
+                  {isOffense && player.routeType === "motion" && (
+                    <g transform={`translate(${px}, ${py - 24})`}>
+                      <rect
+                        x="-24"
+                        y="-7"
+                        width="48"
+                        height="14"
+                        rx="7"
+                        fill="#0B0F19"
+                        stroke="#F59E0B"
+                        strokeWidth="1.2"
+                      />
+                      <text
+                        x="0"
+                        y="3.5"
+                        fill="#FBBF24"
+                        fontSize="7.5"
+                        fontWeight="900"
+                        textAnchor="middle"
+                        letterSpacing="0.5"
+                        className="select-none pointer-events-none"
+                      >
+                        ⚡ MOTION
+                      </text>
+                    </g>
+                  )}
 
                   {/* Man Coverage target indicator around receivers when DB is highlighted in Man mode */}
                   {selectedPlayer?.side === "defense" && (selectedPlayer.coverageType === "man" || mode === "man") && isOffense && (
@@ -1927,6 +2106,14 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                         📝
                       </span>
                     )}
+                    {p.routeType === "motion" && (
+                      <span
+                        className={`text-[10px] ${isSelected ? "text-black" : "text-amber-400 font-bold"}`}
+                        title="Pre-snap motion player"
+                      >
+                        ⚡
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -2015,14 +2202,21 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
           {/* Offense Route Presets Controls */}
           {selectedPlayer?.side === "offense" ? (
             <div className="space-y-2 relative" ref={presetMenuRef}>
+              {/* Header row: Route assignment info & Action Buttons */}
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1">
                     <Zap className="w-3 h-3" />
                     <span>Route Assignment ({selectedPlayer.label}):</span>
                   </span>
                   {selectedPlayer.quickRouteName ? (
-                    <span className="px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 text-[11px]">
+                    <span
+                      className={`px-2 py-0.5 rounded-lg font-bold text-[11px] border ${
+                        selectedPlayer.routeType === "motion"
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                          : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                      }`}
+                    >
                       {selectedPlayer.quickRouteName}
                     </span>
                   ) : (
@@ -2032,14 +2226,42 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                         : "No route drawn"}
                     </span>
                   )}
+                  {selectedPlayer.routeType === "motion" && (
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-[10px] flex items-center gap-1 shadow-sm">
+                      <Activity className="w-3 h-3 text-amber-400" />
+                      <span>Pre-Snap Motion</span>
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">
-                  {/* Preset Routes Menu Button */}
+                  {/* Pre-Snap Motion Toggle Button */}
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={handleToggleMotion}
+                    data-testid="toggle-motion-btn"
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                      selectedPlayer.routeType === "motion"
+                        ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30 font-black"
+                        : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30 hover:border-amber-500/50"
+                    }`}
+                    title={
+                      selectedPlayer.routeType === "motion"
+                        ? "Pre-snap motion active (click to convert back to pass route)"
+                        : "Set this player to Pre-Snap Motion (dashed amber route, moves pre-snap)"
+                    }
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>{selectedPlayer.routeType === "motion" ? "Motion Active ⚡" : "Pre-Snap Motion"}</span>
+                  </button>
+
+                  {/* Preset Routes Menu Toggle Button */}
                   <button
                     type="button"
                     disabled={readOnly}
                     onClick={() => setIsPresetMenuOpen((prev) => !prev)}
+                    data-testid="route-presets-toggle"
                     className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                       isPresetMenuOpen
                         ? "bg-cyan-500 text-black border-cyan-400 shadow-cyan-500/30"
@@ -2047,7 +2269,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                     }`}
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>Preset Routes</span>
+                    <span>{isPresetMenuOpen ? "Hide Catalog" : "Preset Routes"}</span>
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isPresetMenuOpen ? "rotate-180" : ""}`} />
                   </button>
 
@@ -2074,18 +2296,74 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                 </div>
               </div>
 
-              {/* Pop-up Menu for Choosing Presets */}
+              {/* Instant 1-Click Horizontal Route Ribbon */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                {PRIMARY_FLAG_ROUTES.map((route) => {
+                  const isMotionRoute = route.name.toLowerCase().includes("motion");
+                  const isCurrent =
+                    selectedPlayer.quickRouteName?.toLowerCase() === route.name.toLowerCase() ||
+                    selectedPlayer.quickRouteName?.toLowerCase() === route.short.toLowerCase();
+                  return (
+                    <button
+                      key={route.name}
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => handleApplyPreset(route.name)}
+                      data-testid={`quick-route-${route.short.toLowerCase().replace(/\s+/g, "-")}`}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+                        isCurrent
+                          ? isMotionRoute
+                            ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30 font-black"
+                            : "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/25 font-black"
+                          : isMotionRoute
+                          ? "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-white border-amber-500/30"
+                          : "bg-black/50 text-neutral-300 hover:bg-neutral-800 hover:text-white border-white/10"
+                      }`}
+                      title={`Apply ${route.name} route to ${selectedPlayer.label}`}
+                    >
+                      {isMotionRoute && <Activity className="w-3 h-3 text-amber-400" />}
+                      <span>{route.short}</span>
+                      {isCurrent && <Check className="w-3 h-3 text-black stroke-[3]" />}
+                    </button>
+                  );
+                })}
+
+                <div className="w-[1px] h-6 bg-white/10 mx-1 shrink-0" />
+
+                {/* Quick toggle for all presets */}
+                <button
+                  type="button"
+                  disabled={readOnly}
+                  onClick={() => setIsPresetMenuOpen((prev) => !prev)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
+                    isPresetMenuOpen
+                      ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/30"
+                      : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                  }`}
+                  title="Browse full route catalog and custom team routes"
+                >
+                  <Zap className="w-3 h-3" />
+                  <span>All Routes ({ROUTE_PRESETS_CATALOG.length + customPresets.length})</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isPresetMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+
+              {/* Inline Collapsible Catalog Drawer (rendered in-flow so overflow-hidden never clips it) */}
               {isPresetMenuOpen && (
-                <div className="absolute z-40 top-full mt-2 left-0 right-0 bg-[#0B0F19]/95 backdrop-blur-xl border border-cyan-500/40 rounded-2xl p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95">
+                <div
+                  data-testid="route-presets-catalog"
+                  className="mt-2.5 bg-[#080D1A] border border-cyan-500/40 rounded-2xl p-4 shadow-2xl space-y-3.5 transition-all animate-in fade-in zoom-in-95"
+                >
                   <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-cyan-400" />
-                      <span className="text-xs font-black uppercase tracking-wider text-white">Choose Route Preset</span>
+                      <span className="text-xs font-black uppercase tracking-wider text-white">Route Tree & Team Presets Catalog</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsPresetMenuOpen(false)}
                       className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
+                      title="Close catalog"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -2098,7 +2376,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                         <Star className="w-3 h-3 fill-current text-amber-400" />
                         <span>Custom Team Presets ({customPresets.length}):</span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
                         {customPresets.map((cp) => {
                           const isCurrent = selectedPlayer.quickRouteName === cp.name;
                           return (
@@ -2108,7 +2386,6 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                                 disabled={readOnly}
                                 onClick={() => {
                                   handleApplyCustomPreset(cp);
-                                  setIsPresetMenuOpen(false);
                                 }}
                                 className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
                                   isCurrent
@@ -2138,10 +2415,11 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
                   {/* Standard Catalog Route Tree */}
                   <div className="space-y-1.5">
-                    <div className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                      Standard Route Tree Catalog
+                    <div className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider flex items-center justify-between">
+                      <span>Standard Route Tree Catalog ({ROUTE_PRESETS_CATALOG.length})</span>
+                      <span className="text-[10px] text-cyan-400/80 font-mono">Click to preview route on {selectedPlayer.label}</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
                       {ROUTE_PRESETS_CATALOG.map((rp) => {
                         const isCurrent =
                           selectedPlayer.quickRouteName === rp.name ||
@@ -2153,19 +2431,34 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                             disabled={readOnly}
                             onClick={() => {
                               handleApplyPreset(rp.name);
-                              setIsPresetMenuOpen(false);
                             }}
-                            className={`px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
+                            data-testid={`catalog-route-${rp.shortName.toLowerCase()}`}
+                            className={`p-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-start justify-between gap-2 cursor-pointer ${
                               isCurrent
                                 ? "bg-cyan-500 text-black border-cyan-400 shadow-md font-extrabold"
-                                : "bg-black/50 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/10"
+                                : "bg-black/60 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/10"
                             }`}
                           >
-                            <div className="truncate">
-                              <div className="font-black truncate">{rp.name}</div>
-                              <div className="text-[10px] text-neutral-400 font-normal truncate">{rp.description}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-black truncate">{rp.name}</span>
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.2 rounded font-mono uppercase ${
+                                    isCurrent ? "bg-black/20 text-black" : "bg-white/10 text-neutral-400"
+                                  }`}
+                                >
+                                  {rp.category}
+                                </span>
+                              </div>
+                              <div
+                                className={`text-[10px] mt-0.5 line-clamp-2 ${
+                                  isCurrent ? "text-black/80 font-medium" : "text-neutral-400 font-normal"
+                                }`}
+                              >
+                                {rp.description}
+                              </div>
                             </div>
-                            {isCurrent && <Check className="w-3.5 h-3.5 text-black shrink-0" />}
+                            {isCurrent && <Check className="w-4 h-4 text-black shrink-0 mt-0.5" />}
                           </button>
                         );
                       })}
@@ -2186,12 +2479,11 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                         }
                         setNewPresetName(`${selectedPlayer.label} Custom Route`);
                         setIsSavePresetModalOpen(true);
-                        setIsPresetMenuOpen(false);
                       }}
                       className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Add Current as Preset</span>
+                      <span>Save Current Route as Preset</span>
                     </button>
                   </div>
                 </div>
@@ -2285,9 +2577,36 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                 })}
               </div>
             </div>
+          ) : play.type !== "defense" ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-neutral-400 font-mono py-1">
+                <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Choose Receiver to Assign Route:</span>
+                </span>
+                <span className="text-[11px] text-neutral-500 hidden sm:inline">
+                  Click any receiver below to apply a preset route
+                </span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                {offensePlayers.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPlayerId(p.id)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-white/5 hover:bg-cyan-500/20 text-neutral-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{p.label} ({p.role})</span>
+                    {p.route && p.route.length > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="text-xs text-neutral-400 py-1 font-mono">
-              Select a player from the pills above or click on the field to choose route presets.
+              Select a defensive player to assign zone, man lock, or pass rush.
             </div>
           )}
         </div>

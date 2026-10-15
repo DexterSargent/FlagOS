@@ -31,20 +31,24 @@ import { renderFlagOS } from "@/components/FlagOSText";
 import { getSandboxTeams, updateSandboxTeam, subscribeDemoSandbox } from "@/lib/demoSandbox";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette } from "@/lib/teamColors";
+import { isYorkTeam, getYorkTeamData, YORK_TEAM_ID } from "@/lib/yorkTeamData";
 
 export default function TeamPortalHome({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
+  const isYork = isYorkTeam(teamId);
 
   const { settings, isDemoLeague } = useLeague();
-  const { canManageTeam, isLeagueAdmin, isTeamAdmin, isAdmin, isPlayer, playerTeamId } = useAuth();
+  const { canManageTeam, isLeagueAdmin, isTeamAdmin, isAdmin, isPlayer, playerTeamId, user } = useAuth();
   // Playbooks RBAC:
-  // - League admins have NO access (confidential franchise strategy)
+  // - League admins have NO access to opponent customer teams (confidential franchise strategy)
   // - Authorized team admins can access playbooks for their team only
   // - Rostered players can access playbooks for their team only
+  // - York Lions Varsity Portal: Fully unlocked for Dexter, team coaches, and rostered players
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
-  const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
-  const canAccessPlaybook = !isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
+  const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
+  const canAccessPlaybook = isYork || (!isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam));
+  const hasEditAccess = canManageTeam(teamId) || (isYork && (isTeamAdmin(teamId) || isLeagueAdmin));
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +66,30 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     const fetchTeam = async () => {
+      // 1. Check York Lions standalone varsity team portal
+      if (isYork) {
+        let yData: any = { ...getYorkTeamData() };
+        try {
+          const snap = await getDoc(doc(db, "teams", teamId));
+          if (snap.exists()) {
+            yData = { ...yData, ...(snap.data() as any) };
+          }
+        } catch (e) {
+          console.warn("Using offline/seed York Lions team profile:", e);
+        }
+        setTeam(yData);
+        setEditName(yData.name || "");
+        setEditShortcode(yData.shortcode || "YORK");
+        setEditLogoUrl(yData.logoUrl || "");
+        setEditIcon(yData.icon || "cat");
+        const palette = resolveTeamColorPalette(yData);
+        setEditPrimaryColor(palette.primary);
+        setEditSecondaryColor(palette.secondary);
+        setEditTertiaryColor(palette.tertiary);
+        setLoading(false);
+        return;
+      }
+
       if (isDemoLeague) {
         const tData = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
         if (tData && isRealTeam(tData)) {
@@ -105,7 +133,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       const unsub = subscribeDemoSandbox(() => fetchTeam());
       return () => unsub();
     }
-  }, [teamId, isDemoLeague]);
+  }, [teamId, isDemoLeague, isYork]);
 
   const handleSaveTeam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,6 +157,18 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         updatedAt: new Date().toISOString(),
       };
 
+      if (isYork) {
+        try {
+          await updateDoc(doc(db, "teams", teamId), updatedData);
+        } catch (e) {
+          console.warn("Could not save to remote Firestore, updating local state:", e);
+        }
+        setTeam((prev: any) => ({ ...prev, ...updatedData }));
+        setIsEditModalOpen(false);
+        setSaving(false);
+        return;
+      }
+
       if (isDemoLeague) {
         updateSandboxTeam(teamId, updatedData);
         setTeam((prev: any) => ({ ...prev, ...updatedData }));
@@ -146,8 +186,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     }
     setSaving(false);
   };
-
-  const hasEditAccess = canManageTeam(teamId);
 
   if (isDenied) {
     return deniedElement;
@@ -210,11 +248,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Hero Section */}
-        <div className="text-center space-y-6 max-w-4xl mb-16 mt-12 md:mt-0">
-          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-cyan-500/20 border border-cyan-500/30 backdrop-blur-md mb-2 shadow-2xl">
-            <TeamLogo teamName={team.name} logoUrl={team.logoUrl} icon={team.icon} className="w-5 h-5 text-cyan-400" />
-            <span className="text-sm font-bold tracking-widest text-cyan-200 uppercase">
-              {shortcode} • {renderFlagOS(settings.leagueName)} Member Club
+        <div className="text-center space-y-6 max-w-4xl mb-12 mt-12 md:mt-0">
+          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-red-500/20 border border-red-500/30 backdrop-blur-md mb-2 shadow-2xl">
+            <TeamLogo teamName={team.name} logoUrl={team.logoUrl} icon={team.icon || (isYork ? "cat" : "shield")} className="w-5 h-5 text-red-400" />
+            <span className="text-sm font-bold tracking-widest text-red-200 uppercase">
+              {shortcode} • {isYork ? "Varsity Club Team Portal" : `${renderFlagOS(settings.leagueName)} Member Club`}
             </span>
           </div>
 
@@ -223,15 +261,29 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           </h1>
 
           <p className="text-lg md:text-xl text-neutral-400 font-light max-w-2xl mx-auto leading-relaxed mt-4">
-            The official portal for the <span className="text-white font-semibold">{team.name}</span>. View roster, schedule, team stats, and more.
+            {team.bio || `The official portal for the ${team.name}. View roster, schedule, team stats, and more.`}
           </p>
+
+          {/* Coaching Staff Banner */}
+          {(isYork || team.coachName) && (
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300 font-medium">
+              <span className="text-white font-bold">Coaching Staff:</span>
+              <span>{team.coachName || "Dexter Harvey"} ({team.coachRole || "Head Coach & DC"})</span>
+              {team.assistantCoach && (
+                <>
+                  <span className="text-neutral-500">•</span>
+                  <span>{team.assistantCoach} ({team.assistantCoachRole || "Offensive Coordinator"})</span>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Edit Team Access for Team Admin or League Admin */}
           {hasEditAccess && (
             <div className="pt-2">
               <button
                 onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/10 hover:border-white/30 backdrop-blur-md shadow-lg"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/10 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
               >
                 <Edit3 className="w-4 h-4 text-amber-400" />
                 <span>Edit Team Info</span>
@@ -239,6 +291,48 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             </div>
           )}
         </div>
+
+        {/* Standalone Pro Team Subscription Banner (for York Lions and standalone subscribers) */}
+        {(isYork || team.isStandalone || team.subscription) && (
+          <div className="w-full max-w-5xl mb-10 bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-black border border-red-500/30 rounded-3xl p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-mono font-bold border border-emerald-500/30">
+                    Active Subscription (Complimentary Lifetime)
+                  </span>
+                  <span className="text-neutral-500 text-xs">•</span>
+                  <span className="text-xs text-neutral-300 font-semibold">Tier: Pro Team Portal ($0/mo)</span>
+                </div>
+                <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-amber-400" />
+                  <span>York Lions Varsity Digital Headquarters</span>
+                </h3>
+                <p className="text-xs text-neutral-400 max-w-2xl leading-relaxed">
+                  Full standalone autonomy enabled: private depth charts, unlimited tournament &amp; scrimmage stat logging via the Play-by-Play Wizard, and up to 5 custom playbooks with pre-snap motion.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  href={`/teams/${teamId}/playbook`}
+                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Open Playbook</span>
+                </Link>
+                <Link
+                  href={`/teams/${teamId}/roster`}
+                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all border border-white/10"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Roster</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Bento Grid (Schedule, Roster, Stat Leaders, Playbook) */}
         <div className={`grid grid-cols-1 sm:grid-cols-2 ${canAccessPlaybook ? "lg:grid-cols-4 max-w-6xl" : "lg:grid-cols-3 max-w-5xl"} gap-5 w-full`}>

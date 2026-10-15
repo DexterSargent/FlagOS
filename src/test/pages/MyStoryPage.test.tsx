@@ -40,7 +40,7 @@ describe("My Story Page (/my-story)", () => {
     expect(screen.getByRole("heading", { name: /why i built flagos/i })).toBeInTheDocument();
 
     // Chapter 1: Recess & Two footballs & Persuasive letter
-    expect(screen.getByText(/two footballs and an afternoon at recess/i)).toBeInTheDocument();
+    expect(screen.getByText(/love at first catch/i)).toBeInTheDocument();
     expect(screen.getByText(/persuasive writing/i)).toBeInTheDocument();
 
     // Chapter 2: Nova Scotia All-Star & Cold-Email Recruiting Journey
@@ -48,6 +48,10 @@ describe("My Story Page (/my-story)", () => {
     expect(screen.getAllByText(/nova scotia/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/\$4,500/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/university of toronto/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/team nova scotia flag football/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/sportsmanship award/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/brian jones/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/grey cup/i).length).toBeGreaterThan(0);
 
     // Chapter 3: York University Lions, Special Teams & Software Engineering Degree
     expect(screen.getByText(/four years with the york lions \(2021–2024\)/i)).toBeInTheDocument();
@@ -57,16 +61,23 @@ describe("My Story Page (/my-story)", () => {
     expect(screen.getAllByText(/windsor/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/alfred olay/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/all-canadian/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/quit the york team/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/pull-out couch/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/software engineering/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/final year/i).length).toBeGreaterThan(0);
 
-    // Chapter 4 & 5: Reading week, OWIFA, eager sponges lacking ego, club executive structure, 0-7 to playoffs, Waterloo
+    // Chapter 4 & 5: Reading week, OWIFA, eager sponges lacking ego, club executive structure, 0-7 to playoffs, Waterloo, Guelph, tendency adjustment
     expect(screen.getByText(/a reading week favor that changed everything/i)).toBeInTheDocument();
     expect(screen.getAllByText(/sponges/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/lacked the ego/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/one week, a new playbook, and 0-7 to the playoffs/i)).toBeInTheDocument();
     expect(screen.getAllByText(/executive structure/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/guelph/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/waterloo/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/tendency/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/8th vs\. 9th/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/17-8/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/western/i).length).toBeGreaterThan(0);
 
     // Chapter 6 & 7: Varsity 2026, Theo's hiring as Recruiting Coordinator at 25, 90 players, YUWFFL, Partners for Planning, Play-by-Play Wizard
     expect(screen.getByText(/varsity status/i)).toBeInTheDocument();
@@ -76,6 +87,9 @@ describe("My Story Page (/my-story)", () => {
     expect(screen.getByText(/ninety players on the turf, and the birth of flagos/i)).toBeInTheDocument();
     expect(screen.getAllByText(/play-by-play wizard/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/extreme volunteer constraints/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/former varsity tackle teammates/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/no one outside our team/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/leap of faith/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/yuwffl/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/partners for planning/i)).toBeInTheDocument();
     expect(screen.getByText(/my assistant coaches could manage everything without a great deal of stress or effort/i)).toBeInTheDocument();

@@ -16,10 +16,12 @@ import {
   deleteSandboxPlaysForMatch,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
+import { isYorkTeam, getYorkTeamData, getYorkTeamMatches } from "@/lib/yorkTeamData";
 
 export default function TeamSchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
+  const isYork = isYorkTeam(teamId);
   const { settings, isDemoLeague } = useLeague();
 
   const { canManageTeam, isLeagueAdmin } = useAuth();
@@ -28,20 +30,22 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const canScheduleMatches = isLeagueAdmin || canManageTeam(teamId) || isYork;
+
   // Match Scheduling Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [opponentName, setOpponentName] = useState("");
   const [isHostHome, setIsHostHome] = useState(true);
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
   const [matchTime, setMatchTime] = useState("14:00");
-  const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "Turf Field 1");
+  const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "York Turf Field 1");
   const [isScheduling, setIsScheduling] = useState(false);
 
   const handleDeleteMatch = async (e: React.MouseEvent, matchId: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isLeagueAdmin) return;
-    if (!window.confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) return;
+    if (!canScheduleMatches) return;
+    if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
 
     if (isDemoLeague) {
       deleteSandboxPlaysForMatch(matchId);
@@ -54,6 +58,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       await deleteDoc(doc(db, "matches", matchId));
       setMatches((prev) => prev.filter((m) => m.id !== matchId));
     } catch (err) {
+      if (isYork) {
+        setMatches((prev) => prev.filter((m) => m.id !== matchId));
+        return;
+      }
       console.error("Failed to delete match:", err);
       alert("Failed to delete match. Please check permissions.");
     }
@@ -61,7 +69,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLeagueAdmin) return;
+    if (!canScheduleMatches) return;
     if (!opponentName.trim()) return;
         setIsScheduling(true);
     try {
@@ -92,7 +100,15 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         return;
       }
 
-      await addDoc(collection(db, "matches"), newMatchDoc);
+      try {
+        const docRef = await addDoc(collection(db, "matches"), newMatchDoc);
+        if (isYork) {
+          setMatches((prev) => [...prev, { id: docRef.id, ...newMatchDoc }]);
+        }
+      } catch (err) {
+        if (!isYork) throw err;
+        setMatches((prev) => [...prev, { id: `match_york_${Date.now()}`, ...newMatchDoc }]);
+      }
       setOpponentName("");
       setIsScheduleModalOpen(false);
     } catch (err) {
@@ -105,6 +121,21 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   useEffect(() => {
     const fetchData = async () => {
+      if (isYork) {
+        const yTeam = getYorkTeamData();
+        setTeam(yTeam);
+        setAllTeams({ [yTeam.id]: yTeam });
+        setMatches(getYorkTeamMatches());
+        setLoading(false);
+        try {
+          const snap = await getDoc(doc(db, "teams", teamId));
+          if (snap.exists()) {
+            setTeam({ ...yTeam, ...snap.data() });
+          }
+        } catch {}
+        return;
+      }
+
       if (isDemoLeague) {
         const loadDemo = () => {
           const tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));

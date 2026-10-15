@@ -4,6 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
+import InteractiveDemoGuard from "@/components/InteractiveDemoGuard";
 
 function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -39,6 +40,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       {!hideChrome && !isLandingPage && !isPricingPage && !isMyStoryPage && <LeagueFooter />}
+      <InteractiveDemoGuard />
     </div>
   );
 }

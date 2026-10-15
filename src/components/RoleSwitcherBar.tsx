@@ -19,6 +19,11 @@ export default function RoleSwitcherBar() {
   const [resetConfirm, setResetConfirm] = useState(false);
   const roleSwitcherRef = useRef<HTMLElement>(null);
 
+  const isEmbed = typeof window !== "undefined" && (
+    (window.self !== window.top && window.location.search.includes("embed=true")) ||
+    new URLSearchParams(window.location.search).get("embed") === "true"
+  );
+
   const [isLocalOrEmbed] = useState(() => {
     if (typeof window !== "undefined") {
       const isLocal =
@@ -27,19 +32,18 @@ export default function RoleSwitcherBar() {
         window.location.hostname.endsWith(".local") ||
         window.location.hostname.startsWith("192.168.") ||
         window.location.hostname.startsWith("10.");
-      const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
       const isDemo =
         window.location.search.includes("demo=true") ||
         sessionStorage.getItem("flagos_demo_active") === "true";
-      return isLocal || isEmbed || isDemo;
+      return isLocal || isDemo;
     }
     return false;
   });
 
   const isPlatformOwner = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com";
-  const isEligibleHost = isLocalOrEmbed || isPlatformOwner || isDemoLeague;
+  const isEligibleHost = !isEmbed && (isLocalOrEmbed || isPlatformOwner || isDemoLeague);
   const isEligiblePage =
-    isEligibleHost && pathname !== "/" && pathname !== "/pricing" && pathname !== "/login";
+    !isEmbed && isEligibleHost && pathname !== "/" && pathname !== "/pricing" && pathname !== "/login";
 
   useEffect(() => {
     const root = document.documentElement;

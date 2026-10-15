@@ -6,6 +6,8 @@ import {
   onAuthStateChanged,
   User,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -16,6 +18,7 @@ import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from "fireb
 import { auth, db } from "./firebase";
 import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { getSandboxPlayers, subscribeDemoSandbox, notifySandboxChange } from "./demoSandbox";
+import { isYorkTeam, YORK_TEAM_ID, YORK_ADMIN_EMAILS, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS } from "./yorkTeamData";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
 type LoginResult = { success: true } | { success: false; message: string };
@@ -26,6 +29,13 @@ const getAuthErrorMessage = (error: unknown): string => {
   }
 
   switch (error.code) {
+    case "auth/unauthorized-domain":
+      return "This domain is not authorized for Google Sign-In in Firebase. If this is a new domain, please refresh and try again.";
+    case "auth/popup-blocked":
+      return "The sign-in popup was blocked by your browser. Please allow popups or use redirect sign-in.";
+    case "auth/cancelled-popup-request":
+    case "auth/popup-closed-by-user":
+      return "Sign-in was cancelled. Please try again.";
     case "auth/api-key-not-valid":
     case "auth/api-key-not-valid.-please-pass-a-valid-api-key.":
       return "Sign-in is temporarily unavailable because the site's Firebase API key is invalid. Please contact the site administrator.";
@@ -186,6 +196,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (sbPlayer) return sbPlayer;
     } catch {}
 
+    // Fallback: Check York Lions players
+    try {
+      const yPlayer = YORK_LIONS_PLAYERS.find((p) => {
+        const pEmails = Array.isArray(p.emails)
+          ? p.emails.map((e) => e.toLowerCase())
+          : p.email
+          ? [p.email.toLowerCase()]
+          : [];
+        return pEmails.includes(cleanEmail);
+      });
+      if (yPlayer) return yPlayer;
+    } catch {}
+
     return null;
   };
 
@@ -210,10 +233,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (e) {
       console.error("Error looking up team by email:", e);
     }
+
+    // Fallback: Check York Lions team admins & coaches
+    if (YORK_ADMIN_EMAILS.includes(cleanEmail)) {
+      return { id: YORK_TEAM_ID, name: YORK_LIONS_TEAM.name };
+    }
+
     return null;
   };
 
   useEffect(() => {
+    // Handle redirect result if user returned from Google redirect sign-in (e.g. on mobile)
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((err) => {
+        console.error("Redirect sign-in error:", err);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -438,10 +478,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (): Promise<LoginResult> => {
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      const isMobile =
+        typeof navigator !== "undefined" &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      // On mobile browsers where popups are frequently blocked or restricted, use redirect
+      if (isMobile) {
+        try {
+          await signInWithRedirect(auth, provider);
+          return { success: true };
+        } catch (redirectError: unknown) {
+          console.warn("signInWithRedirect failed, falling back to popup:", redirectError);
+        }
+      }
+
       await signInWithPopup(auth, provider);
       return { success: true };
     } catch (error: unknown) {
       console.error("Login Error:", error);
+      const fbError = error as { code?: string };
+      if (fbError?.code === "auth/popup-blocked") {
+        try {
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
+          await signInWithRedirect(auth, provider);
+          return { success: true };
+        } catch (redirectErr) {
+          return { success: false, message: getAuthErrorMessage(redirectErr) };
+        }
+      }
+
       if (typeof window !== "undefined" && window.location.hostname === "localhost") {
         const message = getAuthErrorMessage(error);
         if (
@@ -534,15 +602,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setDevRole(role, teamId, playerId);
   };
 
+  // Check if inside embedded interactive demo frame
+  const isEmbed = typeof window !== "undefined" && (
+    (window.self !== window.top && window.location.search.includes("embed=true")) ||
+    new URLSearchParams(window.location.search).get("embed") === "true"
+  );
+  const isEmbedPlaybook = isEmbed && typeof window !== "undefined" && window.location.pathname.includes("/playbook");
+  // In the interactive demo frame, users are locked into admin role for everything except playbook
+  // (In playbook, locked into team coach / team admin role so they can edit franchise playbooks)
+  const lockedEmbedRole: UserRole | null = isEmbed ? (isEmbedPlaybook ? "team_admin" : "league_admin") : null;
+
   // Determine effective role & player properties
-  const isDexter = !!user?.email && user.email.trim().toLowerCase() === "dextersargent@gmail.com";
+  const isDexter = !!user?.email && ["dextersargent@gmail.com", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
   // Explicitly chosen role in dev Role Switcher takes precedence so admins/devs can simulate any persona
-  const effectiveRole: UserRole = devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));
+  const effectiveRole: UserRole =
+    lockedEmbedRole || devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));
   const isPlatformAdmin = isDexter || (!!user?.email && adminEmails.includes(user.email.trim().toLowerCase()));
   const effectiveTeamId: string | null =
-    effectiveRole === "player"
-      ? devTeamId || userProfile?.playerTeamId || null
-      : devTeamId || userProfile?.managedTeamId || null;
+    lockedEmbedRole === "team_admin"
+      ? (typeof window !== "undefined" && window.location.pathname.split("/teams/")[1]?.split("/")[0]) || "team_kc"
+      : (effectiveRole === "player"
+          ? devTeamId || userProfile?.playerTeamId || null
+          : devTeamId || userProfile?.managedTeamId || null);
 
   const effectivePlayerId: string | null =
     effectiveRole === "player" ? devPlayerId || userProfile?.playerId || null : null;
@@ -550,26 +631,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const effectivePlayerData: any | null =
     effectiveRole === "player" ? devPlayerData || userProfile?.playerData || null : null;
 
-  const isLeagueAdmin = devRole ? devRole === "league_admin" : (isDexter || effectiveRole === "league_admin");
+  const isLeagueAdmin = lockedEmbedRole
+    ? lockedEmbedRole === "league_admin"
+    : (devRole ? devRole === "league_admin" : (isDexter || effectiveRole === "league_admin"));
   const isPlayer = effectiveRole === "player";
 
   const isTeamAdmin = (teamId?: string) => {
+    if (lockedEmbedRole === "team_admin") return true;
+    if (teamId && isYorkTeam(teamId)) {
+      if (isDexter || (!!user?.email && YORK_ADMIN_EMAILS.includes(user.email.trim().toLowerCase()))) {
+        return true;
+      }
+    }
     if (effectiveRole === "team_admin") {
       if (!teamId) return true;
-      if (effectiveTeamId && effectiveTeamId === teamId) return true;
+      if (effectiveTeamId && (effectiveTeamId === teamId || (isYorkTeam(effectiveTeamId) && isYorkTeam(teamId)))) return true;
       if (userProfile?.managedTeamIds?.includes(teamId)) return true;
     }
     return false;
   };
 
   const canManageTeam = (teamId: string) => {
+    if (lockedEmbedRole === "team_admin") return true;
     if (isLeagueAdmin) return true;
     if (isTeamAdmin(teamId)) return true;
+    if (isYorkTeam(teamId) && (isDexter || (!!user?.email && YORK_ADMIN_EMAILS.includes(user.email.trim().toLowerCase())))) return true;
     return false;
   };
 
-  const canManageSchedule = isLeagueAdmin;
-  const canManagePlayByPlay = isLeagueAdmin;
+  const canManageSchedule = isLeagueAdmin || lockedEmbedRole === "league_admin";
+  const canManagePlayByPlay = isLeagueAdmin || lockedEmbedRole === "league_admin";
   const isAdmin = isLeagueAdmin || effectiveRole === "team_admin";
 
   // Authorized email definition:

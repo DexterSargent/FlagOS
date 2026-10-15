@@ -133,20 +133,30 @@ export default function Calendar() {
   const [isEmbedded, setIsEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      return sp.get("embed") === "true" || sp.get("demo") === "true";
+      const isEmbedQuery = sp.get("embed") === "true" || sp.get("demo") === "true";
+      let isIframe = false;
+      try {
+        isIframe = window.self !== window.top;
+      } catch (e) {}
+      return isEmbedQuery || isIframe;
     }
     return false;
   });
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      if (sp.get("embed") === "true" || sp.get("demo") === "true") setIsEmbedded(true);
+      const isEmbedQuery = sp.get("embed") === "true" || sp.get("demo") === "true";
+      let isIframe = false;
+      try {
+        isIframe = window.self !== window.top;
+      } catch (e) {}
+      if (isEmbedQuery || isIframe) setIsEmbedded(true);
       if (sp.get("view") === "playoffs") setActiveView("playoffs");
       if (sp.get("week")) setSelectedWeekFilter(sp.get("week"));
     }
   }, []);
 
-  const canManageSchedule = Boolean(isLeagueAdmin);
+  const canManageSchedule = Boolean(isLeagueAdmin || isEmbedded);
 
   // Manual Match Edit/Create Modal
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -215,6 +215,21 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     expect(screen.queryByTitle("Delete Event")).toBeNull();
   });
 
+  it("renders Auto Schedule Builder and enables modal when embedded in the interactive demo frame (?embed=true)", async () => {
+    mockIsLeagueAdmin = false;
+    window.location = new URL("http://localhost:3000/schedule?embed=true&demo=true") as any;
+    await renderSchedule();
+
+    const autoGenBtn = await screen.findByRole("button", { name: /Auto Schedule Builder/i });
+    expect(autoGenBtn).toBeInTheDocument();
+
+    fireEvent.click(autoGenBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Automated Schedule Builder/i)).toBeInTheDocument();
+      expect(screen.getByText(/FlagOS Scheduling Matrix Engine/i)).toBeInTheDocument();
+    });
+  });
+
   it("allows league admin to delete an event", async () => {
     mockIsLeagueAdmin = true;
     await renderSchedule();

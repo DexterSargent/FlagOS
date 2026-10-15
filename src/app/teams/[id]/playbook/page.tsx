@@ -48,6 +48,7 @@ import {
   ensure5v5Matchup
 } from "@/lib/playbookTypes";
 import { getSandboxTeams } from "@/lib/demoSandbox";
+import { isYorkTeam, getYorkTeamData, getYorkLionsPlaybooks } from "@/lib/yorkTeamData";
 
 type PlaybookViewLevel = "playbooks" | "formations" | "plays";
 
@@ -129,30 +130,36 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const isEffectDemo = isDemoLeague || isDemoTeam || isDemoMode;
 
   // Strict Playbook RBAC:
-  // 1. League admins have NO access (competitive integrity & strategic confidentiality policy)
+  // 1. League admins have NO access to customer team playbooks (competitive integrity & strategic confidentiality policy)
   // 2. Authorized team admins can EDIT playbooks for their team only
   // 3. Players have VIEW-ONLY access to their team only
   // 4. Opponent coaches, opponent players, spectators, and unauthenticated users have NO access
+  // 5. York Lions Varsity Portal: Fully unlocked for Dexter, team coaches, and rostered players
   // Note: isEmbedded allows the interactive showcase on the marketing landing page (/page.tsx) to demo the studio
-  const isTeamAdminForThisTeam = isTeamAdmin(teamId);
-  const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
+  const isYork = isYorkTeam(teamId);
+  const isTeamAdminForThisTeam = isTeamAdmin(teamId) || (isYork && canManageTeam(teamId));
+  const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
   const isOpponentCoach = isTeamAdmin() && !isTeamAdminForThisTeam;
   const isOpponentPlayer = isPlayer && !isRosteredPlayerOnTeam;
 
-  // League admins are strictly forbidden from viewing or modifying team playbooks
-  const isBlockedLeagueAdmin = !isEmbedded && isLeagueAdmin;
+  // League admins are strictly forbidden from viewing or modifying customer playbooks,
+  // but Dexter is the coach of his own varsity club team (York Lions).
+  const isBlockedLeagueAdmin = !isEmbedded && !isYork && isLeagueAdmin;
 
-  // Edit access: strictly team admins of THIS team
-  const hasEditAccess = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam);
+  // Edit access: strictly team admins of THIS team or York Lions coach
+  const hasEditAccess = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isYork);
 
-  // View access: team admins of THIS team OR rostered players of THIS team
-  const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
+  // View access: team admins of THIS team OR rostered players of THIS team OR York team
+  const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam || isYork);
 
   // 1. Fetch Team & Playbooks from Firestore / LocalStorage
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (isEmbedded) {
+        if (isYork) {
+          const yTeam = getYorkTeamData();
+          setTeam({ id: yTeam.id, name: yTeam.name, shortcode: yTeam.shortcode || "YORK" });
+        } else if (isEmbedded) {
           const sTeam = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
           if (sTeam) {
             setTeam({ id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) });
@@ -184,8 +191,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           }
         }
 
-        // If user is league admin or unauthorized, do not load confidential playbooks
-        if (!isEmbedded && (isBlockedLeagueAdmin || (!isTeamAdminForThisTeam && !isRosteredPlayerOnTeam))) {
+        // If user is blocked league admin or unauthorized, do not load confidential playbooks
+        if (!isEmbedded && !isYork && (isBlockedLeagueAdmin || (!isTeamAdminForThisTeam && !isRosteredPlayerOnTeam))) {
           setLoading(false);
           return;
         }
@@ -230,7 +237,11 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
         // Seed with default playbooks if team has none
         if (!loadedPlaybooks || loadedPlaybooks.length === 0) {
-          loadedPlaybooks = createDefaultPlaybooks(teamId, playersPerSide);
+          if (isYork) {
+            loadedPlaybooks = getYorkLionsPlaybooks();
+          } else {
+            loadedPlaybooks = createDefaultPlaybooks(teamId, playersPerSide);
+          }
         }
 
         // Guarantee squad format for every play (respecting book.playersOnField or league rules)
