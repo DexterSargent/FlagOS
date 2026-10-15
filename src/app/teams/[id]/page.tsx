@@ -30,6 +30,7 @@ import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { getSandboxTeams, updateSandboxTeam, subscribeDemoSandbox } from "@/lib/demoSandbox";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette } from "@/lib/teamColors";
 
 export default function TeamPortalHome({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -54,6 +55,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const [editShortcode, setEditShortcode] = useState("");
   const [editLogoUrl, setEditLogoUrl] = useState("");
   const [editIcon, setEditIcon] = useState("shield");
+  const [editPrimaryColor, setEditPrimaryColor] = useState(DEFAULT_TEAM_COLOR_PALETTE.primary);
+  const [editSecondaryColor, setEditSecondaryColor] = useState(DEFAULT_TEAM_COLOR_PALETTE.secondary);
+  const [editTertiaryColor, setEditTertiaryColor] = useState(DEFAULT_TEAM_COLOR_PALETTE.tertiary);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -66,6 +70,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           setEditShortcode(getTeamShortcode(tData));
           setEditLogoUrl("");
           setEditIcon("shield");
+          const palette = resolveTeamColorPalette(tData);
+          setEditPrimaryColor(palette.primary);
+          setEditSecondaryColor(palette.secondary);
+          setEditTertiaryColor(palette.tertiary);
         }
         setLoading(false);
         return;
@@ -80,6 +88,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             setEditShortcode(tData.shortcode || getTeamShortcode(tData));
             setEditLogoUrl(tData.logoUrl || "");
             setEditIcon(tData.icon || "shield");
+            const palette = resolveTeamColorPalette(tData);
+            setEditPrimaryColor(palette.primary);
+            setEditSecondaryColor(palette.secondary);
+            setEditTertiaryColor(palette.tertiary);
           }
         }
       } catch (e) {
@@ -98,6 +110,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const handleSaveTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editName.trim()) return;
+    if (![editPrimaryColor, editSecondaryColor, editTertiaryColor].every((color) => /^#[0-9A-Fa-f]{6}$/.test(color))) {
+      alert("Enter a valid six-digit hex color for each team color.");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -106,11 +122,15 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         shortcode: editShortcode.trim().toUpperCase(),
         logoUrl: editLogoUrl.trim(),
         icon: editIcon,
+        color: editPrimaryColor,
+        primaryColor: editPrimaryColor,
+        secondaryColor: editSecondaryColor,
+        tertiaryColor: editTertiaryColor,
         updatedAt: new Date().toISOString(),
       };
 
       if (isDemoLeague) {
-        updateSandboxTeam(teamId, editName.trim());
+        updateSandboxTeam(teamId, updatedData);
         setTeam((prev: any) => ({ ...prev, ...updatedData }));
         setIsEditModalOpen(false);
         setSaving(false);
@@ -306,7 +326,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               </div>
               <div>
                 <h2 className="text-2xl font-black uppercase tracking-tight">Edit Team Details</h2>
-                <p className="text-xs text-neutral-400">Team Admins can update team name, logo, and shortcode.</p>
+                <p className="text-xs text-neutral-400">Team admins can update team identity and choose its primary, secondary, and tertiary colors.</p>
               </div>
             </div>
 
@@ -341,6 +361,39 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   Used in stat tables, scoreboards, and badges (2-4 characters recommended).
                 </span>
               </div>
+
+              <fieldset className="space-y-3 rounded-xl border border-white/10 bg-neutral-950/60 p-4">
+                <legend className="px-2 text-xs font-bold uppercase tracking-wider text-neutral-300">Team Colors</legend>
+                <p className="text-[11px] text-neutral-500">
+                  Primary colors the score and possession indicator; secondary colors timeout markers; tertiary colors wizard highlights.
+                </p>
+                {[
+                  { label: "Primary", value: editPrimaryColor, onChange: setEditPrimaryColor },
+                  { label: "Secondary", value: editSecondaryColor, onChange: setEditSecondaryColor },
+                  { label: "Tertiary", value: editTertiaryColor, onChange: setEditTertiaryColor },
+                ].map((color) => (
+                  <label key={color.label} className="flex items-center justify-between gap-3 text-xs font-bold text-neutral-300">
+                    <span>{color.label}</span>
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={color.value}
+                        onChange={(event) => color.onChange(event.target.value)}
+                        aria-label={`${color.label} team color`}
+                        className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={color.value}
+                        onChange={(event) => color.onChange(event.target.value)}
+                        pattern="#[0-9A-Fa-f]{6}"
+                        aria-label={`${color.label} team color hex`}
+                        className="w-24 rounded-lg border border-white/10 bg-black px-2 py-1.5 font-mono text-xs uppercase text-white"
+                      />
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">

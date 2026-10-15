@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 
@@ -62,6 +63,11 @@ function AccountCreationHarness() {
   );
 }
 
+function RoleHarness() {
+  const { role } = useAuth();
+  return <output>{role}</output>;
+}
+
 describe("AuthProvider account creation", () => {
   beforeEach(() => {
     authStateCallback.current = null;
@@ -120,5 +126,26 @@ describe("AuthProvider account creation", () => {
         createdAt: "server-time",
       })
     );
+  });
+
+  it("restores persisted developer roles after the hydration-safe initial render", async () => {
+    localStorage.setItem("dev_auth_role", "league_admin");
+
+    const serverMarkup = renderToString(
+      <AuthProvider>
+        <RoleHarness />
+      </AuthProvider>
+    );
+    expect(serverMarkup).toContain(">user</output>");
+
+    render(
+      <AuthProvider>
+        <RoleHarness />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("league_admin")).toBeInTheDocument();
+    });
   });
 });

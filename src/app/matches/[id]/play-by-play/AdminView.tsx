@@ -10,7 +10,7 @@ import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
-import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
+import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
 import { getPlayerNumberMap, sortRosterWithNumbers } from "@/lib/playerNumberHelper";
 import {
   PENALTY_CATALOG,
@@ -21,6 +21,7 @@ import {
 import {
   getSandboxMatches,
   getSandboxMatch,
+  getSandboxTeams,
   getSandboxPlayers,
   getSandboxPlays,
   addSandboxPlay,
@@ -30,6 +31,7 @@ import {
   subscribeDemoSandbox,
   isDemoMatch,
 } from "@/lib/demoSandbox";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette, TeamColorSource } from "@/lib/teamColors";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -80,6 +82,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [awayTeamName, setAwayTeamName] = useState("AWAY");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
+  const [homeTeamColors, setHomeTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
+  const [awayTeamColors, setAwayTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
 
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [subs, setSubs] = useState<string[]>([]);
@@ -257,11 +261,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return `${n}th`;
   };
 
-  const FootballIcon = ({ className, active }: { className?: string, active: boolean }) => (
+  const FootballIcon = ({ className, active, style }: { className?: string, active: boolean, style?: React.CSSProperties }) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       className={`${className} ${active ? 'opacity-100 drop-shadow-[0_0_15px_currentColor]' : 'opacity-30 grayscale'} transition-all duration-500`}
+      style={style}
     >
       <path 
         d="M6 3c-5 12 7 24 19 19-5-12-7-24-19-19z" 
@@ -315,6 +320,37 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         setHomeTeamId(mData.homeTeamId);
         setAwayTeamId(mData.awayTeamId);
         setMatchStatus(mData.status || "scheduled");
+
+        let homeTeamData: TeamColorSource | undefined;
+        let awayTeamData: TeamColorSource | undefined;
+        if (isDemo) {
+          const teams = getSandboxTeams();
+          homeTeamData = teams.find((team) => team.id === mData.homeTeamId);
+          awayTeamData = teams.find((team) => team.id === mData.awayTeamId);
+        } else {
+          try {
+            const [homeTeamSnap, awayTeamSnap] = await Promise.all([
+              mData.homeTeamId ? getDoc(doc(db, "teams", mData.homeTeamId)) : Promise.resolve(null),
+              mData.awayTeamId ? getDoc(doc(db, "teams", mData.awayTeamId)) : Promise.resolve(null),
+            ]);
+            homeTeamData = homeTeamSnap?.exists() ? homeTeamSnap.data() as TeamColorSource : undefined;
+            awayTeamData = awayTeamSnap?.exists() ? awayTeamSnap.data() as TeamColorSource : undefined;
+          } catch (error) {
+            console.error("Failed to load team colors for play-by-play:", error);
+          }
+        }
+        setHomeTeamColors(resolveTeamColorPalette(homeTeamData || {
+          primaryColor: mData.homeTeamPrimaryColor,
+          secondaryColor: mData.homeTeamSecondaryColor,
+          tertiaryColor: mData.homeTeamTertiaryColor,
+          color: mData.homeTeamColor,
+        }));
+        setAwayTeamColors(resolveTeamColorPalette(awayTeamData || {
+          primaryColor: mData.awayTeamPrimaryColor,
+          secondaryColor: mData.awayTeamSecondaryColor,
+          tertiaryColor: mData.awayTeamTertiaryColor,
+          color: mData.awayTeamColor,
+        }));
 
         // Automatically resume game if in progress without prompting
         if (mData.status === 'in_progress' && mData.matchState) {
@@ -1013,8 +1049,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     endPlay();
   };
 
-  const finalizeConversion = () => {
-    if (convIsGood && convPts) {
+  const finalizeConversion = (conversionSuccess = convIsGood) => {
+    if (conversionSuccess && convPts) {
       if (possession === homeTeamName) setHomeScore(s => s + convPts);
       else setAwayScore(s => s + convPts);
     }
@@ -1023,10 +1059,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     const finalPlay: any = {
       ...buildPlayData(playResult),
       conversionAttempt: convPts,
-      conversionSuccess: convIsGood,
+      conversionSuccess,
       conversionPasser: convPasser,
       conversionReceiver: convReceiver,
-      pointsScored: 6 + (convIsGood ? convPts! : 0)
+      pointsScored: 6 + (conversionSuccess ? convPts! : 0)
     };
     const statement = formatPlaySentence(finalPlay, {
       homeTeamName,
@@ -1053,6 +1089,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return [...roster, 'TEAM'];
   };
 
+  const possessionTeamColors = possession === homeTeamName ? homeTeamColors : awayTeamColors;
+
   if (isDenied) {
     return deniedElement;
   }
@@ -1073,7 +1111,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         </button>
         <div className="flex-1 flex flex-col justify-center gap-12">
           <div className="flex flex-col items-center">
-            <span className="text-3xl font-bold uppercase tracking-widest text-cyan-400 mb-4">
+            <span className="text-3xl font-bold uppercase tracking-widest mb-4" style={{ color: possessionTeamColors.tertiary }}>
               {getOrdinal(half)} {periodType === 'quarters' ? 'Quarter' : 'Half'}
             </span>
             <span className="text-[12rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
@@ -1081,15 +1119,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           <div className="flex justify-between items-center px-24">
             <div className="flex flex-col items-center gap-6">
               <div className="flex items-center gap-6">
-                <FootballIcon active={possession === (homeTeamName || "HOME")} className={`w-12 h-12 ${possession === (homeTeamName || "HOME") ? 'text-cyan-400' : 'text-neutral-500'}`} />
+                <FootballIcon active={possession === (homeTeamName || "HOME")} className={`w-12 h-12 ${possession === (homeTeamName || "HOME") ? '' : 'text-neutral-500'}`} style={possession === homeTeamName ? { color: homeTeamColors.primary } : undefined} />
                 <span className="text-6xl font-black text-white uppercase">{homeTeamName}</span>
               </div>
-              <span className="text-[15rem] font-black text-cyan-400 leading-none">{homeScore}</span>
+              <span className="text-[15rem] font-black leading-none" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
               <div className="flex gap-3">
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 rounded-full ${i < homeTimeouts ? 'bg-cyan-400 shadow-[0_0_15px_rgba(var(--league-primary-rgb),0.6)]' : 'bg-neutral-800'}`}
+                    className={`w-8 h-8 rounded-full ${i < homeTimeouts ? '' : 'bg-neutral-800'}`}
+                    style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary, boxShadow: `0 0 15px ${homeTeamColors.secondary}99` } : undefined}
                   />
                 ))}
               </div>
@@ -1103,14 +1142,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <div className="flex flex-col items-center gap-6">
               <div className="flex items-center gap-6">
                 <span className="text-6xl font-black text-white uppercase">{awayTeamName}</span>
-                <FootballIcon active={possession === (awayTeamName || "AWAY")} className={`w-12 h-12 ${possession === (awayTeamName || "AWAY") ? 'text-blue-500' : 'text-neutral-500'}`} />
+                <FootballIcon active={possession === (awayTeamName || "AWAY")} className={`w-12 h-12 ${possession === (awayTeamName || "AWAY") ? '' : 'text-neutral-500'}`} style={possession === awayTeamName ? { color: awayTeamColors.primary } : undefined} />
               </div>
-              <span className="text-[15rem] font-black text-blue-500 leading-none">{awayScore}</span>
+              <span className="text-[15rem] font-black leading-none" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
               <div className="flex gap-3">
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 rounded-full ${i < awayTimeouts ? 'bg-blue-500 shadow-[0_0_15px_rgba(var(--league-accent-rgb),0.6)]' : 'bg-neutral-800'}`}
+                    className={`w-8 h-8 rounded-full ${i < awayTimeouts ? '' : 'bg-neutral-800'}`}
+                    style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary, boxShadow: `0 0 15px ${awayTeamColors.secondary}99` } : undefined}
                   />
                 ))}
               </div>
@@ -1122,7 +1162,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="min-h-[100dvh] md:h-[100dvh] md:min-h-0 bg-black text-white font-sans overflow-x-hidden md:overflow-hidden flex flex-col relative">
+    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] w-full min-h-0 max-w-full bg-black text-white font-sans overflow-hidden flex flex-col relative">
 
       {/* RESET GAME TO PRE-GAME MODAL */}
       {isResetModalOpen && (
@@ -1273,152 +1313,109 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {/* HEADER */}
-      <header className="bg-neutral-900 border-b border-cyan-500/30 p-2 md:p-3 flex flex-col md:flex-row items-center justify-between shrink-0 z-50 gap-2 md:gap-0 max-w-full overflow-hidden">
-        <div className="flex items-center justify-between md:justify-start gap-2 sm:gap-4 w-full md:w-auto shrink-0">
-          <div className="flex items-center gap-2 sm:gap-4">
+      {/* SINGLE-ROW SYNC SCOREBOARD & GAME CONTROLS */}
+      <header className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full overflow-hidden" style={{ top: "var(--role-switcher-height, 0px)" }}>
+        <div className="flex flex-nowrap items-center justify-between gap-1 sm:gap-1.5 md:gap-3 w-full min-w-0">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             {!isEmbedded && (
-              <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/10 shrink-0">
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Link href={`/matches/${matchId}`} aria-label="Back to match" className="flex items-center text-neutral-400 hover:text-white bg-black p-1 md:p-2 rounded-md sm:rounded-lg border border-white/10">
+                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
               </Link>
             )}
-            <button onClick={resetPlay} className="flex items-center text-white bg-[#9b9b9b] p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/10 shrink-0 cursor-pointer" title="Reset Current Play">
-              <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
-            <button onClick={handleUndoLastPlay} className="flex items-center text-white hover:text-amber-500 bg-[#9b9b9b] p-2 sm:p-3 rounded-xl sm:rounded-2xl border border-white/10 shrink-0 cursor-pointer" title="Undo Last Play">
-              <Undo className="w-5 h-5 sm:w-6 sm:h-6" />
+            <button onClick={handleUndoLastPlay} aria-label="Undo last play" className="flex items-center text-white hover:text-amber-400 bg-white/10 p-1 md:p-2 rounded-md sm:rounded-lg border border-white/10 cursor-pointer" title="Undo Last Play">
+              <Undo className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           </div>
-        </div>
 
-        <div className="flex-1 flex flex-row items-center justify-between sm:justify-center gap-1 sm:gap-4 md:gap-6 w-full md:w-auto mt-1 sm:mt-2 md:mt-0 max-w-full">
-          <div className="flex flex-row items-center justify-end gap-1 sm:gap-2 flex-1 min-w-0">
-            <button
-              disabled={homeTimeouts === 0}
-              onClick={() => callTimeout('home')}
-              className="px-1.5 sm:px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[9px] sm:text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
-            >
-              TO ({homeTimeouts})
-            </button>
-            <div className="flex gap-0.5 sm:gap-1 items-center mr-0.5 shrink-0">
-              {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < homeTimeouts ? 'bg-cyan-400' : 'bg-neutral-800'}`}
-                />
-              ))}
-            </div>
-            <div className="flex flex-col items-end min-w-0">
-              <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase truncate max-w-[50px] xs:max-w-[70px] sm:max-w-none text-right">{homeTeamName}</span>
-              <span className="text-xl sm:text-2xl md:text-3xl font-black text-cyan-400 leading-none">{homeScore}</span>
+          <div className="flex flex-col items-center flex-1 min-w-0 max-w-[7rem]">
+            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-bold uppercase truncate max-w-full" style={{ color: homeTeamColors.primary }}>
+              {homeTeamName}
+              <FootballIcon active={possession === homeTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: homeTeamColors.primary }} />
+            </span>
+            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
+            <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
+              <button
+                disabled={homeTimeouts === 0}
+                onClick={() => callTimeout("home")}
+                className="px-0.5 sm:px-1 py-0.5 rounded bg-white/10 text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/20"
+                title="Call home team timeout"
+              >
+                TO {homeTimeouts}
+              </button>
+              <div className="hidden min-[360px]:flex gap-0.5 items-center" aria-label={`${homeTimeouts} home timeouts remaining`}>
+                {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < homeTimeouts ? "" : "bg-neutral-700"}`} style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary } : undefined} />
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2 bg-[#9b9b9b] px-1.5 sm:px-3 md:px-4 py-1 md:py-2 rounded-2xl sm:rounded-3xl border border-white/10 group shrink-0">
-            <button
-              onPointerDown={() => startAdjustingClock(-10)}
-              onPointerUp={stopAdjustingClock}
-              onPointerLeave={stopAdjustingClock}
-              className="p-1 md:p-2 text-neutral-600 hover:text-white transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 select-none hidden md:block"
-              title="Remove Time"
-            >
-              <Minus className="w-5 h-5 pointer-events-none" />
-            </button>
-            <span className="text-xl sm:text-2xl md:text-3xl font-black tabular-nums text-white w-14 sm:w-20 md:w-24 text-center">{formatTime(gameClock)}</span>
-            <button
-              onPointerDown={() => startAdjustingClock(10)}
-              onPointerUp={stopAdjustingClock}
-              onPointerLeave={stopAdjustingClock}
-              className="p-1 md:p-2 text-neutral-600 hover:text-white transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 select-none hidden md:block"
-              title="Add Time"
-            >
-              <Plus className="w-5 h-5 pointer-events-none" />
-            </button>
-            <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} className={`p-1.5 sm:p-2 md:p-3 ml-0.5 sm:ml-1 md:ml-2 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-              {isGameClockRunning ? <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 fill-current" /> : <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 fill-current" />}
-            </button>
-          </div>
-          <div className="flex flex-row items-center justify-start gap-1 sm:gap-2 flex-1 min-w-0">
-            <div className="flex flex-col items-start min-w-0">
-              <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase truncate max-w-[50px] xs:max-w-[70px] sm:max-w-none text-left">{awayTeamName}</span>
-              <span className="text-xl sm:text-2xl md:text-3xl font-black text-blue-500 leading-none">{awayScore}</span>
-            </div>
-            <div className="flex gap-0.5 sm:gap-1 items-center ml-0.5 shrink-0">
-              {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${i < awayTimeouts ? 'bg-blue-500' : 'bg-neutral-800'}`}
-                />
-              ))}
-            </div>
-            <button
-              disabled={awayTimeouts === 0}
-              onClick={() => callTimeout('away')}
-              className="px-1.5 sm:px-2 py-1 bg-[#9b9b9b] border border-white/10 rounded-lg text-[9px] sm:text-[10px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/10 shrink-0"
-            >
-              TO ({awayTimeouts})
-            </button>
-          </div>
-          <button onClick={() => setIsScoreboardFullscreen(true)} className="ml-1 md:ml-4 bg-white/10 p-2 md:p-3 rounded-xl hover:bg-white/20 text-neutral-300 hidden sm:block shrink-0" title="Fullscreen Scoreboard">
-            <Maximize className="w-4 h-4 md:w-5 md:h-5" />
-          </button>
-          {isPlatformAdmin && isUnstartedGame && (
-            <button
-              onClick={handleSimulateGame}
-              disabled={isSimulating}
-              className="ml-1 sm:ml-2 md:ml-3 p-1.5 sm:px-3 sm:py-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer disabled:opacity-50"
-              title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
-            >
-              <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
-              <span>{isSimulating ? "Simulating..." : "Simulate Game"}</span>
-            </button>
-          )}
-          <button
-            onClick={() => setIsResetModalOpen(true)}
-            className="ml-1 sm:ml-2 md:ml-3 p-1.5 sm:px-3 sm:py-2 bg-red-500/15 hover:bg-red-500/25 text-red-400 hover:text-red-300 border border-red-500/30 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
-            title="Reset Game to Pre-Game State"
-          >
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Reset Game</span>
-          </button>
-        </div>
-      </header>
 
-      {/* GAME STATE BAR */}
-      <div className="bg-neutral-950 border-b border-white/10 p-1.5 md:p-2 flex flex-row items-center justify-between shrink-0 gap-2 overflow-x-auto">
-        <div className="flex items-center gap-2 md:gap-6 px-2 md:px-8 w-auto">
-          <div className="flex flex-col">
-            <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase tracking-widest leading-none">Period</span>
-            <span className="text-sm md:text-base font-black text-cyan-400 mt-1 uppercase whitespace-nowrap">
-              {getOrdinal(half)} {periodType === 'quarters' ? 'Qtr' : 'Half'}
+          <div className="flex flex-col items-center justify-center shrink-0 -space-y-0.5">
+            <button type="button" onClick={() => setCurrentDown((down) => Math.min(downsPerSeries, down + 1))} disabled={currentDown >= downsPerSeries} aria-label="Increase down" className="text-neutral-400 hover:text-white disabled:opacity-30 p-0 leading-none">
+              <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            </button>
+            <span className="text-xs sm:text-sm md:text-base font-black leading-none tabular-nums" title={`${getOrdinal(currentDown)} down`}>{currentDown}</span>
+            <button type="button" onClick={() => setCurrentDown((down) => Math.max(1, down - 1))} disabled={currentDown <= 1} aria-label="Decrease down" className="text-neutral-400 hover:text-white disabled:opacity-30 p-0 leading-none">
+              <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-0.5 sm:gap-1.5 bg-black/40 px-1 sm:px-1.5 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
+            <span className="hidden sm:block text-[8px] md:text-[10px] font-bold uppercase text-neutral-500">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
+            <button onPointerDown={() => startAdjustingClock(-10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Remove 10 seconds">
+              <Minus className="w-3 h-3" />
+            </button>
+            <span className="text-sm sm:text-lg md:text-s font-black tabular-nums text-white text-center">{formatTime(gameClock)}</span>
+            <button onPointerDown={() => startAdjustingClock(10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Add 10 seconds">
+              <Plus className="w-3 h-3" />
+            </button>
+            <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} aria-label={isGameClockRunning ? "Pause game clock" : "Start game clock"} className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? "bg-red-500/20 text-red-500" : "bg-emerald-500/20 text-emerald-500"}`}>
+              {isGameClockRunning ? <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" /> : <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />}
+            </button>
+            <span className="border-l border-white/10 pl-1 flex flex-col items-center leading-none" title="Play clock">
+              <span className="text-[7px] md:text-[8px] uppercase text-neutral-500">Play</span>
+              <span className={`text-sm md:text-base font-black tabular-nums ${playClock <= 0 ? "text-red-500 animate-pulse" : "text-amber-500"}`}>{playClock}</span>
             </span>
           </div>
-          <div className="h-6 md:h-8 w-px bg-white/10 shrink-0"></div>
-          <div className="flex flex-col">
-            <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase tracking-widest leading-none">Offense</span>
-            <span className={`text-lg md:text-2xl font-black leading-tight ${possession === homeTeamName ? 'text-cyan-400' : 'text-blue-500'}`}>{possession}</span>
-          </div>
-          <div className="h-6 md:h-8 w-px bg-white/10 shrink-0"></div>
-          <div className="flex flex-col">
-            <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase tracking-widest mb-1 leading-none">Down</span>
-            <div className="flex gap-1 md:gap-2">
-              {Array.from({ length: downsPerSeries }, (_, i) => i + 1).map(d => (
-                <button
-                  key={d}
-                  onClick={() => setCurrentDown(d)}
-                  className={`w-7 h-7 md:w-10 md:h-10 rounded-full flex items-center justify-center font-black text-xs md:text-lg transition-all shrink-0 ${currentDown === d ? 'bg-white text-black' : 'bg-neutral-900 border border-white/10 text-neutral-500 hover:text-white hover:border-white/30'}`}
-                >
-                  {d}
-                </button>
-              ))}
+
+          <div className="flex flex-col items-center flex-1 min-w-0 max-w-[7rem]">
+            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-bold uppercase truncate max-w-full" style={{ color: awayTeamColors.primary }}>
+              <FootballIcon active={possession === awayTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: awayTeamColors.primary }} />
+              {awayTeamName}
+            </span>
+            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
+            <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
+              <button
+                disabled={awayTimeouts === 0}
+                onClick={() => callTimeout("away")}
+                className="px-0.5 sm:px-1 py-0.5 rounded bg-white/10 text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/20"
+                title="Call away team timeout"
+              >
+                TO {awayTimeouts}
+              </button>
+              <div className="hidden min-[360px]:flex gap-0.5 items-center" aria-label={`${awayTimeouts} away timeouts remaining`}>
+                {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < awayTimeouts ? "" : "bg-neutral-700"}`} style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary } : undefined} />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 md:gap-4 px-2 md:px-8 shrink-0">
-          <span className="text-[10px] md:text-xs font-bold text-neutral-500 uppercase tracking-widest leading-none hidden sm:block">Play Clock</span>
-          <span className={`text-2xl md:text-3xl font-black tabular-nums leading-none ${playClock <= 0 ? 'text-red-500 animate-pulse' : 'text-amber-500'}`}>{playClock}</span>
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+            <button onClick={() => setIsScoreboardFullscreen(true)} aria-label="Fullscreen scoreboard" className="bg-white/10 p-1 sm:p-1.5 md:p-2 rounded-md sm:rounded-lg hover:bg-white/20 text-neutral-300" title="Fullscreen Scoreboard">
+              <Maximize className="w-3 h-3 sm:w-4 sm:h-4" />
+            </button>
+            {isPlatformAdmin && isUnstartedGame && (
+              <button onClick={handleSimulateGame} disabled={isSimulating} className="bg-amber-500/15 text-amber-300 border border-amber-500/40 rounded-lg p-1 disabled:opacity-50" title={isSimulating ? "Simulating game" : "Simulate full game"}>
+                <Zap className={`w-3 h-3 sm:w-4 sm:h-4 ${isSimulating ? "animate-spin" : ""}`} />
+              </button>
+            )}
+            <button onClick={() => setIsResetModalOpen(true)} aria-label="Reset game" className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 rounded-lg p-1" title="Reset Game to Pre-Game State">
+              <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* LIVE PLAY-BY-PLAY STATEMENT BANNER */}
       <div className="bg-neutral-900/90 border-b border-white/10 px-4 py-2.5 flex items-center justify-between text-xs font-mono shadow-sm">
@@ -1438,46 +1435,45 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         </button>
       </div>
 
-      <main className="flex-1 min-h-0 p-2 md:p-3 flex flex-col overflow-visible md:overflow-hidden relative">
+      <main className="flex-1 min-h-0 p-1.5 sm:p-2 md:p-3 flex flex-col overflow-hidden relative">
 
         {/* SPOT BALL OVERLAY */}
         {!isBallSpotted && step !== 'CONVERSION' && step !== 'HALFTIME' && step !== 'GAME_OVER' && !isTimeoutActive && (
-          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-8 overflow-y-auto">
-            <div className="flex flex-col md:flex-row w-full max-w-7xl justify-between items-center px-2 sm:px-12 gap-4 sm:gap-8 md:gap-12 py-4 sm:py-8 md:py-0">
+          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-1.5 sm:p-3 md:p-8 overflow-hidden">
+            <div className="flex flex-col w-full max-w-7xl justify-center items-center gap-1.5 sm:gap-3 md:gap-6 min-h-0">
 
               {/* Home Score (Left) */}
-              <div className="hidden md:flex flex-col items-center gap-4 shrink-0">
-                <div className="flex items-center gap-4">
-                  <FootballIcon active={possession === (homeTeamName || "HOME")} className={`w-10 h-10 ${possession === (homeTeamName || "HOME") ? 'text-cyan-400' : 'text-neutral-500'}`} />
-                  <span className="text-4xl font-black text-white uppercase">{homeTeamName}</span>
-                </div>
-                <span className="text-[8rem] font-black text-cyan-400 leading-none">{homeScore}</span>
-                <div className="flex gap-2 mt-2">
-                  {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-5 h-5 rounded-full ${i < homeTimeouts ? 'bg-cyan-400 shadow-[0_0_10px_rgba(var(--league-primary-rgb),0.5)]' : 'bg-neutral-800'}`}
-                    />
-                  ))}
+              <div className="flex items-center justify-around gap-2 sm:gap-8 w-full md:w-auto md:flex-1 shrink-0">
+                <div className="flex flex-col items-center min-w-0 flex-1">
+                  <div className="flex items-center gap-1 min-w-0 max-w-full">
+                    <FootballIcon active={possession === (homeTeamName || "HOME")} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" style={{ color: homeTeamColors.primary }} />
+                    <span className="text-sm sm:text-2xl md:text-4xl font-black uppercase truncate" style={{ color: homeTeamColors.primary }}>{homeTeamName}</span>
+                  </div>
+                  <span className="text-4xl sm:text-6xl md:text-[8rem] font-black leading-none tabular-nums" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
+                  <div className="flex gap-1 sm:gap-2 mt-1">
+                    {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
+                      <div key={i} className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-neutral-800" style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary } : undefined} />
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Center Column (Time + Alert) */}
-              <div className="flex flex-col items-center justify-center gap-4 sm:gap-8 w-full max-w-xl">
+              <div className="flex flex-col items-center justify-center gap-1.5 sm:gap-3 w-full md:flex-[2] max-w-xl shrink min-h-0">
                 <div className="flex flex-col items-center gap-1 sm:gap-2">
-                  <span className="text-xs sm:text-base md:text-xl font-bold uppercase tracking-widest text-cyan-400">
+                  <span className="text-xl sm:text-base md:text-lg font-bold uppercase tracking-widest">
                     {getOrdinal(half)} {periodType === 'quarters' ? 'Quarter' : 'Half'}
                   </span>
-                  <span className="text-4xl sm:text-6xl md:text-[5rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
+                  <span className="text-3xl sm:text-5xl md:text-[5rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
                 </div>
 
                 {isFirstPlayOfHalf ? (
-                  <div className="bg-neutral-900 border border-cyan-500/30 p-4 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl md:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] max-w-xl text-center w-full">
-                    <AlertCircle className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 text-emerald-500 mb-2 sm:mb-4 md:mb-6" />
-                    <h2 className="text-sm sm:text-2xl md:text-3xl font-black mb-3 sm:mb-6 uppercase tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
+                  <div className="bg-neutral-900 border border-cyan-500/30 p-2 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] max-w-xl text-center md:w-100 sm:w-80 w-60 min-h-0">
+                    <AlertCircle className="w-6 h-6 sm:w-10 sm:h-10 text-emerald-500 mb-1 sm:mb-2 shrink-0" />
+                    <h2 className="text-xl md:text-xl font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
                     <button
                       onClick={() => { handleSpotBall(); setIsFirstPlayOfHalf(false); }}
-                      className="py-3 sm:py-5 md:py-6 px-5 sm:px-8 md:px-10 bg-white hover:bg-neutral-200 text-black font-black text-xs sm:text-lg md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
+                      className="py-2 sm:py-3 md:py-5 px-4 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[10px] sm:text-base md:text-xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
                     >
                       CLICK WHEN SNAPPED
                     </button>
@@ -1498,12 +1494,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     )}
                   </div>
                 ) : (
-                  <div className="bg-neutral-900 border border-amber-500/30 p-4 sm:p-8 md:p-12 rounded-2xl sm:rounded-3xl md:rounded-[3rem] flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center w-full">
-                    <AlertCircle className="w-10 h-10 sm:w-16 sm:h-16 md:w-20 md:h-20 text-amber-500 mb-2 sm:mb-4 md:mb-6" />
-                    <h2 className="text-sm sm:text-2xl md:text-3xl font-black mb-3 sm:mb-6 uppercase tracking-widest">Awaiting Spot</h2>
+                  <div className="bg-neutral-900 border border-amber-500/30 p-2 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center w-full min-h-0">
+                    <AlertCircle className="w-6 h-6 sm:w-10 sm:h-10 text-amber-500 mb-1 sm:mb-2 shrink-0" />
+                    <h2 className="text-[11px] sm:text-xl md:text-3xl font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest">Awaiting Spot</h2>
                     <button
                       onClick={handleSpotBall}
-                      className="py-3 sm:py-5 md:py-6 px-5 sm:px-8 md:px-10 bg-white hover:bg-neutral-200 text-black font-black text-xs sm:text-lg md:text-2xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
+                      className="py-2 sm:py-3 md:py-5 px-4 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[10px] sm:text-base md:text-xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
                     >
                       CLICK WHEN SPOTTED
                     </button>
@@ -1527,19 +1523,18 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </div>
 
               {/* Away Score (Right) */}
-              <div className="hidden md:flex flex-col items-center gap-4 shrink-0">
-                <div className="flex items-center gap-4">
-                  <span className="text-4xl font-black text-white uppercase">{awayTeamName}</span>
-                  <FootballIcon active={possession === (awayTeamName || "AWAY")} className={`w-10 h-10 ${possession === (awayTeamName || "AWAY") ? 'text-blue-500' : 'text-neutral-500'}`} />
-                </div>
-                <span className="text-[8rem] font-black text-blue-500 leading-none">{awayScore}</span>
-                <div className="flex gap-2 mt-2">
-                  {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-5 h-5 rounded-full ${i < awayTimeouts ? 'bg-blue-500 shadow-[0_0_10px_rgba(var(--league-accent-rgb),0.5)]' : 'bg-neutral-800'}`}
-                    />
-                  ))}
+              <div className="flex items-center justify-around gap-2 sm:gap-8 w-full md:w-auto md:flex-1 shrink-0">
+                <div className="flex flex-col items-center min-w-0 flex-1">
+                  <div className="flex items-center gap-1 min-w-0 max-w-full">
+                    <span className="text-sm sm:text-2xl md:text-4xl font-black uppercase truncate" style={{ color: awayTeamColors.primary }}>{awayTeamName}</span>
+                    <FootballIcon active={possession === (awayTeamName || "AWAY")} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" style={{ color: awayTeamColors.primary }} />
+                  </div>
+                  <span className="text-4xl sm:text-6xl md:text-[8rem] font-black leading-none tabular-nums" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
+                  <div className="flex gap-1 sm:gap-2 mt-1">
+                    {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
+                      <div key={i} className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-neutral-800" style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary } : undefined} />
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -1573,12 +1568,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <div className="flex flex-col md:flex-row w-full max-w-4xl justify-between items-center mb-8 sm:mb-16 gap-4 sm:gap-8 md:gap-0">
               <div className="flex flex-col items-center gap-2 sm:gap-4">
                 <span className="text-xl sm:text-3xl font-black text-white uppercase">{homeTeamName}</span>
-                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black text-cyan-400 leading-none">{homeScore}</span>
+                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
               </div>
               <div className="text-neutral-500 font-bold text-lg sm:text-2xl tracking-widest">FINAL</div>
               <div className="flex flex-col items-center gap-2 sm:gap-4">
                 <span className="text-xl sm:text-3xl font-black text-white uppercase">{awayTeamName}</span>
-                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black text-blue-500 leading-none">{awayScore}</span>
+                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
               </div>
             </div>
 
@@ -1588,7 +1583,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               
               <div className="flex w-full gap-12">
                 <div className="flex-1">
-                  <h4 className="text-xl font-bold uppercase tracking-widest text-cyan-400 mb-4 border-b border-white/10 pb-2">{homeTeamName}</h4>
+                  <h4 className="text-xl font-bold uppercase tracking-widest mb-4 border-b border-white/10 pb-2" style={{ color: homeTeamColors.tertiary }}>{homeTeamName}</h4>
                   <div className="flex flex-col gap-2 max-h-[30vh] overflow-y-auto pr-4 hide-scrollbar">
                     {homePlayers.map(p => (
                       <button 
@@ -1610,7 +1605,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-xl font-bold uppercase tracking-widest text-blue-500 mb-4 border-b border-white/10 pb-2">{awayTeamName}</h4>
+                  <h4 className="text-xl font-bold uppercase tracking-widest mb-4 border-b border-white/10 pb-2" style={{ color: awayTeamColors.tertiary }}>{awayTeamName}</h4>
                   <div className="flex flex-col gap-2 max-h-[30vh] overflow-y-auto pr-4 hide-scrollbar">
                     {awayPlayers.map(p => (
                       <button 
@@ -1652,27 +1647,30 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* WIZARD: PLAY TYPE */}
         {step === 'PLAY_TYPE' && (
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-2 md:gap-4 flex-1 min-h-0 max-w-6xl mx-auto w-full overflow-visible pb-2 md:pb-0">
-            <button onClick={() => handlePlayTypeSelect("Pass")} className="min-h-24 md:min-h-0 bg-neutral-900 border-2 border-white/5 hover:border-blue-500 hover:bg-blue-900/20 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-row md:flex-col items-center justify-start md:justify-center gap-3 md:gap-4 transition-all group shadow-xl shrink-0">
-              <span className="text-4xl md:text-6xl group-hover:scale-110 transition-transform">🏈</span>
-              <span className="font-black text-xl md:text-3xl">PASS</span>
-            </button>
-            <button onClick={() => handlePlayTypeSelect("Run")} className="min-h-24 md:min-h-0 bg-neutral-900 border-2 border-white/5 hover:border-emerald-500 hover:bg-emerald-900/20 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-row md:flex-col items-center justify-start md:justify-center gap-3 md:gap-4 transition-all group shadow-xl shrink-0">
-              <span className="text-4xl md:text-6xl group-hover:scale-110 transition-transform">🏃‍♀️</span>
-              <span className="font-black text-xl md:text-3xl">RUN</span>
-            </button>
-            <button onClick={() => { setPlayType("Penalty"); setStep('DETAILS'); }} className="min-h-24 md:min-h-0 bg-neutral-900 border-2 border-white/5 hover:border-amber-500 hover:bg-amber-900/20 rounded-2xl md:rounded-3xl p-3 md:p-5 flex flex-row md:flex-col items-center justify-start md:justify-center gap-3 md:gap-4 transition-all group shadow-xl shrink-0">
-              <span className="text-4xl md:text-6xl group-hover:scale-110 transition-transform">🚩</span>
-              <span className="font-black text-xl md:text-3xl">PENALTY</span>
-            </button>
-          </div>
+          <PlayEntryWizard
+            step="type"
+            variant="sync"
+            possession={possession}
+            currentDown={currentDown}
+            accentColor={possessionTeamColors.tertiary}
+            onSelectType={(type) => {
+              if (type === "Penalty") {
+                setPlayType("Penalty");
+                setStep("DETAILS");
+              } else {
+                handlePlayTypeSelect(type);
+              }
+            }}
+          />
         )}
 
         {/* WIZARD: DETAILS */}
         {step === 'DETAILS' && (
           <div className="flex flex-col flex-1 min-h-0 gap-2 md:gap-3 max-w-7xl mx-auto w-full animate-in slide-in-from-right-8 duration-200">
             {playType === 'Penalty' ? (
-              <PenaltyWizardStep
+              <PlayEntryWizard
+                step="penalty"
+                variant="sync"
                 possessionTeamName={possession}
                 defendingTeamName={possession === homeTeamName ? awayTeamName : homeTeamName}
                 currentDown={currentDown}
@@ -1680,6 +1678,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 offenseRoster={getOffensiveRoster()}
                 defenseRoster={getDefensiveRoster()}
                 playerNumbers={playerNumberMap}
+                accentColor={possessionTeamColors.tertiary}
                 onCancel={() => { setStep('PLAY_TYPE'); setPlayType(null); setOutcome(null); }}
                 onSavePenalty={handleSavePenalty}
               />
@@ -2252,34 +2251,23 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </>
             )}
           </div>
-        )}
+            )}
 
         {/* WIZARD: CONVERSION */}
         {step === 'CONVERSION' && (
-          <div className="flex flex-col flex-1 min-h-0 gap-2 md:gap-3 max-w-7xl mx-auto w-full animate-in zoom-in-95 duration-200">
-            <h3 className="text-base md:text-xl font-black text-emerald-400 flex items-center justify-center gap-2 bg-emerald-950/30 py-2 md:py-3 rounded-2xl border border-emerald-500/30 shrink-0">
-              <Flag className="w-5 h-5" /> POINT AFTER ATTEMPT
-            </h3>
-
-            {!convPts && (
-              <div className="flex-1 min-h-0 flex items-center justify-center gap-3 md:gap-6">
-                <button onClick={() => setConvPts(1)} className="w-36 h-36 md:w-52 md:h-52 max-h-full bg-neutral-900 border border-white/10 hover:border-emerald-500 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-2 group">
-                  <span className="text-5xl md:text-7xl font-black text-white group-hover:text-emerald-400">1</span>
-                  <span className="text-sm md:text-lg font-bold uppercase tracking-widest text-neutral-500">From 5 Yd</span>
-                </button>
-                <button onClick={() => setConvPts(2)} className="w-36 h-36 md:w-52 md:h-52 max-h-full bg-neutral-900 border border-white/10 hover:border-emerald-500 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-2 group">
-                  <span className="text-5xl md:text-7xl font-black text-white group-hover:text-emerald-400">2</span>
-                  <span className="text-sm md:text-lg font-bold uppercase tracking-widest text-neutral-500">From 10 Yd</span>
-                </button>
-              </div>
-            )}
-
-            {convPts && convIsGood === null && (
-              <div className="flex-1 min-h-0 flex items-center justify-center gap-3 md:gap-6 animate-in slide-in-from-right-4">
-                <button onClick={() => setConvIsGood(true)} className="flex-1 max-w-sm py-8 md:py-12 bg-emerald-600 rounded-2xl md:rounded-3xl font-black text-3xl md:text-4xl text-white">GOOD</button>
-                <button onClick={() => { setConvIsGood(false); finalizeConversion(); }} className="flex-1 max-w-sm py-8 md:py-12 bg-neutral-800 rounded-2xl md:rounded-3xl font-black text-3xl md:text-4xl text-white border border-white/10">NO GOOD</button>
-              </div>
-            )}
+          <PlayEntryWizard
+            step="conversion"
+            variant="sync"
+            points={convPts}
+            isGood={convIsGood}
+            onPointsChange={setConvPts}
+            onResultChange={(isGood) => {
+              setConvIsGood(isGood);
+              if (!isGood) finalizeConversion(isGood);
+            }}
+            showResultButtons={convIsGood === null}
+            accentColor={possessionTeamColors.tertiary}
+          >
 
             {convPts && convIsGood && (
               <div className="flex-1 min-h-0 flex flex-col gap-2 animate-in slide-in-from-right-4">
@@ -2449,13 +2437,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 </div>
 
                 <div className={`transition-all duration-300 ${convPasser ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-                  <button onClick={finalizeConversion} className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base transition-all shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.3)]">
+                  <button onClick={() => finalizeConversion()} className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base transition-all shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.3)]">
                     SAVE CONVERSION STATS
                   </button>
                 </div>
               </div>
             )}
-          </div>
+          </PlayEntryWizard>
         )}
       </main>
 

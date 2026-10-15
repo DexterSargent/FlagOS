@@ -11,12 +11,8 @@ import {
   Crosshair,
   Flame,
   Palette,
-  Check,
-  RotateCcw,
-  Sliders,
   Mail,
   ChevronRight,
-  ExternalLink,
   Crown,
   LogOut,
   Zap,
@@ -49,16 +45,6 @@ interface PlayerStats {
   pbu: number;
 }
 
-const COLOR_PRESETS = [
-  { name: "Gridiron Turf (Default)", primary: "#3ca505", accent: "#22c55e" },
-  { name: "Electric Cyan", primary: "#06B6D4", accent: "#3B82F6" },
-  { name: "Championship Gold", primary: "#F59E0B", accent: "#EF4444" },
-  { name: "Neon Violet", primary: "#8B5CF6", accent: "#EC4899" },
-  { name: "Emerald Grid", primary: "#10B981", accent: "#3ca505" },
-  { name: "Sunset Blaze", primary: "#F97316", accent: "#E11D48" },
-  { name: "Midnight Stealth", primary: "#38BDF8", accent: "#818CF8" },
-];
-
 export default function PlayerProfilePage() {
   const {
     user,
@@ -75,9 +61,6 @@ export default function PlayerProfilePage() {
 
   const {
     settings,
-    userThemeColors,
-    setUserThemeColors,
-    resetToLeagueColors,
     openCustomizer,
   } = useLeague();
 
@@ -109,26 +92,6 @@ export default function PlayerProfilePage() {
 
   // List of all players across all teams (for admin/demo inspection switcher)
   const [allRosteredPlayers, setAllRosteredPlayers] = useState<any[]>([]);
-
-  // Color picker state
-  const [primaryColor, setPrimaryColor] = useState<string>(
-    userThemeColors?.primary || settings?.primaryColor || "#3ca505"
-  );
-  const [accentColor, setAccentColor] = useState<string>(
-    userThemeColors?.accent || settings?.accentColor || "#22c55e"
-  );
-  const [savedColorsSuccess, setSavedColorsSuccess] = useState(false);
-
-  // Sync color pickers with active context
-  useEffect(() => {
-    if (userThemeColors) {
-      setPrimaryColor(userThemeColors.primary);
-      setAccentColor(userThemeColors.accent);
-    } else if (settings) {
-      setPrimaryColor(settings.primaryColor || "#3ca505");
-      setAccentColor(settings.accentColor || "#22c55e");
-    }
-  }, [userThemeColors, settings]);
 
   // Sync auth player if available
   useEffect(() => {
@@ -300,22 +263,6 @@ export default function PlayerProfilePage() {
       if (typeof window !== "undefined") {
         setDevRole("player", found.teamId, found.id);
       }
-    }
-  };
-
-  // Handle saving custom colors
-  const handleSaveThemeColors = () => {
-    setUserThemeColors({ primary: primaryColor, accent: accentColor });
-    setSavedColorsSuccess(true);
-    setTimeout(() => setSavedColorsSuccess(false), 3000);
-  };
-
-  // Handle reset to official league colors
-  const handleResetColors = () => {
-    resetToLeagueColors();
-    if (settings) {
-      setPrimaryColor(settings.primaryColor || "#3ca505");
-      setAccentColor(settings.accentColor || "#22c55e");
     }
   };
 
@@ -491,7 +438,7 @@ export default function PlayerProfilePage() {
         <div className="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto">
           {[
             { id: "stats", label: "Player Statistics", icon: Activity },
-            { id: "settings", label: "My Colors & Theme", icon: Palette },
+            { id: "settings", label: "Appearance", icon: Palette },
             { id: "rules", label: "Official Rules (View Only)", icon: BookOpen },
             { id: "account", label: "Account & Linked Emails", icon: User },
           ].map((tab) => {
@@ -704,188 +651,31 @@ export default function PlayerProfilePage() {
         )}
 
         {/* ============================================================== */}
-        {/* TAB 2: MY COLORS & THEME SETTINGS                              */}
+        {/* TAB 2: DISPLAY APPEARANCE                                      */}
         {/* ============================================================== */}
         {activeTab === "settings" && (
-          <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 space-y-8 shadow-xl max-w-4xl">
+          <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-xl max-w-4xl">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Palette className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-xl font-black uppercase tracking-tight text-white">
-                  Personal Color Customizer
+                  Display Appearance
                 </h3>
               </div>
               <p className="text-xs text-neutral-400 leading-relaxed">
-                Choose your own personal primary and accent colors. These colors will restyle your entire client experience across buttons, badges, navigation, and gradients, while persisting securely on your device.
+                Choose light or dark mode. League colors and branding are set by your league administrator.
               </p>
             </div>
-
-            {/* Appearance Mode Selection */}
             <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
                   Appearance Mode
                 </h4>
                 <p className="text-[11px] text-neutral-400 mt-0.5">
-                  Toggle between Dark gridiron mode, Light daylight mode, or device system defaults.
+                  Choose light or dark mode for this device.
                 </p>
               </div>
               <ThemeToggle variant="segmented" />
-            </div>
-
-            {/* Presets */}
-            <div className="space-y-3">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300 block">
-                Quick Theme Palettes:
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {COLOR_PRESETS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => {
-                      setPrimaryColor(preset.primary);
-                      setAccentColor(preset.accent);
-                    }}
-                    className="p-3 rounded-2xl bg-black/60 border border-white/10 hover:border-cyan-500/50 transition-all flex items-center gap-3 group text-left"
-                  >
-                    <div className="flex items-center -space-x-1.5 shrink-0">
-                      <div
-                        className="w-5 h-5 rounded-full border border-white/20 shadow-sm"
-                        style={{ backgroundColor: preset.primary }}
-                      />
-                      <div
-                        className="w-5 h-5 rounded-full border border-white/20 shadow-sm"
-                        style={{ backgroundColor: preset.accent }}
-                      />
-                    </div>
-                    <span className="text-xs font-bold text-neutral-300 group-hover:text-white truncate">
-                      {preset.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Custom Pickers */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-              <div className="space-y-2 bg-black/40 p-4 rounded-2xl border border-white/5">
-                <label className="text-xs font-mono font-bold uppercase text-neutral-300 flex items-center justify-between">
-                  <span>My Primary Color</span>
-                  <span className="text-cyan-400 font-mono">{primaryColor}</span>
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="w-12 h-12 rounded-xl bg-transparent border-0 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl bg-neutral-900 border border-white/15 text-xs font-mono text-white outline-none focus:border-cyan-400 uppercase"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2 bg-black/40 p-4 rounded-2xl border border-white/5">
-                <label className="text-xs font-mono font-bold uppercase text-neutral-300 flex items-center justify-between">
-                  <span>My Accent Color</span>
-                  <span className="text-blue-400 font-mono">{accentColor}</span>
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="w-12 h-12 rounded-xl bg-transparent border-0 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl bg-neutral-900 border border-white/15 text-xs font-mono text-white outline-none focus:border-cyan-400 uppercase"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Live Preview Card */}
-            <div className="space-y-2 pt-2">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-400 block">
-                Live Theme Preview:
-              </label>
-              <div
-                className="p-5 rounded-2xl border border-white/15 flex flex-col sm:flex-row items-center justify-between gap-4"
-                style={{
-                  background: `linear-gradient(135deg, ${primaryColor}15, ${accentColor}10)`,
-                  borderColor: `${primaryColor}40`,
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md font-black text-sm"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    #{jerseyNumber}
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-bold text-white">{playerName}</h5>
-                    <span className="text-xs font-mono" style={{ color: primaryColor }}>
-                      {position} • {teamName}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    style={{ backgroundColor: primaryColor, color: "#000" }}
-                    className="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider shadow-md"
-                  >
-                    Primary Button
-                  </button>
-                  <button
-                    type="button"
-                    style={{ borderColor: accentColor, color: accentColor }}
-                    className="px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-wider border bg-black/40"
-                  >
-                    Accent Badge
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
-              <button
-                type="button"
-                onClick={handleResetColors}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center justify-center gap-2"
-              >
-                <RotateCcw className="w-4 h-4 text-neutral-400" />
-                <span>Reset to Official League Colors</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveThemeColors}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
-              >
-                {savedColorsSuccess ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Colors Applied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Palette className="w-4 h-4" />
-                    <span>Save My Theme Colors</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
         )}

@@ -97,6 +97,57 @@ describe("demoSandbox", () => {
       expect(names).not.toContain("free agent");
       expect(names).not.toContain("free agents");
     });
+
+    it("uses NFL primary colors and numbered names for shared NFL cities", () => {
+      const teams = getSandboxTeams();
+      const teamsById = new Map(teams.map((team) => [team.id, team]));
+      const expectedColors: Record<string, string> = {
+        team_buf: "#00338D", team_mia: "#008E97", team_ne: "#002244", team_nye: "#125740",
+        team_bal: "#241773", team_cin: "#FB4F14", team_cle: "#311D00", team_pit: "#FFB612",
+        team_hou: "#03202F", team_ind: "#002C5F", team_jax: "#006778", team_ten: "#4B92DB",
+        team_kc: "#E31837", team_den: "#FB4F14", team_lv: "#A5ACAF", team_lac: "#0080C6",
+        team_dal: "#003594", team_phi: "#004C54", team_nyg: "#0B2265", team_was: "#5A1414",
+        team_chi: "#0B162A", team_det: "#0076B6", team_gb: "#203731", team_min: "#4F2683",
+        team_atl: "#A71930", team_car: "#0085CA", team_no: "#D3BC8D", team_tb: "#D50A0A",
+        team_ari: "#97233F", team_lar: "#003594", team_sf: "#AA0000", team_sea: "#002244",
+      };
+
+      expect(Object.entries(expectedColors).every(([id, color]) => teamsById.get(id)?.color === color)).toBe(true);
+      expect(teams.every((team) =>
+        [team.primaryColor, team.secondaryColor, team.tertiaryColor].every((color) => /^#[0-9A-Fa-f]{6}$/.test(color || ""))
+      )).toBe(true);
+      expect(teamsById.get("team_nye")?.name).toBe("New York 1");
+      expect(teamsById.get("team_nyg")?.name).toBe("New York 2");
+      expect(teamsById.get("team_lac")?.name).toBe("Los Angeles 1");
+      expect(teamsById.get("team_lar")?.name).toBe("Los Angeles 2");
+    });
+
+    it("uses current city team names in seeded matchups", () => {
+      const match = getSandboxMatches().find((item) => item.homeTeamId === "team_nye");
+      expect(match?.homeTeamName).toBe("New York 1");
+    });
+
+    it("updates existing demo sessions to canonical NFL colors without dropping team data", () => {
+      sessionStorage.setItem("flagos_demo_initialized_2026_nfl_v3", "true");
+      sessionStorage.setItem("flagos_demo_team_branding_v1", "1");
+      sessionStorage.setItem(
+        "flagos_demo_teams",
+        JSON.stringify([{ id: "team_nye", name: "New York East", shortcode: "NYE", color: "#123456", customFlag: true }])
+      );
+
+      const [team] = getSandboxTeams();
+
+      expect(team).toMatchObject({
+        id: "team_nye",
+        name: "New York 1",
+        shortcode: "NY1",
+        color: "#125740",
+        primaryColor: "#125740",
+        secondaryColor: "#FFFFFF",
+        tertiaryColor: "#000000",
+        customFlag: true,
+      });
+    });
   });
 
   describe("Plays CRUD & Stats Tracking", () => {

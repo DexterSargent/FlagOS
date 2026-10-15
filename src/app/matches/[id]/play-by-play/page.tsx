@@ -11,7 +11,7 @@ import { useLeague } from "@/lib/leagueContext";
 import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox, isDemoMatch } from "@/lib/demoSandbox";
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
-  const { isLeagueAdmin, isTeamAdmin, canManageTeam, loading } = useAuth();
+  const { isLeagueAdmin, loading } = useAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
@@ -79,19 +79,8 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
     );
   }
 
-  // In demo matches / play-by-play wizard demo:
-  // - If embedded on the landing page showcase (embed=true), allow interactive testing of the wizard
-  // - In full app, ONLY league admin can administer the game
-  // - If the user switches to any role other than league admin (e.g. Team Admin, Player, Spectator),
-  //   show the play-by-play / box score view for the game they were in.
-  const canAdministerMatch = isEmbedded
-    ? true
-    : isDemo
-    ? isLeagueAdmin
-    : (isLeagueAdmin ||
-       (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) ||
-       (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) ||
-       (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId)));
+  // Embedded demos change presentation/data sources, not the role required to manage a game.
+  const canAdministerMatch = isLeagueAdmin;
 
   if (canAdministerMatch && matchData?.status !== "completed") {
     return (

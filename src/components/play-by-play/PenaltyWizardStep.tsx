@@ -29,6 +29,7 @@ interface PenaltyWizardStepProps {
   offenseRoster: string[];
   defenseRoster: string[];
   playerNumbers?: Record<string, string>;
+  accentColor?: string;
   onCancel: () => void;
   onSavePenalty: (penaltyData: {
     side: "offense" | "defense";
@@ -50,6 +51,7 @@ export default function PenaltyWizardStep({
   offenseRoster,
   defenseRoster,
   playerNumbers = {},
+  accentColor,
   onCancel,
   onSavePenalty,
 }: PenaltyWizardStepProps) {
@@ -164,7 +166,10 @@ export default function PenaltyWizardStep({
       </div>
 
       {/* LIVE STATEMENT CALLOUT CARD */}
-      <div className="md:col-span-2 p-2 md:p-3 rounded-xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-black border border-amber-500/30 shadow-xl relative overflow-hidden">
+      <div
+        className="md:col-span-2 p-2 md:p-3 rounded-xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-black border border-amber-500/30 shadow-xl relative overflow-hidden"
+        style={accentColor ? { borderColor: `${accentColor}80` } : undefined}
+      >
         <div className="absolute top-0 right-0 w-64 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="flex items-start gap-3 relative z-10">
           <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.2)]">

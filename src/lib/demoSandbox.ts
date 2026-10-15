@@ -21,6 +21,7 @@ export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS,
 // ---------------------------------------------------------------------------
 
 const KEY_INIT = "flagos_demo_initialized_2026_nfl_v3";
+const KEY_TEAM_BRANDING_VERSION = "flagos_demo_team_branding_v2";
 const KEY_SETTINGS = "flagos_demo_settings";
 const KEY_TEAMS = "flagos_demo_teams";
 const KEY_PLAYERS = "flagos_demo_players";
@@ -86,6 +87,7 @@ export const initDemoSandbox = (): void => {
   const initialized = sessionStorage.getItem(KEY_INIT);
   if (!initialized) {
     sessionStorage.setItem(KEY_INIT, "true");
+    sessionStorage.setItem(KEY_TEAM_BRANDING_VERSION, "1");
     sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(DEFAULT_LEAGUE_SETTINGS));
     sessionStorage.setItem(KEY_TEAMS, JSON.stringify(SEED_DEMO_TEAMS));
     sessionStorage.setItem(KEY_PLAYERS, JSON.stringify(SEED_DEMO_PLAYERS));
@@ -110,12 +112,43 @@ export const initDemoSandbox = (): void => {
   if (sessionStorage.getItem(KEY_PLAYS) === null) {
     sessionStorage.setItem(KEY_PLAYS, JSON.stringify(SEED_DEMO_PLAYS));
   }
+
+  if (sessionStorage.getItem(KEY_TEAM_BRANDING_VERSION) !== "1") {
+    const canonicalTeams = new Map(SEED_DEMO_TEAMS.map((team) => [team.id, team]));
+    const rawTeams = sessionStorage.getItem(KEY_TEAMS);
+    if (rawTeams) {
+      try {
+        const teams = JSON.parse(rawTeams) as DemoTeam[];
+        sessionStorage.setItem(
+          KEY_TEAMS,
+          JSON.stringify(teams.map((team) => {
+            const canonical = canonicalTeams.get(team.id);
+            if (!canonical) return team;
+            const primaryColor = team.primaryColor || canonical.primaryColor || canonical.color;
+            return {
+              ...team,
+              name: canonical.name,
+              shortcode: canonical.shortcode,
+              color: primaryColor,
+              primaryColor,
+              secondaryColor: team.secondaryColor || canonical.secondaryColor,
+              tertiaryColor: team.tertiaryColor || canonical.tertiaryColor,
+            };
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to migrate demo team branding:", err);
+      }
+    }
+    sessionStorage.setItem(KEY_TEAM_BRANDING_VERSION, "1");
+  }
 };
 
 export const resetDemoSession = (): void => {
   if (typeof window === "undefined") return;
 
   sessionStorage.removeItem(KEY_INIT);
+  sessionStorage.removeItem(KEY_TEAM_BRANDING_VERSION);
   sessionStorage.removeItem(KEY_SETTINGS);
   sessionStorage.removeItem(KEY_TEAMS);
   sessionStorage.removeItem(KEY_PLAYERS);
@@ -232,10 +265,14 @@ export const addSandboxTeam = (name: string): DemoTeam => {
   return newTeam;
 };
 
-export const updateSandboxTeam = (id: string, name: string): void => {
+export const updateSandboxTeam = (id: string, updates: string | Partial<DemoTeam>): void => {
   const teams = getSandboxTeams();
   const updated = teams
-    .map((t) => (t.id === id ? { ...t, name: name.trim() } : t))
+    .map((t) => {
+      if (t.id !== id) return t;
+      const normalizedUpdates = typeof updates === "string" ? { name: updates.trim() } : updates;
+      return { ...t, ...normalizedUpdates };
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
   if (typeof window !== "undefined") {
     sessionStorage.setItem(KEY_TEAMS, JSON.stringify(updated));
@@ -337,7 +374,12 @@ export const getSandboxMatches = (): DemoMatch[] => {
       deduplicated.push(m);
     }
   }
-  return deduplicated;
+  const teamNames = new Map(getSandboxTeams().map((team) => [team.id, team.name]));
+  return deduplicated.map((match) => ({
+    ...match,
+    homeTeamName: teamNames.get(match.homeTeamId) || match.homeTeamName,
+    awayTeamName: teamNames.get(match.awayTeamId) || match.awayTeamName,
+  }));
 };
 
 export const getSandboxMatch = (id: string): DemoMatch | undefined => {
@@ -611,4 +653,3 @@ export const clearSandboxScheduleBackup = (): void => {
     console.error("Error clearing schedule backup:", err);
   }
 };
-

@@ -121,35 +121,10 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [devRole, setDevRoleState] = useState<UserRole | null>(() => {
-    if (typeof window !== "undefined") {
-      return (sessionStorage.getItem("demo_dev_role") || localStorage.getItem("dev_auth_role")) as UserRole | null;
-    }
-    return null;
-  });
-  const [devTeamId, setDevTeamId] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("demo_managed_team_id") || localStorage.getItem("dev_managed_team_id");
-    }
-    return null;
-  });
-  const [devPlayerId, setDevPlayerId] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("demo_player_id") || localStorage.getItem("dev_player_id");
-    }
-    return null;
-  });
-  const [devPlayerData, setDevPlayerData] = useState<any | null>(() => {
-    if (typeof window !== "undefined") {
-      const savedData = sessionStorage.getItem("demo_player_data") || localStorage.getItem("dev_player_data");
-      if (savedData) {
-        try {
-          return JSON.parse(savedData);
-        } catch {}
-      }
-    }
-    return null;
-  });
+  const [devRole, setDevRoleState] = useState<UserRole | null>(null);
+  const [devTeamId, setDevTeamId] = useState<string | null>(null);
+  const [devPlayerId, setDevPlayerId] = useState<string | null>(null);
+  const [devPlayerData, setDevPlayerData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const pendingAccountEmails = useRef(new Set<string>());
 

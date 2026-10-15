@@ -73,6 +73,15 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     expect(screen.getAllByText("Explore Demo League").length).toBeGreaterThan(0);
   });
 
+  it("shares the coach's story and links to it from public navigation", () => {
+    render(<FlagOSPlatformLandingPage />);
+
+    expect(screen.getByRole("heading", { name: /built by a coach, not a company/i })).toBeInTheDocument();
+    expect(screen.getByText(/90 people came out to try out for our competitive 5v5 flag team/i)).toBeInTheDocument();
+    expect(screen.getByText(/11v11 semi-contact flag league/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "My Story" })[0]).toHaveAttribute("href", "#my-story");
+  });
+
   it("renders Demo League links in navigation pointing to the demo sandbox", () => {
     render(<FlagOSPlatformLandingPage />);
     const demoLeagueLinks = screen.getAllByRole("link", { name: /demo league/i });

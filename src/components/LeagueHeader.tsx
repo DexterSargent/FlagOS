@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import {
+  AlertTriangle,
+  Archive,
   CalendarDays,
   Users,
   Trophy,
@@ -38,7 +40,17 @@ interface LeagueHeaderProps {
 export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
-  const { settings, openCustomizer, activeLeagueId, userLeagues, switchLeague, isDemoLeague } = useLeague();
+  const {
+    settings,
+    openCustomizer,
+    activeLeagueId,
+    userLeagues,
+    switchLeague,
+    isDemoLeague,
+    isLeagueArchived,
+    isSubscriptionPastDue,
+    resumeSubscription,
+  } = useLeague();
   const { user, role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId } = useAuth();
 
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
@@ -69,7 +81,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
   );
 
   return (
-    <div className="sticky top-0 z-50 w-full transition-colors">
+    <div className="sticky z-50 w-full transition-colors" style={{ top: "var(--role-switcher-height, 0px)" }}>
       {/* Site-Wide League Announcement Ribbon */}
       {settings.announcement && (
         <div
@@ -80,6 +92,45 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
         >
           <Sparkles className="w-3.5 h-3.5 animate-pulse shrink-0" />
           <span className="truncate">{settings.announcement}</span>
+        </div>
+      )}
+
+      {/* League Archival / Past-Due Status Banner */}
+      {isSubscriptionPastDue && (
+        <div className="bg-amber-500/20 border-b border-amber-500/30 text-amber-200 text-xs px-3 sm:px-4 py-2 flex items-center justify-between gap-2 backdrop-blur-md">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="truncate">
+              <strong>Subscription Payment Past Due:</strong> Administrative management and data writes are locked. Public viewer access remains active.
+            </span>
+          </div>
+          {isLeagueAdmin && (
+            <button
+              onClick={() => resumeSubscription()}
+              className="bg-amber-400 hover:bg-amber-300 text-black font-black text-[11px] px-3 py-1 rounded-lg uppercase tracking-wider shrink-0 transition-all cursor-pointer shadow"
+            >
+              Update Payment &amp; Resume
+            </button>
+          )}
+        </div>
+      )}
+
+      {isLeagueArchived && !isSubscriptionPastDue && (
+        <div className="bg-neutral-900/95 border-b border-white/10 text-neutral-300 text-xs px-3 sm:px-4 py-2 flex items-center justify-between gap-2 backdrop-blur-md">
+          <div className="flex items-center gap-2 min-w-0">
+            <Archive className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span className="truncate">
+              <strong>Archived Season ({settings.seasonTitle || "Completed"}):</strong> All historical scores, stats, and rosters are preserved in permanent read-only mode.
+            </span>
+          </div>
+          {isLeagueAdmin && (
+            <button
+              onClick={openCustomizer}
+              className="bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] px-3 py-1 rounded-lg shrink-0 transition-all cursor-pointer border border-white/10"
+            >
+              Season Options
+            </button>
+          )}
         </div>
       )}
 

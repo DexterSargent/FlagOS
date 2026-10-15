@@ -79,10 +79,14 @@ export interface LeagueSettings {
   rulebookTitle: string;
   rulebookUrl?: string;
   announcement?: string;
+  seasonStatus?: "active" | "completed" | "archived";
+  isArchived?: boolean;
+  archivedAt?: string;
   visibility?: "public" | "private"; // public = indexed in public directory, private = direct URL access only
   adminEmails?: string[];
   rules: LeagueRules;
   playoffFormat?: PlayoffFormat;
+  subscription?: LeagueSubscriptionInfo;
 }
 
 export interface PlayoffFormat {
@@ -198,7 +202,7 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
 
 export interface LeagueSubscriptionInfo {
   plan: "league" | "team";
-  status: "active" | "trial" | "past_due";
+  status: "active" | "trial" | "past_due" | "archived" | "canceled";
   baseMonthlyFee: number;
   perTeamMonthlyFee: number;
   teamCount: number;
@@ -213,6 +217,8 @@ export interface UserLeagueSummary {
   name: string;
   shortcode: string;
   seasonTitle?: string;
+  seasonStatus?: "active" | "completed" | "archived";
+  isArchived?: boolean;
   logoUrl?: string;
   primaryColor?: string;
   accentColor?: string;
@@ -310,9 +316,6 @@ interface LeagueContextType {
   updateRules: (newRules: Partial<LeagueRules>) => Promise<void>;
   previewThemeColors: (primary: string, accent: string) => void;
   revertThemeColors: () => void;
-  userThemeColors: { primary: string; accent: string } | null;
-  setUserThemeColors: (colors: { primary: string; accent: string } | null) => void;
-  resetToLeagueColors: () => void;
   isCustomizerOpen: boolean;
   openCustomizer: () => void;
   closeCustomizer: () => void;
@@ -334,6 +337,11 @@ interface LeagueContextType {
   subscription: LeagueSubscriptionInfo | null;
   isDemoLeague: boolean;
   resetDemoSession: () => void;
+  archiveLeague: (action: "pause_subscription" | "new_season") => Promise<void>;
+  resumeSubscription: () => Promise<void>;
+  isLeagueArchived: boolean;
+  isSubscriptionPastDue: boolean;
+  isLeagueReadOnly: boolean;
 }
 
 interface RgbColor {
@@ -397,9 +405,6 @@ const LeagueContext = createContext<LeagueContextType>({
   updateRules: async () => { },
   previewThemeColors: () => { },
   revertThemeColors: () => { },
-  userThemeColors: null,
-  setUserThemeColors: () => { },
-  resetToLeagueColors: () => { },
   isCustomizerOpen: false,
   openCustomizer: () => { },
   closeCustomizer: () => { },
@@ -412,11 +417,15 @@ const LeagueContext = createContext<LeagueContextType>({
   subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
   isDemoLeague: true,
   resetDemoSession: () => { },
+  archiveLeague: async () => { },
+  resumeSubscription: async () => { },
+  isLeagueArchived: false,
+  isSubscriptionPastDue: false,
+  isLeagueReadOnly: false,
 });
 
 export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
   const [settings, setSettings] = useState<LeagueSettings>(DEFAULT_LEAGUE_SETTINGS);
-  const [userThemeColors, setUserThemeColorsState] = useState<{ primary: string; accent: string } | null>(null);
   const [activeLeagueId, setActiveLeagueId] = useState<string>("default");
   const [userLeagues, setUserLeagues] = useState<UserLeagueSummary[]>(DEFAULT_USER_LEAGUES);
   const [subscription, setSubscription] = useState<LeagueSubscriptionInfo | null>(DEFAULT_LEAGUE_SUBSCRIPTION);
@@ -464,9 +473,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       const sandboxSettings = getSandboxSettings();
       setSettings(sandboxSettings);
       setSubscription(DEFAULT_LEAGUE_SUBSCRIPTION);
-      if (!userThemeColors) {
-        applyThemeColors(sandboxSettings.primaryColor, sandboxSettings.accentColor, sandboxSettings.leagueName, sandboxSettings.seasonTitle);
-      }
+      applyThemeColors(sandboxSettings.primaryColor, sandboxSettings.accentColor, sandboxSettings.leagueName, sandboxSettings.seasonTitle);
       return sandboxSettings;
     }
 
@@ -483,9 +490,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
           };
           setSettings(merged);
           setSubscription(remoteData.subscription || PRIVATE_LIVE_LEAGUE_SUBSCRIPTION);
-          if (!userThemeColors) {
-            applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
-          }
+          applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
           if (typeof window !== "undefined") {
             localStorage.setItem(`league_settings_${leagueId}`, JSON.stringify(merged));
           }
@@ -496,9 +501,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       }
       setSettings(PRIVATE_LIVE_LEAGUE_SETTINGS);
       setSubscription(PRIVATE_LIVE_LEAGUE_SUBSCRIPTION);
-      if (!userThemeColors) {
-        applyThemeColors(PRIVATE_LIVE_LEAGUE_SETTINGS.primaryColor, PRIVATE_LIVE_LEAGUE_SETTINGS.accentColor, PRIVATE_LIVE_LEAGUE_SETTINGS.leagueName, PRIVATE_LIVE_LEAGUE_SETTINGS.seasonTitle);
-      }
+      applyThemeColors(PRIVATE_LIVE_LEAGUE_SETTINGS.primaryColor, PRIVATE_LIVE_LEAGUE_SETTINGS.accentColor, PRIVATE_LIVE_LEAGUE_SETTINGS.leagueName, PRIVATE_LIVE_LEAGUE_SETTINGS.seasonTitle);
       return PRIVATE_LIVE_LEAGUE_SETTINGS;
     }
     try {
@@ -515,9 +518,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         if (remoteData.subscription) {
           setSubscription(remoteData.subscription);
         }
-        if (!userThemeColors) {
-          applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
-        }
+        applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
         if (typeof window !== "undefined") {
           localStorage.setItem(`league_settings_${leagueId}`, JSON.stringify(merged));
         }
@@ -530,7 +531,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Restore cached league settings, active league, & user theme colors
+    // Restore cached league settings and active league.
     let initialLeagueId = "default";
     if (typeof window !== "undefined") {
       try {
@@ -574,24 +575,13 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
             rules: { ...DEFAULT_LEAGUE_RULES, ...(prev.rules || {}), ...(parsed.rules || {}) },
           }));
         }
-        const rawUserColors = localStorage.getItem("flagos_user_colors");
-        if (rawUserColors) {
-          const parsedUserColors = JSON.parse(rawUserColors);
-          if (parsedUserColors?.primary === "#06B6D4") {
-            localStorage.removeItem("flagos_user_colors");
-            setUserThemeColorsState(null);
-          } else {
-            setUserThemeColorsState(parsedUserColors);
-          }
-        }
+        localStorage.removeItem("flagos_user_colors");
       } catch (err) {
         console.error("Failed to read league settings from cache:", err);
       }
     }
 
-    const effPrimary = userThemeColors?.primary || settings.primaryColor || DEFAULT_LEAGUE_SETTINGS.primaryColor;
-    const effAccent = userThemeColors?.accent || settings.accentColor || DEFAULT_LEAGUE_SETTINGS.accentColor;
-    applyThemeColors(effPrimary, effAccent, settings.leagueName, settings.seasonTitle);
+    applyThemeColors(settings.primaryColor || DEFAULT_LEAGUE_SETTINGS.primaryColor, settings.accentColor || DEFAULT_LEAGUE_SETTINGS.accentColor, settings.leagueName, settings.seasonTitle);
 
     fetchSettingsForLeague(initialLeagueId).then(() => setLoading(false));
   }, []);
@@ -693,21 +683,17 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       if (checkIsDemoLeague(activeLeagueId)) {
         const current = getSandboxSettings();
         setSettings(current);
-        if (!userThemeColors) {
-          applyThemeColors(current.primaryColor, current.accentColor, current.leagueName, current.seasonTitle);
-        }
+        applyThemeColors(current.primaryColor, current.accentColor, current.leagueName, current.seasonTitle);
       }
     });
     return () => unsub();
-  }, [activeLeagueId, userThemeColors]);
+  }, [activeLeagueId]);
 
   const updateSettings = async (newSettings: Partial<LeagueSettings>) => {
     if (checkIsDemoLeague(activeLeagueId)) {
       const updated = updateSandboxSettings(newSettings);
       setSettings(updated);
-      if (!userThemeColors) {
-        applyThemeColors(updated.primaryColor, updated.accentColor, updated.leagueName, updated.seasonTitle);
-      }
+      applyThemeColors(updated.primaryColor, updated.accentColor, updated.leagueName, updated.seasonTitle);
       return;
     }
 
@@ -717,9 +703,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       rules: { ...settings.rules, ...(newSettings.rules || {}) },
     };
     setSettings(merged);
-    if (!userThemeColors) {
-      applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
-    }
+    applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
 
     if (typeof window !== "undefined") {
       localStorage.setItem(`league_settings_${activeLeagueId}`, JSON.stringify(merged));
@@ -758,7 +742,6 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     resetDemoSandboxHelper();
     const pristine = getSandboxSettings();
     setSettings(pristine);
-    setUserThemeColorsState(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("flagos_user_colors");
     }
@@ -770,31 +753,52 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     await updateSettings({ rules: updatedRules });
   };
 
-  const setUserThemeColors = (colors: { primary: string; accent: string } | null) => {
-    setUserThemeColorsState(colors);
-    if (typeof window !== "undefined") {
-      if (colors) {
-        localStorage.setItem("flagos_user_colors", JSON.stringify(colors));
-        applyThemeColors(colors.primary, colors.accent, settings.leagueName, settings.seasonTitle);
-      } else {
-        localStorage.removeItem("flagos_user_colors");
-        applyThemeColors(settings.primaryColor, settings.accentColor, settings.leagueName, settings.seasonTitle);
-      }
-    }
-  };
-
-  const resetToLeagueColors = () => {
-    setUserThemeColors(null);
-  };
-
   const previewThemeColors = (primary: string, accent: string) => {
     applyThemeColors(primary, accent, settings.leagueName, settings.seasonTitle);
   };
 
   const revertThemeColors = () => {
-    const effPrimary = userThemeColors?.primary || settings.primaryColor;
-    const effAccent = userThemeColors?.accent || settings.accentColor;
-    applyThemeColors(effPrimary, effAccent, settings.leagueName, settings.seasonTitle);
+    applyThemeColors(settings.primaryColor, settings.accentColor, settings.leagueName, settings.seasonTitle);
+  };
+
+  const isLeagueArchived = Boolean(
+    settings.isArchived ||
+    settings.seasonStatus === "archived" ||
+    subscription?.status === "archived"
+  );
+  const isSubscriptionPastDue = subscription?.status === "past_due";
+  const isLeagueReadOnly = isLeagueArchived || isSubscriptionPastDue;
+
+  const archiveLeague = async (action: "pause_subscription" | "new_season") => {
+    const isPaused = action === "pause_subscription";
+    const updatedSub: LeagueSubscriptionInfo = {
+      ...(subscription || DEFAULT_LEAGUE_SUBSCRIPTION),
+      status: isPaused ? "archived" : "active",
+    };
+    const updatedSettings: LeagueSettings = {
+      ...settings,
+      isArchived: isPaused,
+      seasonStatus: isPaused ? "archived" : "completed",
+      archivedAt: new Date().toISOString(),
+      subscription: updatedSub,
+    };
+    await updateSettings(updatedSettings);
+    setSubscription(updatedSub);
+  };
+
+  const resumeSubscription = async () => {
+    const updatedSub: LeagueSubscriptionInfo = {
+      ...(subscription || DEFAULT_LEAGUE_SUBSCRIPTION),
+      status: "active",
+    };
+    const updatedSettings: LeagueSettings = {
+      ...settings,
+      isArchived: false,
+      seasonStatus: "active",
+      subscription: updatedSub,
+    };
+    await updateSettings(updatedSettings);
+    setSubscription(updatedSub);
   };
 
   const openCustomizer = () => setIsCustomizerOpen(true);
@@ -811,9 +815,6 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         updateRules,
         previewThemeColors,
         revertThemeColors,
-        userThemeColors,
-        setUserThemeColors,
-        resetToLeagueColors,
         isCustomizerOpen,
         openCustomizer,
         closeCustomizer,
@@ -826,6 +827,11 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         subscription,
         isDemoLeague: checkIsDemoLeague(activeLeagueId),
         resetDemoSession,
+        archiveLeague,
+        resumeSubscription,
+        isLeagueArchived,
+        isSubscriptionPastDue,
+        isLeagueReadOnly,
       }}
     >
       {children}

@@ -2,6 +2,9 @@ export interface DemoTeam {
   id: string;
   name: string;
   color?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  tertiaryColor?: string;
   shortcode?: string;
   createdAt?: string;
 }
@@ -78,57 +81,57 @@ export interface DemoPlay {
 }
 
 // ---------------------------------------------------------------------------
-// 32 City Franchises (Modeled on NFL Team Cities & Authentic Colorways)
+// 32 City franchises modeled on NFL cities, primary colors, and conferences.
 // ---------------------------------------------------------------------------
 
 export const SEED_DEMO_TEAMS: DemoTeam[] = [
   // AFC East
-  { id: "team_buf", name: "Buffalo", shortcode: "BUF", color: "#00338D" },
-  { id: "team_mia", name: "Miami", shortcode: "MIA", color: "#008E97" },
-  { id: "team_ne", name: "New England", shortcode: "NE", color: "#002244" },
-  { id: "team_nye", name: "New York East", shortcode: "NYE", color: "#125740" },
+  { id: "team_buf", name: "Buffalo", shortcode: "BUF", color: "#00338D", primaryColor: "#00338D", secondaryColor: "#C60C30", tertiaryColor: "#FFFFFF" },
+  { id: "team_mia", name: "Miami", shortcode: "MIA", color: "#008E97", primaryColor: "#008E97", secondaryColor: "#FC4C02", tertiaryColor: "#FFFFFF" },
+  { id: "team_ne", name: "New England", shortcode: "NE", color: "#002244", primaryColor: "#002244", secondaryColor: "#C60C30", tertiaryColor: "#B0B7BC" },
+  { id: "team_nye", name: "New York 1", shortcode: "NY1", color: "#125740", primaryColor: "#125740", secondaryColor: "#FFFFFF", tertiaryColor: "#000000" },
 
   // AFC North
-  { id: "team_bal", name: "Baltimore", shortcode: "BAL", color: "#241773" },
-  { id: "team_cin", name: "Cincinnati", shortcode: "CIN", color: "#FB4F14" },
-  { id: "team_cle", name: "Cleveland", shortcode: "CLE", color: "#311D00" },
-  { id: "team_pit", name: "Pittsburgh", shortcode: "PIT", color: "#FFB612" },
+  { id: "team_bal", name: "Baltimore", shortcode: "BAL", color: "#241773", primaryColor: "#241773", secondaryColor: "#9E7C0C", tertiaryColor: "#000000" },
+  { id: "team_cin", name: "Cincinnati", shortcode: "CIN", color: "#FB4F14", primaryColor: "#FB4F14", secondaryColor: "#000000", tertiaryColor: "#FFFFFF" },
+  { id: "team_cle", name: "Cleveland", shortcode: "CLE", color: "#311D00", primaryColor: "#311D00", secondaryColor: "#FF3C00", tertiaryColor: "#FFFFFF" },
+  { id: "team_pit", name: "Pittsburgh", shortcode: "PIT", color: "#FFB612", primaryColor: "#FFB612", secondaryColor: "#101820", tertiaryColor: "#FFFFFF" },
 
   // AFC South
-  { id: "team_hou", name: "Houston", shortcode: "HOU", color: "#03202F" },
-  { id: "team_ind", name: "Indianapolis", shortcode: "IND", color: "#002C5F" },
-  { id: "team_jax", name: "Jacksonville", shortcode: "JAX", color: "#006778" },
-  { id: "team_ten", name: "Tennessee", shortcode: "TEN", color: "#4B92DB" },
+  { id: "team_hou", name: "Houston", shortcode: "HOU", color: "#03202F", primaryColor: "#03202F", secondaryColor: "#A71930", tertiaryColor: "#FFFFFF" },
+  { id: "team_ind", name: "Indianapolis", shortcode: "IND", color: "#002C5F", primaryColor: "#002C5F", secondaryColor: "#A2AAAD", tertiaryColor: "#FFFFFF" },
+  { id: "team_jax", name: "Jacksonville", shortcode: "JAX", color: "#006778", primaryColor: "#006778", secondaryColor: "#D7A22A", tertiaryColor: "#9F792C" },
+  { id: "team_ten", name: "Tennessee", shortcode: "TEN", color: "#4B92DB", primaryColor: "#4B92DB", secondaryColor: "#C8102E", tertiaryColor: "#A5ACAF" },
 
   // AFC West
-  { id: "team_kc", name: "Kansas City", shortcode: "KC", color: "#E31837" },
-  { id: "team_den", name: "Denver", shortcode: "DEN", color: "#FB4F14" },
-  { id: "team_lv", name: "Las Vegas", shortcode: "LV", color: "#A5ACAF" },
-  { id: "team_lac", name: "Los Angeles Coast", shortcode: "LAC", color: "#0080C6" },
+  { id: "team_kc", name: "Kansas City", shortcode: "KC", color: "#E31837", primaryColor: "#E31837", secondaryColor: "#FFB81C", tertiaryColor: "#FFFFFF" },
+  { id: "team_den", name: "Denver", shortcode: "DEN", color: "#FB4F14", primaryColor: "#FB4F14", secondaryColor: "#002244", tertiaryColor: "#FFFFFF" },
+  { id: "team_lv", name: "Las Vegas", shortcode: "LV", color: "#A5ACAF", primaryColor: "#A5ACAF", secondaryColor: "#000000", tertiaryColor: "#FFFFFF" },
+  { id: "team_lac", name: "Los Angeles 1", shortcode: "LA1", color: "#0080C6", primaryColor: "#0080C6", secondaryColor: "#FFC20E", tertiaryColor: "#FFFFFF" },
 
   // NFC East
-  { id: "team_dal", name: "Dallas", shortcode: "DAL", color: "#003594" },
-  { id: "team_phi", name: "Philadelphia", shortcode: "PHI", color: "#004C54" },
-  { id: "team_nyg", name: "New York Empire", shortcode: "NYG", color: "#0B2265" },
-  { id: "team_was", name: "Washington", shortcode: "WAS", color: "#5A1414" },
+  { id: "team_dal", name: "Dallas", shortcode: "DAL", color: "#003594", primaryColor: "#003594", secondaryColor: "#869397", tertiaryColor: "#FFFFFF" },
+  { id: "team_phi", name: "Philadelphia", shortcode: "PHI", color: "#004C54", primaryColor: "#004C54", secondaryColor: "#A5ACAF", tertiaryColor: "#000000" },
+  { id: "team_nyg", name: "New York 2", shortcode: "NY2", color: "#0B2265", primaryColor: "#0B2265", secondaryColor: "#A71930", tertiaryColor: "#FFFFFF" },
+  { id: "team_was", name: "Washington", shortcode: "WAS", color: "#5A1414", primaryColor: "#5A1414", secondaryColor: "#FFB612", tertiaryColor: "#FFFFFF" },
 
   // NFC North
-  { id: "team_chi", name: "Chicago", shortcode: "CHI", color: "#0B162A" },
-  { id: "team_det", name: "Detroit", shortcode: "DET", color: "#0076B6" },
-  { id: "team_gb", name: "Green Bay", shortcode: "GB", color: "#203731" },
-  { id: "team_min", name: "Minnesota", shortcode: "MIN", color: "#4F2683" },
+  { id: "team_chi", name: "Chicago", shortcode: "CHI", color: "#0B162A", primaryColor: "#0B162A", secondaryColor: "#C83803", tertiaryColor: "#FFFFFF" },
+  { id: "team_det", name: "Detroit", shortcode: "DET", color: "#0076B6", primaryColor: "#0076B6", secondaryColor: "#B0B7BC", tertiaryColor: "#FFFFFF" },
+  { id: "team_gb", name: "Green Bay", shortcode: "GB", color: "#203731", primaryColor: "#203731", secondaryColor: "#FFB612", tertiaryColor: "#FFFFFF" },
+  { id: "team_min", name: "Minnesota", shortcode: "MIN", color: "#4F2683", primaryColor: "#4F2683", secondaryColor: "#FFC62F", tertiaryColor: "#FFFFFF" },
 
   // NFC South
-  { id: "team_atl", name: "Atlanta", shortcode: "ATL", color: "#A71930" },
-  { id: "team_car", name: "Carolina", shortcode: "CAR", color: "#0085CA" },
-  { id: "team_no", name: "New Orleans", shortcode: "NO", color: "#D3BC8D" },
-  { id: "team_tb", name: "Tampa Bay", shortcode: "TB", color: "#D50A0A" },
+  { id: "team_atl", name: "Atlanta", shortcode: "ATL", color: "#A71930", primaryColor: "#A71930", secondaryColor: "#A5ACAF", tertiaryColor: "#000000" },
+  { id: "team_car", name: "Carolina", shortcode: "CAR", color: "#0085CA", primaryColor: "#0085CA", secondaryColor: "#101820", tertiaryColor: "#BFC0BF" },
+  { id: "team_no", name: "New Orleans", shortcode: "NO", color: "#D3BC8D", primaryColor: "#D3BC8D", secondaryColor: "#101820", tertiaryColor: "#FFFFFF" },
+  { id: "team_tb", name: "Tampa Bay", shortcode: "TB", color: "#D50A0A", primaryColor: "#D50A0A", secondaryColor: "#34302B", tertiaryColor: "#FF7900" },
 
   // NFC West
-  { id: "team_ari", name: "Arizona", shortcode: "ARI", color: "#97233F" },
-  { id: "team_lar", name: "Los Angeles Royal", shortcode: "LAR", color: "#003594" },
-  { id: "team_sf", name: "San Francisco", shortcode: "SF", color: "#AA0000" },
-  { id: "team_sea", name: "Seattle", shortcode: "SEA", color: "#002244" },
+  { id: "team_ari", name: "Arizona", shortcode: "ARI", color: "#97233F", primaryColor: "#97233F", secondaryColor: "#000000", tertiaryColor: "#FFB612" },
+  { id: "team_lar", name: "Los Angeles 2", shortcode: "LA2", color: "#003594", primaryColor: "#003594", secondaryColor: "#FFA300", tertiaryColor: "#FFFFFF" },
+  { id: "team_sf", name: "San Francisco", shortcode: "SF", color: "#AA0000", primaryColor: "#AA0000", secondaryColor: "#B3995D", tertiaryColor: "#FFFFFF" },
+  { id: "team_sea", name: "Seattle", shortcode: "SEA", color: "#002244", primaryColor: "#002244", secondaryColor: "#69BE28", tertiaryColor: "#A5ACAF" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -163,7 +166,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_ne_6", teamId: "team_ne", playerName: "Christian Gonzalez", number: "6", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_ne_7", teamId: "team_ne", playerName: "Keion White", number: "99", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
-  // 4. New York East (Jets)
+  // 4. New York 1 (Jets)
   { id: "p_nye_1", teamId: "team_nye", playerName: "Aaron Rodgers", number: "8", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_nye_2", teamId: "team_nye", playerName: "Breece Hall", number: "20", position: "RB", positions: ["RB", "ATH"], status: "Active" },
   { id: "p_nye_3", teamId: "team_nye", playerName: "Garrett Wilson", number: "5", position: "WR", positions: ["WR"], status: "Active" },
@@ -271,7 +274,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_lv_6", teamId: "team_lv", playerName: "Nate Hobbs", number: "39", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_lv_7", teamId: "team_lv", playerName: "Maxx Crosby", number: "98", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
-  // 16. Los Angeles Coast (Chargers)
+  // 16. Los Angeles 1 (Chargers)
   { id: "p_lac_1", teamId: "team_lac", playerName: "Justin Herbert", number: "10", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_lac_2", teamId: "team_lac", playerName: "J.K. Dobbins", number: "27", position: "RB", positions: ["RB"], status: "Active" },
   { id: "p_lac_3", teamId: "team_lac", playerName: "Ladd McConkey", number: "15", position: "WR", positions: ["WR"], status: "Active" },
@@ -298,7 +301,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_phi_6", teamId: "team_phi", playerName: "Quinyon Mitchell", number: "27", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_phi_7", teamId: "team_phi", playerName: "Jalen Carter", number: "98", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
-  // 19. New York Empire (Giants)
+  // 19. New York 2 (Giants)
   { id: "p_nyg_1", teamId: "team_nyg", playerName: "Drew Lock", number: "2", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_nyg_2", teamId: "team_nyg", playerName: "Malik Nabers", number: "1", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_nyg_3", teamId: "team_nyg", playerName: "Tyrone Tracy Jr.", number: "29", position: "RB", positions: ["RB"], status: "Active" },
@@ -397,7 +400,7 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
   { id: "p_ari_6", teamId: "team_ari", playerName: "Budda Baker", number: "3", position: "DB", positions: ["DB"], status: "Active" },
   { id: "p_ari_7", teamId: "team_ari", playerName: "Zaven Collins", number: "25", position: "RUSH", positions: ["RUSH"], status: "Active" },
 
-  // 30. Los Angeles Royal (Rams)
+  // 30. Los Angeles 2 (Rams)
   { id: "p_lar_1", teamId: "team_lar", playerName: "Matthew Stafford", number: "9", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_lar_2", teamId: "team_lar", playerName: "Puka Nacua", number: "17", position: "WR", positions: ["WR"], status: "Active" },
   { id: "p_lar_3", teamId: "team_lar", playerName: "Cooper Kupp", number: "10", position: "WR", positions: ["WR"], status: "Active" },

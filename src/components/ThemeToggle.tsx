@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTheme, ThemeMode } from "@/lib/themeContext";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
 interface ThemeToggleProps {
   variant?: "icon" | "segmented";
@@ -38,7 +38,6 @@ export default function ThemeToggle({
     const options: { id: ThemeMode; label: string; icon: React.ReactNode }[] = [
       { id: "dark", label: "Dark", icon: <Moon className="w-3.5 h-3.5" /> },
       { id: "light", label: "Light", icon: <Sun className="w-3.5 h-3.5" /> },
-      { id: "system", label: "System", icon: <Monitor className="w-3.5 h-3.5" /> },
     ];
 
     return (

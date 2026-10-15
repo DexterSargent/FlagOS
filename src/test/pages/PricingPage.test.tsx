@@ -30,12 +30,15 @@ vi.mock("@/lib/leagueContext", () => ({
   }),
 }));
 
+let mockAuth = {
+  user: { uid: "test-user-1", email: "coach@flagos.ca" },
+  isLeagueAdmin: false,
+  isPlatformAdmin: false,
+  setDevRole: mockSetDevRole,
+};
+
 vi.mock("@/lib/authContext", () => ({
-  useAuth: () => ({
-    user: { uid: "test-user-1", email: "coach@flagos.ca" },
-    isLeagueAdmin: false,
-    setDevRole: mockSetDevRole,
-  }),
+  useAuth: () => mockAuth,
 }));
 
 vi.mock("@/lib/themeContext", () => ({
@@ -142,5 +145,42 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
 
     expect(screen.getByRole("dialog")).toHaveTextContent("FlagOS is still in development");
     expect(screen.queryByPlaceholderText(/Apex Predators/i)).not.toBeInTheDocument();
+  });
+
+  it("enables league creation modal and creates league when logged into owner email using subscribe button", async () => {
+    mockAuth = {
+      user: { uid: "owner-1", email: "dextersargent@gmail.com" },
+      isLeagueAdmin: true,
+      isPlatformAdmin: true,
+      setDevRole: mockSetDevRole,
+    };
+
+    render(<PricingPage />);
+
+    const subscribeButton = screen.getByRole("button", {
+      name: /Launch & Subscribe League/i,
+    });
+    fireEvent.click(subscribeButton);
+
+    // Modal should now be open
+    expect(screen.getByPlaceholderText(/Gotham Flag Football League/i)).toBeInTheDocument();
+
+    // Fill in form and submit
+    fireEvent.change(screen.getByPlaceholderText(/Gotham Flag Football League/i), {
+      target: { value: "Metro Flag League" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/GFFL/i), {
+      target: { value: "MFL" },
+    });
+
+    const confirmBtn = screen.getByRole("button", { name: /Confirm & Pay/i });
+    fireEvent.click(confirmBtn);
+
+    expect(mockCreateLeague).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Metro Flag League",
+        shortcode: "MFL",
+      })
+    );
   });
 });

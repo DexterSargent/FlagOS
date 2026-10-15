@@ -40,7 +40,7 @@ import {
 } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo } from "@/components/TeamAssets";
-import PenaltyWizardStep from "@/components/play-by-play/PenaltyWizardStep";
+import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
 import { getPlayerNumberMap, sortRosterWithNumbers } from "@/lib/playerNumberHelper";
 import {
   PENALTY_CATALOG,
@@ -54,9 +54,11 @@ import {
   getSandboxPlays,
   addSandboxPlay,
   updateSandboxMatch,
+  getSandboxTeams,
   deleteSandboxPlay,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette } from "@/lib/teamColors";
 
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
@@ -87,6 +89,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [awayTeamName, setAwayTeamName] = useState("AWAY");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
+  const [homeTeamColors, setHomeTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
+  const [awayTeamColors, setAwayTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
 
   // Players & Subs
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
@@ -168,6 +172,36 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         setHomeTeamId(mData.homeTeamId || "home_id");
         setAwayTeamId(mData.awayTeamId || "away_id");
         setMatchStatus(mData.status || "scheduled");
+        let homeTeamData: Record<string, string> | undefined;
+        let awayTeamData: Record<string, string> | undefined;
+        if (isDemo) {
+          const teams = getSandboxTeams();
+          homeTeamData = teams.find((team) => team.id === mData.homeTeamId);
+          awayTeamData = teams.find((team) => team.id === mData.awayTeamId);
+        } else {
+          try {
+            const [homeTeamSnap, awayTeamSnap] = await Promise.all([
+              mData.homeTeamId ? getDoc(doc(db, "teams", mData.homeTeamId)) : Promise.resolve(null),
+              mData.awayTeamId ? getDoc(doc(db, "teams", mData.awayTeamId)) : Promise.resolve(null),
+            ]);
+            homeTeamData = homeTeamSnap?.exists() ? homeTeamSnap.data() as Record<string, string> : undefined;
+            awayTeamData = awayTeamSnap?.exists() ? awayTeamSnap.data() as Record<string, string> : undefined;
+          } catch (error) {
+            console.error("Failed to load team colors for async play-by-play:", error);
+          }
+        }
+        setHomeTeamColors(resolveTeamColorPalette(homeTeamData || {
+          primaryColor: mData.homeTeamPrimaryColor,
+          secondaryColor: mData.homeTeamSecondaryColor,
+          tertiaryColor: mData.homeTeamTertiaryColor,
+          color: mData.homeTeamColor,
+        }));
+        setAwayTeamColors(resolveTeamColorPalette(awayTeamData || {
+          primaryColor: mData.awayTeamPrimaryColor,
+          secondaryColor: mData.awayTeamSecondaryColor,
+          tertiaryColor: mData.awayTeamTertiaryColor,
+          color: mData.awayTeamColor,
+        }));
 
         if (mData.status === "in_progress" && mData.matchState) {
           const s = mData.matchState;
@@ -778,6 +812,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const offensePlayers = possession === homeTeamName ? homePlayers : awayPlayers;
   const defensePlayers = possession === homeTeamName ? awayPlayers : homePlayers;
+  const homeTeamPalette = homeTeamColors;
+  const awayTeamPalette = awayTeamColors;
+  const possessionTeamPalette = possession === homeTeamName ? homeTeamPalette : awayTeamPalette;
 
   if (loadingData) {
     return (
@@ -788,9 +825,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   }
 
   return (
-    <div className="min-h-[100dvh] md:h-[100dvh] md:min-h-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-x-hidden md:overflow-hidden">
+    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden">
       {/* Top Banner & Navigation */}
-      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-3 md:px-5 py-2 md:py-2.5 flex items-center justify-between shrink-0 sticky top-0 z-30">
+      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-3 md:px-5 py-2 md:py-2.5 flex items-center justify-between shrink-0 sticky z-30" style={{ top: "var(--role-switcher-height, 0px)" }}>
         <div className="flex items-center gap-3">
           {!isEmbedded && (
             <Link
@@ -852,10 +889,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 {homeTeamName}
               </span>
               {possession === homeTeamName && (
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Possession" />
+                <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: homeTeamPalette.primary }} title="Possession" />
               )}
             </div>
-            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter text-white">
+            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: homeTeamPalette.primary }}>
               {homeScore}
             </span>
           </div>
@@ -877,14 +914,14 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           <div className="flex flex-col items-center gap-1 flex-1">
             <div className="flex items-center gap-2">
               {possession === awayTeamName && (
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Possession" />
+                <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: awayTeamPalette.primary }} title="Possession" />
               )}
               <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none text-neutral-300">
                 {awayTeamName}
               </span>
               <TeamLogo teamName={awayTeamName} className="w-5 h-5 md:w-6 md:h-6" />
             </div>
-            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter text-neutral-300">
+            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: awayTeamPalette.primary }}>
               {awayScore}
             </span>
           </div>
@@ -907,6 +944,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
                       : "bg-white/5 border-white/10 text-neutral-400"
                   }`}
+                  style={possession === homeTeamName ? { borderColor: homeTeamPalette.tertiary, color: homeTeamPalette.tertiary } : undefined}
                 >
                   {homeTeamName}
                 </button>
@@ -917,6 +955,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
                       : "bg-white/5 border-white/10 text-neutral-400"
                   }`}
+                  style={possession === awayTeamName ? { borderColor: awayTeamPalette.tertiary, color: awayTeamPalette.tertiary } : undefined}
                 >
                   {awayTeamName}
                 </button>
@@ -1003,65 +1042,33 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: PLAY_TYPE -> Choose Pass, Run, or Penalty */}
             {step === "PLAY_TYPE" && (
-              <div className="flex-1 min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-5 flex flex-col gap-3 md:gap-4 shadow-2xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
-                  <div>
-                    <h3 className="text-xl font-black uppercase text-white">Select Play Type</h3>
-                    <p className="text-xs text-neutral-400">
-                      {possession} • {getOrdinal(currentDown)} Down
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setStep("IDLE")}
-                    className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5 cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 md:gap-4 flex-1 min-h-0">
-                  <button
-                    onClick={() => handlePlayTypeSelect("Pass")}
-                    className="min-h-28 md:min-h-0 py-3 md:py-5 px-2 md:px-4 rounded-xl md:rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500 text-white font-black text-sm md:text-xl uppercase tracking-wider flex flex-col items-center justify-center gap-1.5 md:gap-3 transition-all cursor-pointer group"
-                  >
-                    <span className="text-2xl md:text-4xl group-hover:scale-110 transition-transform">🏈</span>
-                    <span>PASS PLAY</span>
-                  </button>
-
-                  <button
-                    onClick={() => handlePlayTypeSelect("Run")}
-                    className="min-h-28 md:min-h-0 py-3 md:py-5 px-2 md:px-4 rounded-xl md:rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500 text-white font-black text-sm md:text-xl uppercase tracking-wider flex flex-col items-center justify-center gap-1.5 md:gap-3 transition-all cursor-pointer group"
-                  >
-                    <span className="text-2xl md:text-4xl group-hover:scale-110 transition-transform">⚡</span>
-                    <span>RUN PLAY</span>
-                  </button>
-
-                  <button
-                    onClick={() => handlePlayTypeSelect("Penalty")}
-                    className="min-h-28 md:min-h-0 py-3 md:py-5 px-2 md:px-4 rounded-xl md:rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500 text-white font-black text-sm md:text-xl uppercase tracking-wider flex flex-col items-center justify-center gap-1.5 md:gap-3 transition-all cursor-pointer group shadow-lg shadow-amber-500/5"
-                  >
-                    <span className="text-2xl md:text-4xl group-hover:scale-110 transition-transform">🚩</span>
-                    <span>PENALTY</span>
-                  </button>
-                </div>
-              </div>
+              <PlayEntryWizard
+                step="type"
+                variant="async"
+                possession={possession}
+                currentDown={currentDown}
+                accentColor={possessionTeamPalette.tertiary}
+                onSelectType={handlePlayTypeSelect}
+                onCancel={() => setStep("IDLE")}
+              />
             )}
 
             {/* STEP: DETAILS -> Penalty Wizard Step OR Pass/Run Details */}
             {step === "DETAILS" && playType === "Penalty" && (
-              <div className="flex-1 min-h-0 bg-neutral-900 border border-amber-500/30 rounded-2xl p-2 md:p-3 overflow-y-auto md:overflow-hidden shadow-2xl">
-                <PenaltyWizardStep
-                  possessionTeamName={possession}
-                  defendingTeamName={possession === homeTeamName ? awayTeamName : homeTeamName}
-                  currentDown={currentDown}
-                  downsPerSeries={downsPerSeries}
-                  offenseRoster={offensePlayers}
-                  defenseRoster={defensePlayers}
-                  playerNumbers={playerNumberMap}
-                  onCancel={resetPlayForm}
-                  onSavePenalty={handleSavePenalty}
-                />
-              </div>
+              <PlayEntryWizard
+                step="penalty"
+                variant="async"
+                possessionTeamName={possession}
+                defendingTeamName={possession === homeTeamName ? awayTeamName : homeTeamName}
+                currentDown={currentDown}
+                downsPerSeries={downsPerSeries}
+                offenseRoster={offensePlayers}
+                defenseRoster={defensePlayers}
+                playerNumbers={playerNumberMap}
+                accentColor={possessionTeamPalette.tertiary}
+                onCancel={resetPlayForm}
+                onSavePenalty={handleSavePenalty}
+              />
             )}
 
             {step === "DETAILS" && playType !== "Penalty" && (
@@ -1337,70 +1344,17 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: CONVERSION (PAT 1PT or 2PT) */}
             {step === "CONVERSION" && (
-              <div className="flex-1 min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-3 md:p-4 flex flex-col gap-3 md:gap-4 shadow-2xl overflow-y-auto md:overflow-hidden">
-                <div className="space-y-1 text-center">
-                  <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
-                    Touchdown Scored!
-                  </span>
-                  <h3 className="text-2xl font-black uppercase text-white">Point After Conversion (PAT)</h3>
-                  <p className="text-xs text-neutral-400">Select attempt value and result</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 md:gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setConvPts(1)}
-                    className={`py-3 md:py-4 px-3 rounded-xl border text-center font-black transition-all ${
-                      convPts === 1
-                        ? "bg-emerald-500 text-black border-emerald-500 shadow-lg"
-                        : "bg-neutral-800 border-white/10 text-white"
-                    }`}
-                  >
-                    <div className="text-2xl">1 POINT</div>
-                    <div className="text-[11px] font-normal mt-1 opacity-80">5 Yard Line Attempt</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setConvPts(2)}
-                    className={`py-3 md:py-4 px-3 rounded-xl border text-center font-black transition-all ${
-                      convPts === 2
-                        ? "bg-emerald-500 text-black border-emerald-500 shadow-lg"
-                        : "bg-neutral-800 border-white/10 text-white"
-                    }`}
-                  >
-                    <div className="text-2xl">2 POINTS</div>
-                    <div className="text-[11px] font-normal mt-1 opacity-80">10 Yard Line Attempt</div>
-                  </button>
-                </div>
-
+              <PlayEntryWizard
+                step="conversion"
+                variant="async"
+                points={convPts}
+                isGood={convIsGood}
+                onPointsChange={setConvPts}
+                onResultChange={setConvIsGood}
+                accentColor={possessionTeamPalette.tertiary}
+              >
                 {convPts && (
                   <div className="space-y-2 pt-1">
-                    <div className="flex justify-center gap-4">
-                      <button
-                        type="button"
-                        onClick={() => setConvIsGood(true)}
-                        className={`py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border ${
-                          convIsGood === true
-                            ? "bg-emerald-500 text-black border-emerald-500 font-black"
-                            : "bg-neutral-800 border-white/10 text-neutral-300"
-                        }`}
-                      >
-                        ✓ GOOD (+{convPts} PTS)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConvIsGood(false)}
-                        className={`py-3 px-6 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border ${
-                          convIsGood === false
-                            ? "bg-red-500 text-white border-red-500 font-black"
-                            : "bg-neutral-800 border-white/10 text-neutral-300"
-                        }`}
-                      >
-                        ✗ NO GOOD (0 PTS)
-                      </button>
-                    </div>
-
                     <button
                       onClick={finalizeConversion}
                       disabled={convIsGood === null}
@@ -1410,7 +1364,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     </button>
                   </div>
                 )}
-              </div>
+              </PlayEntryWizard>
             )}
 
             {/* STEP: GAME_OVER MODAL */}

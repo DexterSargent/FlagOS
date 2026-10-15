@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/authContext";
 import {
   Palette,
   Shield,
-  Sparkles,
   X,
   Check,
   MapPin,
@@ -20,16 +19,17 @@ import {
   Settings as SettingsIcon,
   RotateCcw,
   Lock,
-  User,
   UserPlus,
   Info,
   BookOpen,
   Globe,
   Copy,
   ExternalLink,
+  Archive,
+  Calendar,
+  AlertTriangle,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
-import ThemeToggle from "@/components/ThemeToggle";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 
 const THEME_PRESETS = [
@@ -55,17 +55,20 @@ export default function LeagueCustomizerModal() {
     isCustomizerOpen,
     closeCustomizer,
     previewThemeColors,
-    userThemeColors,
-    setUserThemeColors,
-    resetToLeagueColors,
     activeLeagueId,
+    subscription,
+    archiveLeague,
+    resumeSubscription,
+    isLeagueArchived,
+    isSubscriptionPastDue,
   } = useLeague();
   const { isLeagueAdmin, isPlayer, playerData } = useAuth();
 
-  // Active tab: league admins default to branding; players/users default to my-colors
-  const [activeTab, setActiveTab] = useState<"branding" | "rules" | "my-colors">(
-    isLeagueAdmin ? "branding" : "my-colors"
+  const [activeTab, setActiveTab] = useState<"branding" | "rules" | "season">(
+    isLeagueAdmin ? "branding" : "rules"
   );
+  const [showArchivePrompt, setShowArchivePrompt] = useState(false);
+  const [archivingInProgress, setArchivingInProgress] = useState(false);
 
   // League Branding states (League Admin)
   const [leagueName, setLeagueName] = useState(settings.leagueName);
@@ -84,15 +87,9 @@ export default function LeagueCustomizerModal() {
   const [visibility, setVisibility] = useState<"public" | "private">(settings.visibility || "public");
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Personal Theme Colors state (User / Player)
-  const [personalPrimary, setPersonalPrimary] = useState(userThemeColors?.primary || settings.primaryColor);
-  const [personalAccent, setPersonalAccent] = useState(userThemeColors?.accent || settings.accentColor);
-  const [personalPreset, setPersonalPreset] = useState("custom");
-
   // League Rules states
   const [rules, setRules] = useState<LeagueRules>(settings.rules || DEFAULT_LEAGUE_RULES);
   const [saving, setSaving] = useState(false);
-  const [savedPersonalNotice, setSavedPersonalNotice] = useState(false);
   const [ifafPresetNotice, setIfafPresetNotice] = useState(false);
 
   const handleResetToIFAF = () => {
@@ -117,56 +114,12 @@ export default function LeagueCustomizerModal() {
     setVisibility(settings.visibility || "public");
     setRules(settings.rules || DEFAULT_LEAGUE_RULES);
 
-    setPersonalPrimary(userThemeColors?.primary || settings.primaryColor);
-    setPersonalAccent(userThemeColors?.accent || settings.accentColor);
-
     if (!isLeagueAdmin && activeTab === "branding") {
-      setActiveTab("my-colors");
+      setActiveTab("rules");
     }
-  }, [settings, userThemeColors, isCustomizerOpen, isLeagueAdmin]);
+  }, [settings, isCustomizerOpen, isLeagueAdmin]);
 
   if (!isCustomizerOpen) return null;
-
-  // Personal color handlers
-  const handleApplyPersonalPreset = (preset: typeof THEME_PRESETS[0]) => {
-    setPersonalPreset(preset.id);
-    setPersonalPrimary(preset.primary);
-    setPersonalAccent(preset.accent);
-    previewThemeColors(preset.primary, preset.accent);
-  };
-
-  const handlePersonalPrimaryChange = (val: string) => {
-    setPersonalPrimary(val);
-    setPersonalPreset("custom");
-    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-      previewThemeColors(val, personalAccent);
-    }
-  };
-
-  const handlePersonalAccentChange = (val: string) => {
-    setPersonalAccent(val);
-    setPersonalPreset("custom");
-    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-      previewThemeColors(personalPrimary, val);
-    }
-  };
-
-  const handleSavePersonalTheme = (e: React.FormEvent) => {
-    e.preventDefault();
-    setUserThemeColors({ primary: personalPrimary, accent: personalAccent });
-    setSavedPersonalNotice(true);
-    setTimeout(() => {
-      setSavedPersonalNotice(false);
-      closeCustomizer();
-    }, 800);
-  };
-
-  const handleResetPersonalTheme = () => {
-    resetToLeagueColors();
-    setPersonalPrimary(settings.primaryColor);
-    setPersonalAccent(settings.accentColor);
-    setPersonalPreset("league-default");
-  };
 
   // League Admin handlers
   const handleApplyPreset = (preset: typeof THEME_PRESETS[0]) => {
@@ -273,7 +226,7 @@ export default function LeagueCustomizerModal() {
               <p className="text-xs text-neutral-400">
                 {isLeagueAdmin
                   ? "Manage league branding, operations, and official gameplay rules site-wide"
-                  : "Customize your personal appearance colors and view official league regulations"}
+                  : "View official league regulations"}
               </p>
             </div>
           </div>
@@ -302,19 +255,6 @@ export default function LeagueCustomizerModal() {
             </button>
           )}
 
-          {/* User / Player Tab: My Personal Colors */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("my-colors")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === "my-colors"
-              ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-md"
-              : "text-neutral-400 hover:text-white hover:bg-white/5"
-              }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Theme / Appearance</span>
-          </button>
-
           {/* Rules Tab (Edit for League Admin, View-Only for User/Player) */}
           <button
             type="button"
@@ -327,215 +267,28 @@ export default function LeagueCustomizerModal() {
             <Scale className="w-4 h-4" />
             <span>League Rules {isLeagueAdmin ? "" : "(View Only)"}</span>
           </button>
+
+          {/* Season & Archival Tab (League Admin Exclusive) */}
+          {isLeagueAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("season")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === "season"
+                ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-md"
+                : "text-neutral-400 hover:text-white hover:bg-white/5"
+                }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Season &amp; Archival</span>
+            </button>
+          )}
         </div>
-
-        {/* ============================================================
-            TAB: MY PERSONAL COLORS & APPEARANCE (ALL USERS / PLAYERS)
-           ============================================================ */}
-        {activeTab === "my-colors" && (
-          <form onSubmit={handleSavePersonalTheme} className="space-y-6">
-            <div className="p-4 rounded-2xl bg-cyan-950/30 border border-cyan-500/30 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
-                  <Palette className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="text-xs font-black uppercase text-cyan-300 tracking-wide block">
-                    Personalized Client Color Theme
-                  </span>
-                  <span className="text-[11px] text-cyan-100/70">
-                    Customize your own visual experience. These colors apply to your portal, plays, and interface without altering other players' views.
-                  </span>
-                </div>
-              </div>
-              {userThemeColors && (
-                <button
-                  type="button"
-                  onClick={handleResetPersonalTheme}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-semibold flex items-center gap-1.5 border border-white/10 transition-colors shrink-0"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset to Official</span>
-                </button>
-              )}
-            </div>
-
-            {/* Appearance Mode (Dark / Light / System) */}
-            <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs font-black uppercase text-white tracking-wide block">
-                    Display Appearance Mode
-                  </span>
-                  <span className="text-[11px] text-neutral-400">
-                    Switch between dark gridiron, crisp daylight, or system OS mode.
-                  </span>
-                </div>
-                <ThemeToggle variant="segmented" />
-              </div>
-            </div>
-
-            {/* Live Personal Preview */}
-            <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-3">
-              <span className="text-[10px] font-mono uppercase font-bold text-neutral-400 tracking-wider block">
-                Live Theme Preview
-              </span>
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#07090E] border border-white/10">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm border border-white/15 shadow-md"
-                    style={{
-                      background: `linear-gradient(135deg, ${personalPrimary}, ${personalAccent})`,
-                    }}
-                  >
-                    ★
-                  </div>
-                  <div>
-                    <span className="text-sm font-black uppercase text-white tracking-wider block">
-                      {isPlayer ? `${playerData?.playerName || "Athlete"} View` : "Personal Custom Theme"}
-                    </span>
-                    <span className="text-[11px] font-mono text-neutral-400">
-                      Primary: {personalPrimary} • Accent: {personalAccent}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-black shadow-md"
-                    style={{ backgroundColor: personalPrimary }}
-                  >
-                    Button Sample
-                  </button>
-                  <span
-                    className="px-2 py-1 rounded text-[10px] font-mono font-bold"
-                    style={{ backgroundColor: `${personalAccent}25`, color: personalAccent }}
-                  >
-                    Badge Sample
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Presets */}
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Select a Theme Preset or Custom Palette</span>
-              </span>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
-                {THEME_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleApplyPersonalPreset(preset)}
-                    className={`p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${personalPreset === preset.id
-                      ? "border-cyan-400 bg-cyan-500/15 shadow-md shadow-cyan-500/10"
-                      : "border-white/10 bg-black/40 hover:border-white/20"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex -space-x-1">
-                        <span
-                          className="w-4 h-4 rounded-full border border-black shadow"
-                          style={{ backgroundColor: preset.primary }}
-                        ></span>
-                        <span
-                          className="w-4 h-4 rounded-full border border-black shadow"
-                          style={{ backgroundColor: preset.accent }}
-                        ></span>
-                      </div>
-                      <span className="text-xs font-bold text-white">{preset.name}</span>
-                    </div>
-                    {personalPreset === preset.id && <Check className="w-3.5 h-3.5 text-cyan-400" />}
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom inputs */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
-                    Your Primary Color
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={personalPrimary}
-                      onChange={(e) => handlePersonalPrimaryChange(e.target.value)}
-                      className="w-8 h-8 rounded-lg bg-transparent cursor-pointer border border-white/20 p-0"
-                    />
-                    <input
-                      type="text"
-                      value={personalPrimary}
-                      onChange={(e) => handlePersonalPrimaryChange(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/10 text-white font-mono text-xs uppercase"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[10px] uppercase font-bold text-neutral-400 block mb-1">
-                    Your Accent Color
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={personalAccent}
-                      onChange={(e) => handlePersonalAccentChange(e.target.value)}
-                      className="w-8 h-8 rounded-lg bg-transparent cursor-pointer border border-white/20 p-0"
-                    />
-                    <input
-                      type="text"
-                      value={personalAccent}
-                      onChange={(e) => handlePersonalAccentChange(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-black/60 border border-white/10 text-white font-mono text-xs uppercase"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={closeCustomizer}
-                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20 cursor-pointer flex items-center gap-2"
-              >
-                <Check className="w-4 h-4" />
-                <span>{savedPersonalNotice ? "Saved!" : "Save My Theme Colors"}</span>
-              </button>
-            </div>
-          </form>
-        )}
 
         {/* ============================================================
             TAB: LEAGUE BRANDING & IDENTITY (LEAGUE ADMIN EXCLUSIVE)
            ============================================================ */}
         {activeTab === "branding" && isLeagueAdmin && (
           <form onSubmit={handleSaveLeagueSettings} className="space-y-6">
-            {/* Appearance Mode Selector */}
-            <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs font-black uppercase text-white tracking-wide block">
-                    Display Appearance Mode
-                  </span>
-                  <span className="text-[11px] text-neutral-400">
-                    Switch between dark gridiron, crisp daylight, or system OS mode.
-                  </span>
-                </div>
-                <ThemeToggle variant="segmented" />
-              </div>
-            </div>
-
             {/* Live Multi-Preview Showcase */}
             <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-3">
               <span className="text-[10px] font-mono uppercase font-bold text-neutral-400 tracking-wider block">
@@ -1857,6 +1610,198 @@ export default function LeagueCustomizerModal() {
                 Close
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB: SEASON & ARCHIVAL (LEAGUE COMMISSIONER)
+           ============================================================ */}
+        {activeTab === "season" && isLeagueAdmin && (
+          <div className="space-y-6">
+            {/* Header / Current Season Status Card */}
+            <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                      {settings.seasonTitle || "Current Season"}
+                    </h3>
+                    <p className="text-xs text-neutral-400">
+                      Circuit Lifecycle &amp; Archival Management
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isSubscriptionPastDue ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-black font-mono bg-amber-500/20 border border-amber-400/40 text-amber-300">
+                      Payment Past Due
+                    </span>
+                  ) : isLeagueArchived ? (
+                    <span className="px-3 py-1 rounded-full text-xs font-black font-mono bg-neutral-500/20 border border-neutral-400/40 text-neutral-300">
+                      Concluded &amp; Archived
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-xs font-black font-mono bg-emerald-500/20 border border-emerald-400/40 text-emerald-300">
+                      Active Regulation Season
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Status details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">
+                  <div className="text-[10px] uppercase font-bold text-neutral-400">Subscription Status</div>
+                  <div className="text-sm font-black text-white capitalize mt-0.5">{subscription?.status || "Active"}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">
+                  <div className="text-[10px] uppercase font-bold text-neutral-400">Monthly Licensing</div>
+                  <div className="text-sm font-black text-cyan-400 font-mono mt-0.5">
+                    ${subscription?.totalMonthlyFee || 89}/mo
+                  </div>
+                </div>
+                <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">
+                  <div className="text-[10px] uppercase font-bold text-neutral-400">Access Mode</div>
+                  <div className="text-sm font-black text-white mt-0.5">
+                    {isLeagueArchived || isSubscriptionPastDue ? "Read-Only (Viewer)" : "Full Read/Write"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Archival Actions */}
+            {!isLeagueArchived && !isSubscriptionPastDue && (
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+                    <Archive className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-black uppercase tracking-wider text-white">Conclude Season &amp; Archive League</h4>
+                    <p className="text-xs text-neutral-400 leading-relaxed">
+                      When your playoff championship game ends and the season is officially over, conclude the circuit. All game box scores, standings, player career statistics, and team histories will remain preserved permanently for your coaches, players, and spectators in read-only mode.
+                    </p>
+                  </div>
+                </div>
+
+                {!showArchivePrompt ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowArchivePrompt(true)}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                  >
+                    Mark Season Concluded &amp; Archive Circuit
+                  </button>
+                ) : (
+                  <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-4 animate-in fade-in">
+                    <div className="space-y-1">
+                      <div className="text-xs font-black uppercase text-purple-200">
+                        Season Concluded! What would you like to do with your subscription?
+                      </div>
+                      <p className="text-xs text-neutral-300">
+                        Select whether you want to conclude and pause billing or start your next league circuit:
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        disabled={archivingInProgress}
+                        onClick={async () => {
+                          setArchivingInProgress(true);
+                          await archiveLeague("pause_subscription");
+                          setArchivingInProgress(false);
+                          setShowArchivePrompt(false);
+                        }}
+                        className="p-3.5 rounded-xl bg-black/60 border border-white/10 hover:border-purple-400 text-left transition-all cursor-pointer group"
+                      >
+                        <div className="text-xs font-black uppercase text-white group-hover:text-purple-300">
+                          1. End / Pause Subscription
+                        </div>
+                        <div className="text-[11px] text-neutral-400 mt-1">
+                          Archives this league into permanent historical read-only mode. No further monthly charges. All player career stats &amp; box scores remain intact for free.
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={archivingInProgress}
+                        onClick={async () => {
+                          setArchivingInProgress(true);
+                          await archiveLeague("new_season");
+                          setArchivingInProgress(false);
+                          setShowArchivePrompt(false);
+                        }}
+                        className="p-3.5 rounded-xl bg-black/60 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer group"
+                      >
+                        <div className="text-xs font-black uppercase text-white group-hover:text-cyan-300">
+                          2. Begin Another League / New Season
+                        </div>
+                        <div className="text-[11px] text-neutral-400 mt-1">
+                          Conclude this season's results into history, and roll existing rosters into a brand new season schedule while keeping your subscription active.
+                        </div>
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowArchivePrompt(false)}
+                      className="text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* If Archived */}
+            {isLeagueArchived && !isSubscriptionPastDue && (
+              <div className="p-5 rounded-2xl bg-neutral-900 border border-white/10 space-y-4">
+                <div className="flex items-center gap-3 text-cyan-400">
+                  <Archive className="w-5 h-5 shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-white">This League Is Currently Archived (Read-Only)</span>
+                </div>
+                <p className="text-xs text-neutral-400">
+                  All match statistics, scores, player records, and rosters are viewable by players and public fans. Administrative writing is disabled.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await resumeSubscription();
+                  }}
+                  className="py-2.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Reactivate League / Start Next Season
+                </button>
+              </div>
+            )}
+
+            {/* If Past Due */}
+            {isSubscriptionPastDue && (
+              <div className="p-5 rounded-2xl bg-amber-950/30 border border-amber-500/30 space-y-4">
+                <div className="flex items-center gap-3 text-amber-400">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-white">Payment Declined / Past Due</span>
+                </div>
+                <p className="text-xs text-neutral-300">
+                  Administrative access and database writes are temporarily suspended. Public viewer access remains active. Update payment to resume immediately.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await resumeSubscription();
+                  }}
+                  className="py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Update Payment &amp; Resume Subscription
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

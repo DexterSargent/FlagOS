@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Crown,
   Shield,
@@ -41,8 +42,14 @@ import { FlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function PricingPage() {
-  const { activeLeagueId, settings } = useLeague();
-  const { isAuthorized, isPlatformAdmin } = useAuth();
+  const router = useRouter();
+  const { activeLeagueId, settings, createLeague } = useLeague();
+  const { user, isAuthorized, isPlatformAdmin } = useAuth();
+
+  const isOwnerEmail =
+    isPlatformAdmin ||
+    user?.email?.toLowerCase() === "dextersargent@gmail.com" ||
+    (typeof window !== "undefined" && localStorage.getItem("dev_auth_role") === "league_admin");
 
   // League interactive slider
   const [teamCount, setTeamCount] = useState<number>(8);
@@ -70,10 +77,28 @@ export default function PricingPage() {
   const [teamShortcode, setTeamShortcode] = useState("");
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
 
-  const handleSubscribeLeague = (e: React.FormEvent) => {
+  const handleSubscribeLeague = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLeagueModalOpen(false);
-    setShowDevelopmentNotice(true);
+    if (!leagueName.trim() || !leagueShortcode.trim()) return;
+    setIsSubmittingLeague(true);
+    try {
+      const newLeagueId = await createLeague({
+        name: leagueName.trim(),
+        shortcode: leagueShortcode.trim().toUpperCase(),
+        teamCount: teamCount,
+        primaryColor: leagueColor,
+        seasonTitle: `${new Date().getFullYear()} Season`,
+        visibility: "public",
+      });
+      setIsLeagueModalOpen(false);
+      router.push(`/league/${newLeagueId}`);
+    } catch (err) {
+      console.error("Failed to provision league:", err);
+      setIsLeagueModalOpen(false);
+      setShowDevelopmentNotice(true);
+    } finally {
+      setIsSubmittingLeague(false);
+    }
   };
 
   const handleSubscribeTeam = (e: React.FormEvent) => {
@@ -692,7 +717,13 @@ export default function PricingPage() {
 
             <div className="pt-6 border-t border-white/10 mt-6">
               <button
-                onClick={() => setShowDevelopmentNotice(true)}
+                onClick={() => {
+                  if (isOwnerEmail) {
+                    setIsLeagueModalOpen(true);
+                  } else {
+                    setShowDevelopmentNotice(true);
+                  }
+                }}
                 className="w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <span>Launch &amp; Subscribe League (${totalLeagueMonthly}/mo)</span>
