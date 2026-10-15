@@ -127,7 +127,8 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
 
-  const { settings } = useLeague();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const isDemo = Boolean(isDemoLeague || activeLeagueId === "default" || activeLeagueId === "demo");
   const leagueRulePlayers = settings?.rules?.playersOnField || 5;
   const playbookSquad = playbook?.playersOnField || leagueRulePlayers;
 
@@ -146,15 +147,35 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   const teamId = play.teamId || playbook?.teamId || "default";
   const [customPresets, setCustomPresets] = useState<CustomRoutePreset[]>([]);
   const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState(false);
+  const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
+  const presetMenuRef = useRef<HTMLDivElement>(null);
   const [newPresetName, setNewPresetName] = useState("");
   const [isPositionNotesModalOpen, setIsPositionNotesModalOpen] = useState(false);
   const [isPlayNotesModalOpen, setIsPlayNotesModalOpen] = useState(false);
 
+  // Close preset routes menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
+        setIsPresetMenuOpen(false);
+      }
+    };
+    if (isPresetMenuOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isPresetMenuOpen]);
+
   useEffect(() => {
     if (teamId) {
-      setCustomPresets(getTeamCustomRoutePresets(teamId));
+      if (isDemo) {
+        // In demo league, custom presets are ephemeral and disappear on tab refresh
+        setCustomPresets([]);
+      } else {
+        setCustomPresets(getTeamCustomRoutePresets(teamId));
+      }
     }
-  }, [teamId]);
+  }, [teamId, isDemo]);
 
   // Selected player reference
   const selectedPlayer = (play.players || []).find((p) => p.id === selectedPlayerId) || null;
@@ -183,6 +204,17 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       createdAt: new Date().toISOString(),
     };
 
+    if (isDemo) {
+      // In demo league: ephemeral in-memory only, disappears on tab refresh, not saved to localStorage or DB
+      setCustomPresets((prev) => [
+        ...prev.filter((p) => p.name.toLowerCase() !== trimmed.toLowerCase()),
+        newPreset,
+      ].slice(0, MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM));
+      setNewPresetName("");
+      setIsSavePresetModalOpen(false);
+      return;
+    }
+
     const success = saveTeamCustomRoutePreset(teamId, newPreset);
     if (success) {
       setCustomPresets(getTeamCustomRoutePresets(teamId));
@@ -194,6 +226,10 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
   const handleDeleteCustomPreset = (presetId: string, presetName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(`Delete custom preset "${presetName}"?`)) {
+      if (isDemo) {
+        setCustomPresets((prev) => prev.filter((p) => p.id !== presetId));
+        return;
+      }
       deleteTeamCustomRoutePreset(teamId, presetId);
       setCustomPresets(getTeamCustomRoutePresets(teamId));
     }
@@ -391,11 +427,31 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     };
   }, [animating, animSpeed]);
 
-  // Convert client cursor coords to SVG percentage (0 - 100)
+  // Convert client cursor coords to SVG percentage (0 - 100) with precise SVG screen transformation
   const getSvgCoordinates = useCallback(
     (e: React.PointerEvent): { x: number; y: number } | null => {
-      if (!svgRef.current) return null;
-      const rect = svgRef.current.getBoundingClientRect();
+      const svg = svgRef.current;
+      if (!svg) return null;
+
+      try {
+        const ctm = svg.getScreenCTM();
+        if (ctm) {
+          const pt = svg.createSVGPoint ? svg.createSVGPoint() : new DOMPoint(e.clientX, e.clientY);
+          pt.x = e.clientX;
+          pt.y = e.clientY;
+          const svgP = pt.matrixTransform(ctm.inverse());
+          // svgP.x is in viewBox coordinates (0 to 1000)
+          // svgP.y is in viewBox coordinates (0 to 700)
+          const x = Math.max(2, Math.min(98, (svgP.x / 1000) * 100));
+          const y = Math.max(2, Math.min(98, (svgP.y / 700) * 100));
+          return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+        }
+      } catch (err) {
+        console.warn("SVG getScreenCTM transform fallback:", err);
+      }
+
+      // Fallback if getScreenCTM is unavailable
+      const rect = svg.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return null;
       const x = Math.max(2, Math.min(98, ((e.clientX - rect.left) / rect.width) * 100));
       const y = Math.max(2, Math.min(98, ((e.clientY - rect.top) / rect.height) * 100));
@@ -1956,102 +2012,190 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
             </div>
           )}
 
-          {/* Offense Route Presets Ribbon */}
+          {/* Offense Route Presets Controls */}
           {selectedPlayer?.side === "offense" ? (
-            <div className="space-y-2">
+            <div className="space-y-2 relative" ref={presetMenuRef}>
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1">
                     <Zap className="w-3 h-3" />
-                    <span>Route Presets ({selectedPlayer.label}):</span>
+                    <span>Route Assignment ({selectedPlayer.label}):</span>
                   </span>
-                  <span className="text-[10px] text-neutral-400 font-mono hidden md:inline">
-                    Click any preset to apply to {selectedPlayer.label}
-                  </span>
+                  {selectedPlayer.quickRouteName ? (
+                    <span className="px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 text-[11px]">
+                      {selectedPlayer.quickRouteName}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-neutral-400 font-mono">
+                      {selectedPlayer.route && selectedPlayer.route.length > 0
+                        ? `${selectedPlayer.route.length} custom point${selectedPlayer.route.length > 1 ? "s" : ""}`
+                        : "No route drawn"}
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">
-                  {/* Custom Presets Save Button */}
-                  {!readOnly && selectedPlayer.route && selectedPlayer.route.length > 0 && (
+                  {/* Preset Routes Menu Button */}
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => setIsPresetMenuOpen((prev) => !prev)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                      isPresetMenuOpen
+                        ? "bg-cyan-500 text-black border-cyan-400 shadow-cyan-500/30"
+                        : "bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40"
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Preset Routes</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isPresetMenuOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {/* Add Preset Button */}
+                  {!readOnly && (
                     <button
                       type="button"
                       disabled={customPresets.length >= MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM}
                       onClick={() => {
+                        if (!selectedPlayer.route || selectedPlayer.route.length === 0) {
+                          alert(`Please click on the field in Draw Mode to create a route for ${selectedPlayer.label} first, then click Add Preset.`);
+                          return;
+                        }
                         setNewPresetName(`${selectedPlayer.label} Custom Route`);
                         setIsSavePresetModalOpen(true);
                       }}
-                      className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                      title={`Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      title={isDemo ? "Add temporary custom preset (session only)" : `Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
                     >
-                      <Bookmark className="w-3.5 h-3.5" />
-                      <span>Save Route as Preset ({customPresets.length}/{MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})</span>
+                      <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Add Preset</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Presets Horizontal Ribbon: Custom Team Presets + Standard Presets */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-                {/* Custom Team Presets (up to 20 additional) */}
-                {customPresets.map((cp) => {
-                  const isCurrent = selectedPlayer.quickRouteName === cp.name;
-                  return (
-                    <div key={cp.id} className="relative group shrink-0">
-                      <button
-                        type="button"
-                        disabled={readOnly}
-                        onClick={() => handleApplyCustomPreset(cp)}
-                        title={`Custom Team Preset: ${cp.name}`}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1 ${
-                          isCurrent
-                            ? "bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/30 font-extrabold"
-                            : "bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/50 hover:text-white border-emerald-500/30"
-                        }`}
-                      >
-                        <Star className="w-3 h-3 fill-current text-amber-400" />
-                        <span>{cp.shortName}</span>
-                        {isCurrent && <Check className="w-3 h-3 text-black stroke-[3]" />}
-                      </button>
-                      {!readOnly && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteCustomPreset(cp.id, cp.name, e)}
-                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                          title={`Delete custom preset "${cp.name}"`}
-                        >
-                          ×
-                        </button>
-                      )}
+              {/* Pop-up Menu for Choosing Presets */}
+              {isPresetMenuOpen && (
+                <div className="absolute z-40 top-full mt-2 left-0 right-0 bg-[#0B0F19]/95 backdrop-blur-xl border border-cyan-500/40 rounded-2xl p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-cyan-400" />
+                      <span className="text-xs font-black uppercase tracking-wider text-white">Choose Route Preset</span>
                     </div>
-                  );
-                })}
-
-                {customPresets.length > 0 && <div className="w-[1px] h-6 bg-white/10 mx-1 shrink-0" />}
-
-                {/* Standard Catalog Presets */}
-                {ROUTE_PRESETS_CATALOG.map((rp) => {
-                  const isCurrent =
-                    selectedPlayer.quickRouteName === rp.name ||
-                    selectedPlayer.quickRouteName === rp.shortName;
-                  return (
                     <button
-                      key={rp.name}
                       type="button"
-                      disabled={readOnly}
-                      onClick={() => handleApplyPreset(rp.name)}
-                      title={rp.description}
-                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1 ${
-                        isCurrent
-                          ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/30 font-extrabold"
-                          : "bg-black/50 text-neutral-300 hover:bg-neutral-800 hover:text-white border-white/10"
-                      }`}
+                      onClick={() => setIsPresetMenuOpen(false)}
+                      className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
                     >
-                      <span>{rp.shortName}</span>
-                      {isCurrent && <Check className="w-3 h-3 text-black stroke-[3]" />}
+                      <X className="w-4 h-4" />
                     </button>
-                  );
-                })}
-              </div>
+                  </div>
+
+                  {/* Custom Team Presets Section */}
+                  {customPresets.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-current text-amber-400" />
+                        <span>Custom Team Presets ({customPresets.length}):</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                        {customPresets.map((cp) => {
+                          const isCurrent = selectedPlayer.quickRouteName === cp.name;
+                          return (
+                            <div key={cp.id} className="relative group">
+                              <button
+                                type="button"
+                                disabled={readOnly}
+                                onClick={() => {
+                                  handleApplyCustomPreset(cp);
+                                  setIsPresetMenuOpen(false);
+                                }}
+                                className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
+                                  isCurrent
+                                    ? "bg-emerald-500 text-black border-emerald-400 shadow-md font-extrabold"
+                                    : "bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/50 hover:text-white border-emerald-500/30"
+                                }`}
+                              >
+                                <span className="truncate">{cp.name}</span>
+                                {isCurrent && <Check className="w-3 h-3 text-black shrink-0" />}
+                              </button>
+                              {!readOnly && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteCustomPreset(cp.id, cp.name, e)}
+                                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                  title={`Delete preset ${cp.name}`}
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Standard Catalog Route Tree */}
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+                      Standard Route Tree Catalog
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
+                      {ROUTE_PRESETS_CATALOG.map((rp) => {
+                        const isCurrent =
+                          selectedPlayer.quickRouteName === rp.name ||
+                          selectedPlayer.quickRouteName === rp.shortName;
+                        return (
+                          <button
+                            key={rp.name}
+                            type="button"
+                            disabled={readOnly}
+                            onClick={() => {
+                              handleApplyPreset(rp.name);
+                              setIsPresetMenuOpen(false);
+                            }}
+                            className={`px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
+                              isCurrent
+                                ? "bg-cyan-500 text-black border-cyan-400 shadow-md font-extrabold"
+                                : "bg-black/50 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/10"
+                            }`}
+                          >
+                            <div className="truncate">
+                              <div className="font-black truncate">{rp.name}</div>
+                              <div className="text-[10px] text-neutral-400 font-normal truncate">{rp.description}</div>
+                            </div>
+                            {isCurrent && <Check className="w-3.5 h-3.5 text-black shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Bottom add preset shortcut inside menu */}
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
+                    <span className="text-neutral-400 font-mono text-[10px]">
+                      {isDemo ? "⚡ Demo Mode: Presets are session-only" : `Capacity: ${customPresets.length}/20 custom presets`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!selectedPlayer.route || selectedPlayer.route.length === 0) {
+                          alert(`Draw a route for ${selectedPlayer.label} on the field first, then click Add Preset.`);
+                          return;
+                        }
+                        setNewPresetName(`${selectedPlayer.label} Custom Route`);
+                        setIsSavePresetModalOpen(true);
+                        setIsPresetMenuOpen(false);
+                      }}
+                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Current as Preset</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : selectedPlayer?.side === "defense" ? (
             /* Defense Coverage Presets Ribbon */
@@ -2197,9 +2341,15 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                   <span className="text-neutral-400">Waypoints:</span>
                   <span className="text-emerald-400 font-bold">{selectedPlayer.route?.length || 0} cuts/points</span>
                 </div>
-                <p className="text-[10px] text-neutral-400 leading-relaxed pt-1">
-                  Once saved, this route preset is saved to this team and will be available for all plays so any receiver can run it.
-                </p>
+                {isDemo ? (
+                  <p className="text-[10px] text-amber-300/90 leading-relaxed pt-1 font-semibold">
+                    ⚡ Demo League Mode: This preset is stored in session memory and will not be saved to the database. Refreshing the tab will clear it.
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-neutral-400 leading-relaxed pt-1">
+                    Once saved, this route preset is saved to this team and will be available for all plays so any receiver can run it.
+                  </p>
+                )}
               </div>
             </div>
 

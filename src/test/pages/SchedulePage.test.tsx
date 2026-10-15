@@ -90,6 +90,8 @@ const mockMatches = [
 
 const mockDeleteSandboxMatch = vi.fn();
 const mockDeleteSandboxPlaysForMatch = vi.fn();
+const mockGetSandboxScheduleBackup = vi.fn(() => null);
+const mockRestoreSandboxScheduleBackup = vi.fn();
 
 vi.mock("@/lib/demoSandbox", () => ({
   getSandboxTeams: () => mockTeams,
@@ -102,8 +104,8 @@ vi.mock("@/lib/demoSandbox", () => ({
   clearSandboxMatches: vi.fn(),
   subscribeDemoSandbox: () => () => {},
   saveSandboxScheduleBackup: vi.fn(),
-  getSandboxScheduleBackup: () => null,
-  restoreSandboxScheduleBackup: vi.fn(),
+  getSandboxScheduleBackup: () => mockGetSandboxScheduleBackup(),
+  restoreSandboxScheduleBackup: () => mockRestoreSandboxScheduleBackup(),
   clearSandboxScheduleBackup: vi.fn(),
 }));
 
@@ -225,5 +227,28 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
 
     fireEvent.click(deleteBtns[0]);
     expect(mockDeleteSandboxMatch).toHaveBeenCalledWith("match_w1_1");
+  });
+
+  it("renders light-mode compatible restore schedule banner and triggers restore when clicked", async () => {
+    mockIsLeagueAdmin = true;
+    (mockGetSandboxScheduleBackup as any).mockReturnValue({
+      timestamp: Date.now(),
+      matches: mockMatches,
+    });
+
+    await renderSchedule();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Previous Schedule Archived/i)).toBeInTheDocument();
+    });
+
+    const restoreBtn = screen.getByRole("button", { name: /Restore Schedule/i });
+    expect(restoreBtn).toBeInTheDocument();
+    // Check that light/dark styles are applied
+    expect(restoreBtn.className).toContain("text-slate-950");
+    expect(restoreBtn.className).toContain("from-amber-500");
+
+    fireEvent.click(restoreBtn);
+    expect(mockRestoreSandboxScheduleBackup).toHaveBeenCalledTimes(1);
   });
 });

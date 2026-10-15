@@ -49,6 +49,7 @@ export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
   const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin } = useAuth();
+  const isMe = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" || Boolean(isPlatformAdmin);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -271,18 +272,22 @@ export default function FlagOSPlatformLandingPage() {
             >
               Demo League
             </Link>
-            <a
-              href="#league-directory"
-              className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
-            >
-              <span>League Directory</span>
-            </a>
-            <a
-              href="#my-story"
-              className="text-white hover:text-[#3CA505] transition-colors"
-            >
-              My Story
-            </a>
+            {user && (
+              <a
+                href="#league-directory"
+                className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
+              >
+                <span>League Directory</span>
+              </a>
+            )}
+            {isMe && (
+              <Link
+                href="/my-story"
+                className="text-white hover:text-[#3CA505] transition-colors"
+              >
+                My Story
+              </Link>
+            )}
             <Link
               href="/pricing"
               className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
@@ -376,22 +381,26 @@ export default function FlagOSPlatformLandingPage() {
               <PlayCircle className="w-4 h-4" />
               <span>Demo League</span>
             </Link>
-            <a
-              href="#league-directory"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
-            >
-              <Globe className="w-4 h-4" />
-              <span>League Directory</span>
-            </a>
-            <a
-              href="#my-story"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
-            >
-              <Users className="w-4 h-4" />
-              <span>My Story</span>
-            </a>
+            {user && (
+              <a
+                href="#league-directory"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
+              >
+                <Globe className="w-4 h-4" />
+                <span>League Directory</span>
+              </a>
+            )}
+            {isMe && (
+              <Link
+                href="/my-story"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
+              >
+                <Users className="w-4 h-4" />
+                <span>My Story</span>
+              </Link>
+            )}
             <Link
               href="/pricing"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -488,35 +497,6 @@ export default function FlagOSPlatformLandingPage() {
             <div>
               <div className="text-lg sm:text-xl md:text-3xl font-black text-emerald-500 font-mono">Automatic <br /> Schedule Builder</div>
               <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Plan your entire season in seconds</div>
-            </div>
-          </div>
-        </section>
-
-        {/* BUILDER STORY */}
-        <section id="my-story" className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 border-t border-white/10 scroll-mt-24">
-          <div className="grid md:grid-cols-[0.8fr_1.2fr] gap-8 md:gap-12 items-start">
-            <div className="space-y-4">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono font-bold uppercase tracking-widest text-cyan-300">
-                The person behind FlagOS
-              </span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase text-white tracking-tight">
-                Built by a coach, <span className="text-emerald-400">not a company.</span>
-              </h2>
-              <p className="text-sm text-neutral-400 leading-relaxed">
-                I’m just one guy who coaches flag football and built a tool to solve a problem I saw firsthand.
-              </p>
-            </div>
-
-            <div className="rounded-3xl bg-gradient-to-br from-neutral-900/90 to-neutral-950/90 border border-cyan-500/20 p-6 sm:p-8 space-y-4 shadow-[0_0_40px_rgba(6,182,212,0.08)]">
-              <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
-                When 90 people came out to try out for our competitive 5v5 flag team, I started thinking about what came next. I wanted to keep that energy and those players engaged in the 11v11 semi-contact flag league that followed.
-              </p>
-              <p className="text-sm sm:text-base text-neutral-300 leading-relaxed">
-                As a coach, I wanted a better way to run the league and track stats, so players could follow their progress and stay connected throughout the season. I built the infrastructure I wished we had—and that project grew into FlagOS.
-              </p>
-              <p className="pt-3 border-t border-white/10 text-xs font-mono uppercase tracking-wider text-emerald-300">
-                A real coaching problem. A system built to solve it.
-              </p>
             </div>
           </div>
         </section>
@@ -855,8 +835,9 @@ export default function FlagOSPlatformLandingPage() {
           </div>
         </section>
 
-        {/* FIND A LEAGUE / DIRECTORY SECTION */}
-        <section id="league-directory" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 border-t border-white/10 space-y-8 sm:space-y-10 scroll-mt-24">
+        {/* FIND A LEAGUE / DIRECTORY SECTION (Requires User Authentication) */}
+        {user && (
+          <section id="league-directory" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 border-t border-white/10 space-y-8 sm:space-y-10 scroll-mt-24">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-3 max-w-2xl">
               <div className="flex items-center gap-2">
@@ -1105,6 +1086,7 @@ export default function FlagOSPlatformLandingPage() {
             </div>
           )}
         </section>
+        )}
       </main>
 
       <footer className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400">
@@ -1133,7 +1115,9 @@ export default function FlagOSPlatformLandingPage() {
                   Demo League
                 </Link>
               </li>
-              <li><a href="#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</a></li>
+              {user && (
+                <li><a href="#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</a></li>
+              )}
             </ul>
           </div>
           <div className="space-y-3">

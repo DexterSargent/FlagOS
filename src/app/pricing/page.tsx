@@ -333,12 +333,14 @@ export default function PricingPage() {
             >
               Demo League
             </Link>
-            <Link
-              href="/#league-directory"
-              className="text-neutral-300 hover:text-[#3CA505] transition-colors"
-            >
-              League Directory
-            </Link>
+            {user && (
+              <Link
+                href="/#league-directory"
+                className="text-neutral-300 hover:text-[#3CA505] transition-colors"
+              >
+                League Directory
+              </Link>
+            )}
             <Link
               href="/pricing"
               className="text-emerald-400 font-extrabold flex items-center gap-1.5"
@@ -424,13 +426,15 @@ export default function PricingPage() {
             >
               Demo League
             </Link>
-            <Link
-              href="/#league-directory"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block text-sm font-bold text-neutral-300 hover:text-white py-1"
-            >
-              League Directory
-            </Link>
+            {user && (
+              <Link
+                href="/#league-directory"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block text-sm font-bold text-neutral-300 hover:text-white py-1"
+              >
+                League Directory
+              </Link>
+            )}
             <Link
               href="/pricing"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -1059,7 +1063,9 @@ export default function PricingPage() {
                   Demo League
                 </Link>
               </li>
-              <li><Link href="/#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</Link></li>
+              {user && (
+                <li><Link href="/#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</Link></li>
+              )}
             </ul>
           </div>
           <div className="space-y-3">

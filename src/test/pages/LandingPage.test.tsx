@@ -73,13 +73,34 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     expect(screen.getAllByText("Explore Demo League").length).toBeGreaterThan(0);
   });
 
-  it("shares the coach's story and links to it from public navigation", () => {
+  it("renders link to the dedicated My Story full page only for the creator (Dexter / platform owner)", () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@gmail.com" },
+      isLeagueAdmin: true,
+      isTeamAdmin: () => false,
+      role: "league_admin",
+      isAuthorized: true,
+      isPlatformAdmin: true,
+    });
+
     render(<FlagOSPlatformLandingPage />);
 
-    expect(screen.getByRole("heading", { name: /built by a coach, not a company/i })).toBeInTheDocument();
-    expect(screen.getByText(/90 people came out to try out for our competitive 5v5 flag team/i)).toBeInTheDocument();
-    expect(screen.getByText(/11v11 semi-contact flag league/i)).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "My Story" })[0]).toHaveAttribute("href", "#my-story");
+    expect(screen.getAllByRole("link", { name: "My Story" })[0]).toHaveAttribute("href", "/my-story");
+  });
+
+  it("hides My Story nav links for everyone who is not Dexter", () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: "other-user", email: "coach_smith@example.com" },
+      isLeagueAdmin: false,
+      isTeamAdmin: () => false,
+      role: "user",
+      isAuthorized: true,
+      isPlatformAdmin: false,
+    });
+
+    render(<FlagOSPlatformLandingPage />);
+
+    expect(screen.queryByRole("link", { name: "My Story" })).toBeNull();
   });
 
   it("renders Demo League links in navigation pointing to the demo sandbox", () => {
@@ -161,9 +182,35 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders public leagues in directory and excludes private circuits", () => {
+  it("renders public leagues in directory and excludes private circuits when user is logged in", () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: "user-123", email: "player@example.com" },
+      isLeagueAdmin: false,
+      isTeamAdmin: () => false,
+      role: null,
+      isAuthorized: true,
+      isPlatformAdmin: false,
+    });
+
     render(<FlagOSPlatformLandingPage />);
     expect(screen.getByText("Toronto Flag League")).toBeInTheDocument();
     expect(screen.queryByText("Secret Private Circuit")).toBeNull();
+    expect(screen.getAllByRole("link", { name: /league directory/i }).length).toBeGreaterThan(0);
+  });
+
+  it("does not render public league directory or directory nav links when user is not logged in", () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isLeagueAdmin: false,
+      isTeamAdmin: () => false,
+      role: null,
+      isAuthorized: false,
+      isPlatformAdmin: false,
+    });
+
+    render(<FlagOSPlatformLandingPage />);
+    expect(screen.queryByText(/Public League Directory/i)).toBeNull();
+    expect(screen.queryByText("Toronto Flag League")).toBeNull();
+    expect(screen.queryByRole("link", { name: /league directory/i })).toBeNull();
   });
 });
