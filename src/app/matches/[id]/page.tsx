@@ -37,7 +37,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
     if (!isPlatformAdmin || !matchData) return;
     if (
       !window.confirm(
-        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flag pulls, PBUs, sacks) between ${matchData.homeTeamName} and ${matchData.awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
+        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flags, PBUs, sacks) between ${matchData.homeTeamName} and ${matchData.awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
       )
     ) {
       return;
@@ -271,24 +271,6 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>{isDeleting ? "Deleting..." : "Delete Event"}</span>
-                  </button>
-
-                  <button
-                    onClick={async () => {
-                      try {
-                        const newValue = !matchData.isPreseason;
-                        if (isDemoLeague) {
-                          updateSandboxMatch(matchId, { isPreseason: newValue });
-                          setMatchData({ ...matchData, isPreseason: newValue });
-                          return;
-                        }
-                        await updateDoc(doc(db, 'matches', matchId), { isPreseason: newValue });
-                        setMatchData({ ...matchData, isPreseason: newValue });
-                      } catch (e) { console.error(e) }
-                    }}
-                    className={`px-3.5 py-2.5 font-semibold rounded-xl transition-all whitespace-nowrap border text-xs cursor-pointer ${matchData.isPreseason ? 'bg-amber-500/20 text-amber-500 border-amber-500/50 hover:bg-amber-500/30' : 'bg-neutral-800 text-neutral-400 border-white/10 hover:bg-neutral-700'}`}
-                  >
-                    {matchData.isPreseason ? "★ Preseason" : "Mark as Preseason"}
                   </button>
                 </>
               )}

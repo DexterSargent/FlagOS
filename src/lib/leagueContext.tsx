@@ -21,7 +21,7 @@ export interface LeagueRules {
   timeoutDurationSeconds: number;  // default: 60
   timeoutsResetPerPeriod: boolean; // default: true
   minRosterSize: number;           // default: 5
-  maxRosterSize: number;           // default: 15
+  maxRosterSize: number;           // hard cap: 30
   downsPerSeries: number;          // default: 4
   rushLineDistance: number;        // default: 7 (yards)
   playClockSeconds: number;        // default: 30 (seconds)
@@ -38,7 +38,7 @@ export const DEFAULT_LEAGUE_RULES: LeagueRules = {
   timeoutDurationSeconds: 60,
   timeoutsResetPerPeriod: true,
   minRosterSize: 5,
-  maxRosterSize: 15,
+  maxRosterSize: 30,
   downsPerSeries: 4,
   rushLineDistance: 7,
   playClockSeconds: 30,
@@ -56,7 +56,7 @@ export const IFAF_5V5_RULES: LeagueRules = {
   timeoutDurationSeconds: 60,
   timeoutsResetPerPeriod: true,
   minRosterSize: 5,
-  maxRosterSize: 15,
+  maxRosterSize: 30,
   downsPerSeries: 4,
   rushLineDistance: 7,
   playClockSeconds: 25,

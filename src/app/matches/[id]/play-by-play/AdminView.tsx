@@ -224,7 +224,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     if (!isPlatformAdmin) return;
     if (
       !window.confirm(
-        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flag pulls, PBUs, sacks) between ${homeTeamName} and ${awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
+        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flags, PBUs, sacks) between ${homeTeamName} and ${awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
       )
     ) {
       return;
@@ -268,14 +268,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       className={`${className} ${active ? 'opacity-100 drop-shadow-[0_0_15px_currentColor]' : 'opacity-30 grayscale'} transition-all duration-500`}
       style={style}
     >
-      <path 
-        d="M6 3c-5 12 7 24 19 19-5-12-7-24-19-19z" 
+      <path
+        d="M6 3c-5 12 7 24 19 19-5-12-7-24-19-19z"
         fill={active ? "currentColor" : "none"}
         stroke="currentColor"
         strokeWidth="2"
       />
-      <path 
-        d="M13.5 10.5l-3 3M11 8l-3 3M16 13l-3 3" 
+      <path
+        d="M13.5 10.5l-3 3M11 8l-3 3M16 13l-3 3"
         fill="none"
         stroke={active ? "#000" : "currentColor"}
         strokeWidth="2"
@@ -769,16 +769,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       if (!snap.empty) {
         const lastPlayDoc = snap.docs[0];
         const lastPlay = lastPlayDoc.data();
-        
+
         // Revert state
         setCurrentDown(lastPlay.down);
         const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
         setPossession(wasHomePossession ? (homeTeamName || "HOME") : (awayTeamName || "AWAY"));
-        
+
         if (lastPlay.points > 0) {
           const didOffenseScore = lastPlay.isTouchdown || lastPlay.result === "Conversion Good";
           const didDefenseScore = lastPlay.isPick6 || lastPlay.isSafety || lastPlay.result === "Defensive Conversion";
-          
+
           if (didOffenseScore) {
             if (wasHomePossession) setHomeScore(s => Math.max(0, s - lastPlay.points));
             else setAwayScore(s => Math.max(0, s - lastPlay.points));
@@ -787,7 +787,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             else setHomeScore(s => Math.max(0, s - lastPlay.points));
           }
         }
-        
+
         await deleteDoc(lastPlayDoc.ref);
         setStep("PLAY_TYPE");
         alert("Last play undone successfully.");
@@ -908,6 +908,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       isSafety: result === 'Safety',
       turnover: result === 'Turnover' || result === 'Pick 6' || (currentDown === downsPerSeries && result !== 'First Down' && result !== 'Repeat Down'),
       result: result,
+      isThirdDownAttempt: currentDown === 3 && playType !== 'Penalty',
+      isThirdDownConversion: currentDown === 3 && (result === 'First Down' || result === 'Touchdown' || extra?.firstDown),
+      isFourthDownAttempt: currentDown === 4 && playType !== 'Penalty',
+      isFourthDownConversion: currentDown === 4 && (result === 'First Down' || result === 'Touchdown' || extra?.firstDown),
       gameClock: gameClock,
       half: half,
       ...extra,
@@ -1028,10 +1032,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     const resultString = isFirstDown
       ? "First Down"
       : isLossOfDown
-      ? "Loss of Down"
-      : isRepeatDown
-      ? "Repeat Down"
-      : "Next Down";
+        ? "Loss of Down"
+        : isRepeatDown
+          ? "Repeat Down"
+          : "Next Down";
 
     const playData = buildPlayData(resultString, {
       playType: "Penalty",
@@ -1199,7 +1203,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
           <div className="bg-[#0B0F19] border-2 border-red-500/50 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative overflow-hidden flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" />
-            
+
             <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-4 shadow-lg shadow-red-500/10">
               <AlertTriangle className="w-8 h-8" />
             </div>
@@ -1288,7 +1292,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             {!subModalTeam ? (
               <div className="flex flex-col gap-4">
                 <h3 className="text-neutral-400 font-bold mb-2">Select team to add sub to:</h3>
@@ -1391,11 +1395,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   onClick={() => setCurrentDown(d)}
                   aria-label={`${getOrdinal(d)} Down`}
                   title={`Set to ${getOrdinal(d)} Down`}
-                  className={`px-1.5 sm:px-2.5 py-1 rounded-lg text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-white text-black shadow-md font-black"
-                      : "text-neutral-400 hover:text-white hover:bg-white/10"
-                  }`}
+                  className={`px-1.5 sm:px-2.5 py-1 rounded-lg text-[9px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${isActive
+                    ? "bg-white text-black shadow-md font-black"
+                    : "text-neutral-400 hover:text-white hover:bg-white/10"
+                    }`}
                 >
                   <span className="inline min-[380px]:hidden">{getOrdinal(d)}</span>
                   <span className="hidden min-[380px]:inline">{getOrdinal(d)} Down</span>
@@ -1422,9 +1425,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
             <div className="flex flex-col items-center leading-none" title="IFAF Play Clock">
               <span className="text-[7px] md:text-[8px] uppercase tracking-wider text-neutral-500 font-bold">Play</span>
-              <span className={`text-sm md:text-base font-black tabular-nums ${
-                playClock <= 0 ? "text-red-500 animate-pulse" : playClock <= 5 ? "text-amber-400 animate-pulse" : "text-amber-500"
-              }`}>
+              <span className={`text-sm md:text-base font-black tabular-nums ${playClock <= 0 ? "text-red-500 animate-pulse" : playClock <= 5 ? "text-amber-400 animate-pulse" : "text-amber-500"
+                }`}>
                 {playClock}
               </span>
             </div>
@@ -1434,9 +1436,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               onClick={() => setIsPlayClockRunning((prev) => !prev)}
               aria-label={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
               title={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
-              className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 transition-colors ${
-                isPlayClockRunning ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-neutral-400 hover:text-white"
-              }`}
+              className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 transition-colors ${isPlayClockRunning ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-neutral-400 hover:text-white"
+                }`}
             >
               {isPlayClockRunning ? (
                 <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
@@ -1514,41 +1515,61 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       </div>
 
       <main className="flex-1 min-h-0 p-1.5 sm:p-2 md:p-3 flex flex-col overflow-hidden relative">
-
         {/* SPOT BALL OVERLAY */}
         {!isBallSpotted && step !== 'CONVERSION' && step !== 'HALFTIME' && step !== 'GAME_OVER' && !isTimeoutActive && (
-          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-1.5 sm:p-3 md:p-8 overflow-hidden">
-            <div className="flex flex-col w-full max-w-7xl justify-center items-center gap-1.5 sm:gap-3 md:gap-6 min-h-0">
+          <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-2 sm:p-4 md:p-8 overflow-hidden">
+            <div className="grid grid-cols-[1fr_1.4fr_1fr] sm:grid-cols-[1fr_1.5fr_1fr] w-full max-w-7xl items-center justify-items-center gap-x-2 gap-y-4 sm:gap-x-4 sm:gap-y-6 md:gap-8 min-h-0">
 
-              {/* Home Score (Left) */}
-              <div className="flex items-center justify-around gap-2 sm:gap-8 w-full md:w-auto md:flex-1 shrink-0">
-                <div className="flex flex-col items-center min-w-0 flex-1">
-                  <div className="flex items-center gap-1 min-w-0 max-w-full">
-                    <FootballIcon active={possession === (homeTeamName || "HOME")} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" style={{ color: homeTeamColors.primary }} />
-                    <span className="text-sm sm:text-2xl md:text-4xl font-black uppercase truncate" style={{ color: homeTeamColors.primary }}>{homeTeamName}</span>
-                  </div>
-                  <span className="text-4xl sm:text-6xl md:text-[8rem] font-black leading-none tabular-nums" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
-                  <div className="flex gap-1 sm:gap-2 mt-1">
-                    {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                      <div key={i} className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-neutral-800" style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary } : undefined} />
-                    ))}
-                  </div>
+              {/* Top Row: Time and Half (Spans all 3 columns) */}
+              <div className="col-span-3 flex flex-col items-center justify-center gap-0.5 sm:gap-1.5 w-full">
+                <span className="text-[clamp(0.7rem,1.8vw,1.25rem)] font-bold uppercase tracking-widest text-neutral-300">
+                  {getOrdinal(half)} {periodType === 'quarters' ? 'Quarter' : 'Half'}
+                </span>
+                <span className="text-[clamp(2.25rem,7vw,5.5rem)] font-black leading-none text-white tracking-tighter tabular-nums">
+                  {formatTime(gameClock)}
+                </span>
+              </div>
+
+              {/* Bottom Row - Column 1: Home Score (Left) */}
+              <div className="flex flex-col items-center justify-center min-w-0 w-full">
+                <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
+                  <FootballIcon
+                    active={possession === (homeTeamName || "HOME")}
+                    className="w-[clamp(0.875rem,2vw,1.75rem)] h-[clamp(0.875rem,2vw,1.75rem)] shrink-0"
+                    style={{ color: homeTeamColors.primary }}
+                  />
+                  <span
+                    className="text-[clamp(0.75rem,2.5vw,2.25rem)] font-black uppercase truncate"
+                    style={{ color: homeTeamColors.primary }}
+                  >
+                    {homeTeamName}
+                  </span>
+                </div>
+                <span
+                  className="text-[clamp(2.5rem,9vw,8rem)] font-black leading-none tabular-nums my-0.5 sm:my-1"
+                  style={{ color: homeTeamColors.primary }}
+                >
+                  {homeScore}
+                </span>
+                <div className="flex gap-1 sm:gap-2 mt-1">
+                  {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-[clamp(0.4rem,1vw,0.75rem)] h-[clamp(0.4rem,1vw,0.75rem)] rounded-full bg-neutral-800"
+                      style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary } : undefined}
+                    />
+                  ))}
                 </div>
               </div>
 
-              {/* Center Column (Time + Alert) */}
-              <div className="flex flex-col items-center justify-center gap-1.5 sm:gap-3 w-full md:flex-[2] max-w-xl shrink min-h-0">
-                <div className="flex flex-col items-center gap-1 sm:gap-2">
-                  <span className="text-xl sm:text-base md:text-lg font-bold uppercase tracking-widest">
-                    {getOrdinal(half)} {periodType === 'quarters' ? 'Quarter' : 'Half'}
-                  </span>
-                  <span className="text-3xl sm:text-5xl md:text-[5rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
-                </div>
-
+              {/* Bottom Row - Column 2: Ball Spotted Overlay (Center) */}
+              <div className="flex flex-col items-center justify-center w-full min-w-0">
                 {isFirstPlayOfHalf ? (
-                  <div className="bg-neutral-900 border border-cyan-500/30 p-2 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] max-w-xl text-center md:w-100 sm:w-80 w-60 min-h-0">
-                    <AlertCircle className="w-6 h-6 sm:w-10 sm:h-10 text-emerald-500 mb-1 sm:mb-2 shrink-0" />
-                    <h2 className="text-xl md:text-xl font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest leading-tight">THE CLOCK WILL BEGIN ON THE SNAP</h2>
+                  <div className="bg-neutral-900 border border-cyan-500/30 p-2.5 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] w-full max-w-xl text-center min-h-0">
+                    <AlertCircle className="w-[clamp(1.25rem,3vw,2.5rem)] h-[clamp(1.25rem,3vw,2.5rem)] text-emerald-500 mb-1 sm:mb-2 shrink-0" />
+                    <h2 className="text-[clamp(0.65rem,1.8vw,1.35rem)] font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest leading-tight">
+                      THE CLOCK WILL BEGIN ON THE SNAP
+                    </h2>
                     <button
                       onClick={() => {
                         setIsBallSpotted(true);
@@ -1556,47 +1577,49 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         setIsGameClockRunning(true);
                         setIsPlayClockRunning(false);
                       }}
-                      className="py-2 sm:py-3 md:py-5 px-4 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[10px] sm:text-base md:text-xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
+                      className="py-1.5 sm:py-3 md:py-4 px-3 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[clamp(0.6rem,1.5vw,1.25rem)] rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer whitespace-nowrap"
                     >
                       CLICK WHEN SNAPPED
                     </button>
                     {isPlatformAdmin && isUnstartedGame && (
-                      <div className="mt-4 pt-4 border-t border-white/10 flex flex-col items-center w-full">
+                      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10 flex flex-col items-center w-full">
                         <button
                           onClick={handleSimulateGame}
                           disabled={isSimulating}
-                          className="py-2.5 px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
+                          className="py-1.5 sm:py-2.5 px-3 sm:px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-[clamp(0.55rem,1.1vw,0.75rem)] uppercase tracking-widest transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
                         >
-                          <Zap className={`w-4 h-4 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
-                          <span>{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>
+                          <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
+                          <span className="truncate">{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>
                         </button>
-                        <p className="text-[11px] text-neutral-400 mt-1.5 font-mono">
+                        <p className="text-[clamp(0.5rem,1vw,0.7rem)] text-neutral-400 mt-1 sm:mt-1.5 font-mono hidden sm:block">
                           Generates 16–28 realistic plays, box score & player stats
                         </p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="bg-neutral-900 border border-amber-500/30 p-2 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] max-w-xl text-center w-full min-h-0">
-                    <AlertCircle className="w-6 h-6 sm:w-10 sm:h-10 text-amber-500 mb-1 sm:mb-2 shrink-0" />
-                    <h2 className="text-[11px] sm:text-xl md:text-3xl font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest">Awaiting Spot</h2>
+                  <div className="bg-neutral-900 border border-amber-500/30 p-2.5 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(245,158,11,0.1)] w-full max-w-xl text-center min-h-0">
+                    <AlertCircle className="w-[clamp(1.25rem,3vw,2.5rem)] h-[clamp(1.25rem,3vw,2.5rem)] text-amber-500 mb-1 sm:mb-2 shrink-0" />
+                    <h2 className="text-[clamp(0.75rem,2.2vw,1.875rem)] font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest leading-tight">
+                      Awaiting Spot
+                    </h2>
                     <button
                       onClick={handleSpotBall}
-                      className="py-2 sm:py-3 md:py-5 px-4 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[10px] sm:text-base md:text-xl rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer"
+                      className="py-1.5 sm:py-3 md:py-4 px-3 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[clamp(0.6rem,1.5vw,1.25rem)] rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer whitespace-nowrap"
                     >
                       CLICK WHEN SPOTTED
                     </button>
                     {isPlatformAdmin && isUnstartedGame && (
-                      <div className="mt-4 pt-4 border-t border-white/10 flex flex-col items-center w-full">
+                      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10 flex flex-col items-center w-full">
                         <button
                           onClick={handleSimulateGame}
                           disabled={isSimulating}
-                          className="py-2.5 px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
+                          className="py-1.5 sm:py-2.5 px-3 sm:px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-[clamp(0.55rem,1.1vw,0.75rem)] uppercase tracking-widest transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
                         >
-                          <Zap className={`w-4 h-4 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
-                          <span>{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>
+                          <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
+                          <span className="truncate">{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>
                         </button>
-                        <p className="text-[11px] text-neutral-400 mt-1.5 font-mono">
+                        <p className="text-[clamp(0.5rem,1vw,0.7rem)] text-neutral-400 mt-1 sm:mt-1.5 font-mono hidden sm:block">
                           Generates 16–28 realistic plays, box score & player stats
                         </p>
                       </div>
@@ -1605,19 +1628,35 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 )}
               </div>
 
-              {/* Away Score (Right) */}
-              <div className="flex items-center justify-around gap-2 sm:gap-8 w-full md:w-auto md:flex-1 shrink-0">
-                <div className="flex flex-col items-center min-w-0 flex-1">
-                  <div className="flex items-center gap-1 min-w-0 max-w-full">
-                    <span className="text-sm sm:text-2xl md:text-4xl font-black uppercase truncate" style={{ color: awayTeamColors.primary }}>{awayTeamName}</span>
-                    <FootballIcon active={possession === (awayTeamName || "AWAY")} className="w-4 h-4 sm:w-6 sm:h-6 shrink-0" style={{ color: awayTeamColors.primary }} />
-                  </div>
-                  <span className="text-4xl sm:text-6xl md:text-[8rem] font-black leading-none tabular-nums" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
-                  <div className="flex gap-1 sm:gap-2 mt-1">
-                    {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                      <div key={i} className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-neutral-800" style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary } : undefined} />
-                    ))}
-                  </div>
+              {/* Bottom Row - Column 3: Away Score (Right) */}
+              <div className="flex flex-col items-center justify-center min-w-0 w-full">
+                <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
+                  <span
+                    className="text-[clamp(0.75rem,2.5vw,2.25rem)] font-black uppercase truncate"
+                    style={{ color: awayTeamColors.primary }}
+                  >
+                    {awayTeamName}
+                  </span>
+                  <FootballIcon
+                    active={possession === (awayTeamName || "AWAY")}
+                    className="w-[clamp(0.875rem,2vw,1.75rem)] h-[clamp(0.875rem,2vw,1.75rem)] shrink-0"
+                    style={{ color: awayTeamColors.primary }}
+                  />
+                </div>
+                <span
+                  className="text-[clamp(2.5rem,9vw,8rem)] font-black leading-none tabular-nums my-0.5 sm:my-1"
+                  style={{ color: awayTeamColors.primary }}
+                >
+                  {awayScore}
+                </span>
+                <div className="flex gap-1 sm:gap-2 mt-1">
+                  {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-[clamp(0.4rem,1vw,0.75rem)] h-[clamp(0.4rem,1vw,0.75rem)] rounded-full bg-neutral-800"
+                      style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary } : undefined}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -1663,14 +1702,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <div className="w-full max-w-5xl bg-neutral-900 border border-white/10 rounded-3xl p-8 mb-12 flex flex-col items-center shadow-2xl">
               <h3 className="text-2xl font-black uppercase tracking-widest text-white mb-2">Did Not Participate</h3>
               <p className="text-neutral-400 mb-8 text-center max-w-2xl">Select any players who were absent or did not play in this game. This ensures they do not receive a "Game Played" stat for attendance purposes.</p>
-              
+
               <div className="flex w-full gap-12">
                 <div className="flex-1">
                   <h4 className="text-xl font-bold uppercase tracking-widest mb-4 border-b border-white/10 pb-2" style={{ color: homeTeamColors.tertiary }}>{homeTeamName}</h4>
                   <div className="flex flex-col gap-2 max-h-[30vh] overflow-y-auto pr-4 hide-scrollbar">
                     {homePlayers.map(p => (
-                      <button 
-                        key={p} 
+                      <button
+                        key={p}
                         onClick={() => setDidNotPlay(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])}
                         className={`p-3 rounded-xl font-bold text-left transition-colors flex justify-between items-center ${didNotPlay.includes(p) ? 'bg-amber-500/20 text-amber-500 border border-amber-500/50' : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/5'}`}
                       >
@@ -1691,8 +1730,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   <h4 className="text-xl font-bold uppercase tracking-widest mb-4 border-b border-white/10 pb-2" style={{ color: awayTeamColors.tertiary }}>{awayTeamName}</h4>
                   <div className="flex flex-col gap-2 max-h-[30vh] overflow-y-auto pr-4 hide-scrollbar">
                     {awayPlayers.map(p => (
-                      <button 
-                        key={p} 
+                      <button
+                        key={p}
                         onClick={() => setDidNotPlay(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])}
                         className={`p-3 rounded-xl font-bold text-left transition-colors flex justify-between items-center ${didNotPlay.includes(p) ? 'bg-amber-500/20 text-amber-500 border border-amber-500/50' : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/5'}`}
                       >
@@ -1784,11 +1823,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         onClick={() => setCurrentDown(d)}
                         aria-label={`${getOrdinal(d)} Down`}
                         title={`Set to ${getOrdinal(d)} Down`}
-                        className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                          currentDown === d
-                            ? "bg-white text-black shadow-md font-black"
-                            : "text-neutral-400 hover:text-white hover:bg-white/10"
-                        }`}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${currentDown === d
+                          ? "bg-white text-black shadow-md font-black"
+                          : "text-neutral-400 hover:text-white hover:bg-white/10"
+                          }`}
                       >
                         {getOrdinal(d)} Down
                       </button>
@@ -1835,528 +1873,558 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       {res === 'FFL' ? 'Flag For Loss (FFL)' : 'Positive / No Gain'}
                     </button>
                   ))}
-                </div>
-
-                <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto max-w-4xl mx-auto w-full pr-1">
-                  {/* SECTION 1: QUARTERBACK / RUNNER */}
-                  {qbRunner && !isQbOpen ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsQbOpen(true);
-                        setIsReceiverOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left"
-                      aria-label={`${playType === 'Run' ? 'Runner' : 'Quarterback'}: ${qbRunner}. Click to change`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
-                          {playType === 'Run' ? 'Runner:' : 'Quarterback:'}
-                        </span>
-                        <span className="text-base sm:text-lg font-black text-white truncate flex items-center gap-2">
-                          {playerNumberMap[qbRunner] && (
-                            <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
-                              #{playerNumberMap[qbRunner]}
+                  <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-12 md:gap-4 overflow-hidden w-full max-w-7xl mx-auto">
+                    {/* LEFT COLUMN: Player & Event Selections */}
+                    <div className="flex-1 min-h-0 md:col-span-7 flex flex-col gap-2.5 overflow-y-auto pr-1">
+                      {/* SECTION 1: QUARTERBACK / RUNNER */}
+                      {qbRunner && !isQbOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsQbOpen(true);
+                            setIsReceiverOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
+                          aria-label={`${playType === 'Run' ? 'Runner' : 'Quarterback'}: ${qbRunner}. Click to change`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
+                              {playType === 'Run' ? 'Runner:' : 'Quarterback:'}
                             </span>
-                          )}
-                          <span>{qbRunner}</span>
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
-                        <span className="hidden sm:inline">Change</span>
-                        <ChevronDown className="w-5 h-5 text-cyan-400 transition-transform group-hover:translate-y-0.5" />
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="bg-neutral-900 rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col shadow-lg">
-                      <div className="flex items-center justify-between mb-2.5">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                            {playType === 'Run' ? 'Select Runner' : 'Select Quarterback'}
-                          </label>
-                          {!qbRunner && <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse" />}
-                        </div>
-                        {qbRunner && (
-                          <button
-                            type="button"
-                            onClick={() => setIsQbOpen(false)}
-                            className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white"
-                          >
-                            <span>Collapse</span>
-                            <ChevronUp className="w-4 h-4 text-cyan-400" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
-                        {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
-                          const isSelected = qbRunner === p;
-                          const pNum = playerNumberMap[p];
-                          return (
-                            <button
-                              key={p}
-                              type="button"
-                              aria-label={p}
-                              onClick={() => handleSelectQbRunner(p)}
-                              className={`p-2.5 rounded-xl font-bold text-left text-sm transition-all flex items-center justify-between gap-1.5 ${
-                                isSelected
-                                  ? 'bg-cyan-500 text-white shadow-md'
-                                  : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                {pNum && (
-                                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                    isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                                  }`}>
-                                    #{pNum}
-                                  </span>
-                                )}
-                                <span className="truncate">{p}</span>
-                              </div>
-                              {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* SECTION 2: RECEIVER (for Pass & Complete) */}
-                  {playType === 'Pass' && outcome === 'Complete' && qbRunner && (
-                    receiver && !isReceiverOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsReceiverOpen(true);
-                          setIsQbOpen(false);
-                        }}
-                        className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left"
-                        aria-label={`Receiver: ${receiver}. Click to change`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
-                            Receiver:
-                          </span>
-                          <span className="text-base sm:text-lg font-black text-white truncate flex items-center gap-2">
-                            {playerNumberMap[receiver] && (
-                              <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
-                                #{playerNumberMap[receiver]}
-                              </span>
-                            )}
-                            <span>{receiver}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
-                          <span className="hidden sm:inline">Change</span>
-                          <ChevronDown className="w-5 h-5 text-cyan-400 transition-transform group-hover:translate-y-0.5" />
-                        </div>
-                      </button>
-                    ) : (
-                      <div className="bg-neutral-900 rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
-                        <div className="flex items-center justify-between mb-2.5">
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                              Select Receiver
-                            </label>
-                            {!receiver && <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse" />}
+                            <span className="text-sm sm:text-base font-black text-white truncate flex items-center gap-2">
+                              {playerNumberMap[qbRunner] && (
+                                <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
+                                  #{playerNumberMap[qbRunner]}
+                                </span>
+                              )}
+                              <span>{qbRunner}</span>
+                            </span>
                           </div>
-                          {receiver && (
-                            <button
-                              type="button"
-                              onClick={() => setIsReceiverOpen(false)}
-                              className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white"
-                            >
-                              <span>Collapse</span>
-                              <ChevronUp className="w-4 h-4 text-cyan-400" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
-                          {sortRosterWithNumbers(
-                            getOffensiveRoster().filter((p) => p !== qbRunner || p === 'TEAM'),
-                            playerNumberMap
-                          ).map((p) => {
-                            const isSelected = receiver === p;
-                            const pNum = playerNumberMap[p];
-                            return (
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
+                            <span className="hidden sm:inline">Change</span>
+                            <ChevronDown className="w-4 h-4 text-cyan-400 transition-transform group-hover:translate-y-0.5" />
+                          </div>
+                        </button>
+                      ) : (
+                        <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                                {playType === 'Run' ? 'Select Runner' : 'Select Quarterback'}
+                              </label>
+                              {!qbRunner && <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse" />}
+                            </div>
+                            {qbRunner && (
                               <button
-                                key={p}
                                 type="button"
-                                aria-label={p}
-                                onClick={() => handleSelectReceiver(p)}
-                                className={`p-2.5 rounded-xl font-bold text-left text-sm transition-all flex items-center justify-between gap-1.5 ${
-                                  isSelected
+                                onClick={() => setIsQbOpen(false)}
+                                className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white cursor-pointer"
+                              >
+                                <span>Collapse</span>
+                                <ChevronUp className="w-4 h-4 text-cyan-400" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                            {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
+                              const isSelected = qbRunner === p;
+                              const pNum = playerNumberMap[p];
+                              return (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  aria-label={p}
+                                  onClick={() => handleSelectQbRunner(p)}
+                                  className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
                                     ? 'bg-cyan-500 text-white shadow-md'
                                     : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {pNum && (
-                                    <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                      isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                                    }`}>
-                                      #{pNum}
-                                    </span>
-                                  )}
-                                  <span className="truncate">{p}</span>
-                                </div>
-                                {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                  {/* SECTION 3: INCOMPLETE SUB-MENU (PBU vs Missed Throw) */}
-                  {outcome === 'Incomplete_Menu' && (
-                    <div className="flex flex-col sm:flex-row gap-3 animate-in zoom-in-95">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOutcome('PBU');
-                          setIsDefendersOpen(true);
-                        }}
-                        className="flex-1 py-6 px-6 bg-neutral-900 border-2 border-white/10 hover:border-blue-500 rounded-2xl text-xl font-black transition-all shadow-xl"
-                      >
-                        PASS BREAK UP
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOutcome('Missed');
-                        }}
-                        className="flex-1 py-6 px-6 bg-neutral-900 border-2 border-white/10 hover:border-amber-500 rounded-2xl text-xl font-black transition-all shadow-xl"
-                      >
-                        MISSED THROW
-                      </button>
-                    </div>
-                  )}
-
-                  {/* SECTION 4: PASS BREAK UP DEFENDER */}
-                  {outcome === 'PBU' && qbRunner && (
-                    defenders.length === 1 && !isDefendersOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsDefendersOpen(true)}
-                        className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-neutral-900 border border-white/10 hover:border-blue-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left"
-                        aria-label={`Pass Break Up: ${defenders[0]}. Click to change`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
-                            Pass Break Up:
-                          </span>
-                          <span className="text-base sm:text-lg font-black text-blue-400 truncate flex items-center gap-2">
-                            {playerNumberMap[defenders[0]] && (
-                              <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-blue-500/20 text-blue-400 border border-blue-500/40">
-                                #{playerNumberMap[defenders[0]]}
-                              </span>
-                            )}
-                            <span>{defenders[0]}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-blue-400 shrink-0">
-                          <span className="hidden sm:inline">Change</span>
-                          <ChevronDown className="w-5 h-5 text-blue-400 transition-transform group-hover:translate-y-0.5" />
-                        </div>
-                      </button>
-                    ) : (
-                      <div className="bg-neutral-900 rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
-                        <div className="flex items-center justify-between mb-2.5">
-                          <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                            Select Defender (Pass Break Up)
-                          </label>
-                          {defenders.length === 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setIsDefendersOpen(false)}
-                              className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white"
-                            >
-                              <span>Collapse</span>
-                              <ChevronUp className="w-4 h-4 text-blue-400" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
-                          {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
-                            const isSelected = defenders.includes(p);
-                            const pNum = playerNumberMap[p];
-                            return (
-                              <button
-                                key={p}
-                                type="button"
-                                aria-label={p}
-                                onClick={() => {
-                                  handleDefenders(p, 1);
-                                  setIsDefendersOpen(false);
-                                }}
-                                className={`p-2.5 rounded-xl font-bold text-left text-sm transition-all flex items-center justify-between gap-1.5 ${
-                                  isSelected
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {pNum && (
-                                    <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                      isSelected ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                    }`}>
-                                      #{pNum}
-                                    </span>
-                                  )}
-                                  <span className="truncate">{p}</span>
-                                </div>
-                                {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                  {/* SECTION 5: INTERCEPTOR (DEFENSE) */}
-                  {outcome === 'Interception' && qbRunner && (
-                    defenders.length === 1 && !isDefendersOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsDefendersOpen(true)}
-                        className="w-full flex items-center justify-between p-3.5 sm:p-4 bg-neutral-900 border border-white/10 hover:border-amber-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left"
-                        aria-label={`Interceptor: ${defenders[0]}. Click to change`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
-                            Interceptor:
-                          </span>
-                          <span className="text-base sm:text-lg font-black text-amber-400 truncate flex items-center gap-2">
-                            {playerNumberMap[defenders[0]] && (
-                              <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-amber-500/20 text-amber-400 border border-amber-500/40">
-                                #{playerNumberMap[defenders[0]]}
-                              </span>
-                            )}
-                            <span>{defenders[0]}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-amber-400 shrink-0">
-                          <span className="hidden sm:inline">Change</span>
-                          <ChevronDown className="w-5 h-5 text-amber-400 transition-transform group-hover:translate-y-0.5" />
-                        </div>
-                      </button>
-                    ) : (
-                      <div className="bg-neutral-900 rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
-                        <div className="flex items-center justify-between mb-2.5">
-                          <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                            Select Interceptor (Defense)
-                          </label>
-                          {defenders.length === 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setIsDefendersOpen(false)}
-                              className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white"
-                            >
-                              <span>Collapse</span>
-                              <ChevronUp className="w-4 h-4 text-amber-400" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
-                          {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
-                            const isSelected = defenders.includes(p);
-                            const pNum = playerNumberMap[p];
-                            return (
-                              <button
-                                key={p}
-                                type="button"
-                                aria-label={p}
-                                onClick={() => {
-                                  handleDefenders(p, 1);
-                                  setIsDefendersOpen(false);
-                                }}
-                                className={`p-2.5 rounded-xl font-bold text-left text-sm transition-all flex items-center justify-between gap-1.5 ${
-                                  isSelected
-                                    ? 'bg-amber-500 text-black font-black shadow-md'
-                                    : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {pNum && (
-                                    <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                      isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                    }`}>
-                                      #{pNum}
-                                    </span>
-                                  )}
-                                  <span className="truncate">{p}</span>
-                                </div>
-                                {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                  {/* SECTION 6: INTERCEPTION FLAGGERS (OFFENSE ACTING AS DEFENSE) */}
-                  {outcome === 'Interception' && defenders.length === 1 && (
-                    <div className="bg-neutral-900 rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
-                      <div className="flex items-center justify-between mb-2.5">
-                        <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                          Flagger(s) (Offense) - Optional
-                        </label>
-                        {flaggers.length > 0 && (
-                          <span className="text-xs font-bold text-cyan-400">
-                            Selected: {flaggers.map(p => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}
-                          </span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
-                        {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
-                          const isSelected = flaggers.includes(p);
-                          const pNum = playerNumberMap[p];
-                          return (
-                            <button
-                              key={p}
-                              type="button"
-                              aria-label={p}
-                              onClick={() => handleFlaggers(p)}
-                              className={`p-2.5 rounded-xl font-bold text-left text-sm transition-all flex items-center justify-between gap-1.5 ${
-                                isSelected
-                                  ? 'bg-cyan-500 text-white shadow-md'
-                                  : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                {pNum && (
-                                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                    isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                                  }`}>
-                                    #{pNum}
-                                  </span>
-                                )}
-                                <span className="truncate">{p}</span>
-                              </div>
-                              {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* SECTION 7: DEFENSE FLAGGERS (COMPLETE, GAIN, SACK, FFL) */}
-                  {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain' || outcome === 'Sack' || outcome === 'FFL') && (
-                    <div className="bg-neutral-900 rounded-2xl p-3.5 sm:p-4 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
-                      <div className="flex flex-wrap items-center justify-between gap-1 mb-2.5">
-                        <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                          {outcome === 'Sack' || outcome === 'FFL' ? 'Sacked By / Flag Puller' : 'Flagger(s)'}
-                        </label>
-                        <span className="text-xs font-bold text-amber-400">
-                          {defenders.length === 0
-                            ? (outcome === 'Sack' || outcome === 'FFL' ? 'Select defender' : 'Pick flagger(s) or leave unflagged for TD/OOB')
-                            : `Selected (${defenders.length}/2): ${defenders.map(p => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}`}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1 hide-scrollbar">
-                        {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
-                          const isSelected = defenders.includes(p);
-                          const pNum = playerNumberMap[p];
-                          return (
-                            <button
-                              key={p}
-                              type="button"
-                              aria-label={p}
-                              onClick={() => handleDefenders(p, (outcome === 'Sack' || outcome === 'FFL') ? 2 : 2)}
-                              className={`p-2.5 rounded-xl font-bold text-left text-sm transition-all flex items-center justify-between gap-1.5 ${
-                                isSelected
-                                  ? 'bg-amber-500 text-black font-black shadow-md'
-                                  : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                {pNum && (
-                                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                    isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                  }`}>
-                                    #{pNum}
-                                  </span>
-                                )}
-                                <span className="truncate">{p}</span>
-                              </div>
-                              {isSelected && <Check className="w-4 h-4 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* SECTION 8: RESULTS & OUTCOMES ROW */}
-                  {outcome !== 'Incomplete_Menu' && (
-                    <div className="shrink-0 pt-2 min-h-[90px]">
-                      {/* OOB Prompt Logic */}
-                      {isOobPrompt && (
-                        <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in slide-in-from-bottom-2">
-                          <button onClick={() => handleSavePlay('First Down')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-blue-600 text-white font-black text-sm sm:text-base md:text-xl">OOB - FIRST DOWN</button>
-                          <button onClick={() => handleSavePlay('Short')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-sm sm:text-base md:text-xl border border-white/10">OOB - SHORT</button>
+                                    }`}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    {pNum && (
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                                        }`}>
+                                        #{pNum}
+                                      </span>
+                                    )}
+                                    <span className="truncate">{p}</span>
+                                  </div>
+                                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
 
-                      {/* Normal Results */}
-                      {!isOobPrompt && (
-                        <>
-                          {/* Immediate Touchdown & OOB for Complete/Gain */}
-                          {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length === 0 && (
-                            <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in fade-in">
-                              <button onClick={() => handleSavePlay('Touchdown')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-emerald-600 text-white font-black text-sm sm:text-base md:text-xl">TOUCHDOWN</button>
-                              <button onClick={() => setIsOobPrompt(true)} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-sm sm:text-base md:text-xl border border-white/10 hover:text-white">OUT OF BOUNDS</button>
+                      {/* SECTION 2: RECEIVER (for Pass & Complete) */}
+                      {playType === 'Pass' && outcome === 'Complete' && qbRunner && (
+                        receiver && !isReceiverOpen ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsReceiverOpen(true);
+                              setIsQbOpen(false);
+                            }}
+                            className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
+                            aria-label={`Receiver: ${receiver}. Click to change`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
+                                Receiver:
+                              </span>
+                              <span className="text-sm sm:text-base font-black text-white truncate flex items-center gap-2">
+                                {playerNumberMap[receiver] && (
+                                  <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
+                                    #{playerNumberMap[receiver]}
+                                  </span>
+                                )}
+                                <span>{receiver}</span>
+                              </span>
                             </div>
-                          )}
-
-                          {/* Normal Complete/Gain with Flagger */}
-                          {isPlayReadyToSave() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length > 0 && (
-                            <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in slide-in-from-bottom-2">
-                              <button onClick={() => handleSavePlay('First Down')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-blue-600 text-white font-black text-sm sm:text-base md:text-xl">FIRST DOWN</button>
-                              <button onClick={() => handleSavePlay('Short')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-sm sm:text-base md:text-xl border border-white/10">SHORT OF LINE</button>
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
+                              <span className="hidden sm:inline">Change</span>
+                              <ChevronDown className="w-4 h-4 text-cyan-400 transition-transform group-hover:translate-y-0.5" />
                             </div>
-                          )}
-
-                          {/* Interception Results */}
-                          {hasOffenseSelected() && outcome === 'Interception' && defenders.length === 1 && (
-                            <div className="grid grid-cols-2 gap-3 sm:gap-4 animate-in slide-in-from-bottom-2">
-                              {flaggers.length === 0 ? (
-                                <>
-                                  <button onClick={() => handleSavePlay('Pick 6')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-emerald-600 text-white font-black text-sm sm:text-base md:text-xl">PICK 6</button>
-                                  <button onClick={() => handleSavePlay('Turnover')} className="py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-amber-600 text-white font-black text-sm sm:text-base md:text-xl border border-white/10">OOB / DOWNED</button>
-                                </>
-                              ) : (
-                                <button onClick={() => handleSavePlay('Turnover')} className="col-span-2 py-3.5 sm:py-5 md:py-6 rounded-2xl md:rounded-3xl bg-amber-600 text-white font-black text-sm sm:text-base md:text-xl">FLAGGED (Save Turnover)</button>
+                          </button>
+                        ) : (
+                          <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                                  Select Receiver
+                                </label>
+                                {!receiver && <span className="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-pulse" />}
+                              </div>
+                              {receiver && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsReceiverOpen(false)}
+                                  className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white cursor-pointer"
+                                >
+                                  <span>Collapse</span>
+                                  <ChevronUp className="w-4 h-4 text-cyan-400" />
+                                </button>
                               )}
                             </div>
-                          )}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                              {sortRosterWithNumbers(
+                                getOffensiveRoster().filter((p) => p !== qbRunner || p === 'TEAM'),
+                                playerNumberMap
+                              ).map((p) => {
+                                const isSelected = receiver === p;
+                                const pNum = playerNumberMap[p];
+                                return (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    aria-label={p}
+                                    onClick={() => handleSelectReceiver(p)}
+                                    className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
+                                      ? 'bg-cyan-500 text-white shadow-md'
+                                      : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {pNum && (
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                                          }`}>
+                                          #{pNum}
+                                        </span>
+                                      )}
+                                      <span className="truncate">{p}</span>
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )
+                      )}
 
-                          {/* Other Outcomes (PBU, Missed, Sack, FFL) */}
-                          <div className={`transition-all duration-300 ${hasOffenseSelected() && (outcome === 'PBU' || outcome === 'Missed' || outcome === 'Sack' || outcome === 'FFL') && isPlayReadyToSave() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none hidden'}`}>
-                            {(outcome === 'PBU' || outcome === 'Missed') && (
-                              <button onClick={() => handleSavePlay('Next Down')} className="w-full py-3.5 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-base md:text-xl border border-white/10 hover:bg-neutral-700">SAVE & NEXT DOWN</button>
+                      {/* SECTION 3: INCOMPLETE SUB-MENU (PBU vs Missed Throw) */}
+                      {outcome === 'Incomplete_Menu' && (
+                        <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 animate-in zoom-in-95">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOutcome('PBU');
+                              setIsDefendersOpen(true);
+                            }}
+                            className="flex-1 py-4 sm:py-5 px-4 bg-neutral-900 border-2 border-white/10 hover:border-blue-500 rounded-2xl text-base sm:text-lg font-black transition-all shadow-xl cursor-pointer"
+                          >
+                            PASS BREAK UP
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOutcome('Missed');
+                            }}
+                            className="flex-1 py-4 sm:py-5 px-4 bg-neutral-900 border-2 border-white/10 hover:border-amber-500 rounded-2xl text-base sm:text-lg font-black transition-all shadow-xl cursor-pointer"
+                          >
+                            MISSED THROW
+                          </button>
+                        </div>
+                      )}
+
+                      {/* SECTION 4: PASS BREAK UP DEFENDER */}
+                      {outcome === 'PBU' && qbRunner && (
+                        defenders.length === 1 && !isDefendersOpen ? (
+                          <button
+                            type="button"
+                            onClick={() => setIsDefendersOpen(true)}
+                            className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-blue-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
+                            aria-label={`Pass Break Up: ${defenders[0]}. Click to change`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
+                                Pass Break Up:
+                              </span>
+                              <span className="text-sm sm:text-base font-black text-blue-400 truncate flex items-center gap-2">
+                                {playerNumberMap[defenders[0]] && (
+                                  <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-blue-500/20 text-blue-400 border border-blue-500/40">
+                                    #{playerNumberMap[defenders[0]]}
+                                  </span>
+                                )}
+                                <span>{defenders[0]}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-blue-400 shrink-0">
+                              <span className="hidden sm:inline">Change</span>
+                              <ChevronDown className="w-4 h-4 text-blue-400 transition-transform group-hover:translate-y-0.5" />
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                                Select Defender (Pass Break Up)
+                              </label>
+                              {defenders.length === 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsDefendersOpen(false)}
+                                  className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white cursor-pointer"
+                                >
+                                  <span>Collapse</span>
+                                  <ChevronUp className="w-4 h-4 text-blue-400" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                              {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
+                                const isSelected = defenders.includes(p);
+                                const pNum = playerNumberMap[p];
+                                return (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    aria-label={p}
+                                    onClick={() => {
+                                      handleDefenders(p, 1);
+                                      setIsDefendersOpen(false);
+                                    }}
+                                    className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
+                                      ? 'bg-blue-600 text-white shadow-md'
+                                      : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {pNum && (
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                          }`}>
+                                          #{pNum}
+                                        </span>
+                                      )}
+                                      <span className="truncate">{p}</span>
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )
+                      )}
+
+                      {/* SECTION 5: INTERCEPTOR (DEFENSE) */}
+                      {outcome === 'Interception' && qbRunner && (
+                        defenders.length === 1 && !isDefendersOpen ? (
+                          <button
+                            type="button"
+                            onClick={() => setIsDefendersOpen(true)}
+                            className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-amber-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
+                            aria-label={`Interceptor: ${defenders[0]}. Click to change`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">
+                                Interceptor:
+                              </span>
+                              <span className="text-sm sm:text-base font-black text-amber-400 truncate flex items-center gap-2">
+                                {playerNumberMap[defenders[0]] && (
+                                  <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                                    #{playerNumberMap[defenders[0]]}
+                                  </span>
+                                )}
+                                <span>{defenders[0]}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-amber-400 shrink-0">
+                              <span className="hidden sm:inline">Change</span>
+                              <ChevronDown className="w-4 h-4 text-amber-400 transition-transform group-hover:translate-y-0.5" />
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                                Select Interceptor (Defense)
+                              </label>
+                              {defenders.length === 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsDefendersOpen(false)}
+                                  className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white cursor-pointer"
+                                >
+                                  <span>Collapse</span>
+                                  <ChevronUp className="w-4 h-4 text-amber-400" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                              {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
+                                const isSelected = defenders.includes(p);
+                                const pNum = playerNumberMap[p];
+                                return (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    aria-label={p}
+                                    onClick={() => {
+                                      handleDefenders(p, 1);
+                                      setIsDefendersOpen(false);
+                                    }}
+                                    className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
+                                      ? 'bg-amber-500 text-black font-black shadow-md'
+                                      : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {pNum && (
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                          }`}>
+                                          #{pNum}
+                                        </span>
+                                      )}
+                                      <span className="truncate">{p}</span>
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )
+                      )}
+
+                      {/* SECTION 6: INTERCEPTION FLAGGERS (OFFENSE ACTING AS DEFENSE) */}
+                      {outcome === 'Interception' && defenders.length === 1 && (
+                        <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                              Flagger(s) (Offense) - Optional
+                            </label>
+                            {flaggers.length > 0 && (
+                              <span className="text-xs font-bold text-cyan-400">
+                                Selected: {flaggers.map(p => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}
+                              </span>
                             )}
-                            {(outcome === 'Sack' || outcome === 'FFL') && (
-                              <div className="grid grid-cols-2 gap-2 md:gap-4">
-                                <button onClick={() => handleSavePlay('Short')} className="py-3.5 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-base md:text-xl border border-white/10">Loss Of Yards</button>
-                                <button onClick={() => handleSavePlay('Safety')} className="py-3.5 md:py-5 rounded-2xl md:rounded-3xl bg-red-600 text-white font-black text-base md:text-xl">Safety</button>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                            {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
+                              const isSelected = flaggers.includes(p);
+                              const pNum = playerNumberMap[p];
+                              return (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  aria-label={p}
+                                  onClick={() => handleFlaggers(p)}
+                                  className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
+                                    ? 'bg-cyan-500 text-white shadow-md'
+                                    : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                    }`}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    {pNum && (
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                                        }`}>
+                                        #{pNum}
+                                      </span>
+                                    )}
+                                    <span className="truncate">{p}</span>
+                                  </div>
+                                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SECTION 7: DEFENSE FLAGGERS (COMPLETE, GAIN, SACK, FFL) */}
+                      {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain' || outcome === 'Sack' || outcome === 'FFL') && (
+                        <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
+                          <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                            <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                              {outcome === 'Sack' || outcome === 'FFL' ? 'Sacked By / Flag' : 'Flagger(s)'}
+                            </label>
+                            <span className="text-[11px] sm:text-xs font-bold text-amber-400">
+                              {defenders.length === 0
+                                ? (outcome === 'Sack' || outcome === 'FFL' ? 'Select defender' : 'Pick flagger(s) or leave unflagged for TD/OOB')
+                                : `Selected (${defenders.length}/2): ${defenders.map(p => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}`}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                            {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
+                              const isSelected = defenders.includes(p);
+                              const pNum = playerNumberMap[p];
+                              return (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  aria-label={p}
+                                  onClick={() => handleDefenders(p, (outcome === 'Sack' || outcome === 'FFL') ? 2 : 2)}
+                                  className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
+                                    ? 'bg-amber-500 text-black font-black shadow-md'
+                                    : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                    }`}
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    {pNum && (
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                        }`}>
+                                        #{pNum}
+                                      </span>
+                                    )}
+                                    <span className="truncate">{p}</span>
+                                  </div>
+                                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* RIGHT COLUMN (DESKTOP) / DOCKED ACTION CONSOLE (MOBILE): SECTION 8 RESULTS & OUTCOMES */}
+                    {outcome !== 'Incomplete_Menu' && (
+                      <div className="shrink-0 md:flex-1 md:min-h-0 md:col-span-5 flex flex-col justify-between bg-neutral-900/95 border border-white/10 rounded-2xl p-2.5 sm:p-3.5 md:p-4 shadow-xl overflow-y-auto mt-2 md:mt-0">
+                        {/* Desktop Live Status Summary */}
+                        <div className="hidden md:flex flex-col gap-2 mb-2">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400">Play Action Console</span>
+                            <span className="text-[10px] font-mono font-black px-2 py-0.5 rounded bg-white/10 text-neutral-300 uppercase">
+                              {getOrdinal(currentDown)} Down
+                            </span>
+                          </div>
+                          <div className="bg-black/60 border border-white/10 rounded-xl p-2.5 space-y-1 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-neutral-400 font-bold uppercase text-[10px]">Offense:</span>
+                              <span className="font-black text-white">{possession}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-neutral-400 font-bold uppercase text-[10px]">{playType === 'Run' ? 'Runner:' : 'Quarterback:'}</span>
+                              <span className="font-bold text-cyan-300">
+                                {qbRunner ? `${playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ''}${qbRunner}` : 'Select below'}
+                              </span>
+                            </div>
+                            {playType === 'Pass' && outcome === 'Complete' && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-neutral-400 font-bold uppercase text-[10px]">Target:</span>
+                                <span className="font-bold text-emerald-300">
+                                  {receiver ? `${playerNumberMap[receiver] ? `#${playerNumberMap[receiver]} ` : ''}${receiver}` : 'Select receiver'}
+                                </span>
+                              </div>
+                            )}
+                            {defenders.length > 0 && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-neutral-400 font-bold uppercase text-[10px]">{outcome === 'Interception' ? 'Interceptor:' : 'Flagger(s):'}</span>
+                                <span className="font-bold text-amber-300 truncate max-w-[160px]">
+                                  {defenders.map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(' & ')}
+                                </span>
                               </div>
                             )}
                           </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        </div>
+
+                        {/* SECTION 8: RESULTS & OUTCOMES ROW */}
+                        <div className="shrink-0 pt-1 w-full min-h-[60px] md:min-h-[75px]">
+                          {/* OOB Prompt Logic */}
+                          {isOobPrompt && (
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
+                              <button onClick={() => handleSavePlay('First Down')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">OOB - FIRST DOWN</button>
+                              <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">OOB - SHORT</button>
+                            </div>
+                          )}
+
+                          {/* Normal Results */}
+                          {!isOobPrompt && (
+                            <>
+                              {/* Immediate Touchdown & OOB for Complete/Gain */}
+                              {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length === 0 && (
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in fade-in">
+                                  <button onClick={() => handleSavePlay('Touchdown')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">TOUCHDOWN</button>
+                                  <button onClick={() => setIsOobPrompt(true)} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-xs sm:text-base md:text-lg border border-white/10 hover:text-white hover:bg-neutral-700 cursor-pointer">OUT OF BOUNDS</button>
+                                </div>
+                              )}
+
+                              {/* Normal Complete/Gain with Flagger */}
+                              {isPlayReadyToSave() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length > 0 && (
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
+                                  <button onClick={() => handleSavePlay('First Down')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">FIRST DOWN</button>
+                                  <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">SHORT OF LINE</button>
+                                </div>
+                              )}
+
+                              {/* Interception Results */}
+                              {hasOffenseSelected() && outcome === 'Interception' && defenders.length === 1 && (
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
+                                  {flaggers.length === 0 ? (
+                                    <>
+                                      <button onClick={() => handleSavePlay('Pick 6')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">PICK 6</button>
+                                      <button onClick={() => handleSavePlay('Turnover')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 cursor-pointer">OOB / DOWNED</button>
+                                    </>
+                                  ) : (
+                                    <button onClick={() => handleSavePlay('Turnover')} className="col-span-2 py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs sm:text-base md:text-lg cursor-pointer">FLAGGED (Save Turnover)</button>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Other Outcomes (PBU, Missed, Sack, FFL) */}
+                              <div className={`transition-all duration-300 ${hasOffenseSelected() && (outcome === 'PBU' || outcome === 'Missed' || outcome === 'Sack' || outcome === 'FFL') && isPlayReadyToSave() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none hidden'}`}>
+                                {(outcome === 'PBU' || outcome === 'Missed') && (
+                                  <button onClick={() => handleSavePlay('Next Down')} className="w-full py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">SAVE & NEXT DOWN</button>
+                                )}
+                                {(outcome === 'Sack' || outcome === 'FFL') && (
+                                  <div className="grid grid-cols-2 gap-2 md:gap-3">
+                                    <button onClick={() => handleSavePlay('Short')} className="py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-neutral-800 text-white font-black text-xs sm:text-base md:text-lg border border-white/10 hover:bg-neutral-700 cursor-pointer">Loss Of Yards</button>
+                                    <button onClick={() => handleSavePlay('Safety')} className="py-3 sm:py-4 rounded-2xl md:rounded-3xl bg-red-600 hover:bg-red-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">Safety</button>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>              </div>
               </>
             )}
           </div>
-            )}
+        )}
 
         {/* WIZARD: CONVERSION */}
         {step === 'CONVERSION' && (
@@ -2436,17 +2504,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                 setIsConvPasserOpen(false);
                                 setIsConvReceiverOpen(true);
                               }}
-                              className={`p-2.5 rounded-xl text-sm font-bold text-left transition-all flex items-center justify-between gap-1.5 ${
-                                isSelected
-                                  ? 'bg-cyan-500 text-white shadow-md'
-                                  : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                              }`}
+                              className={`p-2.5 rounded-xl text-sm font-bold text-left transition-all flex items-center justify-between gap-1.5 ${isSelected
+                                ? 'bg-cyan-500 text-white shadow-md'
+                                : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 {pNum && (
-                                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                    isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                                  }`}>
+                                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                                    }`}>
                                     #{pNum}
                                   </span>
                                 )}
@@ -2516,17 +2582,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                 setConvReceiver(next);
                                 if (next) setIsConvReceiverOpen(false);
                               }}
-                              className={`p-2.5 rounded-xl text-sm font-bold text-left transition-all flex items-center justify-between gap-1.5 ${
-                                isSelected
-                                  ? 'bg-cyan-500 text-white shadow-md'
-                                  : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                              }`}
+                              className={`p-2.5 rounded-xl text-sm font-bold text-left transition-all flex items-center justify-between gap-1.5 ${isSelected
+                                ? 'bg-cyan-500 text-white shadow-md'
+                                : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 {pNum && (
-                                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${
-                                    isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                                  }`}>
+                                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                                    }`}>
                                     #{pNum}
                                   </span>
                                 )}
@@ -2587,11 +2651,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   return (
                     <div
                       key={p.id || idx}
-                      className={`p-3.5 rounded-2xl border transition-all ${
-                        isPenalty
-                          ? "bg-amber-950/20 border-amber-500/30"
-                          : "bg-neutral-900 border-white/5"
-                      }`}
+                      className={`p-3.5 rounded-2xl border transition-all ${isPenalty
+                        ? "bg-amber-950/20 border-amber-500/30"
+                        : "bg-neutral-900 border-white/5"
+                        }`}
                     >
                       <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 mb-1">
                         <span className="font-bold text-cyan-400">

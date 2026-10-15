@@ -12,6 +12,7 @@ import {
   SEED_DEMO_PLAYS,
 } from "./demoSeedData";
 import { getGeneratedSeasonPlays } from "./demoPlayGenerator";
+import { YORK_LIONS_MATCHES, YORK_LIONS_PLAYS, YORK_LIONS_PLAYERS, YORK_LIONS_TEAM } from "./yorkTeamData";
 
 export type { DemoTeam, DemoPlayer, DemoMatch, DemoPlay };
 export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS, getGeneratedSeasonPlays };
@@ -74,7 +75,8 @@ export const isDemoMatch = (matchId?: string | null, leagueId?: string | null): 
   if (
     matchId.startsWith("match_demo_") ||
     matchId.startsWith("match_w") ||
-    matchId.startsWith("match_playoff_")
+    matchId.startsWith("match_playoff_") ||
+    matchId.startsWith("match_york_")
   ) {
     return true;
   }
@@ -294,14 +296,18 @@ export const deleteSandboxTeam = (id: string): void => {
 
 export const getSandboxPlayers = (): DemoPlayer[] => {
   initDemoSandbox();
-  if (typeof window === "undefined") return SEED_DEMO_PLAYERS;
+  const baseline = [...SEED_DEMO_PLAYERS, ...YORK_LIONS_PLAYERS];
+  if (typeof window === "undefined") return baseline;
   const raw = sessionStorage.getItem(KEY_PLAYERS);
   if (raw) {
     try {
-      return JSON.parse(raw);
+      const stored = JSON.parse(raw);
+      const storedIds = new Set(stored.map((p: any) => p.id));
+      const missingYork = YORK_LIONS_PLAYERS.filter((yp) => !storedIds.has(yp.id));
+      return [...stored, ...missingYork];
     } catch {}
   }
-  return SEED_DEMO_PLAYERS;
+  return baseline;
 };
 
 export const addSandboxPlayer = (player: Partial<DemoPlayer>): DemoPlayer => {
@@ -383,6 +389,10 @@ export const getSandboxMatches = (): DemoMatch[] => {
 };
 
 export const getSandboxMatch = (id: string): DemoMatch | undefined => {
+  if (id.startsWith("match_york_")) {
+    const ym = YORK_LIONS_MATCHES.find((m) => m.id === id);
+    if (ym) return ym;
+  }
   const matches = getSandboxMatches();
   const canonicalId = id === "match_demo_1" ? "match_w16_11" : id === "match_demo_3" ? "match_w16_12" : id;
   const m = matches.find((match) => match.id === canonicalId || match.id === id);
@@ -478,8 +488,12 @@ export const clearSandboxMatches = (): void => {
 
 export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
   initDemoSandbox();
+  if (matchId && matchId.startsWith("match_york_")) {
+    const yPlays = YORK_LIONS_PLAYS.filter((p) => p.matchId === matchId);
+    if (yPlays.length > 0) return yPlays;
+  }
   const baselineSeasonPlays = getGeneratedSeasonPlays();
-  const combinedBaseline = [...baselineSeasonPlays, ...SEED_DEMO_PLAYS];
+  const combinedBaseline = [...baselineSeasonPlays, ...SEED_DEMO_PLAYS, ...YORK_LIONS_PLAYS];
 
   if (typeof window === "undefined") {
     if (matchId) {

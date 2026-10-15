@@ -43,7 +43,7 @@ const leagueDoc = {
     timeoutDurationSeconds: 60,
     timeoutsResetPerPeriod: true,
     minRosterSize: 5,
-    maxRosterSize: 15,
+    maxRosterSize: 30,
     downsPerSeries: 4,
     rushLineDistance: 7,
     playClockSeconds: 30,

@@ -27,6 +27,9 @@ import {
   applyCustomRoutePreset,
   generateRoutePreset,
   generateRoutePresetDetails,
+  playerHasMotion,
+  getPlayerMotionPath,
+  getPlayerRouteOrigin,
   FLAG_PLAYERS_PER_SIDE,
   checkLegalPosition,
   clampLegalPosition,
@@ -96,6 +99,43 @@ const PRIMARY_FLAG_ROUTES = [
   { name: "Orbit Motion", short: "Orbit Motion" },
 ];
 
+function interpolatePointsAlongPath(points: RoutePoint[], progress: number): { x: number; y: number } {
+  if (points.length === 0) return { x: 50, y: 50 };
+  if (points.length === 1 || progress <= 0) return { x: points[0].x, y: points[0].y };
+  if (progress >= 1) return { x: points[points.length - 1].x, y: points[points.length - 1].y };
+
+  const dists: number[] = [];
+  let totalDist = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const dx = points[i + 1].x - points[i].x;
+    const dy = points[i + 1].y - points[i].y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    dists.push(d);
+    totalDist += d;
+  }
+
+  if (totalDist === 0) return { x: points[0].x, y: points[0].y };
+
+  const targetDist = progress * totalDist;
+  let accumulated = 0;
+
+  for (let i = 0; i < dists.length; i++) {
+    const segDist = dists[i];
+    if (accumulated + segDist >= targetDist || i === dists.length - 1) {
+      const segProgress = segDist > 0 ? (targetDist - accumulated) / segDist : 0;
+      const currentP = points[i];
+      const nextP = points[i + 1];
+      return {
+        x: currentP.x + (nextP.x - currentP.x) * Math.min(1, Math.max(0, segProgress)),
+        y: currentP.y + (nextP.y - currentP.y) * Math.min(1, Math.max(0, segProgress)),
+      };
+    }
+    accumulated += segDist;
+  }
+
+  return points[points.length - 1];
+}
+
 interface PlayCanvasProps {
   play: PlayDiagram;
   onChange: (updatedPlay: PlayDiagram) => void;
@@ -121,6 +161,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     cursorStartX: number;
     cursorStartY: number;
     initialRoute: RoutePoint[];
+    initialMotionPath: RoutePoint[];
   } | null>(null);
 
   const dragWaypointRef = useRef<{
@@ -128,6 +169,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     startY: number;
     cursorStartX: number;
     cursorStartY: number;
+    isMotionWp?: boolean;
   } | null>(null);
 
   const dragZoneRef = useRef<{
@@ -267,11 +309,17 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       setSelectedPlayerId(targetPlayer.id);
     }
 
-    const newRoute = applyCustomRoutePreset(preset, targetPlayer.x, targetPlayer.y);
+    const origin = getPlayerRouteOrigin(targetPlayer);
+    const hasMotion = playerHasMotion(targetPlayer);
+    const motionPts = hasMotion ? getPlayerMotionPath(targetPlayer) : null;
+    const newRoute = applyCustomRoutePreset(preset, origin.x, origin.y);
     const updated = play.players.map((p) =>
       p.id === targetPlayer.id
         ? {
             ...p,
+            hasMotion,
+            motionPath: motionPts || undefined,
+            motionName: targetPlayer.motionName || (hasMotion ? "Jet Motion" : undefined),
             route: newRoute,
             quickRouteName: preset.name,
             routeType: "pass" as const,
@@ -540,6 +588,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       cursorStartX: coords.x,
       cursorStartY: coords.y,
       initialRoute: player.route ? player.route.map((pt) => ({ ...pt })) : [],
+      initialMotionPath: player.motionPath ? player.motionPath.map((pt) => ({ ...pt })) : [],
     };
 
     // Attach pointer capture to SVG root so fast mouse movement never loses focus
@@ -550,13 +599,20 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     }
   };
 
-  const handlePointerDownWaypoint = (e: React.PointerEvent, playerId: string, wpIndex: number) => {
+  const handlePointerDownWaypoint = (
+    e: React.PointerEvent,
+    playerId: string,
+    wpIndex: number,
+    isMotionWp = false
+  ) => {
     e.stopPropagation();
     if (readOnly) return;
     const coords = getSvgCoordinates(e);
     if (!coords) return;
     const player = play.players.find((p) => p.id === playerId);
-    const wp = player?.route?.[wpIndex];
+    const wp = isMotionWp
+      ? player?.motionPath?.[wpIndex]
+      : player?.route?.[wpIndex];
     if (!wp) return;
 
     setSelectedPlayerId(playerId);
@@ -568,6 +624,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       startY: wp.y,
       cursorStartX: coords.x,
       cursorStartY: coords.y,
+      isMotionWp,
     };
 
     if (svgRef.current) {
@@ -611,7 +668,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
     // Dragging Player Starting Node
     if (draggedPlayerId && draggedWaypointIndex === null && dragStartRef.current) {
-      const { playerStartX, playerStartY, cursorStartX, cursorStartY, initialRoute } = dragStartRef.current;
+      const { playerStartX, playerStartY, cursorStartX, cursorStartY, initialRoute, initialMotionPath } = dragStartRef.current;
       const player = play.players.find((p) => p.id === draggedPlayerId);
       if (!player) return;
 
@@ -624,7 +681,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       // Defense CANNOT cross LOS into backfield (y <= losY - 1). Rusher is at least 7 yds back (y <= rushY).
       const clamped = clampLegalPosition(player, { x: rawTargetX, y: rawTargetY }, losY);
 
-      // 3. Translate initial route relative to player displacement
+      // 3. Translate initial route & motion path relative to player displacement
       const deltaX = clamped.x - playerStartX;
       const deltaY = clamped.y - playerStartY;
 
@@ -632,6 +689,13 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
         x: Math.max(4, Math.min(96, Math.round((pt.x + deltaX) * 10) / 10)),
         y: Math.max(4, Math.min(96, Math.round((pt.y + deltaY) * 10) / 10)),
       }));
+
+      let updatedMotionPath = initialMotionPath?.length
+        ? initialMotionPath.map((pt) => ({
+            x: Math.max(4, Math.min(96, Math.round((pt.x + deltaX) * 10) / 10)),
+            y: Math.max(4, Math.min(96, Math.round((pt.y + deltaY) * 10) / 10)),
+          }))
+        : undefined;
 
       const isMovingQb =
         player.side === "offense" &&
@@ -650,7 +714,13 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
       const updatedPlayers = play.players.map((p) => {
         if (p.id === draggedPlayerId) {
-          return { ...p, x: clamped.x, y: clamped.y, route: updatedRoute };
+          return {
+            ...p,
+            x: clamped.x,
+            y: clamped.y,
+            route: updatedRoute,
+            ...(updatedMotionPath !== undefined ? { motionPath: updatedMotionPath } : {}),
+          };
         }
         if (isMovingQb && p.coverageType === "rush" && p.route && p.route.length >= 2) {
           const nextRoute = [...p.route];
@@ -663,9 +733,9 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       return;
     }
 
-    // Dragging specific waypoint along route
+    // Dragging specific waypoint along route or motion path
     if (draggedPlayerId && draggedWaypointIndex !== null && dragWaypointRef.current) {
-      const { startX, startY, cursorStartX, cursorStartY } = dragWaypointRef.current;
+      const { startX, startY, cursorStartX, cursorStartY, isMotionWp } = dragWaypointRef.current;
       const rawX = startX + (coords.x - cursorStartX);
       const rawY = startY + (coords.y - cursorStartY);
       const clampedPt = {
@@ -674,10 +744,16 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       };
 
       const updatedPlayers = play.players.map((p) => {
-        if (p.id === draggedPlayerId && p.route) {
-          const newRoute = [...p.route];
-          newRoute[draggedWaypointIndex] = clampedPt;
-          return { ...p, route: newRoute };
+        if (p.id === draggedPlayerId) {
+          if (isMotionWp && p.motionPath) {
+            const newMotion = [...p.motionPath];
+            newMotion[draggedWaypointIndex] = clampedPt;
+            return { ...p, motionPath: newMotion };
+          } else if (!isMotionWp && p.route) {
+            const newRoute = [...p.route];
+            newRoute[draggedWaypointIndex] = clampedPt;
+            return { ...p, route: newRoute };
+          }
         }
         return p;
       });
@@ -730,9 +806,20 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       const currentRoute = selectedPlayer.route ? [...selectedPlayer.route] : [];
       currentRoute.push(coords);
 
+      const hasMotion = playerHasMotion(selectedPlayer);
+      const motionPts = hasMotion ? getPlayerMotionPath(selectedPlayer) : null;
+
       const updatedPlayers = play.players.map((p) => {
         if (p.id === selectedPlayer.id) {
-          return { ...p, route: currentRoute, quickRouteName: "Custom Route" };
+          return {
+            ...p,
+            hasMotion,
+            motionPath: motionPts || undefined,
+            motionName: selectedPlayer.motionName || (hasMotion ? "Jet Motion" : undefined),
+            route: currentRoute,
+            quickRouteName: "Custom Route",
+            routeType: "pass" as const,
+          };
         }
         return p;
       });
@@ -758,30 +845,93 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     }
 
     const currentLosY = play.losY ?? DEFAULT_LOS_Y;
-    const pts = generateRoutePreset(presetName, targetPlayer.x, targetPlayer.y, currentLosY);
     const isMotionPreset =
       presetName.toLowerCase().includes("motion") ||
       presetName.toLowerCase().includes("shift");
-    const targetRouteType: RouteType = isMotionPreset ? "motion" : "pass";
+
+    if (isMotionPreset) {
+      // User selected a motion preset (e.g. Jet Motion, Orbit Motion, Shift, Return Motion)
+      const motionPts = generateRoutePreset(presetName, targetPlayer.x, targetPlayer.y, currentLosY);
+      const motionEnd = motionPts[motionPts.length - 1];
+
+      // Does targetPlayer already have a post-snap route (distinct from pure motion)?
+      const hadPostSnapRoute = Boolean(
+        targetPlayer.route &&
+        targetPlayer.route.length > 0 &&
+        targetPlayer.routeType !== "motion"
+      );
+
+      let updatedPostSnapRoute = targetPlayer.route;
+      if (hadPostSnapRoute && targetPlayer.quickRouteName) {
+        // Re-anchor existing post-snap route preset from the new motion finish point
+        updatedPostSnapRoute = generateRoutePreset(targetPlayer.quickRouteName, motionEnd.x, motionEnd.y, currentLosY);
+      }
+
+      const updatedPlayers = play.players.map((p) => {
+        if (p.id === targetPlayer.id) {
+          if (hadPostSnapRoute) {
+            return {
+              ...p,
+              hasMotion: true,
+              motionPath: motionPts,
+              motionName: presetName,
+              route: updatedPostSnapRoute,
+              routeType: "pass" as RouteType,
+              coverageType: undefined,
+              zoneId: undefined,
+              manTargetId: undefined,
+            };
+          } else {
+            return {
+              ...p,
+              hasMotion: true,
+              motionPath: motionPts,
+              motionName: presetName,
+              route: motionPts,
+              quickRouteName: presetName,
+              routeType: "motion" as RouteType,
+              coverageType: undefined,
+              zoneId: undefined,
+              manTargetId: undefined,
+            };
+          }
+        }
+        // IFAF & Flag Rule: Only 1 player can be in pre-snap motion simultaneously
+        if (playerHasMotion(p) && p.side === "offense") {
+          return {
+            ...p,
+            hasMotion: false,
+            motionPath: undefined,
+            motionName: undefined,
+            routeType: (p.routeType === "motion" ? "pass" : p.routeType) as RouteType,
+          };
+        }
+        return p;
+      });
+      onChange({ ...play, players: updatedPlayers });
+      return;
+    }
+
+    // Standard Route Preset (Slant, Out, Dig, Post, Corner, Go, Wheel, Flat, Curl, etc.)
+    const hasMotion = playerHasMotion(targetPlayer);
+    const motionPts = hasMotion ? getPlayerMotionPath(targetPlayer) : null;
+    const origin = motionPts && motionPts.length > 0 ? motionPts[motionPts.length - 1] : { x: targetPlayer.x, y: targetPlayer.y };
+
+    const pts = generateRoutePreset(presetName, origin.x, origin.y, currentLosY);
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === targetPlayer.id) {
         return {
           ...p,
+          hasMotion: hasMotion,
+          motionPath: motionPts || undefined,
+          motionName: targetPlayer.motionName || (hasMotion ? (targetPlayer.quickRouteName?.includes("Motion") ? targetPlayer.quickRouteName : "Jet Motion") : undefined),
           route: pts,
           quickRouteName: presetName,
-          routeType: targetRouteType,
+          routeType: "pass" as RouteType,
           coverageType: undefined,
           zoneId: undefined,
           manTargetId: undefined,
-        };
-      }
-      // IFAF & Flag Rule: Only 1 player can be in pre-snap motion simultaneously
-      if (isMotionPreset && p.routeType === "motion" && p.side === "offense") {
-        return {
-          ...p,
-          routeType: "pass" as RouteType,
-          quickRouteName: p.quickRouteName?.replace(" (Motion)", ""),
         };
       }
       return p;
@@ -802,53 +952,112 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
       setSelectedPlayerId(targetPlayer.id);
     }
 
-    const isCurrentlyMotion = targetPlayer.routeType === "motion";
-    const nextRouteType: RouteType = isCurrentlyMotion ? "pass" : "motion";
-
-    let updatedRoute = targetPlayer.route ? [...targetPlayer.route] : [];
-    let quickName = targetPlayer.quickRouteName;
+    const currentLosY = play.losY ?? DEFAULT_LOS_Y;
+    const isCurrentlyMotion = playerHasMotion(targetPlayer);
 
     if (!isCurrentlyMotion) {
-      // Toggling motion ON: if no route exists, generate a smart Jet Motion path across the backfield
-      if (updatedRoute.length === 0) {
-        const currentLosY = play.losY ?? DEFAULT_LOS_Y;
-        updatedRoute = generateRoutePreset("Jet Motion", targetPlayer.x, targetPlayer.y, currentLosY);
-        quickName = "Jet Motion";
-      } else if (!quickName || !quickName.toLowerCase().includes("motion")) {
-        quickName = quickName ? `${quickName} (Motion)` : "Custom Motion";
-      }
-    } else {
-      // Toggling motion OFF: clean up label
-      if (quickName?.includes(" (Motion)")) {
-        quickName = quickName.replace(" (Motion)", "");
-      } else if (quickName === "Jet Motion" || quickName === "Orbit Motion" || quickName === "Custom Motion") {
-        quickName = "Custom Route";
-      }
-    }
+      // Toggling motion ON:
+      const motionPts = generateRoutePreset("Jet Motion", targetPlayer.x, targetPlayer.y, currentLosY);
+      const motionEnd = motionPts[motionPts.length - 1];
 
-    const updatedPlayers = play.players.map((p) => {
-      if (p.id === targetPlayer.id) {
-        return {
-          ...p,
-          routeType: nextRouteType,
-          route: updatedRoute,
-          quickRouteName: quickName,
-          coverageType: undefined,
-          zoneId: undefined,
-          manTargetId: undefined,
-        };
+      const hadPostSnapRoute = Boolean(
+        targetPlayer.route &&
+        targetPlayer.route.length > 0 &&
+        targetPlayer.routeType !== "motion"
+      );
+
+      let updatedRoute = motionPts;
+      let nextRouteType: RouteType = "motion";
+      let nextQuickName = "Jet Motion";
+
+      if (hadPostSnapRoute) {
+        nextRouteType = "pass";
+        nextQuickName = targetPlayer.quickRouteName || "Custom Route";
+        if (targetPlayer.quickRouteName && targetPlayer.quickRouteName !== "Custom Route") {
+          updatedRoute = generateRoutePreset(targetPlayer.quickRouteName, motionEnd.x, motionEnd.y, currentLosY);
+        } else if (targetPlayer.route) {
+          const deltaX = motionEnd.x - targetPlayer.x;
+          const deltaY = motionEnd.y - targetPlayer.y;
+          updatedRoute = targetPlayer.route.map((pt) => ({
+            x: Math.max(4, Math.min(96, Math.round((pt.x + deltaX) * 10) / 10)),
+            y: Math.max(4, Math.min(96, Math.round((pt.y + deltaY) * 10) / 10)),
+          }));
+        }
       }
-      // Ensure single motion player adherence
-      if (nextRouteType === "motion" && p.routeType === "motion" && p.side === "offense") {
-        return {
-          ...p,
-          routeType: "pass" as RouteType,
-          quickRouteName: p.quickRouteName?.replace(" (Motion)", ""),
-        };
+
+      const updatedPlayers = play.players.map((p) => {
+        if (p.id === targetPlayer.id) {
+          return {
+            ...p,
+            hasMotion: true,
+            motionPath: motionPts,
+            motionName: "Jet Motion",
+            route: updatedRoute,
+            quickRouteName: nextQuickName,
+            routeType: nextRouteType,
+            coverageType: undefined,
+            zoneId: undefined,
+            manTargetId: undefined,
+          };
+        }
+        // Ensure single motion player adherence
+        if (playerHasMotion(p) && p.side === "offense") {
+          return {
+            ...p,
+            hasMotion: false,
+            motionPath: undefined,
+            motionName: undefined,
+            routeType: (p.routeType === "motion" ? "pass" : p.routeType) as RouteType,
+          };
+        }
+        return p;
+      });
+      onChange({ ...play, players: updatedPlayers });
+    } else {
+      // Toggling motion OFF:
+      const motionPts = getPlayerMotionPath(targetPlayer);
+      const motionEnd = motionPts && motionPts.length > 0 ? motionPts[motionPts.length - 1] : { x: targetPlayer.x, y: targetPlayer.y };
+
+      const hadPostSnapRoute = Boolean(
+        targetPlayer.route &&
+        targetPlayer.route.length > 0 &&
+        targetPlayer.routeType !== "motion"
+      );
+
+      let updatedRoute: RoutePoint[] = [];
+      let updatedQuickName: string | undefined = undefined;
+
+      if (hadPostSnapRoute) {
+        if (targetPlayer.quickRouteName && targetPlayer.quickRouteName !== "Custom Route") {
+          updatedRoute = generateRoutePreset(targetPlayer.quickRouteName, targetPlayer.x, targetPlayer.y, currentLosY);
+          updatedQuickName = targetPlayer.quickRouteName;
+        } else if (targetPlayer.route) {
+          const deltaX = targetPlayer.x - motionEnd.x;
+          const deltaY = targetPlayer.y - motionEnd.y;
+          updatedRoute = targetPlayer.route.map((pt) => ({
+            x: Math.max(4, Math.min(96, Math.round((pt.x + deltaX) * 10) / 10)),
+            y: Math.max(4, Math.min(96, Math.round((pt.y + deltaY) * 10) / 10)),
+          }));
+          updatedQuickName = "Custom Route";
+        }
       }
-      return p;
-    });
-    onChange({ ...play, players: updatedPlayers });
+
+      const updatedPlayers = play.players.map((p) => {
+        if (p.id === targetPlayer.id) {
+          return {
+            ...p,
+            hasMotion: false,
+            motionPath: undefined,
+            motionName: undefined,
+            route: updatedRoute,
+            quickRouteName: updatedQuickName,
+            routeType: "pass" as RouteType,
+          };
+        }
+        return p;
+      });
+      onChange({ ...play, players: updatedPlayers });
+    }
   };
 
   // Clear route on selected player
@@ -856,7 +1065,18 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
     if (readOnly || !selectedPlayer) return;
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return { ...p, route: [], quickRouteName: undefined, coverageType: undefined, manTargetId: undefined, zoneId: undefined };
+        return {
+          ...p,
+          route: [],
+          quickRouteName: undefined,
+          coverageType: undefined,
+          manTargetId: undefined,
+          zoneId: undefined,
+          hasMotion: false,
+          motionPath: undefined,
+          motionName: undefined,
+          routeType: (p.routeType === "motion" ? "pass" : p.routeType) as RouteType,
+        };
       }
       return p;
     });
@@ -1119,80 +1339,73 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
   // Calculate animated position of player given progress (0 to 1)
   const getAnimatedPlayerPos = (player: PlayerNode): { x: number; y: number } => {
-    const hasAnyMotion = play.players.some(
-      (p) => p.side === "offense" && p.routeType === "motion" && p.route && p.route.length > 0
+    const isOffense = player.side === "offense";
+    const hasMotion = isOffense && playerHasMotion(player);
+    const motionPts = hasMotion ? getPlayerMotionPath(player) : null;
+    const hasPostSnapRoute = Boolean(
+      player.route &&
+      player.route.length > 0 &&
+      (player.routeType !== "motion" || !motionPts)
     );
 
-    if (progress <= 0 || !player.route || player.route.length === 0) {
-      // QB subtle pocket drop after the snap
-      if (animating && player.label === "QB") {
-        const qbProg = hasAnyMotion ? Math.max(0, (progress - 0.28) / 0.72) : progress;
-        return { x: player.x, y: player.y + qbProg * 2.5 };
+    const hasAnyMotionInPlay = play.players.some((p) => p.side === "offense" && playerHasMotion(p));
+
+    if (hasAnyMotionInPlay) {
+      if (progress <= 0.35) {
+        // Pre-snap phase: motion player runs their motion path; all others hold alignment
+        if (hasMotion && motionPts && motionPts.length > 0) {
+          const fullMotionPoints = [{ x: player.x, y: player.y }, ...motionPts];
+          const motionProg = Math.min(1, Math.max(0, progress / 0.35));
+          return interpolatePointsAlongPath(fullMotionPoints, motionProg);
+        }
+        return { x: player.x, y: player.y };
       }
+
+      // Post-snap phase: progress > 0.35
+      const postSnapProg = Math.min(1, Math.max(0, (progress - 0.35) / 0.65));
+
+      if (hasPostSnapRoute && player.route && player.route.length > 0) {
+        const origin = motionPts && motionPts.length > 0 ? motionPts[motionPts.length - 1] : { x: player.x, y: player.y };
+        const fullRoutePoints = [origin, ...player.route];
+        return interpolatePointsAlongPath(fullRoutePoints, postSnapProg);
+      }
+
+      if (hasMotion && motionPts && motionPts.length > 0) {
+        return motionPts[motionPts.length - 1];
+      }
+
+      if (animating && player.label === "QB") {
+        return { x: player.x, y: player.y + postSnapProg * 2.5 };
+      }
+
       return { x: player.x, y: player.y };
     }
 
-    // Build complete waypoint path including start point
-    const points: RoutePoint[] = [{ x: player.x, y: player.y }, ...player.route];
-    if (points.length < 2) return { x: player.x, y: player.y };
-
-    // Calculate total path distance
-    const dists: number[] = [];
-    let totalDist = 0;
-    for (let i = 0; i < points.length - 1; i++) {
-      const dx = points[i + 1].x - points[i].x;
-      const dy = points[i + 1].y - points[i].y;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      dists.push(d);
-      totalDist += d;
+    // Play without motion:
+    if (hasPostSnapRoute && player.route && player.route.length > 0) {
+      const fullRoutePoints = [{ x: player.x, y: player.y }, ...player.route];
+      return interpolatePointsAlongPath(fullRoutePoints, progress);
     }
 
-    if (totalDist === 0) return { x: player.x, y: player.y };
-
-    // When a play features pre-snap motion:
-    // Motion player sweeps across between 0.0 and 0.35 of the timeline.
-    // Post-snap routes hold alignment until the snap at 0.28, then run downfield.
-    let effectiveProgress = progress;
-    if (hasAnyMotion) {
-      if (player.routeType === "motion") {
-        effectiveProgress = Math.min(1, progress / 0.35);
-      } else {
-        effectiveProgress = Math.max(0, (progress - 0.28) / 0.72);
-      }
+    if (animating && player.label === "QB") {
+      return { x: player.x, y: player.y + progress * 2.5 };
     }
 
-    const targetDist = effectiveProgress * totalDist;
-    let accumulated = 0;
-
-    for (let i = 0; i < dists.length; i++) {
-      const segDist = dists[i];
-      if (accumulated + segDist >= targetDist || i === dists.length - 1) {
-        const segProgress = segDist > 0 ? (targetDist - accumulated) / segDist : 0;
-        const currentP = points[i];
-        const nextP = points[i + 1];
-        return {
-          x: currentP.x + (nextP.x - currentP.x) * Math.min(1, Math.max(0, segProgress)),
-          y: currentP.y + (nextP.y - currentP.y) * Math.min(1, Math.max(0, segProgress)),
-        };
-      }
-      accumulated += segDist;
-    }
-
-    return points[points.length - 1];
+    return { x: player.x, y: player.y };
   };
 
   return (
-    <div className="flex flex-col gap-4 w-full max-w-full overflow-hidden font-sans">
+    <div className="flex flex-col lg:flex-row gap-2.5 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0">
       {/* ============================================================== */}
-      {/* MAIN PLAYMAKER CANVAS & FIELD SURFACE                          */}
+      {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
       {/* ============================================================== */}
-      <div className="w-full max-w-full flex flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
+      <div className="flex-1 min-w-0 flex flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative h-full">
         {/* ============================================================== */}
         {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
         {/* ============================================================== */}
-        <div className="p-2.5 sm:p-4 bg-gradient-to-r from-[#0B0F19] via-[#0D1220] to-[#0B0F19] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0">
+        <div className="p-2 sm:p-2.5 bg-gradient-to-r from-[#0B0F19] via-[#0D1220] to-[#0B0F19] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 shrink-0">
           {/* Play Name Editable Field */}
-          <div className="flex items-center gap-2 flex-1 min-w-[140px] sm:min-w-[200px] max-w-sm">
+          <div className="flex items-center gap-1.5 flex-1 min-w-[130px] sm:min-w-[180px] max-w-sm">
             <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider">Play:</span>
             <input
               type="text"
@@ -1200,14 +1413,14 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
               value={play.name}
               onChange={(e) => onChange({ ...play, name: e.target.value })}
               placeholder="Play Name..."
-              className="w-full text-sm sm:text-base font-black text-white uppercase tracking-wider bg-black/40 hover:bg-black/60 focus:bg-black/80 focus:border-cyan-500 rounded-xl px-3 py-1.5 border border-white/10 outline-none transition-all shadow-inner"
+              className="w-full text-xs sm:text-sm font-black text-white uppercase tracking-wider bg-black/40 hover:bg-black/60 focus:bg-black/80 focus:border-cyan-500 rounded-xl px-2.5 py-1 border border-white/10 outline-none transition-all shadow-inner"
             />
           </div>
 
           {/* Formation Dropdown & Gameday Situation Dropdown */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {/* Formation Dropdown */}
-            <div className="flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 shadow-inner">
+            <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-xl px-2 py-1 shadow-inner">
               <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono">Formation:</span>
               <select
                 disabled={readOnly}
@@ -1226,7 +1439,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                     onChange({ ...play, formation: val, players: updated });
                   }
                 }}
-                className="bg-transparent text-xs font-black text-cyan-300 outline-none cursor-pointer max-w-[170px] truncate"
+                className="bg-transparent text-xs font-black text-cyan-300 outline-none cursor-pointer max-w-[150px] truncate"
               >
                 {playbookFormations.map((fName) => (
                   <option key={fName} value={fName} className="bg-[#0B0F19] text-white">
@@ -1242,7 +1455,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
             </div>
 
             {/* Gameday Situation Dropdown */}
-            <div className="flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 shadow-inner">
+            <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-xl px-2 py-1 shadow-inner">
               <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono">Situation:</span>
               <select
                 disabled={readOnly}
@@ -1262,7 +1475,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
             <button
               type="button"
               onClick={() => setIsPlayNotesModalOpen(true)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                 play.notes && play.notes.trim().length > 0
                   ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300"
                   : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
@@ -1270,14 +1483,14 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
               title="Open general coaching notes & scheme progression"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Play Notes</span>
+              <span className="hidden xl:inline">Notes</span>
             </button>
 
             {/* Opposing Side Toggle */}
             <button
               type="button"
               onClick={() => setShowOpposingSide((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                 showOpposingSide
                   ? "bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm"
                   : "bg-white/5 border-white/10 text-neutral-400 hover:text-white hover:bg-white/10"
@@ -1294,13 +1507,13 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
             {/* Legal Alignment Status Badge */}
             {alignmentIssues.length === 0 ? (
-              <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+              <div className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Legal Alignment</span>
+                <span>Legal</span>
               </div>
             ) : (
               <div
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 text-xs font-bold cursor-pointer"
+                className="flex items-center gap-1 px-2 py-1 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 text-xs font-bold cursor-pointer"
                 title={alignmentIssues.map((i) => i.warning).join("\n")}
               >
                 <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-red-400" />
@@ -1310,71 +1523,10 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
           </div>
         </div>
 
-        {/* Animation Simulator Controller Bar */}
-        <div className="px-5 py-2.5 bg-black/60 border-b border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleToggleAnimate}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold uppercase tracking-wider text-xs transition-all ${
-                animating
-                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                  : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
-              }`}
-            >
-              {animating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              <span>{animating ? "Pause" : progress >= 1 ? "Replay" : "Play Action"}</span>
-            </button>
-
-            <button
-              onClick={handleResetAnimate}
-              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
-              title="Reset Timeline"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-1.5 ml-2">
-              <span className="text-[11px] font-mono text-neutral-500">Speed:</span>
-              {[0.5, 1, 1.5].map((spd) => (
-                <button
-                  key={spd}
-                  onClick={() => setAnimSpeed(spd)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
-                    animSpeed === spd
-                      ? "bg-white/20 text-white border border-white/20"
-                      : "text-neutral-500 hover:text-white"
-                  }`}
-                >
-                  {spd}x
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Timeline Scrubber */}
-          <div className="flex items-center gap-3 flex-1 max-w-xs ml-auto">
-            <span className="text-[10px] font-mono text-neutral-500 tabular-nums">
-              {(progress * 3.2).toFixed(1)}s
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={progress}
-              onChange={(e) => {
-                setAnimating(false);
-                setProgress(parseFloat(e.target.value));
-              }}
-              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-            />
-          </div>
-        </div>
-
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
-          className="relative flex-1 w-full aspect-[16/10] max-h-[440px] bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair"
+          className="relative flex-1 w-full aspect-[16/10] lg:aspect-auto bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair min-h-[250px]"
         >
           <svg
             ref={svgRef}
@@ -1693,44 +1845,62 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
             {/* ROUTE PATHS (WAYPOINTS, PASS RUSH BEND & ARROWHEADS)           */}
             {/* ============================================================== */}
             {visiblePlayers.map((player) => {
-              if (!player.route || player.route.length === 0) return null;
-
               const isSelected = selectedPlayerId === player.id;
-              const startX = (player.x / 100) * 1000;
-              const startY = (player.y / 100) * 700;
-
-              const isMotion = player.routeType === "motion";
+              const isOffense = player.side === "offense";
               const isRush = player.routeType === "rush" || player.coverageType === "rush";
 
-              // For Pass Rusher, lock end point onto the QB and waypoint 0 is the draggable bend point
-              const currentQb = play.players.find(
-                (p) => p.side === "offense" && (p.label === "QB" || p.role.toLowerCase().includes("qb"))
-              ) || { x: 50, y: losY + 9 };
+              const hasMotion = isOffense && playerHasMotion(player);
+              const motionPts = hasMotion ? getPlayerMotionPath(player) : null;
+              const hasPostSnapRoute = Boolean(
+                player.route &&
+                player.route.length > 0 &&
+                (player.routeType !== "motion" || !motionPts)
+              );
 
-              const bendWp = isRush
-                ? player.route[0] || { x: (player.x + currentQb.x) / 2, y: (player.y + currentQb.y) / 2 }
-                : null;
+              if (!motionPts && !hasPostSnapRoute) return null;
 
-              let pathStr = `M ${startX} ${startY}`;
-              if (isRush && bendWp) {
-                pathStr += ` L ${(bendWp.x / 100) * 1000} ${(bendWp.y / 100) * 700} L ${(currentQb.x / 100) * 1000} ${(currentQb.y / 100) * 700}`;
-              } else {
-                player.route.forEach((pt) => {
-                  pathStr += ` L ${(pt.x / 100) * 1000} ${(pt.y / 100) * 700}`;
+              const motionStart = { x: player.x, y: player.y };
+              const motionEnd = motionPts && motionPts.length > 0 ? motionPts[motionPts.length - 1] : motionStart;
+              const routeStart = motionPts && motionPts.length > 0 ? motionEnd : motionStart;
+
+              // Build motion path string if motion exists
+              let motionPathStr = "";
+              if (motionPts && motionPts.length > 0) {
+                motionPathStr = `M ${(motionStart.x / 100) * 1000} ${(motionStart.y / 100) * 700}`;
+                motionPts.forEach((pt) => {
+                  motionPathStr += ` L ${(pt.x / 100) * 1000} ${(pt.y / 100) * 700}`;
                 });
               }
 
-              const strokeColor = isMotion
-                ? "#F59E0B"
-                : isRush
+              // Build post-snap route path string if route exists
+              let routePathStr = "";
+              let bendWp: RoutePoint | null = null;
+              if (hasPostSnapRoute && player.route && player.route.length > 0) {
+                const currentQb = play.players.find(
+                  (p) => p.side === "offense" && (p.label === "QB" || p.role.toLowerCase().includes("qb"))
+                ) || { x: 50, y: losY + 9 };
+
+                bendWp = isRush
+                  ? player.route[0] || { x: (player.x + currentQb.x) / 2, y: (player.y + currentQb.y) / 2 }
+                  : null;
+
+                routePathStr = `M ${(routeStart.x / 100) * 1000} ${(routeStart.y / 100) * 700}`;
+                if (isRush && bendWp) {
+                  routePathStr += ` L ${(bendWp.x / 100) * 1000} ${(bendWp.y / 100) * 700} L ${(currentQb.x / 100) * 1000} ${(currentQb.y / 100) * 700}`;
+                } else {
+                  player.route.forEach((pt) => {
+                    routePathStr += ` L ${(pt.x / 100) * 1000} ${(pt.y / 100) * 700}`;
+                  });
+                }
+              }
+
+              const strokeColor = isRush
                 ? "#EF4444"
                 : player.side === "defense"
                 ? "#A855F7"
                 : "#3ca505";
 
-              const markerId = isMotion
-                ? "url(#arrow-motion)"
-                : isRush
+              const markerId = isRush
                 ? "url(#arrow-rush)"
                 : player.side === "defense"
                 ? "url(#arrow-defense)"
@@ -1738,111 +1908,166 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
 
               return (
                 <g key={`route-${player.id}`}>
-                  {/* Outer selection casing */}
-                  {isSelected && (
-                    <path
-                      d={pathStr}
-                      fill="none"
-                      stroke="#FFFFFF"
-                      strokeWidth="8"
-                      strokeOpacity="0.25"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  )}
-
-                  {/* Main Route Line */}
-                  <path
-                    d={pathStr}
-                    fill="none"
-                    stroke={strokeColor}
-                    strokeWidth={isSelected ? (isRush ? 4.5 : 4) : 3}
-                    strokeDasharray={isMotion ? "6 5" : undefined}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    markerEnd={markerId}
-                    className={isRush && !readOnly ? "cursor-move" : undefined}
-                    onPointerDown={(e) => {
-                      if (isRush && !readOnly) {
-                        handlePointerDownWaypoint(e, player.id, 0);
-                      }
-                    }}
-                  />
-
-                  {/* Rusher Custom Draggable Bend Handle */}
-                  {!readOnly && isSelected && isRush && bendWp && (
-                    <g
-                      className="cursor-move"
-                      onPointerDown={(e) => handlePointerDownWaypoint(e, player.id, 0)}
-                    >
-                      <circle
-                        cx={(bendWp.x / 100) * 1000}
-                        cy={(bendWp.y / 100) * 700}
-                        r="16"
-                        fill="#F59E0B"
-                        fillOpacity="0.25"
-                        className="animate-pulse"
-                      />
-                      <circle
-                        cx={(bendWp.x / 100) * 1000}
-                        cy={(bendWp.y / 100) * 700}
-                        r="10"
-                        fill="#EF4444"
-                        stroke="#FFFFFF"
-                        strokeWidth="2.5"
-                        className="drop-shadow-lg"
-                      />
-                      <circle
-                        cx={(bendWp.x / 100) * 1000}
-                        cy={(bendWp.y / 100) * 700}
-                        r="3.5"
-                        fill="#FFFFFF"
-                      />
-                      <g transform={`translate(${(bendWp.x / 100) * 1000}, ${(bendWp.y / 100) * 700 - 20})`}>
-                        <rect
-                          x="-38"
-                          y="-9"
-                          width="76"
-                          height="18"
-                          rx="9"
-                          fill="#0B0F19"
-                          stroke="#EF4444"
-                          strokeWidth="1.5"
-                          className="drop-shadow-md"
+                  {/* 1. PRE-SNAP MOTION PATH (if motion active) */}
+                  {motionPathStr && (
+                    <g>
+                      {isSelected && (
+                        <path
+                          d={motionPathStr}
+                          fill="none"
+                          stroke="#F59E0B"
+                          strokeWidth="7"
+                          strokeOpacity="0.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         />
-                        <text
-                          x="0"
-                          y="3.5"
-                          fill="#FCA5A5"
-                          fontSize="8.5"
-                          fontWeight="900"
-                          textAnchor="middle"
-                          letterSpacing="0.5"
-                          className="select-none pointer-events-none"
-                        >
-                          BEND RUSH
-                        </text>
-                      </g>
+                      )}
+                      <path
+                        d={motionPathStr}
+                        fill="none"
+                        stroke="#F59E0B"
+                        strokeWidth={isSelected ? 3.5 : 2.5}
+                        strokeDasharray="6 5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        markerEnd={hasPostSnapRoute ? undefined : "url(#arrow-motion)"}
+                      />
+                      {/* Interactive Handles for motion path */}
+                      {!readOnly && isSelected && motionPts?.map((pt, wpIdx) => (
+                        <circle
+                          key={`motion-wp-${wpIdx}`}
+                          cx={(pt.x / 100) * 1000}
+                          cy={(pt.y / 100) * 700}
+                          r="6"
+                          fill="#0B0F19"
+                          stroke="#F59E0B"
+                          strokeWidth="2"
+                          className="cursor-pointer"
+                          onPointerDown={(e) => handlePointerDownWaypoint(e, player.id, wpIdx, true)}
+                        />
+                      ))}
+                      {/* Snap Junction Indicator if both motion and route exist */}
+                      {hasPostSnapRoute && (
+                        <g transform={`translate(${(motionEnd.x / 100) * 1000}, ${(motionEnd.y / 100) * 700})`}>
+                          <circle r="6" fill="#F59E0B" stroke="#0B0F19" strokeWidth="1.5" />
+                          <circle r="2.5" fill="#FFFFFF" />
+                          <g transform="translate(0, -11)">
+                            <rect x="-16" y="-6" width="32" height="12" rx="6" fill="#0B0F19" stroke="#F59E0B" strokeWidth="1" />
+                            <text x="0" y="3" fill="#FBBF24" fontSize="6.5" fontWeight="900" textAnchor="middle" className="select-none pointer-events-none">
+                              SNAP
+                            </text>
+                          </g>
+                        </g>
+                      )}
                     </g>
                   )}
 
-                  {/* Standard Interactive Waypoint Handles */}
-                  {!readOnly &&
-                    isSelected &&
-                    !isRush &&
-                    player.route.map((pt, wpIdx) => (
-                      <circle
-                        key={wpIdx}
-                        cx={(pt.x / 100) * 1000}
-                        cy={(pt.y / 100) * 700}
-                        r="7"
-                        fill="#0B0F19"
+                  {/* 2. POST-SNAP ROUTE PATH */}
+                  {routePathStr && (
+                    <g>
+                      {isSelected && (
+                        <path
+                          d={routePathStr}
+                          fill="none"
+                          stroke="#FFFFFF"
+                          strokeWidth="8"
+                          strokeOpacity="0.25"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+                      <path
+                        d={routePathStr}
+                        fill="none"
                         stroke={strokeColor}
-                        strokeWidth="2.5"
-                        className="cursor-pointer"
-                        onPointerDown={(e) => handlePointerDownWaypoint(e, player.id, wpIdx)}
+                        strokeWidth={isSelected ? (isRush ? 4.5 : 4) : 3}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        markerEnd={markerId}
+                        className={isRush && !readOnly ? "cursor-move" : undefined}
+                        onPointerDown={(e) => {
+                          if (isRush && !readOnly) {
+                            handlePointerDownWaypoint(e, player.id, 0);
+                          }
+                        }}
                       />
-                    ))}
+
+                      {/* Rusher Custom Draggable Bend Handle */}
+                      {!readOnly && isSelected && isRush && bendWp && (
+                        <g
+                          className="cursor-move"
+                          onPointerDown={(e) => handlePointerDownWaypoint(e, player.id, 0)}
+                        >
+                          <circle
+                            cx={(bendWp.x / 100) * 1000}
+                            cy={(bendWp.y / 100) * 700}
+                            r="16"
+                            fill="#F59E0B"
+                            fillOpacity="0.25"
+                            className="animate-pulse"
+                          />
+                          <circle
+                            cx={(bendWp.x / 100) * 1000}
+                            cy={(bendWp.y / 100) * 700}
+                            r="10"
+                            fill="#EF4444"
+                            stroke="#FFFFFF"
+                            strokeWidth="2.5"
+                            className="drop-shadow-lg"
+                          />
+                          <circle
+                            cx={(bendWp.x / 100) * 1000}
+                            cy={(bendWp.y / 100) * 700}
+                            r="3.5"
+                            fill="#FFFFFF"
+                          />
+                          <g transform={`translate(${(bendWp.x / 100) * 1000}, ${(bendWp.y / 100) * 700 - 20})`}>
+                            <rect
+                              x="-38"
+                              y="-9"
+                              width="76"
+                              height="18"
+                              rx="9"
+                              fill="#0B0F19"
+                              stroke="#EF4444"
+                              strokeWidth="1.5"
+                              className="drop-shadow-md"
+                            />
+                            <text
+                              x="0"
+                              y="3.5"
+                              fill="#FCA5A5"
+                              fontSize="8.5"
+                              fontWeight="900"
+                              textAnchor="middle"
+                              letterSpacing="0.5"
+                              className="select-none pointer-events-none"
+                            >
+                              BEND RUSH
+                            </text>
+                          </g>
+                        </g>
+                      )}
+
+                      {/* Standard Interactive Waypoint Handles */}
+                      {!readOnly &&
+                        isSelected &&
+                        !isRush &&
+                        player.route?.map((pt, wpIdx) => (
+                          <circle
+                            key={`route-wp-${wpIdx}`}
+                            cx={(pt.x / 100) * 1000}
+                            cy={(pt.y / 100) * 700}
+                            r="7"
+                            fill="#0B0F19"
+                            stroke={strokeColor}
+                            strokeWidth="2.5"
+                            className="cursor-pointer"
+                            onPointerDown={(e) => handlePointerDownWaypoint(e, player.id, wpIdx, false)}
+                          />
+                        ))}
+                    </g>
+                  )}
                 </g>
               );
             })}
@@ -1928,7 +2153,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                   />
 
                   {/* Pre-Snap Motion Halo Ring */}
-                  {isOffense && player.routeType === "motion" && (
+                  {isOffense && playerHasMotion(player) && (
                     <circle
                       cx={px}
                       cy={py}
@@ -1956,7 +2181,7 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                   </text>
 
                   {/* Pre-Snap Motion Mini Floating Badge */}
-                  {isOffense && player.routeType === "motion" && (
+                  {isOffense && playerHasMotion(player) && (
                     <g transform={`translate(${px}, ${py - 24})`}>
                       <rect
                         x="-24"
@@ -2060,10 +2285,73 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
           </div>
         </div>
 
-        {/* ============================================================== */}
-        {/* IN-FRAME ROUTE PRESETS & QUICK ASSIGNMENT DOCK (ALWAYS VISIBLE)*/}
-        {/* ============================================================== */}
-        <div className="bg-[#0A0E17] border-t border-white/10 p-3 sm:p-3.5 shrink-0 space-y-2.5">
+        {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
+        <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleToggleAnimate}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold uppercase tracking-wider text-xs transition-all cursor-pointer ${
+                animating
+                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                  : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
+              }`}
+            >
+              {animating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              <span>{animating ? "Pause" : progress >= 1 ? "Replay" : "Play Action"}</span>
+            </button>
+
+            <button
+              onClick={handleResetAnimate}
+              className="p-1 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              title="Reset Timeline"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+
+            <div className="flex items-center gap-1 ml-1">
+              <span className="text-[10px] font-mono text-neutral-500">Speed:</span>
+              {[0.5, 1, 1.5].map((spd) => (
+                <button
+                  key={spd}
+                  onClick={() => setAnimSpeed(spd)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                    animSpeed === spd
+                      ? "bg-white/20 text-white border border-white/20"
+                      : "text-neutral-500 hover:text-white"
+                  }`}
+                >
+                  {spd}x
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Timeline Scrubber */}
+          <div className="flex items-center gap-2 flex-1 max-w-xs ml-auto">
+            <span className="text-[10px] font-mono text-neutral-500 tabular-nums">
+              {(progress * 3.2).toFixed(1)}s
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={progress}
+              onChange={(e) => {
+                setAnimating(false);
+                setProgress(parseFloat(e.target.value));
+              }}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
+      {/* ============================================================== */}
+      <div className="lg:w-[390px] xl:w-[440px] 2xl:w-[480px] shrink-0 flex flex-col bg-[#0A0E17] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl h-full min-h-0">
+        <div className="p-3 sm:p-3.5 flex-1 min-h-0 overflow-y-auto space-y-2.5 scrollbar-thin">
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
           <div className="flex flex-wrap items-center justify-between gap-2.5">
             {/* Player Selection Pills with Coaching Notes Indicator */}
@@ -2209,7 +2497,13 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                     <Zap className="w-3 h-3" />
                     <span>Route Assignment ({selectedPlayer.label}):</span>
                   </span>
-                  {selectedPlayer.quickRouteName ? (
+                  {playerHasMotion(selectedPlayer) && (
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-[10px] flex items-center gap-1 shadow-sm">
+                      <Activity className="w-3 h-3 text-amber-400" />
+                      <span>{selectedPlayer.motionName || "Motion"} ⚡</span>
+                    </span>
+                  )}
+                  {selectedPlayer.quickRouteName && (
                     <span
                       className={`px-2 py-0.5 rounded-lg font-bold text-[11px] border ${
                         selectedPlayer.routeType === "motion"
@@ -2219,17 +2513,12 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                     >
                       {selectedPlayer.quickRouteName}
                     </span>
-                  ) : (
+                  )}
+                  {!selectedPlayer.quickRouteName && !playerHasMotion(selectedPlayer) && (
                     <span className="text-[11px] text-neutral-400 font-mono">
                       {selectedPlayer.route && selectedPlayer.route.length > 0
                         ? `${selectedPlayer.route.length} custom point${selectedPlayer.route.length > 1 ? "s" : ""}`
                         : "No route drawn"}
-                    </span>
-                  )}
-                  {selectedPlayer.routeType === "motion" && (
-                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-[10px] flex items-center gap-1 shadow-sm">
-                      <Activity className="w-3 h-3 text-amber-400" />
-                      <span>Pre-Snap Motion</span>
                     </span>
                   )}
                 </div>
@@ -2242,18 +2531,18 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
                     onClick={handleToggleMotion}
                     data-testid="toggle-motion-btn"
                     className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-                      selectedPlayer.routeType === "motion"
+                      playerHasMotion(selectedPlayer)
                         ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30 font-black"
                         : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30 hover:border-amber-500/50"
                     }`}
                     title={
-                      selectedPlayer.routeType === "motion"
-                        ? "Pre-snap motion active (click to convert back to pass route)"
+                      playerHasMotion(selectedPlayer)
+                        ? "Pre-snap motion active (click to remove pre-snap motion)"
                         : "Set this player to Pre-Snap Motion (dashed amber route, moves pre-snap)"
                     }
                   >
                     <Activity className="w-3.5 h-3.5" />
-                    <span>{selectedPlayer.routeType === "motion" ? "Motion Active ⚡" : "Pre-Snap Motion"}</span>
+                    <span>{playerHasMotion(selectedPlayer) ? "Motion Active ⚡" : "Pre-Snap Motion"}</span>
                   </button>
 
                   {/* Preset Routes Menu Toggle Button */}

@@ -47,12 +47,19 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
     activeLeagueId,
     userLeagues,
     switchLeague,
+    subscription,
     isDemoLeague,
     isLeagueArchived,
     isSubscriptionPastDue,
     resumeSubscription,
   } = useLeague();
   const { user, role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId } = useAuth();
+
+  const isCustomOrPaidLeague =
+    (activeLeagueId !== "default" && activeLeagueId !== "demo") ||
+    (Boolean(settings.leagueName) && settings.leagueName !== "FlagOS Demo League" && settings.leagueName !== "FlagOS League") ||
+    settings.visibility === "private" ||
+    Boolean(subscription && subscription.status === "active" && activeLeagueId !== "default");
 
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -179,16 +186,20 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
           {/* Left: Integrated League Brand & Multi-Tenant Switcher */}
           <div className="flex items-center gap-1.5 sm:gap-2 relative shrink min-w-0" ref={switcherRef}>
-            <Link
-              href="/"
-              title="Return to FlagOS Platform Home"
-              className="flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/10 shrink-0 text-xs font-bold group"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-slate-400 dark:text-neutral-500 group-hover:text-emerald-500 group-hover:-translate-x-0.5 transition-all" />
-              <FlagOSLogo size="xs" />
-              <span className="hidden xl:inline">FlagOS</span>
-            </Link>
-            <div className="hidden sm:block h-5 w-px bg-slate-200 dark:bg-white/10 mx-0.5 shrink-0" />
+            {!isCustomOrPaidLeague && (
+              <>
+                <Link
+                  href="/"
+                  title="Return to FlagOS Platform Home"
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/10 shrink-0 text-xs font-bold group"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-slate-400 dark:text-neutral-500 group-hover:text-emerald-500 group-hover:-translate-x-0.5 transition-all" />
+                  <FlagOSLogo size="xs" />
+                  <span className="hidden xl:inline">FlagOS</span>
+                </Link>
+                <div className="hidden sm:block h-5 w-px bg-slate-200 dark:bg-white/10 mx-0.5 shrink-0" />
+              </>
+            )}
 
             <button
               onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
@@ -207,9 +218,22 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-contain"
                     onError={(e) => {
-                      e.currentTarget.src = FLAGOS_LOGO;
+                      if (isCustomOrPaidLeague) {
+                        e.currentTarget.style.display = "none";
+                      } else {
+                        e.currentTarget.src = FLAGOS_LOGO;
+                      }
                     }}
                   />
+                ) : isCustomOrPaidLeague ? (
+                  <div
+                    className="w-full h-full rounded-xl flex items-center justify-center font-black text-xs uppercase shadow text-white"
+                    style={{
+                      background: `linear-gradient(135deg, var(--league-primary, #10b981), var(--league-accent, #06b6d4))`,
+                    }}
+                  >
+                    {settings.shortcode ? settings.shortcode.slice(0, 3) : (settings.leagueName?.charAt(0) || "L")}
+                  </div>
                 ) : (
                   <FlagOSLogo
                     variant="emblem"
@@ -223,7 +247,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1 sm:gap-1.5">
                   <span className="text-xs sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white truncate max-w-[110px] xs:max-w-[140px] sm:max-w-[210px] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                    {renderFlagOS(settings.leagueName)}
+                    {isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}
                   </span>
                   {settings.visibility === "private" ? (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[9px] font-bold text-amber-600 dark:text-amber-400 font-mono shrink-0" title="Private League: Accessible via Direct URL">
@@ -330,13 +354,15 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                     <span>Create & Subscribe League</span>
                   </Link>
 
-                  <Link
-                    href="/"
-                    onClick={() => setIsSwitcherOpen(false)}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 text-[11px] font-bold transition-all text-center"
-                  >
-                    <span>⚡ FlagOS Platform Home</span>
-                  </Link>
+                  {!isCustomOrPaidLeague && (
+                    <Link
+                      href="/"
+                      onClick={() => setIsSwitcherOpen(false)}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 text-[11px] font-bold transition-all text-center"
+                    >
+                      <span>⚡ FlagOS Platform Home</span>
+                    </Link>
+                  )}
                 </div>
               </div>
             )}
@@ -594,7 +620,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             )}
 
             {/* Public Platform Navigation (Easy exit from Demo League to unlogged-in pages) */}
-            {isDemoLeague && (
+            {!isCustomOrPaidLeague && isDemoLeague && (
               <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 space-y-1.5">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-neutral-500 font-bold px-3.5">
                   FlagOS Platform Navigation

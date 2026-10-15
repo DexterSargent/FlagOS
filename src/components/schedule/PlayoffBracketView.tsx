@@ -77,13 +77,12 @@ export default function PlayoffBracketView({
           <div className="space-y-2">
             <div className="flex items-center gap-2.5 flex-wrap">
               <span
-                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 border ${
-                  isPlayoffActive
+                className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 border ${isPlayoffActive
                     ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
                     : isDoubleElim
-                    ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-                    : "bg-cyan-500/15 border-cyan-500/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                }`}
+                      ? "bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+                      : "bg-cyan-500/15 border-cyan-500/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                  }`}
               >
                 {isDoubleElim ? <Swords className="w-3.5 h-3.5" /> : <Trophy className="w-3.5 h-3.5" />}
                 <span>
@@ -91,7 +90,7 @@ export default function PlayoffBracketView({
                     ? isDoubleElim
                       ? "Double Elimination Active"
                       : "Championship Tournament Active"
-                    : "Live Projected Seeding Matrix"}
+                    : "Projected Seeding"}
                 </span>
               </span>
               <span className="text-neutral-500 text-xs">•</span>
@@ -100,11 +99,10 @@ export default function PlayoffBracketView({
               </span>
               <span className="text-neutral-500 text-xs">•</span>
               <span
-                className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border ${
-                  isDoubleElim
+                className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border ${isDoubleElim
                     ? "bg-amber-500/15 border-amber-500/30 text-amber-300"
                     : "bg-cyan-500/15 border-cyan-500/30 text-cyan-300"
-                }`}
+                  }`}
               >
                 {isDoubleElim ? "Double Elimination (2 Lives)" : "Single Elimination (Sudden Death)"}
               </span>
@@ -117,8 +115,8 @@ export default function PlayoffBracketView({
                     ? "Double Elimination Tournament"
                     : "Playoff Elimination Bracket"
                   : isDoubleElim
-                  ? "Projected Double Elimination Bracket"
-                  : "Official Playoff Picture"}
+                    ? "Projected Double Elimination Bracket"
+                    : "Official Playoff Picture"}
               </span>
             </h2>
 
@@ -126,8 +124,8 @@ export default function PlayoffBracketView({
               {isDoubleElim
                 ? "Featuring an Upper (Winners) Bracket and a Lower (Elimination) Bracket. Teams must lose two matches to be eliminated. The Upper Bracket Champion meets the Elimination Bracket Champion in the Grand Championship series."
                 : isPlayoffActive
-                ? "The regular season has concluded. Tournament seeds are locked and teams compete in knockout bracket play to crown the league champion."
-                : "Live projected bracket seeded by active seasonal standings if the regular season ended today. Seeds and bubble rankings dynamically update after every completed game."}
+                  ? "The regular season has concluded. Tournament seeds are locked and teams compete in knockout bracket play to crown the league champion."
+                  : "Live projected bracket seeded by active seasonal standings if the regular season ended today. Seeds and bubble rankings dynamically update after every completed game."}
             </p>
           </div>
 
@@ -136,21 +134,19 @@ export default function PlayoffBracketView({
             <div className="flex items-center bg-black/60 p-1 rounded-2xl border border-white/10 shrink-0">
               <button
                 onClick={() => setActiveTab("bracket")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === "bracket"
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "bracket"
                     ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md"
                     : "text-neutral-400 hover:text-white"
-                }`}
+                  }`}
               >
                 Tournament Bracket
               </button>
               <button
                 onClick={() => setActiveTab("standings")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === "standings"
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "standings"
                     ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md"
                     : "text-neutral-400 hover:text-white"
-                }`}
+                  }`}
               >
                 Seeding & Bubble
               </button>
@@ -178,11 +174,10 @@ export default function PlayoffBracketView({
 
             <button
               onClick={() => setDoubleElimSection("all")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                doubleElimSection === "all"
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${doubleElimSection === "all"
                   ? "bg-white text-black shadow-lg font-black"
                   : "bg-white/5 text-neutral-300 hover:bg-white/10 border border-white/10"
-              }`}
+                }`}
             >
               <Layers className="w-3.5 h-3.5" />
               <span>All Brackets</span>
@@ -193,11 +188,10 @@ export default function PlayoffBracketView({
 
             <button
               onClick={() => setDoubleElimSection("winners")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                doubleElimSection === "winners"
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${doubleElimSection === "winners"
                   ? "bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)] font-black"
                   : "bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 border border-cyan-500/20"
-              }`}
+                }`}
             >
               <Trophy className="w-3.5 h-3.5" />
               <span>Upper (Winners)</span>
@@ -208,11 +202,10 @@ export default function PlayoffBracketView({
 
             <button
               onClick={() => setDoubleElimSection("losers")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                doubleElimSection === "losers"
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${doubleElimSection === "losers"
                   ? "bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)] font-black"
                   : "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/20"
-              }`}
+                }`}
             >
               <Flame className="w-3.5 h-3.5" />
               <span>Elimination (Losers)</span>
@@ -223,11 +216,10 @@ export default function PlayoffBracketView({
 
             <button
               onClick={() => setDoubleElimSection("finals")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
-                doubleElimSection === "finals"
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${doubleElimSection === "finals"
                   ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)] font-black"
                   : "bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20 border border-yellow-500/20"
-              }`}
+                }`}
             >
               <Crown className="w-3.5 h-3.5" />
               <span>Grand Championship</span>
@@ -589,23 +581,21 @@ export default function PlayoffBracketView({
                     return (
                       <tr
                         key={team.teamId}
-                        className={`transition-colors hover:bg-white/[0.03] ${
-                          isQualified
+                        className={`transition-colors hover:bg-white/[0.03] ${isQualified
                             ? "bg-emerald-500/[0.03]"
                             : isBubble
-                            ? "bg-amber-500/[0.02]"
-                            : ""
-                        }`}
+                              ? "bg-amber-500/[0.02]"
+                              : ""
+                          }`}
                       >
                         <td className="py-3 px-4 font-bold">
                           <span
-                            className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-xs font-black ${
-                              isQualified
+                            className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-xs font-black ${isQualified
                                 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                                 : isBubble
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                : "bg-neutral-800 text-neutral-400"
-                            }`}
+                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  : "bg-neutral-800 text-neutral-400"
+                              }`}
                           >
                             #{team.rank}
                           </span>
@@ -635,13 +625,12 @@ export default function PlayoffBracketView({
                         <td className="py-3 px-4 text-center text-neutral-400">{team.pointsFor}</td>
                         <td className="py-3 px-4 text-center text-neutral-400">{team.pointsAgainst}</td>
                         <td
-                          className={`py-3 px-4 text-center font-bold ${
-                            team.diff > 0
+                          className={`py-3 px-4 text-center font-bold ${team.diff > 0
                               ? "text-emerald-400"
                               : team.diff < 0
-                              ? "text-rose-400"
-                              : "text-neutral-400"
-                          }`}
+                                ? "text-rose-400"
+                                : "text-neutral-400"
+                            }`}
                         >
                           {team.diff > 0 ? `+${team.diff}` : team.diff}
                         </td>
@@ -715,12 +704,12 @@ function BracketMatchCard({
     isLive
       ? "border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] bg-neutral-900"
       : accentColor === "gold"
-      ? "border-yellow-500/40 bg-neutral-900/90 hover:border-yellow-500/60 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
-      : accentColor === "amber"
-      ? "border-amber-500/20 bg-neutral-900/80 hover:border-amber-500/40"
-      : isFinal
-      ? "border-white/10 bg-neutral-900/90 hover:border-white/20"
-      : "border-white/10 bg-neutral-900/70 hover:border-cyan-500/30";
+        ? "border-yellow-500/40 bg-neutral-900/90 hover:border-yellow-500/60 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
+        : accentColor === "amber"
+          ? "border-amber-500/20 bg-neutral-900/80 hover:border-amber-500/40"
+          : isFinal
+            ? "border-white/10 bg-neutral-900/90 hover:border-white/20"
+            : "border-white/10 bg-neutral-900/70 hover:border-cyan-500/30";
 
   const cardContent = (
     <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${borderColor}`}>
@@ -757,13 +746,12 @@ function BracketMatchCard({
       <div className="p-3 space-y-1.5">
         {/* Home Team */}
         <div
-          className={`flex items-center justify-between p-2 rounded-xl transition-colors ${
-            homeWon
+          className={`flex items-center justify-between p-2 rounded-xl transition-colors ${homeWon
               ? "bg-emerald-500/10 text-white font-bold"
               : awayWon
-              ? "text-neutral-400 opacity-70"
-              : "text-white"
-          }`}
+                ? "text-neutral-400 opacity-70"
+                : "text-white"
+            }`}
         >
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-cyan-300 shrink-0">
@@ -804,15 +792,14 @@ function BracketMatchCard({
 
         {/* Away Team */}
         <div
-          className={`flex items-center justify-between p-2 rounded-xl transition-colors ${
-            awayWon
+          className={`flex items-center justify-between p-2 rounded-xl transition-colors ${awayWon
               ? "bg-emerald-500/10 text-white font-bold"
               : homeWon
-              ? "text-neutral-400 opacity-70"
-              : isByeMatch && !node.awayTeam
-              ? "text-neutral-500 opacity-50 bg-black/20"
-              : "text-white"
-          }`}
+                ? "text-neutral-400 opacity-70"
+                : isByeMatch && !node.awayTeam
+                  ? "text-neutral-500 opacity-50 bg-black/20"
+                  : "text-white"
+            }`}
         >
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-cyan-300 shrink-0">
@@ -828,8 +815,8 @@ function BracketMatchCard({
               {node.awayTeam
                 ? node.awayTeam.teamName
                 : isByeMatch && !node.awayTeam
-                ? "First Round Bye"
-                : node.awaySeedLabel}
+                  ? "First Round Bye"
+                  : node.awaySeedLabel}
             </span>
           </div>
 

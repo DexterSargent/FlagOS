@@ -66,6 +66,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [playerStats, setPlayerStats] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"roster" | "depth_chart">("roster");
+  const [showStats, setShowStats] = useState(false);
 
   // Player Detail Modal
   const [selectedPlayerForStats, setSelectedPlayerForStats] = useState<any | null>(null);
@@ -186,7 +187,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
         const isEligible = (name: string) => name && statsMap[name];
 
-        if (play.playType === "Pass" && isEligible(play.qbPlayerId)) {
+        const isConversionPlay = Boolean(
+          play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+        );
+
+        if (play.playType === "Pass" && isEligible(play.qbPlayerId) && !isConversionPlay) {
           statsMap[play.qbPlayerId].passAtt += 1;
           if (play.passOutcome === "Complete") statsMap[play.qbPlayerId].passComp += 1;
           if (play.isTouchdown) {
@@ -195,7 +200,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           }
         }
 
-        if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId)) {
+        if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId) && !isConversionPlay) {
           statsMap[play.receiverPlayerId].receptions += 1;
           if (play.isTouchdown) {
             statsMap[play.receiverPlayerId].recTD += 1;
@@ -203,7 +208,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           }
         }
 
-        if (play.playType === "Run" && isEligible(play.runnerPlayerId)) {
+        if (play.playType === "Run" && isEligible(play.runnerPlayerId) && !isConversionPlay) {
           statsMap[play.runnerPlayerId].rushAtt += 1;
           if (play.isTouchdown) {
             statsMap[play.runnerPlayerId].rushTD += 1;
@@ -256,7 +261,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   }, [teamId, isDemoLeague]);
 
   const minRosterSize = settings.rules?.minRosterSize || 5;
-  const maxRosterSize = settings.rules?.maxRosterSize || 15;
+  const maxRosterSize = 30; // Hard cap of 30 players for all teams
   const isRosterFull = players.length >= maxRosterSize;
   const isRosterUnderMin = players.length < minRosterSize;
 
@@ -266,7 +271,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     if (!newPlayerName.trim()) return;
 
     if (players.length >= maxRosterSize) {
-      alert(`Cannot add player: Roster is at the maximum limit of ${maxRosterSize} players permitted by league rules.`);
+      alert(`Cannot add player: Team is at the hard cap limit of ${maxRosterSize} players permitted across all teams.`);
       return;
     }
 
@@ -513,7 +518,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
               <span className="text-white/20">•</span>
               <span className="text-xs font-mono font-bold text-neutral-400">
-                {players.length}/{maxRosterSize} Active (Min: {minRosterSize})
+                {`${players.length}/${maxRosterSize} Players (Min: ${minRosterSize})`}
               </span>
               {isRosterUnderMin ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-amber-500/10 text-amber-300 border border-amber-500/30">
@@ -617,6 +622,21 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               >
                 Depth Chart
               </button>
+              {activeTab === "roster" && (
+                <button
+                  type="button"
+                  onClick={() => setShowStats(!showStats)}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    showStats
+                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                      : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  }`}
+                  title={showStats ? "Hide stats columns" : "Show stats columns"}
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -627,11 +647,17 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 <tr className="bg-black/50 text-neutral-500 text-xs font-semibold uppercase tracking-wider">
                   <th className="py-4 px-6 w-16">#</th>
                   <th className="py-4 px-6">Player Name</th>
-                  <th className="py-4 px-6 text-center">GP</th>
-                  <th className="py-4 px-6 text-center">Pass TD</th>
-                  <th className="py-4 px-6 text-center">Rec TD</th>
-                  <th className="py-4 px-6 text-center">Pulls</th>
-                  <th className="py-4 px-6 text-center">INT</th>
+                  <th className="py-4 px-6">Position</th>
+                  <th className="py-4 px-6 text-center">Status</th>
+                  {showStats && (
+                    <>
+                      <th className="py-4 px-6 text-center">GP</th>
+                      <th className="py-4 px-6 text-center">Pass TD</th>
+                      <th className="py-4 px-6 text-center">Rec TD</th>
+                      <th className="py-4 px-6 text-center">Flags</th>
+                      <th className="py-4 px-6 text-center">INT</th>
+                    </>
+                  )}
                   <th className="py-4 px-6 text-right">Actions</th>
                 </tr>
               </thead>
@@ -639,6 +665,9 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 {players.map((p) => {
                   const s = playerStats[p.playerName] || { gamesPlayed: 0, passTD: 0, recTD: 0, flagPulls: 0, int: 0 };
                   const jerseyNumber = p.number || p.jerseyNumber || "-";
+                  const positions = Array.isArray(p.positions) && p.positions.length > 0
+                    ? p.positions
+                    : p.position ? [p.position] : ["ATH"];
 
                   return (
                     <tr key={p.id} className="hover:bg-white/5 transition-colors group">
@@ -647,18 +676,19 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                         {jerseyNumber !== "-" ? `#${jerseyNumber}` : "-"}
                       </td>
 
-                      {/* Player Name */}
+                      {/* Player Name (Click to pull up stats modal) */}
                       <td className="py-4 px-6">
                         <button
+                          type="button"
                           onClick={() => setSelectedPlayerForStats(p)}
-                          className="font-bold text-base text-white hover:text-cyan-400 transition-colors flex items-center gap-2 text-left"
+                          className="font-bold text-base text-white hover:text-cyan-400 transition-colors flex items-center gap-2 text-left cursor-pointer group/player"
+                          title={`Click to view stats for ${p.playerName}`}
                         >
-                          <span>{p.playerName}</span>
-                          {(p.position || (p.positions && p.positions[0])) && (
-                            <span className="px-1.5 py-0.5 rounded bg-white/10 text-neutral-300 font-mono text-[10px] font-bold">
-                              {p.position || p.positions[0]}
-                            </span>
-                          )}
+                          <span className="group-hover/player:underline underline-offset-4 decoration-cyan-400/60">{p.playerName}</span>
+                          <span className="text-[10px] text-cyan-400/80 group-hover/player:text-cyan-300 flex items-center gap-1 font-mono font-normal">
+                            <Activity className="w-3 h-3" />
+                            <span>Stats</span>
+                          </span>
                         </button>
                         {((p.emails && p.emails.length > 0) || p.email) && (
                           <div className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 mt-0.5">
@@ -670,30 +700,49 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                         )}
                       </td>
 
-                      {/* Games Played */}
-                      <td className="py-4 px-6 text-center text-sm font-medium text-neutral-300">
-                        {s.gamesPlayed}
+                      {/* Position */}
+                      <td className="py-4 px-6">
+                        <div className="flex flex-wrap gap-1">
+                          {positions.map((pos: string) => (
+                            <span
+                              key={pos}
+                              className="px-2 py-0.5 rounded bg-white/10 text-neutral-300 font-mono text-[10px] font-bold"
+                            >
+                              {pos}
+                            </span>
+                          ))}
+                        </div>
                       </td>
 
-                      {/* Pass TD */}
-                      <td className="py-4 px-6 text-center text-sm font-bold text-emerald-400">
-                        {s.passTD}
+                      {/* Status */}
+                      <td className="py-4 px-6 text-center">
+                        <span
+                          className="px-2.5 py-1 rounded-full font-mono text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                        >
+                          Active
+                        </span>
                       </td>
 
-                      {/* Rec TD */}
-                      <td className="py-4 px-6 text-center text-sm font-bold text-blue-400">
-                        {s.recTD}
-                      </td>
-
-                      {/* Pulls */}
-                      <td className="py-4 px-6 text-center text-sm font-bold text-amber-400">
-                        {s.flagPulls}
-                      </td>
-
-                      {/* INT */}
-                      <td className="py-4 px-6 text-center text-sm font-bold text-purple-400">
-                        {s.int}
-                      </td>
+                      {/* Stats columns - only rendered if user toggles showStats */}
+                      {showStats && (
+                        <>
+                          <td className="py-4 px-6 text-center text-sm font-medium text-neutral-300">
+                            {s.gamesPlayed}
+                          </td>
+                          <td className="py-4 px-6 text-center text-sm font-bold text-emerald-400">
+                            {s.passTD}
+                          </td>
+                          <td className="py-4 px-6 text-center text-sm font-bold text-blue-400">
+                            {s.recTD}
+                          </td>
+                          <td className="py-4 px-6 text-center text-sm font-bold text-amber-400">
+                            {s.flagPulls}
+                          </td>
+                          <td className="py-4 px-6 text-center text-sm font-bold text-purple-400">
+                            {s.int}
+                          </td>
+                        </>
+                      )}
 
                       {/* Actions */}
                       <td className="py-4 px-6 text-right">
@@ -734,7 +783,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
                 {players.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-neutral-500 italic text-sm">
+                    <td colSpan={showStats ? 10 : 5} className="py-12 text-center text-neutral-500 italic text-sm">
                       No players found on this roster yet. Use the "Add Player" button above to add team members.
                     </td>
                   </tr>
@@ -1172,7 +1221,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                     <span className="text-xl font-black text-blue-400">{s.receptions || 0} / {s.recTD || 0} TD</span>
                   </div>
                   <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-xs text-neutral-500 block">Flag Pulls / Sacks</span>
+                    <span className="text-xs text-neutral-500 block">Flags / Sacks</span>
                     <span className="text-xl font-black text-amber-400">{s.flagPulls || 0} / {s.sacks || 0}</span>
                   </div>
                   <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5 col-span-2">

@@ -57,11 +57,11 @@ export const PENALTY_CATALOG: PenaltyDefinition[] = [
   },
   {
     id: "early_flag_pull",
-    name: "Early Flag Pull",
+    name: "Early Flag",
     side: "defense",
     defaultYards: 5,
     defaultDownResult: "repeat_down",
-    description: "Pulling a receiver's flag before ball possession",
+    description: "Removing a receiver's flag before ball possession",
   },
   {
     id: "unsportsmanlike_def",
@@ -87,7 +87,7 @@ export const PENALTY_CATALOG: PenaltyDefinition[] = [
     side: "offense",
     defaultYards: 5,
     defaultDownResult: "loss_of_down",
-    description: "Using hands, ball, or body to obstruct a flag pull",
+    description: "Using hands, ball, or body to obstruct a flag",
   },
   {
     id: "illegal_forward_pass",

@@ -19,12 +19,18 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/lib/themeContext";
 
 export default function LeagueFooter() {
-  const { settings, openCustomizer, activeLeagueId } = useLeague();
+  const { settings, openCustomizer, activeLeagueId, isDemoLeague, subscription } = useLeague();
   const { canRegisterAsPlayer, isAuthorized, isLeagueAdmin } = useAuth();
   const { resolvedTheme } = useTheme();
 
+  const isCustomOrPaidLeague =
+    (activeLeagueId !== "default" && activeLeagueId !== "demo") ||
+    (Boolean(settings.leagueName) && settings.leagueName !== "FlagOS Demo League" && settings.leagueName !== "FlagOS League") ||
+    settings.visibility === "private" ||
+    Boolean(subscription && subscription.status === "active" && activeLeagueId !== "default");
+
   return (
-    <footer className="relative z-10 border-t border-white/10 bg-black pt-12 pb-8 px-6 text-neutral-400 font-sans transition-colors">
+    <footer className="relative z-10 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black pt-12 pb-8 px-6 text-slate-600 dark:text-neutral-400 font-sans transition-colors">
       <div className="max-w-7xl mx-auto space-y-10">
         {/* Top Tier: Brand, Details, & Nav */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -33,7 +39,7 @@ export default function LeagueFooter() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-black uppercase tracking-wider text-white">
-                  {renderFlagOS(settings.leagueName)}
+                  {isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}
                 </span>
                 {settings.shortcode && (
                   <span className="px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-mono text-cyan-300 font-bold">
@@ -142,15 +148,19 @@ export default function LeagueFooter() {
               <FlagOSText />
             </h4>
             <p className="text-xs text-neutral-400 leading-relaxed">
-              Operating enterprise tournament management, real-time live scorekeeping, down-by-down play logs, and player statistics for <span className="text-white font-semibold">{renderFlagOS(settings.leagueName)}</span>.
+              Operating enterprise tournament management, real-time live scorekeeping, down-by-down play logs, and player statistics for <span className="text-white font-semibold">{isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}</span>.
             </p>
             <div className="pt-2 flex flex-wrap items-center gap-2.5 text-xs font-bold">
-              <Link href="/" className="text-cyan-400 hover:text-cyan-300 transition-colors">
-                ← FlagOS Home
-              </Link>
-              <span className="text-neutral-600">•</span>
+              {!isCustomOrPaidLeague && (
+                <>
+                  <Link href="/" className="text-cyan-400 hover:text-cyan-300 transition-colors">
+                    ← FlagOS Home
+                  </Link>
+                  <span className="text-neutral-600">•</span>
+                </>
+              )}
               <Link href="/pricing" className="text-neutral-300 hover:text-white transition-colors">
-                Pricing
+                {isCustomOrPaidLeague ? "Plans" : "Pricing"}
               </Link>
               <span className="text-neutral-600">•</span>
               <Link href="/login" className="text-neutral-300 hover:text-white transition-colors">
@@ -163,7 +173,7 @@ export default function LeagueFooter() {
         {/* Bottom Sub-bar */}
         <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-white uppercase">{renderFlagOS(settings.leagueName)}</span>
+            <span className="font-bold text-white uppercase">{isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}</span>
             <span>•</span>
             <span>{settings.seasonTitle || "2026"}</span>
             <span>•</span>
@@ -172,8 +182,12 @@ export default function LeagueFooter() {
 
           <div className="flex items-center gap-4 text-[11px]">
             <ThemeToggle size="sm" />
-            <span>System: <FlagOSText /> Multi-Tenant v2.4</span>
-            <span className="text-neutral-700">|</span>
+            {!isCustomOrPaidLeague && (
+              <>
+                <span>System: <FlagOSText /> Multi-Tenant v2.4</span>
+                <span className="text-neutral-700">|</span>
+              </>
+            )}
             <span className="text-neutral-400">Real-Time Sync Active</span>
           </div>
         </div>

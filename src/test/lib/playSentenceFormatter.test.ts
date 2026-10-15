@@ -13,7 +13,7 @@ describe("playSentenceFormatter", () => {
   };
 
   describe("Passing Plays", () => {
-    it("formats a regular complete pass with flag pull", () => {
+    it("formats a regular complete pass with flag", () => {
       const play = {
         playType: "Pass" as const,
         passOutcome: "Complete",
@@ -142,7 +142,7 @@ describe("playSentenceFormatter", () => {
   });
 
   describe("Rushing Plays", () => {
-    it("formats a positive run with flag pull", () => {
+    it("formats a positive run with flag", () => {
       const play = {
         playType: "Run" as const,
         runnerPlayerId: "Isiah Pacheco",

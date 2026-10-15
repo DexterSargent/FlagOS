@@ -6,7 +6,9 @@ export interface DemoTeam {
   secondaryColor?: string;
   tertiaryColor?: string;
   shortcode?: string;
+  visibleTeamStats?: string[];
   createdAt?: string;
+  [key: string]: any;
 }
 
 export interface DemoPlayer {

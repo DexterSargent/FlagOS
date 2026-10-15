@@ -147,7 +147,8 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
     clockStart: number
   ) => {
     let clock = clockStart;
-    const wr = offRoster.wrs[(playIndex - 1) % offRoster.wrs.length];
+    const offensiveTargets = [...offRoster.wrs, offRoster.rb];
+    const wr = offensiveTargets[(playIndex - 1) % offensiveTargets.length];
 
     // 1. Setup Chunk Play (1st Down)
     if (drive.type === "pass_td" || drive.type === "rush_td" || drive.type === "fg") {
@@ -168,7 +169,7 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
         points: 0,
         flaggers: [defRoster.db],
         defenders: [defRoster.db],
-        result: `${offRoster.qb} ${setupYards} yd pass complete to ${wr} (1st Down, flag pulled by ${defRoster.db})`,
+        result: `${offRoster.qb} ${setupYards} yd pass complete to ${wr} (1st Down, flagged by ${defRoster.db})`,
       });
     }
 
@@ -194,7 +195,7 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
     // 3. The Scoring Play
     clock -= 35;
     if (drive.type === "pass_td") {
-      const tdWr = offRoster.wrs[playIndex % offRoster.wrs.length];
+      const tdWr = offensiveTargets[playIndex % offensiveTargets.length];
       const tdYards = 12 + ((playIndex * 9) % 25);
       if (isHome) homeCurrentScore += 6;
       else awayCurrentScore += 6;
@@ -218,7 +219,7 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
       // Point After Touchdown (PAT Conversion)
       if (drive.conversion) {
         clock -= 10;
-        const convReceiver = offRoster.rb;
+        const convReceiver = offensiveTargets[(playIndex + 1) % offensiveTargets.length];
         if (isHome) homeCurrentScore += drive.conversion;
         else awayCurrentScore += drive.conversion;
 
@@ -262,7 +263,7 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
 
       if (drive.conversion) {
         clock -= 10;
-        const convReceiver = offRoster.wrs[0];
+        const convReceiver = offensiveTargets[(playIndex + 2) % offensiveTargets.length];
         if (isHome) homeCurrentScore += drive.conversion;
         else awayCurrentScore += drive.conversion;
 
@@ -350,7 +351,7 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
     points: 0,
     defenders: [homeRoster.rusher],
     flaggers: [homeRoster.rusher],
-    result: `SACK! ${homeRoster.rusher} blitzes and pulls ${awayRoster.qb}'s flag for loss of 7 yds`,
+    result: `SACK! ${homeRoster.rusher} blitzes and flags ${awayRoster.qb} for loss of 7 yds`,
   });
 
   // Half 2 Drives
@@ -378,7 +379,7 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
     points: 0,
     defenders: [awayRoster.db],
     flaggers: [homeRoster.rb],
-    result: `INTERCEPTION! ${awayRoster.db} picks off ${homeRoster.qb} at midfield (flag pulled by ${homeRoster.rb})`,
+    result: `INTERCEPTION! ${awayRoster.db} picks off ${homeRoster.qb} at midfield (flagged by ${homeRoster.rb})`,
   });
 
   return plays;

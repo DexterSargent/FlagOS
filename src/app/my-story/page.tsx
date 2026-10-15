@@ -1,31 +1,203 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Camera,
   Heart,
-  Users,
-  Trophy,
   Shield,
   Sparkles,
   Lock,
   MessageSquare,
   Flame,
   Award,
-  Calendar,
   Compass,
+  Zap,
+  Trophy,
+  ArrowUp,
+  BookmarkCheck,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { FlagOSText } from "@/components/FlagOSText";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 
+interface Chapter {
+  id: string;
+  number: string;
+  era: string;
+  navLabel: string;
+  title: string;
+  tagline: string;
+  themeColor: string;
+  icon: any;
+  badges: string[];
+  statPill?: { label: string; value: string };
+  paragraphs: string[];
+  photoSlot?: { title: string; subtitle: string };
+  quoteHighlight?: string;
+  tacticalNote?: { title: string; description: string };
+}
+
+const CHAPTERS: Chapter[] = [
+  {
+    id: "recess",
+    number: "01",
+    era: "2011–2012 • Childhood Roots",
+    navLabel: "Childhood Roots",
+    title: "Love at first catch",
+    tagline: "Two footballs, recess games, and a 4th-grade persuasive letter.",
+    themeColor: "from-amber-500/20 to-orange-500/5",
+    icon: Flame,
+    badges: ["Dartmouth, NS", "Two Footballs", "Dartmouth Destroyers"],
+    statPill: { label: "Where it Started", value: "Grade 3 Recess" },
+    quoteHighlight: "The next day, both parents walked through the door with a brand-new football—suddenly I had two.",
+    paragraphs: [
+      "In third grade, I played football for the first time at recess and fell head-over-heels in love with the game instantly. I asked both of my parents for a football without telling either that I had asked the other. The next day, both walked through the door with a brand-new football—suddenly I had two. From then on, I was the kid who brought the football to school every day and tossed it high into the air in the backyard, catching it with one hand whether I was with friends or alone.",
+      "A year later, our grade 4/5 split class did a unit on persuasive writing. A friend and I decided to write a persuasive letter to our parents convincing them to let us register for the Dartmouth Destroyers youth tackle football team in the fall. It worked. My friend played one season, but I was hooked for life.",
+    ],
+    photoSlot: {
+      title: "Photo Slot: Where It Began",
+      subtitle: "Backyard footballs, childhood playing days, or early sports memories.",
+    },
+  },
+  {
+    id: "novascotia",
+    number: "02",
+    era: "2017–2020 • High School & Recruiting",
+    navLabel: "Nova Scotia Grind",
+    title: "Nova Scotia All-Star, The Cold-Email Grind, and Leaving Home",
+    tagline: "Team Nova Scotia flag, cold-emailing film nationwide, and an East-to-West leap.",
+    themeColor: "from-blue-500/20 to-cyan-500/5",
+    icon: Compass,
+    badges: ["Team Nova Scotia Flag Football", "Sportsmanship Award", "Brian Jones & Grey Cup", "2x All-Star", "$4,500 York Scholarship"],
+    statPill: { label: "Recruit Frame", value: "6'3\" • 205 lbs MLB" },
+    quoteHighlight: "I packed my bags for Toronto with two non-negotiables: playing competitive university football and earning a software engineering degree.",
+    paragraphs: [
+      "Because competitive tackle opportunities were limited in Nova Scotia, I grew up playing flag football alongside tackle. That dual experience shaped my football IQ early. Playing for Team Nova Scotia Flag Football at DB/WR, I received the Team Sportsmanship Award at the provincial awards banquet—where in a twist of fate I first met Brian Jones, who had just won the Grey Cup with the Argonauts and brought it home to NS. Years later, Brian would coach me at York.",
+      "In grade 11, I was named a Nova Scotia High School Football All-Star Safety, cut my own game film, and cold-emailed tape to university coaches nationwide. Heading into grade 12, I packed on size to reach 6'3\" and 205 lbs at Middle Linebacker, earned All-Star honours a second time, and received offers including $1,500 from the University of Toronto and the maximum $4,500 athletic scholarship from York University. I packed my bags for Toronto with two non-negotiables: playing competitive university football and earning a software engineering degree.",
+    ],
+    photoSlot: {
+      title: "Photo Slot: Nova Scotia High School Football & Tape",
+      subtitle: "High school game action, All-Star banquet, or early recruitment film session.",
+    },
+  },
+  {
+    id: "york",
+    number: "03",
+    era: "2021–2024 • York Lions Varsity",
+    navLabel: "York Lions Varsity",
+    title: "Four Years with the York Lions (2021–2024)",
+    tagline: "Special teams grinder, scoop-and-score TD, quitting and returning, and captaincy.",
+    themeColor: "from-red-500/20 to-rose-500/5",
+    icon: Shield,
+    badges: ["York Lions", "Team Captain", "Special Teams Starter", "Blocked Kick TD", "Software Engineering"],
+    statPill: { label: "Varsity Career", value: "4 Seasons • Captain" },
+    quoteHighlight: "I returned sleeping on teammate Theo's pull-out couch. In Week 2, coach Brian Jones named me a team captain to anchor the locker room.",
+    paragraphs: [
+      "I earned every inch on special teams starting as a true rookie calling punt cadence. On a Friday night game right before Thanksgiving against Windsor in 2022, I scooped up a blocked kick and took it in for a touchdown before halftime with my family in the stands. That season, I also threw lead blocks that sprang my roommate Alfred Olay to become York's first U SPORTS 1st Team All-Canadian returner in nearly 20 years.",
+      "Exhausted from losing and lacking defensive opportunity, I made the hard decision to quit the York team following 2022. Three weeks before 2023 camp, Brian Jones called and asked if I was truly done with football. I wasn't. I returned with nowhere to live, sleeping on teammate Theo's pull-out couch. In Week 2, coach Brian Jones named me a team captain to anchor the locker room. I started across SAM, WILL, and MIKE linebacker, plus tight end and defensive end, all while balancing morning film, practices, a job, and the final year of my demanding Software Engineering degree.",
+    ],
+    photoSlot: {
+      title: "Photo Slot: York University Football",
+      subtitle: "York Lions jersey, game action (Linebacker / DE / Tight End), or 2023 Captain portrait.",
+    },
+  },
+  {
+    id: "readingweek",
+    number: "04",
+    era: "Winter 2024 • The Spark",
+    navLabel: "Reading Week Favor",
+    title: "A Reading Week Favor That Changed Everything",
+    tagline: "Volunteering for women's flag football over reading week and discovering a hunger for real schemes.",
+    themeColor: "from-purple-500/20 to-indigo-500/5",
+    icon: Sparkles,
+    badges: ["Reading Week", "OWIFA", "Eager Sponges", "Lacked the Ego"],
+    statPill: { label: "Program Need", value: "OWIFA 11v11 Flag" },
+    quoteHighlight: "They were eager sponges who soaked up high-level football knowledge and completely lacked the ego common in men's locker rooms.",
+    paragraphs: [
+      "Over reading week before my final season, our new head coach asked if anyone would volunteer to help the women's flag team for their OWIFA season. A bunch of guys came out to make an impression on the coach, but Theo and I stayed. We noticed immediately that the women loved the game even more than our tackle teammates: they were eager sponges who soaked up high-level football knowledge and completely lacked the ego common in men's locker rooms.",
+      "Yet the program was struggling—practices lacked direction, and existing coaches treated the athletes as though they weren't capable of understanding complex schemes. Seeing dedicated female competitors held back and talked down to didn't sit right with us. They deserved real coaching, real schemes, and real respect.",
+    ],
+    tacticalNote: {
+      title: "Scheme Philosophy Shift",
+      description: "Introducing true college coverage concepts, match principles, and motion-based offensive designs to athletes hungry to master real football.",
+    },
+  },
+  {
+    id: "turnaround",
+    number: "05",
+    era: "Winter 2024 • The 7-Day Turnaround",
+    navLabel: "0-7 to Playoffs",
+    title: "One Week, A New Playbook, and 0-7 to the Playoffs",
+    tagline: "Hired at 0-7, installing a college defense in 7 days, and beating Waterloo in the play-in rematch.",
+    themeColor: "from-emerald-500/20 to-teal-500/5",
+    icon: Trophy,
+    badges: ["0-7 to Playoffs", "Waterloo Rematch 17-8", "Tendency Adjustment", "OWIFA Play-In"],
+    statPill: { label: "Play-In Rematch", value: "17-8 Victory" },
+    quoteHighlight: "Seeded into an immediate 8th vs. 9th play-in rematch against Waterloo, our athletes executed live for a 17-8 victory.",
+    paragraphs: [
+      "Operating under the club's own student executive structure, the leadership parted ways with previous coaches and hired our group just one week before their final tournament—with the squad sitting at 0-7. Braden stepped in as head coach, while Theo and I served as co-defensive coordinators. In seven days, we installed an entirely new defensive system and revamped the offense.",
+      "Tournament day came: we lost a tight 17-10 battle to Guelph, then fell 18-3 to Waterloo. But on the sideline, Theo and I spotted a distinct Waterloo offensive tendency. Seeded into an immediate 8th vs. 9th play-in rematch against Waterloo, we walked our players through the tendency and trusted them to adjust live. They executed flawlessly, taking a 17-8 victory to punch their ticket to the OWIFA playoffs before falling 20-0 to eventual champion Western. It proved that female athletes with real football knowledge will execute under pressure every time.",
+    ],
+    photoSlot: {
+      title: "Photo Slot: The 0-7 Turnaround & Playoff Game",
+      subtitle: "The sideline against Waterloo, team huddle, or playoff tournament team shot.",
+    },
+  },
+  {
+    id: "culture",
+    number: "06",
+    era: "2024–2026 • Rebuilding",
+    navLabel: "Program Rebuilding",
+    title: "Handing Out Flyers & Rebuilding from the Ground Up",
+    tagline: "Creating an elite safe culture, Theo's hiring at 25, and official recognition.",
+    themeColor: "from-cyan-500/20 to-blue-500/5",
+    icon: Zap,
+    badges: ["Head Coach", "Theo (Recruiting Coordinator at 25)", "Ontario Recognition", "Campus Flyers"],
+    statPill: { label: "Status Approved", value: "Varsity 2026" },
+    quoteHighlight: "Theo was hired as men's tackle Recruiting Coordinator—one of Canada's youngest full-time university coaches at just 25 years old.",
+    paragraphs: [
+      "When Braden transferred to Windsor, Theo and I took over as Head Coach and Defensive Coordinator. Theo worked relentlessly, serving as a Graduate Assistant before being hired as York Lions men's tackle full-time Recruiting Coordinator—becoming one of Canada's youngest full-time university coaches at just 25 years old.",
+      "We poured everything into the club, walking campus handing out flyers to make it an empowering, safe, and serious program. By 2026, women's flag football was officially approved to transition to full varsity status across Ontario universities—and we are fighting daily to ensure our women receive the varsity recognition they've earned.",
+    ],
+    tacticalNote: {
+      title: "Official Varsity Recognition",
+      description: "Pushing from club designation toward official provincial varsity athletics, building the administrative and coaching framework to match.",
+    },
+  },
+  {
+    id: "flagos",
+    number: "07",
+    era: "2025–Present • The Birth of FlagOS",
+    navLabel: "The Birth of FlagOS",
+    title: "Ninety Players on the Turf, and the Birth of FlagOS",
+    tagline: "90 tryout attendees, the volunteer play-by-play wizard, and an honest two-sided platform.",
+    themeColor: "from-emerald-500/25 to-cyan-500/10",
+    icon: Award,
+    badges: ["90 Tryout Attendees", "YUWFFL", "Play-by-Play Wizard", "Extreme Volunteer Constraints", "Two Operating Modes", "Honest Pricing"],
+    statPill: { label: "Core Operating Philosophy", value: "No Corporate Greed" },
+    quoteHighlight: "No corporate greed, no locking features behind higher-priced tiers, just honest pricing based on active user-base.",
+    paragraphs: [
+      "When 90 athletes showed up for 5v5 tryouts, I couldn't stomach cutting 75+ passionate women. I created our own campus league (YUWFFL) so everyone could play. While we weren’t exactly successful in retaining all 90 athletes as classes and jobs pulled people away, the core community flourished. But I couldn't run field operations while coaching our travel team.",
+      "My volunteer assistant coaches were former varsity tackle teammates working under extreme volunteer constraints. Existing software was clunky and confusing. Using my workflow automation experience at Partners for Planning (P4P) and software engineering background, I built the Play-by-Play Wizard so my assistant coaches could manage everything without a great deal of stress or effort from their phones with automated downs and yardage.",
+      "The platform expanded into two separate operating modes: an effortless game-day operating system for leagues on one side, and a specialized coaching portal with wristband generators and playbooks on the other. No one outside our team knew about it, but friends and players loved it so much that I took a leap of faith to build FlagOS. No corporate greed, no locking features behind higher-priced tiers, just honest pricing based on active user-base.",
+    ],
+    photoSlot: {
+      title: "Photo Slot: The 90-Player Tryout & Team",
+      subtitle: "Tryout field packed with players, campus flyers, or full team huddle.",
+    },
+  },
+];
+
 export default function MyStoryPage() {
   const router = useRouter();
   const { user, isPlatformAdmin, loading } = useAuth();
+  const [activeChapterId, setActiveChapterId] = useState<string>("recess");
+  const [scrollProgress, setScrollProgress] = useState<number>(0);
 
   const isMe =
     user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
@@ -38,12 +210,43 @@ export default function MyStoryPage() {
     }
   }, [isMe, loading, router]);
 
+  // Track active section and scroll progress
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        setScrollProgress(Math.min(100, Math.max(0, (window.scrollY / totalHeight) * 100)));
+      }
+
+      // Check which chapter is currently in view
+      const scrollY = window.scrollY + 200;
+      for (let i = CHAPTERS.length - 1; i >= 0; i--) {
+        const el = document.getElementById(CHAPTERS[i].id);
+        if (el && el.offsetTop <= scrollY) {
+          setActiveChapterId(CHAPTERS[i].id);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToChapter = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      const topOffset = el.getBoundingClientRect().top + window.pageYOffset - 90;
+      window.scrollTo({ top: topOffset, behavior: "smooth" });
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-black text-slate-500 dark:text-neutral-400">
+      <div className="min-h-screen flex items-center justify-center bg-[#07090E] text-neutral-400">
         <div className="flex items-center gap-2 text-sm font-mono">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span>Loading story...</span>
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+          <span>Opening personal archive...</span>
         </div>
       </div>
     );
@@ -51,8 +254,8 @@ export default function MyStoryPage() {
 
   if (!isMe) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-black px-4 text-center">
-        <div className="max-w-md space-y-4 p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-xl">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-black px-4 text-center font-sans">
+        <div className="max-w-md space-y-4 p-8 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-2xl">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 flex items-center justify-center">
             <Lock className="w-6 h-6" />
           </div>
@@ -75,10 +278,19 @@ export default function MyStoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-white transition-colors duration-200 selection:bg-emerald-500/20">
-      {/* Top Editorial Navigation */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-black/80 border-b border-slate-200/80 dark:border-white/10 transition-colors">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07080D] text-slate-900 dark:text-white font-sans transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-300 relative overflow-x-hidden">
+      {/* Top Reading Progress Bar */}
+      <div
+        className="fixed top-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 z-50 transition-all duration-150"
+        style={{ width: `${scrollProgress}%` }}
+      />
+
+      {/* Ambient Lighting Orbs */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[65rem] h-[32rem] bg-gradient-to-b from-emerald-500/10 via-cyan-500/5 to-transparent blur-[130px] pointer-events-none" />
+
+      {/* Top Editorial Bar */}
+      <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-[#07080D]/85 border-b border-slate-200/80 dark:border-white/10 transition-colors">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
@@ -98,400 +310,238 @@ export default function MyStoryPage() {
         </div>
       </header>
 
-      {/* Main Narrative Article */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-14 sm:space-y-20">
-        {/* Article Header */}
-        <section className="space-y-6 text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400 shadow-sm">
+      {/* Main Magazine Layout */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-12 relative z-10">
+        {/* Editorial Hero Section */}
+        <section className="text-center space-y-6 max-w-4xl mx-auto pt-2">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400 shadow-sm">
             <Heart className="w-3.5 h-3.5 text-emerald-500 fill-current" />
-            <span>Founder&rsquo;s Story</span>
+            <span>Founder&rsquo;s Documentary • The Real Origin Story</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight leading-[1.08] text-slate-900 dark:text-white">
-            Why I Built FlagOS
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight leading-[1.04] text-slate-900 dark:text-white">
+            Why I Built <span className="bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 bg-clip-text text-transparent">FlagOS</span>
           </h1>
 
-          <p className="text-base sm:text-xl text-slate-600 dark:text-neutral-400 leading-relaxed font-normal">
+          <p className="text-base sm:text-lg md:text-xl text-slate-600 dark:text-neutral-300 leading-relaxed font-light max-w-3xl mx-auto">
             I’m not a software company or a venture-backed startup. I’m a former varsity football player and software engineering student who stepped in to coach a women’s flag program, saw what our sideline was up against, and decided to build the tools our athletes deserved.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-2 text-xs font-mono text-slate-500 dark:text-neutral-500">
-            <span>By Dexter Sargent</span>
-            <span>•</span>
-            <span>York Lions #50 (2021-2024)</span>
-            <span>•</span>
+          {/* Dexter's Signature Credentials Strip */}
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-5 py-2.5 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-600 dark:text-neutral-300 shadow-sm">
+            <span className="font-extrabold text-slate-900 dark:text-white">Dexter Sargent</span>
+            <span className="opacity-40">•</span>
+            <span>York Lions Alum (2021-2024)</span>
+            <span className="opacity-40">•</span>
             <span>Software Engineering Student</span>
-            <span>•</span>
-            <span>Head Coach, York University Womens Football (2024-present)</span>
+            <span className="opacity-40">•</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">Head Coach, York University Womens Football</span>
+          </div>
+
+          {/* 4 Stat Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+            <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900/70 border border-slate-200 dark:border-white/10 text-center shadow-sm backdrop-blur-md">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 block font-mono">
+                4 Yrs
+              </span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wider block mt-0.5">
+                York Lions Football
+              </span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900/70 border border-slate-200 dark:border-white/10 text-center shadow-sm backdrop-blur-md">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 block font-mono">
+                0-7 &rarr; 17-8
+              </span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wider block mt-0.5">
+                Playoff Rematch
+              </span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900/70 border border-slate-200 dark:border-white/10 text-center shadow-sm backdrop-blur-md">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 block font-mono">
+                90
+              </span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wider block mt-0.5">
+                Tryout Athletes
+              </span>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-neutral-900/70 border border-slate-200 dark:border-white/10 text-center shadow-sm backdrop-blur-md">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 block font-mono">
+                100%
+              </span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wider block mt-0.5">
+                Frictionless Sideline
+              </span>
+            </div>
           </div>
         </section>
 
-        {/* Picture Slot 1: Childhood / The Two Footballs */}
-        <div className="rounded-3xl border-2 border-dashed border-slate-300 dark:border-white/15 bg-slate-100/70 dark:bg-neutral-900/40 p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-3 transition-colors hover:border-emerald-500/40 group">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-neutral-800 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 flex items-center justify-center shadow-sm group-hover:text-emerald-500 group-hover:scale-105 transition-all">
-            <Camera className="w-7 h-7" />
+        {/* Sticky Chapter Navigation Ribbon */}
+        <nav
+          aria-label="Story Chapters"
+          className="sticky top-20 z-30 p-2 rounded-2xl bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-md"
+        >
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-1">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500 pl-2 pr-1 shrink-0">
+              Chapters:
+            </span>
+            {CHAPTERS.map((ch) => (
+              <button
+                key={ch.id}
+                onClick={() => scrollToChapter(ch.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  activeChapterId === ch.id
+                    ? "bg-emerald-500 text-black shadow-md font-black"
+                    : "bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10"
+                }`}
+              >
+                <span className="font-mono text-[10px] opacity-75">{ch.number}</span>
+                <span>{ch.navLabel}</span>
+              </button>
+            ))}
           </div>
-          <div className="space-y-1 max-w-md">
-            <p className="text-sm font-bold text-slate-800 dark:text-neutral-200">
-              Photo Slot: Where It Began
-            </p>
-            <p className="text-xs text-slate-500 dark:text-neutral-500">
-              Backyard footballs, childhood playing days, or early sports memories.
-            </p>
-          </div>
+        </nav>
+
+        {/* Longform Editorial Chapter Spreads */}
+        <div className="space-y-12">
+          {CHAPTERS.map((ch, idx) => {
+            const IconComponent = ch.icon;
+            return (
+              <article
+                key={ch.id}
+                id={ch.id}
+                className="scroll-mt-32 p-6 sm:p-10 md:p-12 rounded-3xl bg-white dark:bg-gradient-to-br dark:from-neutral-900/90 dark:via-neutral-900/60 dark:to-neutral-950 border border-slate-200 dark:border-white/10 shadow-xl relative overflow-hidden backdrop-blur-md transition-all hover:border-slate-300 dark:hover:border-white/20"
+              >
+                {/* Ambient chapter glow */}
+                <div
+                  className={`absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl ${ch.themeColor} rounded-full blur-3xl pointer-events-none`}
+                />
+
+                {/* Chapter Metadata Header Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-6 border-b border-slate-200/80 dark:border-white/10 relative z-10">
+                  <div className="flex items-center gap-3">
+                    <span className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-mono font-black text-sm flex items-center justify-center">
+                      {ch.number}
+                    </span>
+                    <div>
+                      <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                        {ch.era}
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-neutral-400">
+                        Chapter {idx + 1} of {CHAPTERS.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {ch.statPill && (
+                    <div className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-mono">
+                      <span className="text-slate-500 dark:text-neutral-400">{ch.statPill.label}: </span>
+                      <strong className="text-emerald-600 dark:text-emerald-400 font-black">{ch.statPill.value}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chapter Title & Tagline */}
+                <div className="pt-8 pb-4 relative z-10 space-y-2">
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-[1.08]">
+                    {ch.title}
+                  </h2>
+                  <p className="text-sm sm:text-base font-medium italic text-slate-500 dark:text-neutral-400">
+                    &ldquo;{ch.tagline}&rdquo;
+                  </p>
+
+                  {/* Badges strip */}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {ch.badges.map((badge, bIdx) => (
+                      <span
+                        key={bIdx}
+                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-medium text-slate-700 dark:text-neutral-300"
+                      >
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2-Column Split: Prose + Media Callouts */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 pt-4 relative z-10 items-start">
+                  {/* Left Column: Narrative Prose & Pull-Quote */}
+                  <div className="lg:col-span-7 space-y-6">
+                    {ch.quoteHighlight && (
+                      <blockquote className="p-4 sm:p-5 rounded-2xl bg-emerald-500/5 border-l-4 border-emerald-500 text-slate-800 dark:text-neutral-200 text-sm sm:text-base italic leading-relaxed">
+                        &ldquo;{ch.quoteHighlight}&rdquo;
+                      </blockquote>
+                    )}
+
+                    <div className="space-y-4 text-base sm:text-lg text-slate-700 dark:text-neutral-300 leading-relaxed font-normal">
+                      {ch.paragraphs.map((p, pIdx) => (
+                        <p key={pIdx}>{p}</p>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Photo Slot / Tactical Card */}
+                  <div className="lg:col-span-5 space-y-4">
+                    {ch.photoSlot && (
+                      <div className="rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/20 bg-slate-100/70 dark:bg-neutral-950/80 p-6 text-center space-y-3 group hover:border-emerald-500/50 transition-colors">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-neutral-400 flex items-center justify-center group-hover:text-emerald-500 group-hover:scale-105 transition-all">
+                          <Camera className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            {ch.photoSlot.title}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-neutral-400 mt-1 leading-relaxed">
+                            {ch.photoSlot.subtitle}
+                          </p>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-200 dark:bg-white/10 text-[11px] font-mono font-medium text-slate-600 dark:text-neutral-400">
+                          <BookmarkCheck className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Archived Memory Slot</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {ch.tacticalNote && (
+                      <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/5 p-5 space-y-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                          Tactical Note
+                        </span>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                          {ch.tacticalNote.title}
+                        </h4>
+                        <p className="text-xs text-slate-600 dark:text-neutral-400 leading-relaxed">
+                          {ch.tacticalNote.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Chapter Bottom Jump to Next */}
+                {idx < CHAPTERS.length - 1 && (
+                  <div className="pt-6 mt-6 border-t border-slate-100 dark:border-white/5 flex justify-end relative z-10">
+                    <button
+                      onClick={() => scrollToChapter(CHAPTERS[idx + 1].id)}
+                      className="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                    >
+                      <span>Next: Chapter {CHAPTERS[idx + 1].number}</span>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
-
-        {/* Chapter 1: The Two Footballs & The Persuasive Letter */}
-        <article className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-base sm:text-lg leading-relaxed text-slate-700 dark:text-neutral-300 font-normal">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              01
-            </span>
-            <span>Love at first catch</span>
-          </h2>
-
-          <p>
-            When I was in the third grade, I played football for the very first time at recess. It wasn’t organized, and nobody had pads or helmets, but I fell head-over-heels in love with the game instantly. I couldn’t stop thinking about it, I started playing with the older kids every day. One day I went home and asked both of my parents if they could buy me a football, without telling either of them that I had asked the other.
-          </p>
-
-          <p>
-            The next day, both of them walked through the door a brand-new football for me. Suddenly I had two.
-          </p>
-
-          <p>
-            From that day on, I was the kid who brought the football to school. I was the kid who was convincing his friends we should play football at recess after the older kids moved on to junior high. I'd ask my dad to come play catch with me every day. I would go out into the yard and spend hours throwing the ball high up into the air, tracking it against the sky, and catching it with one hand. Every now and then, my neighbour would look out their window, see me tossing the ball up to myself alone, and walk over to throw it around with me. I appreciated that neighbour, but the truth was I loved being out there with that football just as much whether I was completely alone or with someone else.
-          </p>
-
-          <p>
-            A year later in the fourth grade, our grade 4/5 split class did a unit on persuasive writing. The assignment was to write a persuasive letter addressed to someone in your life, about something you really cared about. You didn't have to give it to them, the teacher just wanted us to write passionately. An older kid and I that I would play with at recess decided that we would use assignment to write a persuasive letter to our parents convincing them to let us register for the Dartmouth Destroyers youth tackle football team in the fall. It worked. My friend played for one season and decided it wasn’t for him. I was hooked for life.
-          </p>
-        </article>
-
-        {/* Picture Slot 2: Nova Scotia High School Football & Tape */}
-        <div className="rounded-3xl border-2 border-dashed border-slate-300 dark:border-white/15 bg-slate-100/70 dark:bg-neutral-900/40 p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-3 transition-colors hover:border-emerald-500/40 group">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-neutral-800 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 flex items-center justify-center shadow-sm group-hover:text-emerald-500 group-hover:scale-105 transition-all">
-            <Camera className="w-7 h-7" />
-          </div>
-          <div className="space-y-1 max-w-md">
-            <p className="text-sm font-bold text-slate-800 dark:text-neutral-200">
-              Photo Slot: Nova Scotia High School Football &amp; Tape
-            </p>
-            <p className="text-xs text-slate-500 dark:text-neutral-500">
-              High school game action, All-Star banquet, or early recruitment film session.
-            </p>
-          </div>
-        </div>
-
-        {/* Chapter 2: The Cold-Email Grind & Leaving Home */}
-        <article className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-base sm:text-lg leading-relaxed text-slate-700 dark:text-neutral-300 font-normal">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              02
-            </span>
-            <span>Nova Scotia All-Star, The Cold-Email Grind, and Leaving Home</span>
-          </h2>
-
-          <p>
-            Because opportunities for competitive tackle football were limited in Nova Scotia, I grew up playing flag football alongside tackle. That dual experience shaped my football IQ and route instincts early on. Prior to my 10th and 11th-grade years, I played for <strong className="font-bold text-slate-900 dark:text-white">Team Nova Scotia Flag Football</strong>. Before grade 10, I lined up at defensive back and wide receiver (DB/WR), earning the <strong className="font-bold text-slate-900 dark:text-white">Team Sportsmanship Award</strong> at the Football Nova Scotia awards ceremony. In an unforgettable twist of fate, that banquet was where I first met <strong className="font-bold text-slate-900 dark:text-white">Brian Jones</strong>, who had just won the Grey Cup with the Toronto Argonauts and was bringing the cup back home to Nova Scotia. Years later, Brian would become my special teams coach and head coach at York University.
-          </p>
-
-          <p>
-            When you play high school football in Nova Scotia, you don&rsquo;t get national television broadcasts or recruiters flying in on private jets. If you want to play at the university level, you have to put yourself on the map with sheer persistence.
-          </p>
-
-          <p>
-            In my 11th-grade season, I was chosen as a team captain and had a strong season at safety, culminating in being named a <strong className="font-bold text-slate-900 dark:text-white">Nova Scotia High School Football All-Star Safety</strong>. That was the moment that shifted everything in my head. For the first time, I genuinely started to believe I had the skill and instincts to play at the next level. I edited my own game film and emailed my tape to practically every university coach across the country, starting brief introductory conversations with anyone who wrote back.
-          </p>
-
-          <p>
-            Heading into my senior season, I took my preparation to another gear. I hit the weight room hard, packed on size to reach <strong className="font-bold text-slate-900 dark:text-white">6&rsquo;3&rdquo; and 205 lbs</strong>, and moved down into the box to play Middle Linebacker (MLB). That senior year, I earned All-Star honours for a second time. When I sent that updated tape out across the country, the response changed completely—the interest was real.
-          </p>
-
-          <p>
-            I received a few local offers from universities on the East Coast, a $1,500 offer from the University of Toronto (U of T), and a full <strong className="font-bold text-slate-900 dark:text-white">$4,500 athletic scholarship from York University</strong>—the absolute maximum athletic financial award permissible under OUA rules.
-          </p>
-
-          <p>
-            I loved the East Coast and it was hard to leave home, but my future came down to two non-negotiables: <strong className="font-bold text-slate-900 dark:text-white">I wanted to play competitive varsity football, and I wanted to earn an engineering degree</strong>. Because both together were not offered at any university on the East Coast, I packed my bags for Toronto so I wouldn&rsquo;t have to compromise on either ambition.
-          </p>
-        </article>
-
-        {/* Picture Slot 3: York University Football */}
-        <div className="rounded-3xl border-2 border-dashed border-slate-300 dark:border-white/15 bg-slate-100/70 dark:bg-neutral-900/40 p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-3 transition-colors hover:border-emerald-500/40 group">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-neutral-800 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 flex items-center justify-center shadow-sm group-hover:text-emerald-500 group-hover:scale-105 transition-all">
-            <Camera className="w-7 h-7" />
-          </div>
-          <div className="space-y-1 max-w-md">
-            <p className="text-sm font-bold text-slate-800 dark:text-neutral-200">
-              Photo Slot: York University Football
-            </p>
-            <p className="text-xs text-slate-500 dark:text-neutral-500">
-              York Lions jersey, game action (Linebacker / DE / Tight End), or 2023 Captain portrait.
-            </p>
-          </div>
-        </div>
-
-        {/* Chapter 3: Four Years at York */}
-        <article className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-base sm:text-lg leading-relaxed text-slate-700 dark:text-neutral-300 font-normal">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              03
-            </span>
-            <span>Four Years with the York Lions (2021–2024)</span>
-          </h2>
-
-          <p>
-            Like anyone who dedicates a decade to a sport, I had my share of ups and downs with football—injuries, tough losses, early mornings, and the relentless physical toll. But I kept grinding, and from 2021 to 2024, I played university football for York University.
-          </p>
-
-          <p>
-            Before I got my full shot on defense, I earned every single inch on <strong className="font-bold text-slate-900 dark:text-white">special teams</strong>. In my first year, the coaching staff entrusted me with calling the cadence on the punt team as a true rookie, and by midway through that first season, I was starting across all four special teams units.
-          </p>
-
-          <p>
-            In my second year (2022), I continued starting on all specials. One moment I will never forget came on a Friday night game right before Thanksgiving against Windsor: I scooped up a blocked kick and took it in for a touchdown right before halftime, putting us ahead 10-9 while my entire family was in the stands watching—the first time our team had led at the half all season (even though we ended up dropping the game). That year, I also threw key lead blocks on return units that helped spring my teammate and roommate, Alfred Olay, to be selected as York&rsquo;s first U SPORTS 1st Team All-Canadian in nearly 20 years as a returner.
-          </p>
-
-          <p>
-            Despite those milestones on special teams, the conclusion of that 2022 season was one of the most frustrating periods of my career. I felt stuck: I wasn&rsquo;t being given real opportunities to compete on defense, two out of my three roommates were leaving the program, and we were all exhausted from losing. Frustrated with the lack of defensive opportunity and sick of losing, I made the hard decision to <strong className="font-bold text-slate-900 dark:text-white">quit the York team</strong> following the 2022 season.
-          </p>
-
-          <p>
-            I was completely off the team for months and had mentally closed that chapter. Then, just <strong className="font-bold text-slate-900 dark:text-white">three weeks before 2023 training camp</strong>, my phone rang. It was <strong className="font-bold text-slate-900 dark:text-white">Brian Jones</strong>—the same coach I had met years earlier with the Grey Cup in Nova Scotia, who had coached my special teams in 2022 and was now stepping in as co-head coach for 2023. Brian asked me directly if I was certain I was done with football.
-          </p>
-
-          <p>
-            I told him I wasn&rsquo;t. I decided to come back—even though I had no plan and nowhere to live in Toronto. For the first week, I stayed at my sister&rsquo;s place while she was away traveling. When she returned, I was essentially homeless. My former roommate Theo took me in without hesitation. I slept on Theo&rsquo;s pull-out couch alongside the rest of his roommates and my teammates, and they treated me like just another roommate for two to three weeks to begin the season. Eventually, I found a temporary, overpriced, rundown room for a single month, sleeping directly on the mattress pulled from Theo&rsquo;s pull-out couch. Once that season ended, I moved in with Braden and Alfred, living together for the remainder of our university careers.
-          </p>
-
-          <p>
-            That 2023 comeback season became the defining chapter of my playing days. When our best player went down for the year in Week 2, Brian Jones personally chose and named me a <strong className="font-bold text-slate-900 dark:text-white">team captain</strong>—it wasn&rsquo;t a team vote, but a coach&rsquo;s decision trusting me to step up and anchor the locker room through adversity. When major injuries hit our defensive front, I was asked to start across the defense at SAM, WILL, and MIKE linebacker at different points—while continuing to start on all four special teams units. Over four seasons, I lined up wherever York needed me: linebacker, defensive end, and tight end. Playing university ball taught me what real football culture feels like: accountability, preparation, complex schemes, and the deep brotherhood forged through shared struggle.
-          </p>
-
-          <p>
-            At the exact same time, I was balancing varsity athletics and working at my job with a demanding academic workload: alongside football, I was pursuing a <strong className="font-bold text-slate-900 dark:text-white">Software Engineering degree</strong>, and I am now in my <strong className="font-bold text-slate-900 dark:text-white">final year</strong>. Juggling 6:00 AM film sessions, weight-room blocks, practice schedules, engineering problem sets, and late-night coding projects wasn&rsquo;t easy, but it taught me relentless discipline and focus.
-          </p>
-
-          <p>
-            Little did I know that my biggest football journey was about to start on a completely different sideline.
-          </p>
-        </article>
-
-        {/* Chapter 4: Reading Week & The Call to Coach */}
-        <article className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-base sm:text-lg leading-relaxed text-slate-700 dark:text-neutral-300 font-normal">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              04
-            </span>
-            <span>A Reading Week Favor That Changed Everything</span>
-          </h2>
-
-          <p>
-            Right before my final season of university football, our brand-new head coach came into the locker room with a question: the women’s flag football team had an upcoming 11v11 season with OWIFA (Ontario Women’s Intercollegiate Football Association) over reading week, and they needed extra coaching help. Did anyone want to volunteer?
-          </p>
-
-          <p>
-            A bunch of guys came out. To be honest, most of us just wanted to make a great first impression on our new head coach. During that first week of practices, there were definitely more coaches on the turf than actual players. But while others moved on after reading week, something clicked for me and some of my teammates. We genuinely loved the game, we saw the potential in these athletes, and we decided to keep showing up.
-          </p>
-
-          <p>
-            My friend Theo and I noted early on that you could even argue the women loved the game more. They were eager to learn and were truly sponges when we brought all the knowledge we had accrued over years of high-level football. They had all of the care, but largely lacked the ego of the teammates we were used to in tackle locker rooms.
-          </p>
-
-          <p>
-            It also became clear to us very quickly that the program had serious problems. Numbers were low. Practices were disorganized and lacked direction. The playbooks were stripped down to the bare minimum, and the existing coaching staff treated the athletes as though they weren’t capable of understanding real football concepts. Seeing dedicated female competitors held back and talked down to didn’t sit right with us. These women loved the game as much as we did, and they deserved real coaching, real schemes, and real respect.
-          </p>
-
-          <p>
-            We kept coming out, determined to help however we could.
-          </p>
-        </article>
-
-        {/* Picture Slot 4: The 0-7 Turnaround & Playoff Run */}
-        <div className="rounded-3xl border-2 border-dashed border-slate-300 dark:border-white/15 bg-slate-100/70 dark:bg-neutral-900/40 p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-3 transition-colors hover:border-emerald-500/40 group">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-neutral-800 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 flex items-center justify-center shadow-sm group-hover:text-emerald-500 group-hover:scale-105 transition-all">
-            <Camera className="w-7 h-7" />
-          </div>
-          <div className="space-y-1 max-w-md">
-            <p className="text-sm font-bold text-slate-800 dark:text-neutral-200">
-              Photo Slot: The 0-7 Turnaround &amp; Playoff Game
-            </p>
-            <p className="text-xs text-slate-500 dark:text-neutral-500">
-              The sideline against Waterloo, team huddle, or playoff tournament team shot.
-            </p>
-          </div>
-        </div>
-
-        {/* Chapter 5: The One-Week Turnaround */}
-        <article className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-base sm:text-lg leading-relaxed text-slate-700 dark:text-neutral-300 font-normal">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              05
-            </span>
-            <span>One Week, A New Playbook, and 0-7 to the Playoffs</span>
-          </h2>
-
-          <p>
-            Because this was a club team, it operated under its own student executive structure rather than university athletics administration. Mid-season, after having us come out and share our football knowledge, the club&rsquo;s executive leadership made a definitive decision: they chose to part ways with their previous coaches and officially hired our group to take over—just <strong className="font-bold text-slate-900 dark:text-white">one week before their final tournament</strong>.
-          </p>
-
-          <p>
-            At that moment, the team was sitting at <strong className="font-bold text-slate-900 dark:text-white">0-7</strong> on the year.
-          </p>
-
-          <p>
-            My roommate Braden stepped up as head coach, and Theo and I took on the roles of co-defensive coordinators. We didn’t take the easy route by simplifying things; we did the exact opposite. We trusted the women with a modern, sophisticated scheme. In just seven days, we installed an entirely new defensive system and revamped the offensive progressions.
-          </p>
-
-          <p>
-            When tournament day arrived, we were tested right out of the gate. In our first game as coaches, we fought through a tough, physical battle against Guelph, narrowly falling <strong className="font-bold text-slate-900 dark:text-white">17-10</strong>. Even in a loss, you could feel the energy shifting—this was a team competing with real confidence and structure. In our second game, we dropped an <strong className="font-bold text-slate-900 dark:text-white">18-3</strong> decision to Waterloo. But standing on the sideline between series, Theo and I noticed a distinct, repeated offensive tendency in Waterloo&rsquo;s playcalling.
-          </p>
-
-          <p>
-            Because of tournament seeding, our next matchup was an immediate <strong className="font-bold text-slate-900 dark:text-white">8th vs. 9th play-in game—a direct rematch against Waterloo</strong> with an OWIFA playoff berth on the line. Rather than overcomplicating things or panic-switching schemes, we huddled our players, walked them through the specific tendency we had scouted, and trusted them to adjust live on the field.
-          </p>
-
-          <p>
-            They executed to perfection. They took away Waterloo&rsquo;s primary reads, anticipated their rhythm, and dominated the rematch to take a commanding <strong className="font-bold text-slate-900 dark:text-white">17-8 victory</strong>. In just seven days under a new coaching staff, an 0-7 squad had adjusted on the fly and punched their ticket into the OWIFA playoffs. We advanced into the playoff bracket where we faced the eventual tournament champions in Western, fighting hard before falling 20-0. That run proved everything to us: when female athletes are given real football knowledge, mutual respect, and trust, they will rise to the occasion and execute under pressure.
-          </p>
-        </article>
-
-        {/* Chapter 6: Building a Safe, High-Performance Culture */}
-        <article className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-base sm:text-lg leading-relaxed text-slate-700 dark:text-neutral-300 font-normal">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              06
-            </span>
-            <span>Handing Out Flyers &amp; Rebuilding from the Ground Up</span>
-          </h2>
-
-          <p>
-            The way collegiate women’s flag football works in Ontario is split into two halves: competitive 5v5 in the autumn, followed by 11v11 semi-contact in the winter. The following fall, I was playing my final season for the York tackle team, so Braden coached that 5v5 semester before transferring to the University of Windsor.
-          </p>
-
-          <p>
-            When Braden moved on, Theo and I were the two natural candidates to take over the program. We sat down and agreed that I would step into the Head Coach role, while Theo would serve as Defensive Coordinator. But in reality, Theo has been a true co-head coach with me every step of the way. Theo is one of the most driven football minds I know: he worked his tail off as a Graduate Assistant with the York Lions men&rsquo;s tackle team and was hired as their full-time <strong className="font-bold text-slate-900 dark:text-white">Recruiting Coordinator</strong>—becoming one of the youngest full-time university football coaches in the country at just 25 years old.
-          </p>
-
-          <p>
-            Having that level of football acumen, energy, and relentless work ethic set the standard for our program. From that moment on, we poured everything we had into transforming the club. We wanted everyone on campus to know that the old environment was gone for good. This was now an empowering, safe, and serious football program where female athletes were coached hard, respected completely, and given every tool to succeed. Theo and I walked across campus handing out flyers by hand, talking to students, holding info sessions, and spreading the word.
-          </p>
-
-          <div className="p-6 sm:p-8 rounded-3xl bg-emerald-500/5 dark:bg-emerald-500/10 border-l-4 border-emerald-500 my-8 space-y-2">
-            <p className="text-lg sm:text-xl font-bold italic text-slate-800 dark:text-neutral-100 leading-snug">
-              &ldquo;We wanted our players to know they were taken seriously as athletes. When you give players high expectations and real tools, they rise to the occasion every single time.&rdquo;
-            </p>
-            <p className="text-xs font-mono uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-bold">
-              — Dexter Sargent &amp; Theo
-            </p>
-          </div>
-
-          <p>
-            The momentum kept building year over year. And in 2026, a monumental announcement arrived: <strong className="font-bold text-slate-900 dark:text-white">women’s flag football was officially approved to transition to full varsity status</strong>. We still don’t know if our university will formally include our program in the initial varsity wave—but we are fighting every day to make sure our women get the varsity recognition they have earned.
-          </p>
-        </article>
-
-        {/* Picture Slot 5: The 90-Player Tryout & Team Photo */}
-        <div className="rounded-3xl border-2 border-dashed border-slate-300 dark:border-white/15 bg-slate-100/70 dark:bg-neutral-900/40 p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-3 transition-colors hover:border-emerald-500/40 group">
-          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-neutral-800 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 flex items-center justify-center shadow-sm group-hover:text-emerald-500 group-hover:scale-105 transition-all">
-            <Camera className="w-7 h-7" />
-          </div>
-          <div className="space-y-1 max-w-md">
-            <p className="text-sm font-bold text-slate-800 dark:text-neutral-200">
-              Photo Slot: The 90-Player Tryout &amp; Team
-            </p>
-            <p className="text-xs text-slate-500 dark:text-neutral-500">
-              Tryout field packed with players, campus flyers, or full team huddle.
-            </p>
-          </div>
-        </div>
-
-        {/* Chapter 7: The 90 Players and Why FlagOS Exists */}
-        <article className="prose prose-slate dark:prose-invert max-w-none space-y-6 text-base sm:text-lg leading-relaxed text-slate-700 dark:text-neutral-300 font-normal">
-          <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
-            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              07
-            </span>
-            <span>Ninety Players on the Turf, and the Birth of FlagOS</span>
-          </h2>
-
-          <p>
-            That grassroots effort culminated in a moment I will never forget: we opened tryouts for our competitive 5v5 flag roster, and <strong className="font-bold text-slate-900 dark:text-white">90 athletes showed up to compete</strong>.
-          </p>
-
-          <p>
-            The turf was packed. But for a coach, having 90 players arrive for a 5v5 roster creates an immediate puzzle: your tournament travel roster only holds a fraction of that number. How do you honor the commitment of every single one of those 90 athletes? How do you keep them engaged, connected, and playing so that when our 11v11 semi-contact league kicks off in the winter, we haven’t lost that incredible energy?
-          </p>
-
-          <p>
-            The hardest part of coaching is turning away people who want to be there. I couldn&rsquo;t stomach telling 75+ passionate women that there was no place for them on the field. The obvious answer was to create our own league right on campus where everyone could play, develop their skills, and stay part of our football program.
-          </p>
-
-          <p>
-            But that created an immediate operational challenge: <strong className="font-bold text-slate-900 dark:text-white">I couldn&rsquo;t physically be down there on the fields running the games</strong>. As Head Coach, my full focus on game days and practices had to be with our competitive tournament roster, running offensive schemes, preparing our defense, and coaching our team.
-          </p>
-
-          <p>
-            That was the true genesis of the idea. Outside of football, my professional background is in workflow automation, which I do with an Ontario non-profit called <strong className="font-bold text-slate-900 dark:text-white">Partners for Planning (P4P)</strong>—an organization dedicated to helping families and individuals with disabilities navigate complex systems and plan for the future. That work taught me the power of taking stressful, time-consuming administrative burdens and building automated tools that take the weight off people&rsquo;s shoulders.
-          </p>
-
-          <p>
-            Pairing that automation job with everything I was learning in my <strong className="font-bold text-slate-900 dark:text-white">software engineering degree</strong>, I had both the technical foundation and the practical drive to build our own solution from scratch.
-          </p>
-
-          <p>
-            I decided to bring that exact same philosophy to our football club. I needed an operating system so turnkey, automated, and frictionless that <strong className="font-bold text-slate-900 dark:text-white">my assistant coaches could manage everything without a great deal of stress or effort</strong> while I was coaching the main team.
-          </p>
-
-          <p>
-            The system didn&rsquo;t start with big, bloated dashboards or complex scheduling algorithms. It started far simpler than that: it was birthed entirely by the <strong className="font-bold text-slate-900 dark:text-white">play-by-play wizard</strong>.
-          </p>
-
-          <p>
-            In student club sports, you operate under <strong className="font-bold text-slate-900 dark:text-white">extreme volunteer constraints</strong>. The volunteer assistant coaches helping me run games were my close friends, most of whom were my former varsity tackle teammates. They had generously stepped up to support our program, but they had busy classes, jobs, and zero formal statkeeping training. Existing sports software demanded clunky dropdowns, manual mental math, and confusing form inputs that fell apart under live game speed.
-          </p>
-
-          <p>
-            I came up with the play-by-play wizard to provide <strong className="font-bold text-slate-900 dark:text-white">full, authentic statkeeping</strong> while respecting those volunteer limits—making stat entry as <strong className="font-bold text-slate-900 dark:text-white">efficient, dynamic, and user-friendly as possible</strong>. With clean step-by-step taps, auto-advancing downs, contextual player buttons, and automated yardage math, my friends could accurately score a game from their phones without stress or mistakes.
-          </p>
-
-          <p>
-            Now, to be completely candid and not misrepresent how it went: we weren&rsquo;t exactly successful in retaining all 90 athletes as the semester wore on. In university club sports, class workloads, jobs, and commitments inevitably pull people in different directions. But the core community held strong—we played real games out on the turf every single week using that wizard on the sidelines.
-          </p>
-
-          <p>
-            Every week after game days, I would head home, reflect on what worked and what felt clunky, and build more stuff. I spent countless late nights refining the workflow, adding new capabilities, and polishing features based directly on what our players and assistant coaches were experiencing out on the field. From that initial wizard, the rest of the <strong className="font-bold text-slate-900 dark:text-white">YUWFFL (York University Women&rsquo;s Flag Football League) platform</strong> grew—automated schedules, live scoreboards, and season-long player profiles.
-          </p>
-
-          <p>
-            Soon after, our tournament squad needed high-level tactical tools of its own. So I built a separate, specialized portal specifically for our competitive team—complete with interactive route-drawing, custom game call sheets, wristband generators, and private play installations. That experience directly spurred the idea for <strong className="font-bold text-slate-900 dark:text-white">FlagOS&rsquo;s two separate operating modes</strong>: a public, frictionless game-day operating system for leagues and tournaments on one side, and a secure, private coaching portal for competitive programs on the other.
-          </p>
-
-          <p>
-            Watching that system power both our campus league and our competitive team proved that this wasn&rsquo;t just a weekend pet project—it was the operating system flag football had always needed. Coaches and league organizers didn’t ask me to build this; in fact, no one outside our team even knew about it. But my friends who coached with me and the players who used it every week told me how much they genuinely loved it and how much it elevated their experience. Seeing their passion and knowing what this could do for the sport, I took a <strong className="font-bold text-slate-900 dark:text-white">leap of faith</strong>—and that leap of faith is what grew into <strong className="font-bold text-slate-900 dark:text-white">FlagOS</strong>.
-          </p>
-
-          <p>
-            I didn&rsquo;t build this to sell a product. I built it because I coach this game, I love these players, and our community deserved better infrastructure.
-          </p>
-
-          <p>
-            That same mindset guides how I approach pricing. I don&rsquo;t intend to squeeze every last dollar out of people, and I refuse to let FlagOS fall victim to corporate greed. I&rsquo;ve set the price at what I genuinely think is fair: the cost scales based on your active user-base, so small grassroots leagues aren&rsquo;t burdened while larger organizations carry their fair share of server load.
-          </p>
-
-          <p>
-            And whenever I build and roll out new features, they will simply be added for everyone—not locked behind higher-priced tiers or arbitrary enterprise paywalls, unless a capability incurs substantial raw compute costs to deliver. At the end of the day, I just want honest, fair compensation for this tool I built for the sport I love.
-          </p>
-        </article>
 
         {/* Personal Sign-off Card */}
-        <section className="pt-8 border-t border-slate-200 dark:border-white/10 space-y-6">
-          <div className="p-6 sm:p-10 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-sm space-y-6">
+        <section className="pt-4 border-t border-slate-200 dark:border-white/10 space-y-6">
+          <div className="p-6 sm:p-10 rounded-3xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/10 shadow-xl space-y-6">
             <div className="space-y-2">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                 A Note to Coaches &amp; Players
               </span>
-              <h3 className="text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
+              <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
                 Built with Heart, For the Game
               </h3>
               <p className="text-sm sm:text-base text-slate-600 dark:text-neutral-400 leading-relaxed">
@@ -505,9 +555,9 @@ export default function MyStoryPage() {
                   Dexter Sargent
                 </span>
                 <p className="text-xs text-slate-500 dark:text-neutral-400 font-medium">
-                  Head Coach • York Lions Football Alum (#42) • NS All-Star • Final-Year Software Engineering • Creator of FlagOS
+                  Head Coach • York Lions Football Alum (#50) • NS All-Star • Final-Year Software Engineering • Creator of FlagOS
                 </p>
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-mono">
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold">
                   dextersargent@gmail.com
                 </p>
               </div>
@@ -521,7 +571,7 @@ export default function MyStoryPage() {
                 </Link>
                 <a
                   href="mailto:dextersargent@gmail.com"
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>Send a Note</span>

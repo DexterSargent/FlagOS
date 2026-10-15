@@ -195,7 +195,8 @@ export async function simulateFullGame(
     startClock: number
   ) => {
     let clock = startClock;
-    const wr = offRoster.wrs[(playIndex - 1) % offRoster.wrs.length];
+    const offensiveTargets = [...offRoster.wrs, offRoster.rb];
+    const wr = offensiveTargets[(playIndex - 1) % offensiveTargets.length];
 
     // 1. Chunk play (1st Down Gain)
     clock -= 35 + Math.floor(Math.random() * 20);
@@ -218,7 +219,7 @@ export async function simulateFullGame(
       defenders: [defRoster.db],
       flaggers: [defRoster.db],
       timestamp: new Date(Date.now() - (100 - playIndex) * 1000).toISOString(),
-      result: `${offRoster.qb} ${setupYards} yd pass complete to ${wr} (1st Down, flag pulled by ${defRoster.db})`,
+      result: `${offRoster.qb} ${setupYards} yd pass complete to ${wr} (1st Down, flagged by ${defRoster.db})`,
     });
 
     // 2. Occasional Defensive Play (PBU or Sack or Incomplete)
@@ -268,7 +269,7 @@ export async function simulateFullGame(
     // 3. Scoring Play
     clock -= 30 + Math.floor(Math.random() * 15);
     if (drive.type === "pass_td") {
-      const tdWr = offRoster.wrs[playIndex % offRoster.wrs.length];
+      const tdWr = offensiveTargets[playIndex % offensiveTargets.length];
       const tdYards = 12 + Math.floor(Math.random() * 22);
       if (isHome) homeCurrentScore += 6;
       else awayCurrentScore += 6;
@@ -295,7 +296,7 @@ export async function simulateFullGame(
       // Point After Touchdown (Conversion)
       if (drive.conversion) {
         clock -= 10;
-        const convReceiver = offRoster.rb;
+        const convReceiver = offensiveTargets[(playIndex + 1) % offensiveTargets.length];
         if (isHome) homeCurrentScore += drive.conversion;
         else awayCurrentScore += drive.conversion;
 
@@ -345,7 +346,7 @@ export async function simulateFullGame(
 
       if (drive.conversion) {
         clock -= 10;
-        const convReceiver = offRoster.wrs[0];
+        const convReceiver = offensiveTargets[(playIndex + 2) % offensiveTargets.length];
         if (isHome) homeCurrentScore += drive.conversion;
         else awayCurrentScore += drive.conversion;
 

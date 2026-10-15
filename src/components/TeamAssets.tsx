@@ -65,16 +65,18 @@ export function TeamLogo({
   logoUrl,
   icon,
   className = "w-12 h-12",
+  customColor,
 }: {
   teamName?: string;
   logoUrl?: string;
   icon?: string;
   className?: string;
+  customColor?: string;
 }) {
-  const color = getTeamColor(teamName);
+  const color = customColor || getTeamColor(teamName);
   const iconProps = { className: `${className} ${color}` };
 
-  if (logoUrl && (logoUrl.startsWith("http") || logoUrl.startsWith("/"))) {
+  if (logoUrl && (logoUrl.startsWith("http") || logoUrl.startsWith("/") || logoUrl.startsWith("data:"))) {
     return <img src={logoUrl} alt={teamName} className={className} style={{ objectFit: "contain" }} />;
   }
 

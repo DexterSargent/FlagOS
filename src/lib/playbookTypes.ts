@@ -183,11 +183,53 @@ export interface PlayerNode {
   quickRouteName?: string; // "Slant", "Post", "Go", "Out", "Corner", "Curl", "Wheel", "Flat", "Drag"
   breakYards?: number; // amount of yards before first break
   routeDepth?: number; // total route depth in yards
+  // Pre-snap motion support
+  hasMotion?: boolean; // indicates pre-snap motion is active on this offensive player
+  motionPath?: RoutePoint[]; // pre-snap motion waypoints from alignment (x, y) to motion endpoint
+  motionName?: string; // e.g. "Jet Motion", "Orbit Motion", "Shift", "Return Motion"
   // Defensive Specific
   coverageType?: DefensiveCoverageType;
   manTargetId?: string; // id of offensive player to mirror / lock
   zoneId?: string; // id of zone to drop into
   notes?: string; // Coaching notes & assignment instructions for this specific position
+}
+
+/**
+ * Helper to determine if a player has active pre-snap motion.
+ */
+export function playerHasMotion(player: PlayerNode): boolean {
+  if (player.side !== "offense") return false;
+  return Boolean(
+    player.hasMotion ||
+    player.routeType === "motion" ||
+    (player.motionPath && player.motionPath.length > 0)
+  );
+}
+
+/**
+ * Gets the pre-snap motion path waypoints for a player, if active.
+ */
+export function getPlayerMotionPath(player: PlayerNode): RoutePoint[] | null {
+  if (!playerHasMotion(player)) return null;
+  if (player.motionPath && player.motionPath.length > 0) {
+    return player.motionPath;
+  }
+  if (player.routeType === "motion" && player.route && player.route.length > 0) {
+    return player.route;
+  }
+  return null;
+}
+
+/**
+ * Returns the effective terminal point of a player's pre-snap motion where their route begins,
+ * or their initial alignment (x, y) if no motion is active.
+ */
+export function getPlayerRouteOrigin(player: PlayerNode): RoutePoint {
+  const motionPts = getPlayerMotionPath(player);
+  if (motionPts && motionPts.length > 0) {
+    return motionPts[motionPts.length - 1];
+  }
+  return { x: player.x, y: player.y };
 }
 
 export interface PlayDiagram {

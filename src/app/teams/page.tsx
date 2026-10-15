@@ -8,7 +8,7 @@ import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
-import { isRealTeam } from "@/components/TeamAssets";
+import { isRealTeam, TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
   getSandboxTeams,
@@ -23,7 +23,7 @@ import {
   getSandboxPlays,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import { YORK_TEAM_ID, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS } from "@/lib/yorkTeamData";
+import { YORK_TEAM_ID, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS, isYorkTeam } from "@/lib/yorkTeamData";
 
 interface Team {
   id: string;
@@ -153,10 +153,10 @@ export default function TeamsPage() {
 
   const handleAddPlayer = async () => {
     if (!newPlayerName.trim() || !activeTeamId) return;
-    const maxRoster = settings.rules?.maxRosterSize || 15;
+    const maxRoster = 30; // Hard cap of 30 players for all teams
     const currentCount = players.filter(p => p.teamId === activeTeamId).length;
     if (currentCount >= maxRoster) {
-      alert(`Cannot add player: Team has reached the maximum roster limit (${maxRoster} players).`);
+      alert(`Cannot add player: Team has reached the hard cap roster limit of ${maxRoster} players.`);
       return;
     }
     if (isDemoLeague) {
@@ -226,10 +226,10 @@ export default function TeamsPage() {
     const targetTeam = teams.find((t) => t.id === targetTeamId);
     if (!targetTeam) return;
 
-    const maxRoster = settings.rules?.maxRosterSize || 15;
+    const maxRoster = 30; // Hard cap of 30 players for all teams
     const teamCount = players.filter((p) => p.teamId === targetTeamId).length;
     if (teamCount >= maxRoster) {
-      alert(`Cannot assign: ${targetTeam.name} has already reached the maximum roster size (${maxRoster} players).`);
+      alert(`Cannot assign: ${targetTeam.name} has already reached the hard cap roster size of ${maxRoster} players.`);
       return;
     }
 
@@ -435,20 +435,24 @@ export default function TeamsPage() {
     const dnp = m?.didNotPlay || [];
     const isEligible = (name: string) => name && !dnp.includes(name);
 
+    const isConversionPlay = Boolean(
+      play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+    );
+
     // Passing
-    if (play.playType === 'Pass' && isEligible(play.qbPlayerId) && playerStats[play.qbPlayerId]) {
+    if (play.playType === 'Pass' && isEligible(play.qbPlayerId) && playerStats[play.qbPlayerId] && !isConversionPlay) {
       playerStats[play.qbPlayerId].passAtt += 1;
       if (play.passOutcome === 'Complete') playerStats[play.qbPlayerId].passComp += 1;
       if (play.isTouchdown) playerStats[play.qbPlayerId].passTD += 1;
       if (play.passOutcome === 'Interception') playerStats[play.qbPlayerId].passInt += 1;
     }
     // Receiving
-    if (play.playType === 'Pass' && play.passOutcome === 'Complete' && isEligible(play.receiverPlayerId) && playerStats[play.receiverPlayerId]) {
+    if (play.playType === 'Pass' && play.passOutcome === 'Complete' && isEligible(play.receiverPlayerId) && playerStats[play.receiverPlayerId] && !isConversionPlay) {
       playerStats[play.receiverPlayerId].receptions += 1;
       if (play.isTouchdown) playerStats[play.receiverPlayerId].recTD += 1;
     }
     // Rushing
-    if (play.playType === 'Run' && isEligible(play.runnerPlayerId) && playerStats[play.runnerPlayerId]) {
+    if (play.playType === 'Run' && isEligible(play.runnerPlayerId) && playerStats[play.runnerPlayerId] && !isConversionPlay) {
       playerStats[play.runnerPlayerId].rushAtt += 1;
       if (play.isTouchdown) playerStats[play.runnerPlayerId].rushTD += 1;
     }
@@ -710,7 +714,7 @@ export default function TeamsPage() {
                               {getShorthand(team.name)}
                             </span>
                             <span className="text-neutral-400 text-xs font-medium">
-                              {teamRosterCount}/{settings.rules?.maxRosterSize || 15} Players
+                              {teamRosterCount}/30 Players
                             </span>
                             {teamRosterCount < (settings.rules?.minRosterSize || 5) && (
                               <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-300 rounded text-[9px] font-bold border border-amber-500/30">
@@ -724,8 +728,14 @@ export default function TeamsPage() {
                             )}
                           </div>
                         </div>
-                        <div className="w-12 h-12 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
-                          <Shield className="w-6 h-6" />
+                        <div className="w-12 h-12 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center p-2 group-hover:scale-110 transition-transform shrink-0">
+                          <TeamLogo
+                            teamName={team.name}
+                            logoUrl={(team as any).logoUrl}
+                            icon={(team as any).icon || (isYorkTeam(team.id) ? "cat" : "shield")}
+                            className="w-full h-full object-contain"
+                            customColor={isYorkTeam(team.id) ? "text-red-400" : undefined}
+                          />
                         </div>
                       </div>
 
@@ -938,7 +948,7 @@ export default function TeamsPage() {
                                           const count = players.filter((p) => p.teamId === t.id).length;
                                           return (
                                             <option key={t.id} value={t.id}>
-                                              {t.name} ({count}/{settings.rules?.maxRosterSize || 15})
+                                              {t.name} ({count}/30)
                                             </option>
                                           );
                                         })}
@@ -986,7 +996,7 @@ export default function TeamsPage() {
                   <div className="flex items-center gap-3">
                     <Shield className="w-6 h-6 text-cyan-400" />
                     <h2 className="text-2xl font-bold">
-                      Roster ({players.filter(p => p.teamId === activeTeam?.id).length}/{settings.rules?.maxRosterSize || 15})
+                      Roster ({players.filter(p => p.teamId === activeTeam?.id).length}/30)
                     </h2>
                   </div>
                   {activeTeam && canManageTeam(activeTeam.id) && (
@@ -1132,7 +1142,7 @@ export default function TeamsPage() {
                         <span className="font-bold">{topRec.val > 0 ? `${topRec.name} (${topRec.val})` : <span className="text-sm text-neutral-500 italic">No data yet</span>}</span>
                       </div>
                       <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span className="text-neutral-400">Flag Pulls</span>
+                        <span className="text-neutral-400">Flags</span>
                         <span className="font-bold">{topFlags.val > 0 ? `${topFlags.name} (${topFlags.val})` : <span className="text-sm text-neutral-500 italic">No data yet</span>}</span>
                       </div>
                       <div className="flex justify-between items-center pb-2">
@@ -1330,7 +1340,7 @@ export default function TeamsPage() {
 
                 {/* Defensive Stats */}
                 <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                  <span className="text-neutral-400">Flag Pulls</span>
+                  <span className="text-neutral-400">Flags</span>
                   <span className="font-bold">{playerStats[selectedPlayerForStats.playerName]?.flagPulls || 0}</span>
                 </div>
                 <div className="flex justify-between items-center border-b border-white/5 pb-3">

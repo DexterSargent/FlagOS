@@ -29,6 +29,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
+import { FlagOSText } from "@/components/FlagOSText";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
 import CreatePlaybookModal from "@/components/playbook/CreatePlaybookModal";
@@ -844,7 +845,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
+    <div className={`${viewLevel === "plays" ? "h-screen overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -852,10 +853,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         <div className="absolute bottom-20 right-10 w-[35rem] h-[35rem] bg-blue-950/25 rounded-full blur-[180px]"></div>
       </div>
 
-      <div className={`max-w-7xl mx-auto ${isEmbedded ? "space-y-3 p-2 sm:p-3" : "space-y-6 p-4 sm:p-6 md:p-8"} relative z-10 flex-1 w-full`}>
+      <div className={`max-w-7xl mx-auto ${
+        viewLevel === "plays"
+          ? "p-2 sm:p-2.5 flex flex-col gap-2 h-full min-h-0 flex-1 overflow-hidden"
+          : isEmbedded
+          ? "space-y-3 p-2 sm:p-3 flex-1"
+          : "space-y-6 p-4 sm:p-6 md:p-8 flex-1"
+      } relative z-10 w-full`}>
         {/* ============================================================== */}
-        {/* 1. TOP HEADER & BREADCRUMBS (DYNAMIC FOR ALL 3 DRILLDOWN LEVELS)*/}
+        {/* 1. TOP HEADER & BREADCRUMBS (FOR LEVEL 1 & 2 DRILLDOWN)       */}
         {/* ============================================================== */}
+        {viewLevel !== "plays" && (
         <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 ${isEmbedded ? "pb-2.5" : "pb-5"}`}>
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -882,18 +890,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     className="text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
                   >
                     Playbooks
-                  </button>
-                </>
-              )}
-
-              {viewLevel === "plays" && activePlaybook && (
-                <>
-                  <span className="text-xs text-neutral-500">•</span>
-                  <button
-                    onClick={() => setViewLevel("formations")}
-                    className="text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
-                  >
-                    {activePlaybook.title}
                   </button>
                 </>
               )}
@@ -966,28 +962,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
             )}
-
-            {/* Level 3 Title: Plays in Selected Formation */}
-            {viewLevel === "plays" && activePlaybook && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-neutral-900 border border-white/10 flex items-center justify-center text-white p-1.5">
-                  <Layers className="w-5 h-5 text-cyan-400" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
-                      {selectedFormationName}
-                    </h1>
-                    <span className="text-xs font-mono text-neutral-400 font-bold bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                      {playsInActiveFormation.length} Plays
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-400 mt-0.5">
-                    {activePlaybook.title} • Tactical route & scheme designer
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Action Buttons */}
@@ -1024,20 +998,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </button>
             )}
 
-            {/* Level 3: "+ Create Play in Formation" */}
-            {viewLevel === "plays" && hasEditAccess && (
-              <button
-                type="button"
-                onClick={handleCreatePlayInFormationClick}
-                className="px-5 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/20"
-              >
-                <Plus className="w-4 h-4" />
-                <span>New Play in {selectedFormationName}</span>
-              </button>
-            )}
-
-            {/* Print Armbands (Available for both Coaches and Rostered Athletes) */}
-            {(viewLevel === "formations" || viewLevel === "plays") && canViewPlaybook && (
+            {/* Print Armbands (Available for Formations view) */}
+            {viewLevel === "formations" && canViewPlaybook && (
               <button
                 onClick={() => setIsPrintModalOpen(true)}
                 className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2 cursor-pointer"
@@ -1073,6 +1035,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             )}
           </div>
         </div>
+        )}
 
         {/* ============================================================== */}
         {/* LEVEL 1: "{TEAM NAME}'S PLAYBOOKS" CARDS DASHBOARD            */}
@@ -1365,142 +1328,162 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         {/* LEVEL 3: PLAYS WITHIN FORMATION & INTERACTIVE CANVAS EDITOR    */}
         {/* ============================================================== */}
         {viewLevel === "plays" && activePlaybook && (
-          <div className="space-y-6">
-            {/* Navigation & Formation Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0F19] p-4 rounded-2xl border border-white/10">
-              <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 flex-1 min-h-0 h-full overflow-hidden">
+            {/* Unified Studio Top Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0B0F19] px-3 py-2 rounded-2xl border border-white/10 shrink-0 shadow-lg">
+              {/* Left: Navigation & Formation */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => setViewLevel("formations")}
-                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold"
+                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
+                  title="Back to Formations"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span>Back to Formations</span>
+                  <span className="hidden sm:inline">Formations</span>
                 </button>
                 <span className="text-xs text-neutral-500">•</span>
-                <span className="text-xs font-mono text-neutral-300">
-                  Formation: <strong className="text-cyan-400">{selectedFormationName}</strong> ({playsInActiveFormation.length} Plays)
+                <span className="text-xs font-mono text-cyan-400 font-black">
+                  {selectedFormationName}
                 </span>
-              </div>
 
-              {/* Quick formation switcher within this playbook */}
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                <span className="text-[10px] uppercase font-bold text-neutral-500 mr-1 hidden sm:inline">
-                  Switch Formation:
-                </span>
-                {activePlaybook.formations.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      setSelectedFormationName(f.name);
-                      const firstPlay = activePlaybook.plays.find((p) => p.formation === f.name);
-                      if (firstPlay) setActivePlayId(firstPlay.id);
-                    }}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all border ${
-                      selectedFormationName === f.name
-                        ? "bg-cyan-500 text-black border-cyan-400 shadow-sm"
-                        : "bg-black/50 text-neutral-400 border-white/5 hover:text-white"
-                    }`}
-                  >
-                    {f.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Horizontal Play Scroller Tape for this formation */}
-            {playsInActiveFormation.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-neutral-400 font-bold">
-                    Plays in {selectedFormationName}:
-                  </span>
-                  {hasEditAccess && (
+                {/* Quick formation switcher within this playbook */}
+                <div className="flex items-center gap-1 overflow-x-auto max-w-[180px] sm:max-w-none">
+                  {activePlaybook.formations.map((f) => (
                     <button
-                      onClick={handleCreatePlayInFormationClick}
-                      className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                      key={f.id}
+                      onClick={() => {
+                        setSelectedFormationName(f.name);
+                        const firstPlay = activePlaybook.plays.find((p) => p.formation === f.name);
+                        if (firstPlay) setActivePlayId(firstPlay.id);
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all border cursor-pointer ${
+                        selectedFormationName === f.name
+                          ? "bg-cyan-500 text-black border-cyan-400 font-black shadow-sm"
+                          : "bg-black/50 text-neutral-400 border-white/5 hover:text-white"
+                      }`}
                     >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>New Play</span>
+                      {f.name}
                     </button>
-                  )}
-                </div>
-
-                <div className={`flex gap-2.5 overflow-x-auto ${isEmbedded ? "pb-1" : "pb-2"} scrollbar-thin`}>
-                  {playsInActiveFormation.map((p) => {
-                    const isSelected = activePlayId === p.id;
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => setActivePlayId(p.id)}
-                        className={`flex items-center justify-between gap-2.5 ${isEmbedded ? "px-3 py-2 min-w-[170px]" : "px-4 py-3 min-w-[210px]"} rounded-2xl border transition-all cursor-pointer shrink-0 ${
-                          isSelected
-                            ? "bg-cyan-500/15 border-cyan-400 text-white shadow-lg shadow-cyan-500/10"
-                            : "bg-[#0B0F19] border-white/10 text-neutral-300 hover:border-white/20"
-                        }`}
-                      >
-                        <div className="overflow-hidden">
-                          <span className="text-[10px] text-neutral-400 block mb-0.5">{p.situation}</span>
-                          <h4 className="text-xs font-black uppercase truncate">{p.name}</h4>
-                        </div>
-
-                        {hasEditAccess && isSelected && (
-                          <div className="flex items-center gap-1 ml-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDuplicatePlay(p);
-                              }}
-                              className="p-1 rounded text-neutral-400 hover:text-white hover:bg-white/10"
-                              title="Duplicate Play"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                            {playsInActiveFormation.length > 1 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeletePlay(p.id);
-                                }}
-                                className="p-1 rounded text-neutral-400 hover:text-red-400 hover:bg-white/10"
-                                title="Delete Play"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  ))}
                 </div>
               </div>
-            )}
 
-            {/* Tactical Playmaker Canvas Workspace */}
-            {activePlay ? (
-              <PlayCanvas
-                play={activePlay}
-                onChange={handleUpdateActivePlay}
-                readOnly={!hasEditAccess}
-                playbook={activePlaybook}
-              />
-            ) : (
-              <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-12 text-center text-neutral-400">
-                <BookOpen className="w-12 h-12 mx-auto text-neutral-600 mb-4" />
-                <h3 className="text-xl font-bold uppercase text-white mb-2">No Plays in this Formation</h3>
-                <p className="text-xs max-w-sm mx-auto mb-6">
-                  Create a new offensive or defensive play diagram designed for this formation.
-                </p>
+              {/* Center: Play Selector Tape */}
+              <div className="flex items-center gap-1 overflow-x-auto max-w-full scrollbar-thin">
+                {playsInActiveFormation.map((p) => {
+                  const isSelected = activePlayId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setActivePlayId(p.id)}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap border flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-md shadow-cyan-500/10"
+                          : "bg-black/40 border-white/5 text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      <span>{p.name.replace(/^\d+v\d+\s+/, "")}</span>
+                      {hasEditAccess && isSelected && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDuplicatePlay(p);
+                          }}
+                          className="hover:text-white text-neutral-400 ml-0.5"
+                          title="Duplicate Play"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </span>
+                      )}
+                      {hasEditAccess && isSelected && playsInActiveFormation.length > 1 && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePlay(p.id);
+                          }}
+                          className="hover:text-red-400 text-neutral-400"
+                          title="Delete Play"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
                 {hasEditAccess && (
                   <button
                     onClick={handleCreatePlayInFormationClick}
-                    className="px-6 py-3 rounded-2xl bg-cyan-500 text-black font-bold text-xs uppercase"
+                    className="px-2.5 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-1 shrink-0 transition-all cursor-pointer"
                   >
-                    Create Play in {selectedFormationName}
+                    <Plus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">New Play</span>
                   </button>
                 )}
               </div>
-            )}
+
+              {/* Right: Actions (Save & Print) */}
+              <div className="flex items-center gap-2">
+                {canViewPlaybook && (
+                  <button
+                    onClick={() => setIsPrintModalOpen(true)}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-1.5 cursor-pointer"
+                    title="Print wristband playbook sheets"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="hidden md:inline">Print</span>
+                  </button>
+                )}
+                {hasEditAccess && (
+                  <button
+                    onClick={handleSavePlaybooks}
+                    disabled={saving}
+                    className={`px-3 py-1 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
+                      saveSuccess
+                        ? "bg-emerald-500 text-black shadow-emerald-500/25"
+                        : "bg-white/10 hover:bg-white/20 text-white border border-white/15"
+                    }`}
+                  >
+                    {saveSuccess ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Saved!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-3.5 h-3.5" />
+                        <span>{saving ? "Saving..." : "Save"}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Tactical Playmaker Canvas Workspace */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activePlay ? (
+                <PlayCanvas
+                  play={activePlay}
+                  onChange={handleUpdateActivePlay}
+                  readOnly={!hasEditAccess}
+                  playbook={activePlaybook}
+                />
+              ) : (
+                <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-8 text-center text-neutral-400">
+                  <BookOpen className="w-10 h-10 mx-auto text-neutral-600 mb-3" />
+                  <h3 className="text-lg font-bold uppercase text-white mb-2">No Plays in this Formation</h3>
+                  {hasEditAccess && (
+                    <button
+                      onClick={handleCreatePlayInFormationClick}
+                      className="px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-xs uppercase cursor-pointer"
+                    >
+                      Create Play in {selectedFormationName}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1538,6 +1521,23 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           teamName={teamName}
         />
       )}
+
+      {/* Playbook Studio Footer with Powered by FlagOS Disclaimer */}
+      <footer className="relative z-10 w-full border-t border-white/10 bg-black/80 backdrop-blur-md py-6 px-6 text-xs text-neutral-400 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-white uppercase">{teamName}</span>
+            <span>•</span>
+            <span>Playbook Studio</span>
+            <span>•</span>
+            <span>Tactical Confidentiality Guard Active</span>
+          </div>
+          <div className="flex items-center gap-2 text-neutral-400 font-medium">
+            <span>Powered by</span>
+            <FlagOSText />
+          </div>
+        </div>
+      </footer>
 
     </div>
   );

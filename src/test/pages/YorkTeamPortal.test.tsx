@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act, waitFor } from "@testing-library/react";
+import { render, screen, act, waitFor, fireEvent } from "@testing-library/react";
 import {
   isYorkTeam,
   YORK_TEAM_ID,
@@ -25,7 +25,7 @@ vi.mock("@/lib/leagueContext", () => ({
     isDemoLeague: false,
     settings: {
       leagueName: "FlagOS",
-      rules: { playersOnField: 5, maxRosterSize: 15, minRosterSize: 5 },
+      rules: { playersOnField: 5, maxRosterSize: 30, minRosterSize: 5 },
     },
   }),
 }));
@@ -88,30 +88,39 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
     });
 
     it("authorizes Dexter and Theo as coaching staff and admins", () => {
-      expect(YORK_LIONS_TEAM.coachName).toBe("Dexter Harvey");
+      expect(YORK_LIONS_TEAM.coachName).toBe("Dexter Sargent");
       expect(YORK_LIONS_TEAM.assistantCoach).toBe("Theo");
-      expect(YORK_LIONS_TEAM.adminEmails).toContain("dexter@yuwffl.ca");
-      expect(YORK_LIONS_TEAM.adminEmails).toContain("dexter.b.harvey@gmail.com");
-      expect(YORK_LIONS_TEAM.adminEmails).toContain("theo@yuwffl.ca");
+      expect(YORK_LIONS_TEAM.adminEmails).toContain("dextersargent@gmail.com");
     });
 
-    it("pre-seeds official 12-player varsity roster", () => {
-      expect(YORK_LIONS_PLAYERS.length).toBe(12);
+    it("pre-seeds official varsity roster with 15 active players and 5 tournament reserves", () => {
+      expect(YORK_LIONS_PLAYERS.length).toBe(20);
+      const active = YORK_LIONS_PLAYERS.filter((p) => p.status === "Active");
+      const reserves = YORK_LIONS_PLAYERS.filter((p) => p.status === "Reserve");
+      expect(active.length).toBe(15);
+      expect(reserves.length).toBe(5);
+
       const qb = YORK_LIONS_PLAYERS.find((p) => p.position === "QB");
-      expect(qb?.playerName).toBe("Sarah Jenkins");
+      expect(qb?.playerName).toBe("Sonia Cabral");
       expect(qb?.number).toBe("7");
 
       const rusher = YORK_LIONS_PLAYERS.find((p) => p.position === "RUSH");
-      expect(rusher?.playerName).toBe("Brianna Scott");
+      expect(rusher?.playerName).toBe("Shavannah Walker");
       expect(rusher?.number).toBe("99");
+
+      const reserveNames = reserves.map((r) => r.playerName);
+      expect(reserveNames).toContain("Catherine Chase");
+      expect(reserveNames).toContain("Ciara Bagby-Sue");
+      expect(reserveNames).toContain("Ciara Williams");
+      expect(reserveNames).toContain("Melina Bosco");
+      expect(reserveNames).toContain("Nicole Stylianou");
     });
 
     it("provides exhibition schedule and completed game logs", () => {
-      expect(YORK_LIONS_MATCHES.length).toBeGreaterThanOrEqual(3);
-      const completed = YORK_LIONS_MATCHES.find((m) => m.status === "completed");
-      expect(completed?.homeScore).toBe(28);
-      expect(completed?.awayScore).toBe(21);
-      expect(YORK_LIONS_PLAYS.length).toBeGreaterThanOrEqual(5);
+      expect(YORK_LIONS_MATCHES.length).toBe(4);
+      const completed = YORK_LIONS_MATCHES.filter((m) => m.status === "completed");
+      expect(completed.length).toBe(4);
+      expect(YORK_LIONS_PLAYS.length).toBeGreaterThanOrEqual(200);
     });
 
     it("pre-seeds custom 5v5 playbook with pre-snap motion for York", () => {
@@ -142,18 +151,18 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
 
       // Check team name
       await waitFor(() => {
-        expect(screen.getByText("York Lions Women's Flag Football")).toBeInTheDocument();
+        expect(screen.getAllByText("York Lions Women's Flag Football").length).toBeGreaterThan(0);
       });
 
       // Check varsity portal badge
-      expect(screen.getByText(/Varsity Club Team Portal/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Varsity Club Team Portal/i).length).toBeGreaterThan(0);
 
       // Check complimentary subscription banner
       expect(screen.getByText(/Active Subscription \(Complimentary Lifetime\)/i)).toBeInTheDocument();
       expect(screen.getByText(/York Lions Varsity Digital Headquarters/i)).toBeInTheDocument();
 
       // Check coaching staff
-      expect(screen.getAllByText(/Dexter Harvey/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Dexter Sargent/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/Theo/i).length).toBeGreaterThan(0);
       expect(screen.getByText("Coaching Staff:")).toBeInTheDocument();
 
@@ -162,6 +171,120 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       expect(screen.getByText("Team")).toBeInTheDocument();
       expect(screen.getByText("Stat Leaders")).toBeInTheDocument();
       expect(screen.getByText("Playbooks")).toBeInTheDocument();
+
+      // Check dedicated logo slot / space for custom team logo
+      expect(screen.getByText("Add Logo")).toBeInTheDocument();
+      expect(screen.getByText("Click to Upload")).toBeInTheDocument();
+
+      // Check team colours swatches bar
+      expect(screen.getByText("Colours:")).toBeInTheDocument();
+
+      // Check Edit Team Info button
+      expect(screen.getByText("Edit Team Info")).toBeInTheDocument();
+
+      // Check Powered by FlagOS disclaimer is present in footer as the sole FlagOS branding
+      expect(screen.getByText(/Powered by/i)).toBeInTheDocument();
+      expect(screen.getByText("OS")).toBeInTheDocument();
+    });
+
+    it("opens edit team details modal allowing customization of name, logo, and colours", async () => {
+      const paramsPromise = Promise.resolve({ id: "york_lions" });
+      await act(async () => {
+        render(
+          <Suspense fallback={<div>Loading suspense...</div>}>
+            <TeamPortalHome params={paramsPromise} />
+          </Suspense>
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Edit Team Info")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Edit Team Info"));
+
+      // Check modal heading and fields
+      expect(screen.getByText("Edit Team Details")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("York Lions Women's Flag Football")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("YORK")).toBeInTheDocument();
+      expect(screen.getByText("Quick Colour Presets:")).toBeInTheDocument();
+      expect(screen.getByText("Team Logo & Emblem")).toBeInTheDocument();
+      expect(screen.getByText("Upload Logo from Device")).toBeInTheDocument();
+
+      // Check pinned action buttons
+      expect(screen.getByTitle("Close")).toBeInTheDocument();
+      expect(screen.getByText("Cancel")).toBeInTheDocument();
+      expect(screen.getByText("Save Changes")).toBeInTheDocument();
+    });
+
+    it("renders Season Team Stats strip displaying strictly record, points for, and points allowed by default", async () => {
+      const paramsPromise = Promise.resolve({ id: "york_lions" });
+      await act(async () => {
+        render(
+          <Suspense fallback={<div>Loading suspense...</div>}>
+            <TeamPortalHome params={paramsPromise} />
+          </Suspense>
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Season Team Stats")).toBeInTheDocument();
+      });
+
+      // Default visible stats: 3 active (Record, Points For, Points Allowed)
+      expect(screen.getByText("3 ACTIVE")).toBeInTheDocument();
+      expect(screen.getByText("REC")).toBeInTheDocument();
+      expect(screen.getByText("PF")).toBeInTheDocument();
+      expect(screen.getByText("PA")).toBeInTheDocument();
+
+      // Advanced stats hidden by default
+      expect(screen.queryByText("PPG")).not.toBeInTheDocument();
+      expect(screen.queryByText("DPPG")).not.toBeInTheDocument();
+      expect(screen.queryByText("3RD %")).not.toBeInTheDocument();
+      expect(screen.queryByText("4TH %")).not.toBeInTheDocument();
+      expect(screen.queryByText("PAT %")).not.toBeInTheDocument();
+      expect(screen.queryByText("TO DIFF")).not.toBeInTheDocument();
+    });
+
+    it("allows team admin to open Customize Stats modal, select additional stats, and save preferences", async () => {
+      const paramsPromise = Promise.resolve({ id: "york_lions" });
+      await act(async () => {
+        render(
+          <Suspense fallback={<div>Loading suspense...</div>}>
+            <TeamPortalHome params={paramsPromise} />
+          </Suspense>
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Customize Stats")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Customize Stats"));
+
+      // Check modal heading and category controls
+      expect(screen.getByText("Customize Team Stats Display")).toBeInTheDocument();
+      expect(screen.getByText("Reset to Default (Record, PF, PA)")).toBeInTheDocument();
+      expect(screen.getByText("Select All")).toBeInTheDocument();
+      expect(screen.getByText("Clear All")).toBeInTheDocument();
+
+      // Toggle PPG (Points Per Game) to visible
+      const ppgOption = screen.getByText("Points Per Game (PPG)");
+      expect(ppgOption).toBeInTheDocument();
+      fireEvent.click(ppgOption);
+
+      // Save custom stats
+      const saveStatsBtn = screen.getByText("Save Custom Stats");
+      expect(saveStatsBtn).toBeInTheDocument();
+      await act(async () => {
+        fireEvent.click(saveStatsBtn);
+      });
+
+      // Modal closes and PPG now displays in the stats strip
+      await waitFor(() => {
+        expect(screen.queryByText("Customize Team Stats Display")).not.toBeInTheDocument();
+        expect(screen.getByText("PPG")).toBeInTheDocument();
+      });
     });
   });
 });

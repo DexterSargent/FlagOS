@@ -86,7 +86,7 @@ export default function Calendar() {
     if (!isPlatformAdmin) return;
     if (
       !window.confirm(
-        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flag pulls, PBUs, sacks) between ${homeTeamName} and ${awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
+        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flags, PBUs, sacks) between ${homeTeamName} and ${awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
       )
     ) {
       return;
@@ -102,11 +102,11 @@ export default function Calendar() {
           prev.map((m) =>
             m.id === matchId
               ? {
-                  ...m,
-                  status: "completed",
-                  homeScore: res.homeScore,
-                  awayScore: res.awayScore,
-                }
+                ...m,
+                status: "completed",
+                homeScore: res.homeScore,
+                awayScore: res.awayScore,
+              }
               : m
           )
         );
@@ -137,7 +137,7 @@ export default function Calendar() {
       let isIframe = false;
       try {
         isIframe = window.self !== window.top;
-      } catch (e) {}
+      } catch (e) { }
       return isEmbedQuery || isIframe;
     }
     return false;
@@ -149,7 +149,7 @@ export default function Calendar() {
       let isIframe = false;
       try {
         isIframe = window.self !== window.top;
-      } catch (e) {}
+      } catch (e) { }
       if (isEmbedQuery || isIframe) setIsEmbedded(true);
       if (sp.get("view") === "playoffs") setActiveView("playoffs");
       if (sp.get("week")) setSelectedWeekFilter(sp.get("week"));
@@ -286,7 +286,7 @@ export default function Calendar() {
   const regularSeasonWeeks = useMemo(() => {
     const set = new Set<string>();
     matches.forEach((m) => {
-      if (!m.isPreseason && !m.isPlayoff && !m.week?.toString().toLowerCase().includes("playoff")) {
+      if (!m.isPlayoff && !m.week?.toString().toLowerCase().includes("playoff")) {
         set.add(m.week);
       }
     });
@@ -300,7 +300,7 @@ export default function Calendar() {
   // Filtered Regular Season Matches
   const displayedRegularSeasonMatches = useMemo(() => {
     return matches.filter((m) => {
-      if (m.isPreseason || m.isPlayoff || m.week?.toString().toLowerCase().includes("playoff")) {
+      if (m.isPlayoff || m.week?.toString().toLowerCase().includes("playoff")) {
         return false;
       }
       if (selectedWeekFilter && m.week !== selectedWeekFilter) {
@@ -324,43 +324,33 @@ export default function Calendar() {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const handleDrop = async (e: React.DragEvent, targetMatchId: string, isPreseasonGroup: boolean) => {
+  const handleDrop = async (e: React.DragEvent, targetMatchId: string) => {
     e.preventDefault();
     if (!canManageSchedule || !draggedMatchId || draggedMatchId === targetMatchId) return;
 
-    const groupMatches = matches.filter((m) => !!m.isPreseason === isPreseasonGroup);
-    const oldIndex = groupMatches.findIndex((m) => m.id === draggedMatchId);
-    const newIndex = groupMatches.findIndex((m) => m.id === targetMatchId);
+    const oldIndex = matches.findIndex((m) => m.id === draggedMatchId);
+    const newIndex = matches.findIndex((m) => m.id === targetMatchId);
 
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const newGroupMatches = [...groupMatches];
-    const [removed] = newGroupMatches.splice(oldIndex, 1);
-    newGroupMatches.splice(newIndex, 0, removed);
+    const newMatches = [...matches];
+    const [removed] = newMatches.splice(oldIndex, 1);
+    newMatches.splice(newIndex, 0, removed);
 
-    const updatedMatches = matches.map((m) => {
-      if (!!m.isPreseason === isPreseasonGroup) {
-        const idx = newGroupMatches.findIndex((nm) => nm.id === m.id);
-        return { ...m, order: idx };
-      }
-      return m;
-    });
-
+    const updatedMatches = newMatches.map((m, idx) => ({ ...m, order: idx }));
     setMatches(sortMatches(updatedMatches));
 
     if (isDemoLeague || isEmbedded) {
-      for (const match of newGroupMatches) {
-        const idx = newGroupMatches.indexOf(match);
-        updateSandboxMatch(match.id, { order: idx });
+      for (let i = 0; i < newMatches.length; i++) {
+        updateSandboxMatch(newMatches[i].id, { order: i });
       }
       setDraggedMatchId(null);
       return;
     }
 
     try {
-      for (const match of newGroupMatches) {
-        const idx = newGroupMatches.indexOf(match);
-        await updateDoc(doc(db, "matches", match.id), { order: idx });
+      for (let i = 0; i < newMatches.length; i++) {
+        await updateDoc(doc(db, "matches", newMatches[i].id), { order: i });
       }
     } catch (err) {
       console.error("Failed to save match order", err);
@@ -616,7 +606,6 @@ export default function Calendar() {
                     date: new Date().toISOString().split("T")[0],
                     time: "10:00 AM",
                     location: settings.defaultLocation || "Turf Field 1",
-                    isPreseason: false,
                   });
                   setIsModalOpen(true);
                 }}
@@ -625,19 +614,6 @@ export default function Calendar() {
                 <Plus className="w-3.5 h-3.5 shrink-0" />
                 <span>Schedule Game</span>
               </button>
-
-              {canManageSchedule && (
-                <button
-                  onClick={() => setIsEditPlayoffFormatOpen(true)}
-                  className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 sm:py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-amber-500/30 shrink-0 cursor-pointer"
-                  title="Configure playoff qualifying team count at any time"
-                >
-                  <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>
-                    Playoff Format ({playoffFormat.teamsCount} Teams<span className="hidden sm:inline"> • {playoffFormat.structure === "double_elimination" ? "Double Elim" : "Single Elim"}</span>)
-                  </span>
-                </button>
-              )}
 
               {matches.length > 0 && (
                 <button
@@ -698,11 +674,10 @@ export default function Calendar() {
           <div className="flex items-center gap-2 bg-neutral-900/80 p-1.5 rounded-2xl border border-white/10 shrink-0">
             <button
               onClick={() => setActiveView("schedule")}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeView === "schedule"
-                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
-                  : "text-neutral-400 hover:text-white"
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${activeView === "schedule"
+                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
+                : "text-neutral-400 hover:text-white"
+                }`}
             >
               <CalendarIcon className="w-3.5 h-3.5" />
               <span>Regular Season</span>
@@ -710,11 +685,10 @@ export default function Calendar() {
 
             <button
               onClick={() => setActiveView("playoffs")}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeView === "playoffs"
-                  ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
-                  : "text-neutral-400 hover:text-white"
-              }`}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${activeView === "playoffs"
+                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
+                : "text-neutral-400 hover:text-white"
+                }`}
             >
               <Trophy className="w-3.5 h-3.5 text-amber-400" />
               <span>{playoffTabLabel}</span>
@@ -733,23 +707,21 @@ export default function Calendar() {
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
               <button
                 onClick={() => setSelectedWeekFilter(null)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors whitespace-nowrap ${
-                  selectedWeekFilter === null
-                    ? "bg-white text-black"
-                    : "bg-white/5 text-neutral-400 hover:text-white border border-white/5"
-                }`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors whitespace-nowrap ${selectedWeekFilter === null
+                  ? "bg-white text-black"
+                  : "bg-white/5 text-neutral-400 hover:text-white border border-white/5"
+                  }`}
               >
-                All Weeks ({matches.filter((m) => !m.isPreseason && !m.isPlayoff).length})
+                All Weeks ({regularSeasonWeeks.length})
               </button>
               {regularSeasonWeeks.map((wk) => (
                 <button
                   key={wk}
                   onClick={() => setSelectedWeekFilter(wk)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors whitespace-nowrap ${
-                    selectedWeekFilter === wk
-                      ? "bg-cyan-500 text-black font-black"
-                      : "bg-white/5 text-neutral-400 hover:text-white border border-white/5"
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors whitespace-nowrap ${selectedWeekFilter === wk
+                    ? "bg-cyan-500 text-black font-black"
+                    : "bg-white/5 text-neutral-400 hover:text-white border border-white/5"
+                    }`}
                 >
                   {wk}
                 </button>
@@ -806,150 +778,6 @@ export default function Calendar() {
               </div>
             ) : (
               <>
-                {/* Preseason Section (if any preseason matches exist) */}
-                {matches.filter((m) => m.isPreseason).length > 0 && (
-                  <div>
-                    <h2 className="text-2xl font-bold mb-6 text-amber-500 border-b border-amber-500/20 pb-2">
-                      Pre-season
-                    </h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {matches
-                        .filter((m) => m.isPreseason)
-                        .map((match) => (
-                          <div
-                            key={match.id}
-                            className={`relative group ${draggedMatchId === match.id ? "opacity-50" : ""}`}
-                            draggable={isLeagueAdmin}
-                            onDragStart={(e) => handleDragStart(e, match.id)}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, match.id, true)}
-                          >
-                            <Link
-                              href={isEmbedded ? "#" : `/matches/${match.id}`}
-                              onClick={(e) => {
-                                if (isEmbedded) e.preventDefault();
-                              }}
-                              className={`block bg-neutral-900/50 border border-white/5 rounded-3xl p-6 hover:bg-neutral-900 transition-all duration-300 relative overflow-hidden border-amber-500/20 hover:border-amber-500/50 ${
-                                isEmbedded ? "cursor-default" : ""
-                              }`}
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity from-amber-500/5 to-transparent" />
-
-                              <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
-                                <div className="flex items-center gap-2">
-                                  {isLeagueAdmin && (
-                                    <GripVertical className="w-5 h-5 text-neutral-600 cursor-grab hover:text-white" />
-                                  )}
-                                  <span className="text-xs font-bold tracking-widest uppercase text-amber-500">
-                                    Week {match.week}
-                                  </span>
-                                </div>
-                                {match.status === "completed" ? (
-                                  <span className="text-xs font-semibold px-3 py-1 bg-neutral-800 text-neutral-300 rounded-full">
-                                    Final
-                                  </span>
-                                ) : (
-                                  <span className="text-xs font-semibold px-3 py-1 bg-cyan-500/20 text-cyan-400 rounded-full border border-cyan-500/20">
-                                    Upcoming
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex justify-between items-center px-4">
-                                <div className="text-center w-[40%]">
-                                  <h3 className="text-xl md:text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors truncate">
-                                    {match.homeTeamName}
-                                  </h3>
-                                  {match.status === "completed" && (
-                                    <span className="text-3xl font-black block mt-2 text-neutral-200">
-                                      {match.homeScore}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="text-neutral-500 font-light text-sm italic w-[20%] text-center">
-                                  VS
-                                </div>
-
-                                <div className="text-center w-[40%]">
-                                  <h3 className="text-xl md:text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors truncate">
-                                    {match.awayTeamName}
-                                  </h3>
-                                  {match.status === "completed" && (
-                                    <span className="text-3xl font-black block mt-2 text-neutral-200">
-                                      {match.awayScore}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="mt-8 pt-4 border-t border-white/5 flex flex-col gap-2 text-sm text-neutral-400">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-neutral-500" />
-                                  {match.date} • {match.time}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <MapPin className="w-4 h-4 text-neutral-500" />
-                                  {match.location}
-                                </div>
-                              </div>
-                            </Link>
-
-                            {(canManageSchedule || isPlatformAdmin) && (
-                              <div className="absolute top-6 right-6 flex items-center gap-1.5 z-20">
-                                {isPlatformAdmin && match.status !== "completed" && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleSimulateMatch(match.id, match.homeTeamName, match.awayTeamName);
-                                    }}
-                                    disabled={simulatingMatchId === match.id}
-                                    title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
-                                    className="p-1.5 sm:px-2.5 sm:py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/40 rounded-xl text-amber-300 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
-                                  >
-                                    <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${simulatingMatchId === match.id ? "animate-spin" : ""}`} />
-                                    <span className="hidden sm:inline">{simulatingMatchId === match.id ? "Simulating..." : "Simulate"}</span>
-                                  </button>
-                                )}
-                                {canManageSchedule && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setEditingMatch(match);
-                                        setIsModalOpen(true);
-                                      }}
-                                      title="Edit Event"
-                                      className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDeleteSingleMatch(match.id);
-                                      }}
-                                      title="Delete Event"
-                                      className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Regular Season Section */}
                 <div>
                   <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-6">
@@ -969,16 +797,15 @@ export default function Calendar() {
                         draggable={isLeagueAdmin}
                         onDragStart={(e) => handleDragStart(e, match.id)}
                         onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, match.id, false)}
+                        onDrop={(e) => handleDrop(e, match.id)}
                       >
                         <Link
                           href={isEmbedded ? "#" : `/matches/${match.id}`}
                           onClick={(e) => {
                             if (isEmbedded) e.preventDefault();
                           }}
-                          className={`block bg-neutral-900/50 border border-white/5 rounded-3xl p-6 hover:bg-neutral-900 transition-all duration-300 relative overflow-hidden hover:border-cyan-500/40 ${
-                            isEmbedded ? "cursor-default" : ""
-                          }`}
+                          className={`block bg-neutral-900/50 border border-white/5 rounded-3xl p-6 hover:bg-neutral-900 transition-all duration-300 relative overflow-hidden hover:border-cyan-500/40 ${isEmbedded ? "cursor-default" : ""
+                            }`}
                         >
                           <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity from-cyan-500/10 to-transparent" />
 
@@ -1043,7 +870,7 @@ export default function Calendar() {
                             </div>
                           </div>
 
-                          <div className="mt-8 pt-4 border-t border-white/5 flex flex-col gap-2 text-sm text-neutral-400">
+                          <div className="mt-8 pt-4 border-t border-white/5 flex flex-col gap-2 text-sm text-neutral-400 pr-24 sm:pr-36">
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-neutral-500" />
                               {match.date} • {match.time}
@@ -1056,7 +883,7 @@ export default function Calendar() {
                         </Link>
 
                         {(canManageSchedule || isPlatformAdmin) && (
-                          <div className="absolute top-6 right-6 flex items-center gap-1.5 z-20">
+                          <div className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 flex items-center gap-1.5 z-20">
                             {isPlatformAdmin && match.status !== "completed" && (
                               <button
                                 type="button"
@@ -1259,24 +1086,7 @@ export default function Calendar() {
                 />
               </div>
 
-              <div className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10 mt-2">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="preseasonCheck"
-                    checked={editingMatch.isPreseason || false}
-                    onChange={(e) => setEditingMatch({ ...editingMatch, isPreseason: e.target.checked })}
-                    className="w-5 h-5 accent-amber-500 rounded bg-black border-white/20 cursor-pointer"
-                  />
-                  <label htmlFor="preseasonCheck" className="text-white font-semibold cursor-pointer text-sm">
-                    Mark as Preseason Game
-                  </label>
-                </div>
-                <FieldHelpTooltip
-                  title="Preseason Exhibition"
-                  content="Exhibition games support full live play-by-play scoring and stat tracking, but do not calculate into regular season standings points or playoff qualification."
-                />
-              </div>
+
 
               {editingMatch.id && (
                 <div className="grid grid-cols-3 gap-3">

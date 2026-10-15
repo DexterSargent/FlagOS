@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useLeague } from "@/lib/leagueContext";
-import { PlayDiagram, DEFAULT_LOS_Y, RUSH_LINE_DISTANCE } from "@/lib/playbookTypes";
+import { PlayDiagram, DEFAULT_LOS_Y, RUSH_LINE_DISTANCE, playerHasMotion, getPlayerMotionPath } from "@/lib/playbookTypes";
 
 interface MiniPlayDiagramProps {
   play: PlayDiagram;
@@ -191,46 +191,80 @@ export default function MiniPlayDiagram({
       {play.players
         .filter((player) => (showOpposingSide ? true : player.side === play.type))
         .map((player) => {
-          if (!player.route || player.route.length === 0) return null;
-
-          const pts = [{ x: player.x, y: player.y }, ...player.route];
-          let pathStr = `M ${(pts[0].x / 100) * 1000} ${(pts[0].y / 100) * 700}`;
-          for (let i = 1; i < pts.length; i++) {
-            pathStr += ` L ${(pts[i].x / 100) * 1000} ${(pts[i].y / 100) * 700}`;
-          }
-
+          const isOffense = player.side === "offense";
           const isRush = player.routeType === "rush" || player.coverageType === "rush";
-          const isMotion = player.routeType === "motion";
           const isDef = player.side === "defense";
 
-          const stroke = isMotion
-            ? "#D97706"
-            : isRush
+          const hasMotion = isOffense && playerHasMotion(player);
+          const motionPts = hasMotion ? getPlayerMotionPath(player) : null;
+          const hasPostSnapRoute = Boolean(
+            player.route &&
+            player.route.length > 0 &&
+            (player.routeType !== "motion" || !motionPts)
+          );
+
+          if (!motionPts && !hasPostSnapRoute) return null;
+
+          const motionStart = { x: player.x, y: player.y };
+          const motionEnd = motionPts && motionPts.length > 0 ? motionPts[motionPts.length - 1] : motionStart;
+          const routeStart = motionPts && motionPts.length > 0 ? motionEnd : motionStart;
+
+          // Motion path string
+          let motionPathStr = "";
+          if (motionPts && motionPts.length > 0) {
+            motionPathStr = `M ${(motionStart.x / 100) * 1000} ${(motionStart.y / 100) * 700}`;
+            motionPts.forEach((pt) => {
+              motionPathStr += ` L ${(pt.x / 100) * 1000} ${(pt.y / 100) * 700}`;
+            });
+          }
+
+          // Route path string
+          let routePathStr = "";
+          if (hasPostSnapRoute && player.route && player.route.length > 0) {
+            routePathStr = `M ${(routeStart.x / 100) * 1000} ${(routeStart.y / 100) * 700}`;
+            player.route.forEach((pt) => {
+              routePathStr += ` L ${(pt.x / 100) * 1000} ${(pt.y / 100) * 700}`;
+            });
+          }
+
+          const stroke = isRush
             ? "#DC2626"
             : isDef
             ? (isLight ? "#7C3AED" : "#C084FC")
             : (isLight ? "#0284C7" : "#38BDF8");
 
-          const markerId = isMotion
-            ? `url(#${markerMotId})`
-            : isRush
+          const markerId = isRush
             ? `url(#${markerRushId})`
             : isDef
             ? `url(#${markerDefId})`
             : `url(#${markerPassId})`;
 
           return (
-            <path
-              key={`route-${player.id}`}
-              d={pathStr}
-              fill="none"
-              stroke={stroke}
-              strokeWidth={isLight ? "3.5" : "3"}
-              strokeDasharray={isMotion ? "5 4" : undefined}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              markerEnd={markerId}
-            />
+            <g key={`route-${player.id}`}>
+              {motionPathStr && (
+                <path
+                  d={motionPathStr}
+                  fill="none"
+                  stroke="#D97706"
+                  strokeWidth={isLight ? "3.2" : "2.6"}
+                  strokeDasharray="5 4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  markerEnd={hasPostSnapRoute ? undefined : `url(#${markerMotId})`}
+                />
+              )}
+              {routePathStr && (
+                <path
+                  d={routePathStr}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth={isLight ? "3.5" : "3"}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  markerEnd={markerId}
+                />
+              )}
+            </g>
           );
         })}
 
@@ -260,7 +294,7 @@ export default function MiniPlayDiagram({
 
         return (
           <g key={player.id}>
-            {isOffense && player.routeType === "motion" && (
+            {isOffense && playerHasMotion(player) && (
               <circle
                 cx={px}
                 cy={py}

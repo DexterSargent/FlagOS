@@ -512,8 +512,12 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
     plays.forEach((play: any) => {
       if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
 
+      const isConversionPlay = Boolean(
+        play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+      );
+
       // Passing
-      if (play.playType === "Pass" && (play.qbPlayerId === pName || play.passer === pName)) {
+      if (play.playType === "Pass" && (play.qbPlayerId === pName || play.passer === pName) && !isConversionPlay) {
         myStats.passAtt += 1;
         if (play.passOutcome === "Complete" || play.result === "Complete" || play.result === "Touchdown") {
           myStats.passComp += 1;
@@ -525,7 +529,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       }
 
       // Receiving
-      if (play.playType === "Pass" && (play.receiverPlayerId === pName || play.receiver === pName)) {
+      if (play.playType === "Pass" && (play.receiverPlayerId === pName || play.receiver === pName) && !isConversionPlay) {
         if (play.passOutcome === "Complete" || play.result === "Complete" || play.result === "Touchdown") {
           myStats.receptions += 1;
         }
@@ -536,7 +540,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       }
 
       // Rushing
-      if (play.playType === "Run" && (play.runnerPlayerId === pName || play.runner === pName)) {
+      if (play.playType === "Run" && (play.runnerPlayerId === pName || play.runner === pName) && !isConversionPlay) {
         myStats.rushAtt += 1;
         if (play.isTouchdown || play.result === "Touchdown") {
           myStats.rushTD += 1;
@@ -964,13 +968,13 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   </div>
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flag Pulls (Def)</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flags (Def)</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-emerald-400 font-bold">
                       <span className="text-neutral-400 font-normal truncate">{topFlagger.team || "Team"}</span>
-                      <span className="text-base">{topFlagger.flagPulls} Pulls</span>
+                      <span className="text-base">{topFlagger.flagPulls} Flags</span>
                     </div>
                   </div>
                 </div>
@@ -1319,8 +1323,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                           <th className="pb-2 w-12">#</th>
                           <th className="pb-2">Athlete Name</th>
                           <th className="pb-2">Positions</th>
-                          <th className="pb-2 text-center">Touchdowns</th>
-                          <th className="pb-2 text-center">Flag Pulls</th>
                           <th className="pb-2 text-right">Status</th>
                         </tr>
                       </thead>
@@ -1347,8 +1349,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                     ? "QB"
                                     : "ATH"}
                               </td>
-                              <td className="py-2.5 text-center font-bold text-amber-300">{pStat.totalTD}</td>
-                              <td className="py-2.5 text-center font-bold text-emerald-400">{pStat.flagPulls}</td>
                               <td className="py-2.5 text-right text-[10px] text-emerald-400 font-mono">Active</td>
                             </tr>
                           );
@@ -1423,12 +1423,12 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                   <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
-                      Top Flag Puller (Defense)
+                      Top Flagger (Defense)
                     </span>
                     <div className="text-base font-black text-white mt-1 truncate">
                       {teamTopDefender.name !== "-" ? teamTopDefender.name : "No stats yet"}
                     </div>
-                    <div className="text-xs text-emerald-400 font-bold mt-1">{teamTopDefender.flagPulls} Pulls</div>
+                    <div className="text-xs text-emerald-400 font-bold mt-1">{teamTopDefender.flagPulls} Flags</div>
                   </div>
                 </div>
               </div>
@@ -1748,7 +1748,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 )}
                 {isLeagueTopFlagger && (
                   <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-mono text-xs font-black border border-amber-500/30 flex items-center gap-1.5">
-                    <span>#1 Defensive Flag Pulls ({topFlagger.flagPulls})</span>
+                    <span>#1 Defensive Flags ({topFlagger.flagPulls})</span>
                   </span>
                 )}
                 <Link
@@ -2024,7 +2024,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   <Shield className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
                 <div className="text-3xl font-black text-emerald-400 tabular-nums">
-                  {myStats.flagPulls} <span className="text-xs font-normal text-neutral-500">Flag Pulls</span>
+                  {myStats.flagPulls} <span className="text-xs font-normal text-neutral-500">Flags</span>
                 </div>
                 <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
                   <div className="flex justify-between text-neutral-400">
@@ -2082,8 +2082,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                           <th className="pb-2 w-12">#</th>
                           <th className="pb-2">Athlete Name</th>
                           <th className="pb-2">Positions</th>
-                          <th className="pb-2 text-center">Touchdowns</th>
-                          <th className="pb-2 text-center">Flag Pulls</th>
                           <th className="pb-2 text-right">Status</th>
                         </tr>
                       </thead>
@@ -2115,8 +2113,6 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                   ? p.positions.join(", ")
                                   : p.position || "ATH"}
                               </td>
-                              <td className="py-2.5 text-center font-bold text-amber-300">{pStat.totalTD}</td>
-                              <td className="py-2.5 text-center font-bold text-emerald-400">{pStat.flagPulls}</td>
                               <td className="py-2.5 text-right text-[10px] text-emerald-400 font-mono">Active</td>
                             </tr>
                           );
@@ -2587,13 +2583,13 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                   </div>
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flag Pulls (Def)</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flags (Def)</span>
                     <div className="text-lg font-black text-white mt-1 truncate">
                       {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-emerald-400 font-bold">
                       <span className="text-neutral-400 font-normal truncate">{topFlagger.team || "Team"}</span>
-                      <span className="text-base">{topFlagger.flagPulls} Pulls</span>
+                      <span className="text-base">{topFlagger.flagPulls} Flags</span>
                     </div>
                   </div>
                 </div>

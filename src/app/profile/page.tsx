@@ -190,8 +190,12 @@ export default function PlayerProfilePage() {
           plays.forEach((play) => {
             if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
 
+            const isConversionPlay = Boolean(
+              play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+            );
+
             // Passing
-            if (play.playType === "Pass" && play.qbPlayerId === pName) {
+            if (play.playType === "Pass" && play.qbPlayerId === pName && !isConversionPlay) {
               stats.passAtt += 1;
               if (play.passOutcome === "Complete") {
                 stats.passComp += 1;
@@ -203,7 +207,7 @@ export default function PlayerProfilePage() {
             }
 
             // Receiving
-            if (play.playType === "Pass" && play.passOutcome === "Complete" && play.receiverPlayerId === pName) {
+            if (play.playType === "Pass" && play.passOutcome === "Complete" && play.receiverPlayerId === pName && !isConversionPlay) {
               stats.receptions += 1;
               if (play.isTouchdown) {
                 stats.recTD += 1;
@@ -212,7 +216,7 @@ export default function PlayerProfilePage() {
             }
 
             // Rushing
-            if (play.playType === "Run" && play.runnerPlayerId === pName) {
+            if (play.playType === "Run" && play.runnerPlayerId === pName && !isConversionPlay) {
               stats.rushAtt += 1;
               if (play.isTouchdown) {
                 stats.rushTD += 1;
@@ -515,7 +519,7 @@ export default function PlayerProfilePage() {
               <div className="bg-[#0B0F19] border border-purple-500/20 rounded-2xl p-4 space-y-1">
                 <span className="text-[10px] font-mono uppercase font-bold text-purple-400 flex items-center gap-1">
                   <Shield className="w-3 h-3" />
-                  <span>Flag Pulls / Def</span>
+                  <span>Flags / Def</span>
                 </span>
                 <div className="text-2xl md:text-3xl font-black text-purple-300">{playerStats.flagPulls}</div>
                 <span className="text-[10px] text-neutral-500">
@@ -602,7 +606,7 @@ export default function PlayerProfilePage() {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between py-2 border-b border-white/5 text-xs">
-                    <span className="text-neutral-400">Flag Pulls (Tackles)</span>
+                    <span className="text-neutral-400">Flags (Tackles)</span>
                     <span className="font-mono font-bold text-white">{playerStats.flagPulls}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-white/5 text-xs">
@@ -727,7 +731,7 @@ export default function PlayerProfilePage() {
                 },
                 {
                   label: "Roster Limits",
-                  value: `Min ${settings?.rules?.minRosterSize || 5} • Max ${settings?.rules?.maxRosterSize || 15} Players`,
+                  value: `Min ${settings?.rules?.minRosterSize || 5} • Max ${settings?.rules?.maxRosterSize || 30} Players`,
                   desc: "Team roster capacity requirements for active eligibility.",
                 },
                 {

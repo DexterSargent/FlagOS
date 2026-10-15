@@ -116,4 +116,77 @@ describe("PlayCanvas Route Presets Suite", () => {
     const postPlayer = updatedPlay.players.find((p) => p.quickRouteName === "Post");
     expect(postPlayer).toBeDefined();
   });
+
+  it("preserves pre-snap motion when applying a route preset and runs route from motion endpoint", () => {
+    const handleChange = vi.fn();
+    const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
+
+    // 1. Put receiver in motion
+    const jetBtn = screen.getByTestId("quick-route-jet-motion");
+    fireEvent.click(jetBtn);
+
+    expect(handleChange).toHaveBeenCalled();
+    const motionPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const motionPlayer = motionPlay.players.find((p) => p.hasMotion || p.routeType === "motion");
+    expect(motionPlayer).toBeDefined();
+    expect(motionPlayer?.hasMotion).toBe(true);
+    expect(motionPlayer?.motionPath && motionPlayer.motionPath.length > 0).toBe(true);
+
+    // Re-render with updated play so state reflects the motion
+    rerender(<PlayCanvas play={motionPlay} onChange={handleChange} />);
+
+    // 2. Now apply a route preset (Slant) to the motion receiver
+    const slantBtn = screen.getByTestId("quick-route-slant");
+    fireEvent.click(slantBtn);
+
+    expect(handleChange).toHaveBeenCalled();
+    const routedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const playerWithBoth = routedPlay.players.find((p) => p.id === motionPlayer?.id);
+
+    // Verify motion was NOT undone!
+    expect(playerWithBoth?.hasMotion).toBe(true);
+    expect(playerWithBoth?.motionPath && playerWithBoth.motionPath.length > 0).toBe(true);
+    expect(playerWithBoth?.quickRouteName).toBe("Slant");
+
+    // Verify route starts from the terminal waypoint of motion, NOT alignment (player.x, player.y)
+    const motionEnd = playerWithBoth!.motionPath![playerWithBoth!.motionPath!.length - 1];
+    expect(playerWithBoth?.route && playerWithBoth.route.length > 0).toBe(true);
+    // Route starting waypoint matches motion endpoint
+    expect(playerWithBoth!.route![0].x).toBe(motionEnd.x);
+    expect(playerWithBoth!.route![0].x).not.toBe(playerWithBoth!.x);
+  });
+
+  it("re-anchors existing route preset to start from motion endpoint when pre-snap motion is added", () => {
+    const handleChange = vi.fn();
+    const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
+
+    // 1. Give player a route preset first (e.g. Slant)
+    const slantBtn = screen.getByTestId("quick-route-slant");
+    fireEvent.click(slantBtn);
+
+    const playWithSlant = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const slantedPlayer = playWithSlant.players.find((p) => p.quickRouteName === "Slant");
+    expect(slantedPlayer).toBeDefined();
+    expect(slantedPlayer?.route![0].x).toBe(slantedPlayer!.x); // initially starts at alignment
+
+    // Re-render with slanted player
+    rerender(<PlayCanvas play={playWithSlant} onChange={handleChange} />);
+
+    // 2. Now toggle motion ON for that receiver
+    const motionToggleBtn = screen.getByTestId("toggle-motion-btn");
+    fireEvent.click(motionToggleBtn);
+
+    const finalPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const finalPlayer = finalPlay.players.find((p) => p.id === slantedPlayer!.id);
+
+    // Player now has both motion and route!
+    expect(finalPlayer?.hasMotion).toBe(true);
+    expect(finalPlayer?.motionPath && finalPlayer.motionPath.length > 0).toBe(true);
+    expect(finalPlayer?.quickRouteName).toBe("Slant");
+
+    // Route is now re-anchored from motion endpoint!
+    const motionEnd = finalPlayer!.motionPath![finalPlayer!.motionPath!.length - 1];
+    expect(finalPlayer!.route![0].x).toBe(motionEnd.x);
+    expect(finalPlayer!.route![0].x).not.toBe(finalPlayer!.x);
+  });
 });

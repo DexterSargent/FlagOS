@@ -123,8 +123,12 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
           const isEligible = (name: string) => name && statsMap[name];
 
+          const isConversionPlay = Boolean(
+            play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+          );
+
           // Passing
-          if (play.playType === "Pass" && isEligible(play.qbPlayerId)) {
+          if (play.playType === "Pass" && isEligible(play.qbPlayerId) && !isConversionPlay) {
             statsMap[play.qbPlayerId].passAtt += 1;
             if (play.passOutcome === "Complete") {
               statsMap[play.qbPlayerId].passComp += 1;
@@ -136,7 +140,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
 
           // Receiving
-          if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId)) {
+          if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId) && !isConversionPlay) {
             statsMap[play.receiverPlayerId].receptions += 1;
             if (play.isTouchdown) {
               statsMap[play.receiverPlayerId].recTD += 1;
@@ -145,7 +149,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
 
           // Rushing
-          if (play.playType === "Run" && isEligible(play.runnerPlayerId)) {
+          if (play.playType === "Run" && isEligible(play.runnerPlayerId) && !isConversionPlay) {
             statsMap[play.runnerPlayerId].rushAtt += 1;
             if (play.isTouchdown) {
               statsMap[play.runnerPlayerId].rushTD += 1;
@@ -210,7 +214,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     { title: "Receptions", key: "receptions", icon: Activity, color: "text-blue-400" },
     { title: "Receiving TDs", key: "recTD", icon: Activity, color: "text-blue-400" },
     { title: "Rushing TDs", key: "rushTD", icon: Flame, color: "text-emerald-400" },
-    { title: "Flag Pulls", key: "flagPulls", icon: Shield, color: "text-amber-400" },
+    { title: "Flags", key: "flagPulls", icon: Shield, color: "text-amber-400" },
     { title: "Sacks", key: "sacks", icon: Shield, color: "text-orange-500" },
     { title: "Interceptions", key: "int", icon: Shield, color: "text-purple-400" },
     { title: "Pass Breakups", key: "pbu", icon: Shield, color: "text-cyan-400" },

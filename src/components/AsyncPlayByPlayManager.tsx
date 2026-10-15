@@ -467,6 +467,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         result === "Pick 6" ||
         (currentDown === downsPerSeries && result !== "First Down" && result !== "Repeat Down"),
       result,
+      isThirdDownAttempt: currentDown === 3 && playType !== "Penalty",
+      isThirdDownConversion: currentDown === 3 && (result === "First Down" || result === "Touchdown" || extra?.firstDown),
+      isFourthDownAttempt: currentDown === 4 && playType !== "Penalty",
+      isFourthDownConversion: currentDown === 4 && (result === "First Down" || result === "Touchdown" || extra?.firstDown),
       half,
       gameClock: null, // Strictly clockless
       isAsyncStatKeeping: true,
@@ -752,7 +756,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       const offTeam = play.possessionTeamId;
       const defTeam = offTeam === homeTeamId ? awayTeamId : homeTeamId;
 
-      if (play.playType === "Pass" && play.qbPlayerId) {
+      const isConversionPlay = Boolean(
+        play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+      );
+
+      if (play.playType === "Pass" && play.qbPlayerId && !isConversionPlay) {
         initPlayer(play.qbPlayerId);
         statsMap[play.qbPlayerId].inferredTeam = offTeam;
         statsMap[play.qbPlayerId].passAtt += 1;
@@ -762,7 +770,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         if (play.passOutcome === "Interception") statsMap[play.qbPlayerId].passInt += 1;
       }
 
-      if (play.playType === "Pass" && play.passOutcome === "Complete" && play.receiverPlayerId) {
+      if (play.playType === "Pass" && play.passOutcome === "Complete" && play.receiverPlayerId && !isConversionPlay) {
         initPlayer(play.receiverPlayerId);
         statsMap[play.receiverPlayerId].inferredTeam = offTeam;
         statsMap[play.receiverPlayerId].receptions += 1;
@@ -770,14 +778,27 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         if (play.firstDown) statsMap[play.receiverPlayerId].recFD += 1;
       }
 
-      if (play.playType === "Run" && play.runnerPlayerId) {
+      if (play.playType === "Run" && play.runnerPlayerId && !isConversionPlay) {
         initPlayer(play.runnerPlayerId);
         statsMap[play.runnerPlayerId].inferredTeam = offTeam;
         statsMap[play.runnerPlayerId].rushAtt += 1;
         if (play.isTouchdown) statsMap[play.runnerPlayerId].rushTD += 1;
       }
 
-      if (play.conversionSuccess) {
+      if (isConversionPlay) {
+        if (play.conversionSuccess || play.passOutcome === "Complete" || (play.points && play.points > 0)) {
+          const passer = play.conversionPasser || play.qbPlayerId;
+          const receiver = play.conversionReceiver || play.receiverPlayerId;
+          if (passer) {
+            initPlayer(passer);
+            statsMap[passer].convPass += 1;
+          }
+          if (receiver) {
+            initPlayer(receiver);
+            statsMap[receiver].convRec += 1;
+          }
+        }
+      } else if (play.conversionSuccess) {
         if (play.conversionPasser) {
           initPlayer(play.conversionPasser);
           statsMap[play.conversionPasser].convPass += 1;
@@ -1296,11 +1317,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                 )}
 
-                {/* Defenders / Flag Pullers */}
+                {/* Defenders / Flags */}
                 <div className="md:col-span-2">
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-                      Defenders Involved / Flag Pull
+                      Defenders Involved / Flag
                     </label>
                     {defenders.length > 0 && (
                       <span className="text-[10px] font-bold text-amber-400">
@@ -1352,47 +1373,47 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                 </div>
 
-                {/* ACTION RESULTS BUTTONS */}
-                <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1">
+                {/* ACTION RESULTS BUTTONS (STICKY IN-FRAME) */}
+                <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1 sticky bottom-0 bg-neutral-900/95 backdrop-blur-md pb-1 z-10">
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
                     Save Play Result
                   </span>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
                     <button
                       onClick={() => handleSavePlay("Touchdown")}
-                      className="py-2 px-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-[10px] uppercase tracking-wider shadow-lg transition-all"
+                      className="py-2 px-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
                     >
                       TOUCHDOWN (+6)
                     </button>
                     <button
                       onClick={() => handleSavePlay("First Down")}
-                      className="py-2 px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
                     >
                       FIRST DOWN
                     </button>
                     <button
                       onClick={() => handleSavePlay("Next Down")}
-                      className="py-2 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
                     >
                       NEXT DOWN
                     </button>
                     {outcome === "Interception" && (
                       <button
                         onClick={() => handleSavePlay("Pick 6")}
-                        className="py-2 px-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg transition-all"
+                        className="py-2 px-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
                       >
                         PICK 6 (+6)
                       </button>
                     )}
                     <button
                       onClick={() => handleSavePlay("Turnover")}
-                      className="py-2 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
                     >
                       TURNOVER
                     </button>
                     <button
                       onClick={() => handleSavePlay("Safety")}
-                      className="py-2 px-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-[10px] uppercase tracking-wider transition-all"
+                      className="py-2 px-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
                     >
                       SAFETY (+2 DEF)
                     </button>

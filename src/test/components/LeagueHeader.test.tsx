@@ -204,4 +204,57 @@ describe("LeagueHeader Component", () => {
     expect(signInLinks.length).toBeGreaterThan(0);
     expect(signInLinks[0]).toHaveAttribute("href", "/login");
   });
+
+  it("STRICT WHITE-LABELING: custom or paid customer leagues omit FlagOS return button and FlagOS branding in LeagueHeader", () => {
+    mockUseLeague.mockReturnValue({
+      settings: {
+        leagueName: "Apex Premier Flag Football",
+        shortcode: "APEX",
+        primaryColor: "#E31837",
+        accentColor: "#000000",
+        logoUrl: "",
+        announcement: "",
+        seasonTitle: "2026 Live Championship",
+        rules: { enableFreeAgents: true },
+      },
+      openCustomizer: vi.fn(),
+      activeLeagueId: "league_apex_999",
+      userLeagues: [],
+      switchLeague: vi.fn(),
+      subscription: {
+        plan: "league",
+        status: "active",
+        baseMonthlyFee: 49,
+        perTeamMonthlyFee: 5,
+        teamCount: 8,
+        totalMonthlyFee: 89,
+        billingCycle: "monthly",
+      },
+      isDemoLeague: false,
+    });
+
+    mockUseAuth.mockReturnValue({
+      role: "league_admin",
+      isLeagueAdmin: true,
+      isPlayer: false,
+      playerData: null,
+      canRegisterAsPlayer: false,
+      isAuthorized: true,
+      playerTeamId: null,
+      managedTeamId: null,
+    });
+
+    render(<LeagueHeader activePage="league" />);
+
+    // Custom league name is rendered cleanly
+    expect(screen.getByText("Apex Premier Flag Football")).toBeInTheDocument();
+
+    // FlagOS return link ("Return to FlagOS Platform Home") MUST NOT exist
+    const flagosPlatformHomeLink = screen.queryByTitle(/return to flagos platform home/i);
+    expect(flagosPlatformHomeLink).toBeNull();
+
+    // The word/link "FlagOS" should NOT be in the header navigation
+    const flagosLinks = screen.queryAllByRole("link", { name: /^flagos$/i });
+    expect(flagosLinks.length).toBe(0);
+  });
 });

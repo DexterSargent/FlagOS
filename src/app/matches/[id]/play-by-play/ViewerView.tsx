@@ -107,7 +107,12 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       const defTeam = offTeam === matchData?.homeTeamId ? matchData?.awayTeamId : matchData?.homeTeamId;
 
       // Passing
-      if (play.playType === 'Pass' && play.qbPlayerId) {
+      const isConversionPlay = Boolean(
+        play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+      );
+
+      // Passing
+      if (play.playType === 'Pass' && play.qbPlayerId && !isConversionPlay) {
         initPlayer(play.qbPlayerId);
         statsMap[play.qbPlayerId].inferredTeam = offTeam;
         statsMap[play.qbPlayerId].passAtt += 1;
@@ -117,7 +122,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         if (play.passOutcome === 'Interception') statsMap[play.qbPlayerId].passInt += 1;
       }
       // Receiving
-      if (play.playType === 'Pass' && play.passOutcome === 'Complete' && play.receiverPlayerId) {
+      if (play.playType === 'Pass' && play.passOutcome === 'Complete' && play.receiverPlayerId && !isConversionPlay) {
         initPlayer(play.receiverPlayerId);
         statsMap[play.receiverPlayerId].inferredTeam = offTeam;
         statsMap[play.receiverPlayerId].receptions += 1;
@@ -125,14 +130,29 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         if (play.firstDown) statsMap[play.receiverPlayerId].recFD += 1;
       }
       // Rushing
-      if (play.playType === 'Run' && play.runnerPlayerId) {
+      if (play.playType === 'Run' && play.runnerPlayerId && !isConversionPlay) {
         initPlayer(play.runnerPlayerId);
         statsMap[play.runnerPlayerId].inferredTeam = offTeam;
         statsMap[play.runnerPlayerId].rushAtt += 1;
         if (play.isTouchdown) statsMap[play.runnerPlayerId].rushTD += 1;
       }
       // Conversions
-      if (play.conversionSuccess) {
+      if (isConversionPlay) {
+        if (play.conversionSuccess || play.passOutcome === 'Complete' || (play.points && play.points > 0)) {
+          const passer = play.conversionPasser || play.qbPlayerId;
+          const receiver = play.conversionReceiver || play.receiverPlayerId;
+          if (passer) {
+            initPlayer(passer);
+            statsMap[passer].inferredTeam = offTeam;
+            statsMap[passer].convPass += 1;
+          }
+          if (receiver) {
+            initPlayer(receiver);
+            statsMap[receiver].inferredTeam = offTeam;
+            statsMap[receiver].convRec += 1;
+          }
+        }
+      } else if (play.conversionSuccess) {
         if (play.conversionPasser) {
           initPlayer(play.conversionPasser);
           statsMap[play.conversionPasser].inferredTeam = offTeam;

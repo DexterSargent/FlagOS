@@ -93,6 +93,15 @@ export default function LeagueCustomizerModal() {
   const [saving, setSaving] = useState(false);
   const [ifafPresetNotice, setIfafPresetNotice] = useState(false);
 
+  // Lock body scroll while modal is open so main page behind modal does not scroll
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   const handleResetToIFAF = () => {
     setRules(IFAF_5V5_RULES);
     setIfafPresetNotice(true);
@@ -159,7 +168,7 @@ export default function LeagueCustomizerModal() {
     setSaving(true);
     try {
       const sanitizedMinRoster = Math.max(rules.playersOnField, rules.minRosterSize);
-      const sanitizedMaxRoster = Math.max(sanitizedMinRoster, rules.maxRosterSize);
+      const sanitizedMaxRoster = Math.min(30, Math.max(sanitizedMinRoster, rules.maxRosterSize || 30));
 
       await updateSettings({
         leagueName: leagueName.trim() || "FlagOS League",
@@ -189,48 +198,55 @@ export default function LeagueCustomizerModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl p-6 md:p-8 max-w-3xl w-full shadow-2xl relative max-h-[92vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-              <SettingsIcon className="w-5 h-5" />
+    <div
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto overscroll-contain"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) closeCustomizer();
+      }}
+    >
+      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-3xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+        {/* Pinned Header & Tab Navigation */}
+        <div className="p-5 sm:p-6 pb-4 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                <SettingsIcon className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black uppercase text-white tracking-wide flex items-center gap-2">
+                  <span>Settings</span>
+                  {isLeagueAdmin ? (
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                      Commissioner Controls
+                    </span>
+                  ) : isPlayer ? (
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      Athlete Mode • #{playerData?.number || "00"} {playerData?.playerName}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/20">
+                      User Preferences
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs text-neutral-400">
+                  {isLeagueAdmin
+                    ? "Manage league branding, operations, and official gameplay rules site-wide"
+                    : "View official league regulations"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-black uppercase text-white tracking-wide flex items-center gap-2">
-                <span>Settings</span>
-                {isLeagueAdmin ? (
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                    Commissioner Controls
-                  </span>
-                ) : isPlayer ? (
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                    Athlete Mode • #{playerData?.number || "00"} {playerData?.playerName}
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/20">
-                    User Preferences
-                  </span>
-                )}
-              </h2>
-              <p className="text-xs text-neutral-400">
-                {isLeagueAdmin
-                  ? "Manage league branding, operations, and official gameplay rules site-wide"
-                  : "View official league regulations"}
-              </p>
-            </div>
+            <button
+              onClick={closeCustomizer}
+              className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button
-            onClick={closeCustomizer}
-            className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-2 p-1 bg-black/60 border border-white/10 rounded-2xl mb-6">
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-2 p-1 bg-black/60 border border-white/10 rounded-2xl">
           {/* League Admin Tab: Branding */}
           {isLeagueAdmin && (
             <button
@@ -274,7 +290,10 @@ export default function LeagueCustomizerModal() {
             </button>
           )}
         </div>
+        </div>
 
+        {/* Scrollable Modal Content */}
+        <div className="overflow-y-auto overscroll-contain flex-1 min-h-0 p-5 sm:p-6 md:p-8">
         {/* ============================================================
             TAB: LEAGUE BRANDING & IDENTITY (LEAGUE ADMIN EXCLUSIVE)
            ============================================================ */}
@@ -827,7 +846,7 @@ export default function LeagueCustomizerModal() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+            <div className="sticky bottom-0 bg-[#0B0F19]/95 backdrop-blur-md pt-4 pb-2 border-t border-white/10 flex items-center justify-between gap-3 z-20 mt-6 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
               <button
                 type="button"
                 onClick={closeCustomizer}
@@ -1280,18 +1299,18 @@ export default function LeagueCustomizerModal() {
                       type="number"
                       disabled={!isLeagueAdmin}
                       min={rules.minRosterSize}
-                      max={50}
+                      max={30}
                       value={rules.maxRosterSize}
                       onChange={(e) =>
                         setRules((prev) => ({
                           ...prev,
-                          maxRosterSize: Math.max(prev.minRosterSize, parseInt(e.target.value) || prev.minRosterSize),
+                          maxRosterSize: Math.min(30, Math.max(prev.minRosterSize, parseInt(e.target.value) || prev.minRosterSize)),
                         }))
                       }
                       className="w-20 px-3 py-2 rounded-xl bg-black/80 border border-white/10 text-white font-mono font-bold text-center text-sm disabled:opacity-80"
                     />
                     <span className="text-[11px] text-neutral-400 leading-tight">
-                      Hard cap. Teams cannot add players once this limit is reached.
+                      Hard cap of 30 players. Teams cannot add players once this limit is reached.
                     </span>
                   </div>
                 </div>
@@ -1960,6 +1979,7 @@ export default function LeagueCustomizerModal() {
             )}
           </div>
         )}
+        </div>
       </div>
     </div >
   );

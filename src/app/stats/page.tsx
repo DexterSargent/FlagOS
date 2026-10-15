@@ -247,8 +247,13 @@ export default function StatsAndStandings() {
           if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
           const isEligible = (name: string) => name && statsMap[name];
 
+          // Check if this play is a conversion attempt (special try play)
+          const isConversionPlay = Boolean(
+            play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+          );
+
           // Passing
-          if (play.playType === "Pass" && isEligible(play.qbPlayerId)) {
+          if (play.playType === "Pass" && isEligible(play.qbPlayerId) && !isConversionPlay) {
             statsMap[play.qbPlayerId].passAtt += 1;
             if (play.passOutcome === "Complete") {
               statsMap[play.qbPlayerId].passComp += 1;
@@ -260,32 +265,48 @@ export default function StatsAndStandings() {
               statsMap[play.qbPlayerId].passTD += 1;
               statsMap[play.qbPlayerId].totalTDs += 1;
             }
-            if (play.isConversion) {
-              statsMap[play.qbPlayerId].convPass += 1;
-            }
           }
 
           // Receiving
-          if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId)) {
+          if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId) && !isConversionPlay) {
             statsMap[play.receiverPlayerId].receptions += 1;
             if (play.isTouchdown) {
               statsMap[play.receiverPlayerId].recTD += 1;
               statsMap[play.receiverPlayerId].totalTDs += 1;
             }
-            if (play.isConversion) {
-              statsMap[play.receiverPlayerId].convRec += 1;
-            }
           }
 
           // Rushing
-          if (play.playType === "Run" && isEligible(play.runnerPlayerId)) {
+          if (play.playType === "Run" && isEligible(play.runnerPlayerId) && !isConversionPlay) {
             statsMap[play.runnerPlayerId].rushAtt += 1;
             if (play.isTouchdown) {
               statsMap[play.runnerPlayerId].rushTD += 1;
               statsMap[play.runnerPlayerId].totalTDs += 1;
             }
-            if (play.isConversion) {
-              statsMap[play.runnerPlayerId].convRec += 1;
+          }
+
+          // Conversions (PAT)
+          if (isConversionPlay) {
+            if (play.conversionSuccess || play.passOutcome === "Complete" || (play.points && play.points > 0)) {
+              const passer = play.conversionPasser || play.qbPlayerId;
+              const receiver = play.conversionReceiver || play.receiverPlayerId;
+              const runner = play.conversionRunner || play.runnerPlayerId;
+              if (play.playType === "Pass") {
+                if (passer && isEligible(passer)) statsMap[passer].convPass += 1;
+                if (receiver && isEligible(receiver)) statsMap[receiver].convRec += 1;
+              } else if (play.playType === "Run") {
+                if (runner && isEligible(runner)) statsMap[runner].convRec += 1;
+              }
+            }
+          } else if (play.conversionSuccess) {
+            if (play.conversionPasser && isEligible(play.conversionPasser)) {
+              statsMap[play.conversionPasser].convPass += 1;
+            }
+            if (play.conversionReceiver && isEligible(play.conversionReceiver)) {
+              statsMap[play.conversionReceiver].convRec += 1;
+            }
+            if (play.conversionRunner && isEligible(play.conversionRunner)) {
+              statsMap[play.conversionRunner].convRec += 1;
             }
           }
 
@@ -355,7 +376,7 @@ export default function StatsAndStandings() {
     { title: "Receptions", key: "receptions", subtab: "receiving" as const, icon: Activity, color: "text-blue-400" },
     { title: "Receiving TDs", key: "recTD", subtab: "receiving" as const, icon: Activity, color: "text-blue-400" },
     { title: "Rushing TDs", key: "rushTD", subtab: "receiving" as const, icon: Flame, color: "text-emerald-400" },
-    { title: "Flag Pulls", key: "flagPulls", subtab: "defense" as const, icon: Shield, color: "text-amber-400" },
+    { title: "Flags", key: "flagPulls", subtab: "defense" as const, icon: Shield, color: "text-amber-400" },
     { title: "Sacks", key: "sacks", subtab: "defense" as const, icon: Shield, color: "text-orange-500" },
     { title: "Interceptions", key: "int", subtab: "defense" as const, icon: Shield, color: "text-purple-400" },
     { title: "Pass Breakups", key: "pbu", subtab: "defense" as const, icon: Shield, color: "text-cyan-400" },
@@ -847,7 +868,7 @@ export default function StatsAndStandings() {
                               </div>
                             </th>
                             <ThIndiv label="GP" sortKey="gamesPlayed" className="text-neutral-300" />
-                            <ThIndiv label="Flag Pulls" sortKey="flagPulls" className="text-amber-400" />
+                            <ThIndiv label="Flags" sortKey="flagPulls" className="text-amber-400" />
                             <ThIndiv label="INT" sortKey="int" className="text-blue-400" />
                             <ThIndiv label="Def TD" sortKey="defTD" className="text-emerald-400" />
                             <ThIndiv label="Sacks" sortKey="sacks" className="text-red-400" />

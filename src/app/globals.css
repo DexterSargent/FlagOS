@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /*
  * Theme palette: edit these tokens to update the shared application styling.
@@ -525,23 +526,35 @@ html.light body {
 }
 
 /* Page Outer Wrappers */
+html.light body,
 html.light .min-h-screen.bg-black,
 html.light .min-h-screen.bg-\[\#07090E\],
-html.light .h-screen.bg-black {
+html.light .min-h-screen.bg-\[\#070A11\],
+html.light [class*="min-h-screen"].bg-black,
+html.light [class*="min-h-screen"].bg-\[\#07090E\],
+html.light [class*="min-h-screen"].bg-\[\#070A11\],
+html.light .h-screen.bg-black,
+html.light [class*="h-screen"].bg-black,
+html.light [class*="h-[100dvh]"].bg-black,
+html.light [class*="h-[calc("].bg-black,
+html.light div.bg-black:not(button):not(a):not(span):not(svg):not(path):not([class*="rounded-full"]) {
   background-color: #f8fafc !important;
 }
 
 /* Headers & Footers */
 html.light header.bg-\[\#07090E\]\/90,
+html.light header.bg-white\/85,
 html.light header {
   background-color: rgba(255, 255, 255, 0.94) !important;
   border-color: #e2e8f0 !important;
 }
 
 html.light footer.bg-\[\#07090E\],
+html.light footer.bg-black,
 html.light footer {
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
+  color: #475569 !important;
 }
 
 /* Role Switcher Floating Bar */
@@ -610,6 +623,8 @@ html.light .bg-\[\#05070B\],
 html.light .bg-\[\#0a0f1d\],
 html.light .bg-\[\#090D16\],
 html.light .bg-\[\#0B0F1A\],
+html.light .bg-\[\#121826\],
+html.light .bg-\[\#141c2e\],
 html.light .bg-neutral-900,
 html.light .bg-neutral-950,
 html.light .bg-neutral-900\/50,
@@ -623,27 +638,44 @@ html.light .bg-neutral-950\/60,
 html.light .bg-neutral-950\/70,
 html.light .bg-neutral-950\/80,
 html.light .bg-neutral-950\/90,
-html.light .bg-neutral-950\/95 {
+html.light .bg-neutral-950\/95,
+html.light .bg-zinc-900,
+html.light .bg-zinc-950,
+html.light .bg-slate-900,
+html.light .bg-slate-950 {
   background-color: #ffffff !important;
   border-color: #e2e8f0;
 }
 
-/* Container Dark Gradients Adaptation (Converts dark multi-stop container backgrounds into clean white cards) */
+/* Container Dark Gradients Adaptation (Converts dark multi-stop container backgrounds into clean light cards) */
 html.light [class*="bg-gradient-to"].from-neutral-900\/90,
+html.light [class*="bg-gradient-to"].from-neutral-900\/50,
+html.light [class*="bg-gradient-to"].from-neutral-900\/60,
 html.light [class*="bg-gradient-to"].from-neutral-950,
+html.light [class*="bg-gradient-to"].from-neutral-950\/90,
 html.light [class*="from-\[\#0B132B\]"],
 html.light [class*="from-\[\#061822\]"],
 html.light [class*="from-\[\#0C1222\]"],
 html.light [class*="from-\[\#0B0F19\]"],
 html.light [class*="from-\[\#1C0B0E\]"],
 html.light [class*="from-\[\#090D16\]"],
-html.light [class*="from-\[\#0D101A\]"] {
+html.light [class*="from-\[\#0D101A\]"],
+html.light [class*="from-red-950"],
+html.light [class*="from-amber-950"],
+html.light [class*="from-cyan-950"],
+html.light [class*="from-emerald-950"],
+html.light [class*="from-blue-950"],
+html.light [class*="from-purple-950"],
+html.light [class*="from-yellow-950"] {
   background-image: none !important;
   background-color: #ffffff !important;
   border-color: #e2e8f0 !important;
+  color: #0f172a !important;
 }
 
 /* Inset Panels & Muted Containers */
+html.light .bg-black\/20,
+html.light .bg-black\/30,
 html.light .bg-black\/40,
 html.light .bg-black\/50,
 html.light .bg-black\/60,
@@ -657,7 +689,16 @@ html.light .bg-black\/90 {
 
 html.light .bg-white\/5,
 html.light .bg-white\/10,
-html.light .bg-white\/15 {
+html.light .bg-white\/15,
+html.light .bg-white\/20 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0;
+}
+
+html.light .bg-neutral-800:not(button):not(a),
+html.light .bg-neutral-800\/80:not(button):not(a),
+html.light .bg-zinc-800:not(button):not(a),
+html.light .bg-slate-800:not(button):not(a) {
   background-color: #f1f5f9 !important;
   border-color: #e2e8f0;
 }
@@ -684,14 +725,24 @@ html.light .border-white\/5,
 html.light .border-white\/10,
 html.light .border-white\/15,
 html.light .border-white\/20,
+html.light .border-white\/25,
 html.light .border-white\/30,
+html.light .border-white\/40,
+html.light .border-white\/50,
 html.light .border-neutral-800,
-html.light .border-neutral-700 {
+html.light .border-neutral-700,
+html.light .border-neutral-600,
+html.light .border-zinc-800,
+html.light .border-zinc-700,
+html.light .border-slate-800,
+html.light .border-slate-700 {
   border-color: #e2e8f0 !important;
 }
 
 html.light .divide-white\/5 > :not([hidden]) ~ :not([hidden]),
-html.light .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+html.light .divide-white\/10 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-white\/15 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-neutral-800 > :not([hidden]) ~ :not([hidden]) {
   border-color: #e2e8f0 !important;
 }
 
@@ -706,20 +757,39 @@ html.light h6 {
 }
 
 /* Muted / Secondary Text Adaptation */
-html.light .text-neutral-400 {
+html.light .text-neutral-400,
+html.light .text-slate-400,
+html.light .text-zinc-400,
+html.light .text-gray-400 {
   color: #475569 !important;
 }
 
-html.light .text-neutral-500 {
+html.light .text-neutral-500,
+html.light .text-slate-500,
+html.light .text-zinc-500,
+html.light .text-gray-500 {
   color: #64748b !important;
 }
 
-html.light .text-neutral-300 {
+html.light .text-neutral-300,
+html.light .text-slate-300,
+html.light .text-zinc-300,
+html.light .text-gray-300 {
   color: #334155 !important;
 }
 
-html.light .text-neutral-200 {
+html.light .text-neutral-200,
+html.light .text-slate-200,
+html.light .text-zinc-200,
+html.light .text-gray-200 {
   color: #1e293b !important;
+}
+
+html.light .text-neutral-100,
+html.light .text-slate-100,
+html.light .text-zinc-100,
+html.light .text-gray-100 {
+  color: #0f172a !important;
 }
 
 /* Selective text-white mapping: applies to paragraphs, headings, labels, but NEVER to colored buttons or badges */
@@ -727,8 +797,21 @@ html.light span.text-white:not([class*="bg-"]):not(button *):not(a[class*="bg-"]
 html.light p.text-white,
 html.light div.text-white:not([class*="bg-"]):not(button *):not(a[class*="bg-"] *),
 html.light strong.text-white,
-html.light b.text-white {
+html.light b.text-white,
+html.light label.text-white,
+html.light li.text-white,
+html.light small.text-white,
+html.light td.text-white,
+html.light th.text-white,
+html.light a.text-white:not([class*="bg-"]):not(button *) {
   color: #0f172a !important;
+}
+
+/* SVG Icon visibility on light surfaces */
+html.light svg.text-white:not(button[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *):not(a[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *),
+html.light .lucide.text-white:not(button[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *):not(a[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *) {
+  color: #0f172a !important;
+  stroke: #0f172a !important;
 }
 
 /* High-Contrast Brand Text in Light Mode (WCAG AA Compliant) */
@@ -817,7 +900,7 @@ html.light .bg-red-500\/20 {
   border-color: #fecaca !important;
 }
 
-/* Safeguard Colored Primary Buttons & Badges from losing white text */
+/* Safeguard Colored Primary Buttons & Badges from losing white text (Strictly Scoped) */
 html.light button.bg-cyan-500,
 html.light button.bg-emerald-600,
 html.light button.bg-emerald-500,
@@ -830,7 +913,8 @@ html.light a.bg-emerald-600,
 html.light a.bg-emerald-500,
 html.light a.bg-red-600,
 html.light a.bg-blue-600,
-html.light [class*="bg-gradient-to"] {
+html.light button[class*="bg-gradient-to"]:not(.text-black):not([class*="text-black"]):not([class*="text-slate-950"]),
+html.light a[class*="bg-gradient-to"]:not(.text-black):not([class*="text-black"]):not([class*="text-slate-950"]) {
   color: #ffffff !important;
 }
 
@@ -846,32 +930,49 @@ html.light a.bg-emerald-600 *,
 html.light a.bg-emerald-500 *,
 html.light a.bg-red-600 *,
 html.light a.bg-blue-600 *,
-html.light [class*="bg-gradient-to"] span,
-html.light [class*="bg-gradient-to"] div,
-html.light [class*="bg-gradient-to"] * {
+html.light button[class*="bg-gradient-to"]:not(.text-black):not([class*="text-black"]):not([class*="text-slate-950"]) *,
+html.light a[class*="bg-gradient-to"]:not(.text-black):not([class*="text-black"]):not([class*="text-slate-950"]) * {
   color: inherit;
 }
 
-html.light [class*="bg-gradient-to"].from-neutral-900\/90,
-html.light [class*="bg-gradient-to"].from-neutral-950,
-html.light [class*="from-\[\#0B132B\]"],
-html.light [class*="from-\[\#061822\]"],
-html.light [class*="from-\[\#0C1222\]"],
-html.light [class*="from-\[\#0B0F19\]"],
-html.light [class*="from-\[\#1C0B0E\]"],
-html.light [class*="from-\[\#090D16\]"],
-html.light [class*="from-\[\#0D101A\]"] {
+/* Explicit Dark Text on Highlighted Buttons */
+html.light button.text-black,
+html.light a.text-black,
+html.light button[class*="text-black"],
+html.light a[class*="text-black"],
+html.light button[class*="text-slate-950"],
+html.light a[class*="text-slate-950"] {
+  color: #0f172a !important;
+}
+
+html.light button.text-black *,
+html.light a.text-black *,
+html.light button[class*="text-black"] *,
+html.light a[class*="text-black"] *,
+html.light button[class*="text-slate-950"] *,
+html.light a[class*="text-slate-950"] * {
+  color: #0f172a !important;
+}
+
+/* Neutral Buttons (e.g., bg-neutral-800 or bg-neutral-900) */
+html.light button.bg-neutral-800,
+html.light a.bg-neutral-800,
+html.light button.bg-neutral-900,
+html.light a.bg-neutral-900 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light button.bg-neutral-800:hover,
+html.light a.bg-neutral-800:hover,
+html.light button.bg-neutral-900:hover,
+html.light a.bg-neutral-900:hover {
+  background-color: #e2e8f0 !important;
   color: #0f172a !important;
 }
 
 /* Soft Action Buttons (e.g., bg-white/5 or bg-white/10) */
-html.light button.text-black,
-html.light a.text-black,
-html.light button.text-black *,
-html.light a.text-black * {
-  color: #000000 !important;
-}
-
 html.light button.bg-white\/5,
 html.light button.bg-white\/10,
 html.light a.bg-white\/5,
@@ -907,14 +1008,14 @@ html.light textarea::placeholder {
   color: #64748b !important;
 }
 
-html.light label.text-white:not([class*="bg-"]),
-html.light li.text-white:not([class*="bg-"]),
-html.light small.text-white:not([class*="bg-"]),
-html.light td.text-white:not([class*="bg-"]),
-html.light th.text-white:not([class*="bg-"]),
-html.light a.text-white:not([class*="bg-"]) {
+/* Modals & Dialog Windows */
+html.light [role="dialog"],
+html.light .modal-box {
+  background-color: #ffffff !important;
   color: #0f172a !important;
+  border-color: #e2e8f0 !important;
 }
+
 
 /* Modals & Backdrop Overlays */
 html.light .fixed.inset-0.bg-black\/80,
