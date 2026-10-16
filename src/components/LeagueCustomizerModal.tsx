@@ -95,12 +95,14 @@ export default function LeagueCustomizerModal() {
 
   // Lock body scroll while modal is open so main page behind modal does not scroll
   useEffect(() => {
+    if (!isCustomizerOpen) return;
+
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, []);
+  }, [isCustomizerOpen]);
 
   const handleResetToIFAF = () => {
     setRules(IFAF_5V5_RULES);

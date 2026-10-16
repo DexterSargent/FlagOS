@@ -170,7 +170,7 @@ describe("LeagueHeader Component", () => {
     expect(pricingLinks.length).toBe(0);
   });
 
-  it("renders easy navigation back to unlogged-in pages (Home, Pricing, Sign In) when in demo league", () => {
+  it("shows compact demo context and easy navigation back to platform pages", () => {
     mockUseLeague.mockReturnValue({
       ...defaultLeagueSettings,
       isDemoLeague: true,
@@ -189,8 +189,8 @@ describe("LeagueHeader Component", () => {
 
     render(<LeagueHeader activePage="league" />);
 
-    // Demo banner is rendered
-    expect(screen.getByText("Demo League Sandbox")).toBeInTheDocument();
+    expect(screen.getByText("Demo")).toHaveAttribute("title", "Interactive Demo Sandbox");
+    expect(screen.queryByText("Demo League Sandbox")).not.toBeInTheDocument();
 
     // Links to unlogged-in pages exist
     const homeLinks = screen.getAllByRole("link", { name: /flagos/i });

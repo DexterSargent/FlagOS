@@ -340,7 +340,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="h-[100dvh] bg-black text-white font-sans flex flex-col">
-      <header className="bg-neutral-900/90 backdrop-blur-md border-b border-white/10 p-3 sm:p-4 flex items-center justify-between shrink-0">
+      <header className="sticky top-0 z-30 bg-neutral-900/90 backdrop-blur-md border-b border-white/10 p-2 sm:p-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           {!isEmbedded && (
             <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-2.5 rounded-2xl border border-white/10">

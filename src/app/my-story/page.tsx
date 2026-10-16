@@ -278,7 +278,7 @@ export default function MyStoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#07080D] text-slate-900 dark:text-white font-sans transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-300 relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#07080D] text-slate-900 dark:text-white font-sans transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-300 relative overflow-x-clip">
       {/* Top Reading Progress Bar */}
       <div
         className="fixed top-0 left-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 z-50 transition-all duration-150"
@@ -290,7 +290,7 @@ export default function MyStoryPage() {
 
       {/* Top Editorial Bar */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-[#07080D]/85 border-b border-slate-200/80 dark:border-white/10 transition-colors">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
@@ -378,7 +378,7 @@ export default function MyStoryPage() {
         {/* Sticky Chapter Navigation Ribbon */}
         <nav
           aria-label="Story Chapters"
-          className="sticky top-20 z-30 p-2 rounded-2xl bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-md"
+          className="sticky top-14 z-30 p-1.5 rounded-2xl bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-md"
         >
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-1">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500 pl-2 pr-1 shrink-0">

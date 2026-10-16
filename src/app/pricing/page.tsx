@@ -293,10 +293,10 @@ export default function PricingPage() {
       </div>
 
       {/* DEDICATED FLAGOS MARKETING NAV HEADER (Replaces League Header) */}
-      <header className="border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
-          <Link href="/" className="flex items-center gap-2.5 sm:gap-3.5 group min-w-0 shrink">
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0">
+      <header className="relative sticky top-0 z-50 border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 shrink">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0">
               <FlagOSLogo
                 variant="emblem"
                 size="md"
@@ -305,16 +305,16 @@ export default function PricingPage() {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <FlagOSText className="text-xl sm:text-2xl leading-none" />
+                <FlagOSText className="text-lg sm:text-xl leading-none" />
               </div>
-              <span className="text-[10px] text-neutral-400 font-mono tracking-widest uppercase hidden sm:block mt-1">
+              <span className="text-[10px] text-neutral-400 font-mono tracking-widest uppercase hidden 2xl:block mt-1">
                 The Flag Football Operating System
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-7 text-xs font-bold uppercase tracking-wider text-white">
+          <nav className="hidden xl:flex items-center gap-4 text-[11px] font-bold uppercase tracking-wider text-white">
             <Link
               href="/#features"
               className="text-neutral-300 hover:text-[#3CA505] transition-colors"
@@ -401,7 +401,7 @@ export default function PricingPage() {
             {/* Mobile Menu Toggle Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors"
+              className="xl:hidden p-2 rounded-xl bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10 border border-white/10 transition-colors"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -411,7 +411,7 @@ export default function PricingPage() {
 
         {/* Mobile Dropdown Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 bg-[#07090E] px-4 py-4 space-y-3">
+          <div className="absolute top-full left-0 right-0 z-40 xl:hidden max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-t border-white/10 bg-[#07090E] px-4 py-4 space-y-3 shadow-2xl">
             <Link
               href="/#features"
               onClick={() => setIsMobileMenuOpen(false)}

@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-150 w-full max-w-full overflow-x-hidden">
+      <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-150 w-full max-w-full overflow-x-clip">
         <AuthProvider>
           <ThemeProvider>
             <LeagueProvider>

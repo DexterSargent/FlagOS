@@ -44,7 +44,13 @@ export default function RoleSwitcherBar() {
   const isPlatformOwner = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com";
   const isEligibleHost = !isEmbed && (isLocalOrEmbed || isPlatformOwner || isDemoLeague);
   const isEligiblePage =
-    !isEmbed && isEligibleHost && pathname !== "/" && pathname !== "/pricing" && pathname !== "/login";
+    !isEmbed &&
+    isEligibleHost &&
+    pathname !== "/" &&
+    pathname !== "/pricing" &&
+    pathname !== "/login" &&
+    pathname !== "/my-story" &&
+    !pathname?.includes("/play-by-play");
 
   useEffect(() => {
     const root = document.documentElement;
