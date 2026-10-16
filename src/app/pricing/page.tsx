@@ -575,29 +575,6 @@ export default function PricingPage() {
             </div>
 
             <div className="pt-6 border-t border-white/10 mt-6 space-y-3">
-              {/* York Lions Varsity Team Portal Direct Access */}
-              <div className="bg-red-950/30 border border-red-500/30 rounded-2xl p-3.5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30">
-                    <Shield className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-white uppercase tracking-wider">York Lions Team Portal</span>
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-bold">Complimentary</span>
-                    </div>
-                    <span className="text-[10px] text-neutral-400">Founder varsity club standalone portal</span>
-                  </div>
-                </div>
-                <Link
-                  href="/teams/york_lions"
-                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-[11px] uppercase tracking-wider flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer shadow-md"
-                >
-                  <span>Launch</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-
               <button
                 onClick={() => setShowDevelopmentNotice(true)}
                 className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
