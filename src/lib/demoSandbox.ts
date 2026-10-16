@@ -205,8 +205,17 @@ export const getSandboxSettings = (): LeagueSettings => {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      if (parsed.primaryColor === "#06B6D4") {
-        parsed.primaryColor = DEFAULT_LEAGUE_SETTINGS.primaryColor;
+      const isLegacyBrandPalette =
+        typeof parsed.primaryColor === "string" &&
+        parsed.primaryColor.toLowerCase() === DEFAULT_LEAGUE_SETTINGS.primaryColor &&
+        typeof parsed.accentColor === "string" &&
+        parsed.accentColor.toLowerCase() === "#22c55e" &&
+        parsed.themePreset === DEFAULT_LEAGUE_SETTINGS.themePreset;
+
+      if (parsed.primaryColor === "#06B6D4" || isLegacyBrandPalette) {
+        if (parsed.primaryColor === "#06B6D4") {
+          parsed.primaryColor = DEFAULT_LEAGUE_SETTINGS.primaryColor;
+        }
         parsed.accentColor = DEFAULT_LEAGUE_SETTINGS.accentColor;
         parsed.themePreset = DEFAULT_LEAGUE_SETTINGS.themePreset;
         sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(parsed));

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   getSandboxMatches,
   getSandboxMatch,
+  getSandboxSettings,
   getSandboxTeams,
   getSandboxPlays,
   addSandboxPlay,
@@ -18,6 +19,41 @@ import {
 describe("demoSandbox", () => {
   beforeEach(() => {
     sessionStorage.clear();
+  });
+
+  it("migrates the previous default green accent to the FlagOS blue accent", () => {
+    sessionStorage.setItem("flagos_demo_initialized_2026_nfl_v3", "true");
+    sessionStorage.setItem(
+      "flagos_demo_settings",
+      JSON.stringify({
+        primaryColor: "#3ca505",
+        accentColor: "#22c55e",
+        themePreset: "gridiron-green",
+      })
+    );
+
+    const settings = getSandboxSettings();
+
+    expect(settings.primaryColor).toBe("#3ca505");
+    expect(settings.accentColor).toBe("#3b82f6");
+    expect(JSON.parse(sessionStorage.getItem("flagos_demo_settings") || "{}").accentColor).toBe("#3b82f6");
+  });
+
+  it("preserves custom demo league colors", () => {
+    sessionStorage.setItem("flagos_demo_initialized_2026_nfl_v3", "true");
+    sessionStorage.setItem(
+      "flagos_demo_settings",
+      JSON.stringify({
+        primaryColor: "#ef4444",
+        accentColor: "#8b5cf6",
+        themePreset: "custom",
+      })
+    );
+
+    const settings = getSandboxSettings();
+
+    expect(settings.primaryColor).toBe("#ef4444");
+    expect(settings.accentColor).toBe("#8b5cf6");
   });
 
   describe("Matches & Deduplication", () => {

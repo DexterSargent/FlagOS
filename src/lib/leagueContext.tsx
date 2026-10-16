@@ -181,7 +181,7 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   logoUrl: FLAGOS_LOGO,
   icon: "shield",
   primaryColor: "#3ca505", // Field Green (#3ca505)
-  accentColor: "#22c55e",  // Turf Green (#22c55e)
+  accentColor: "#3b82f6",  // FlagOS blue accent
   themePreset: "gridiron-green",
   defaultLocation: "Turf Field 1",
   contactEmail: "commissioner@flagos.app",
@@ -437,7 +437,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
   const applyThemeColors = (primary: string, accent: string, leagueName?: string, seasonTitle?: string) => {
     if (typeof document !== "undefined") {
       const p = primary || "#3ca505";
-      const a = accent || "#22c55e";
+      const a = accent || "#3b82f6";
       const pRgb = parseHex(p);
       const aRgb = parseHex(a);
 
@@ -614,7 +614,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
   }): Promise<string> => {
     const newLeagueId = `league_${Date.now()}`;
     const pColor = data.primaryColor || "#3ca505";
-    const aColor = data.accentColor || "#22c55e";
+    const aColor = data.accentColor || "#3b82f6";
     const teams = data.teamCount || 8;
     const baseFee = 49;
     const perTeamFee = 5;

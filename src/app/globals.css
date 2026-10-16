@@ -41,11 +41,11 @@ html.dark {
   --tint-danger: #31191b;
   --tint-danger-border: #713238;
 
-  /* League dynamic branding variables */
+  /* Shared FlagOS palette; league contexts may override these tokens. */
   --league-primary: #3ca505;
-  --league-accent: #22c55e;
+  --league-accent: #3b82f6;
   --league-primary-rgb: 60, 165, 5;
-  --league-accent-rgb: 34, 197, 94;
+  --league-accent-rgb: 59, 130, 246;
 
   --league-primary-50: #f3faf0;
   --league-primary-100: #e0f1d7;
@@ -59,17 +59,17 @@ html.dark {
   --league-primary-900: #123202;
   --league-primary-950: #091901;
 
-  --league-accent-50: #f2fcf5;
-  --league-accent-100: #dcf6e5;
-  --league-accent-200: #b8eccb;
-  --league-accent-300: #8ce1ab;
-  --league-accent-400: #57d385;
-  --league-accent-500: #22c55e;
-  --league-accent-600: #1da54f;
-  --league-accent-700: #16823e;
-  --league-accent-800: #105f2d;
-  --league-accent-900: #0a3b1c;
-  --league-accent-950: #051e0e;
+  --league-accent-50: #eff6ff;
+  --league-accent-100: #dbeafe;
+  --league-accent-200: #bfdbfe;
+  --league-accent-300: #93c5fd;
+  --league-accent-400: #60a5fa;
+  --league-accent-500: #3b82f6;
+  --league-accent-600: #2563eb;
+  --league-accent-700: #1d4ed8;
+  --league-accent-800: #1e40af;
+  --league-accent-900: #1e3a8a;
+  --league-accent-950: #172554;
 }
 
 html.light {
@@ -590,7 +590,7 @@ html.light aside button.text-neutral-400:hover {
 html.light aside button.bg-neutral-900\/95 {
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border-color: #0891b2 !important;
+  border-color: var(--league-primary) !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
@@ -599,7 +599,7 @@ html.light aside button.bg-neutral-900\/95 span {
 }
 
 html.light aside button.bg-neutral-900\/95 span.text-cyan-300 {
-  color: #0891b2 !important;
+  color: var(--text-brand) !important;
 }
 
 html.light aside button.bg-neutral-900\/95 span.text-neutral-400 {
@@ -849,8 +849,8 @@ html.light .text-purple-300 {
 /* Clean Pastel Tint Badges in Light Mode */
 html.light .bg-cyan-950\/40,
 html.light .bg-cyan-950\/30 {
-  background-color: #ecfeff !important;
-  border-color: #a5f3fc !important;
+  background-color: #f3faf0 !important;
+  border-color: #c1e2af !important;
 }
 
 html.light .bg-cyan-500\/10,

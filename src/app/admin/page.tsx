@@ -87,7 +87,7 @@ export default function PlatformAdminPage() {
     visibility: "public",
     subscriptionStatus: "active",
     primaryColor: "#3ca505",
-    accentColor: "#22c55e",
+    accentColor: "#3b82f6",
     cascadeSubscription: true,
   });
 
@@ -132,7 +132,7 @@ export default function PlatformAdminPage() {
               : { status: getText(data.subscription?.status, "Not set") },
             adminEmails,
             primaryColor: getText(data.primaryColor, "#3ca505"),
-            accentColor: getText(data.accentColor, "#22c55e"),
+            accentColor: getText(data.accentColor, "#3b82f6"),
           };
         })
       );
@@ -322,7 +322,7 @@ export default function PlatformAdminPage() {
       visibility: league.visibility || "public",
       subscriptionStatus: league.subscriptionStatus || "active",
       primaryColor: league.primaryColor || "#3ca505",
-      accentColor: league.accentColor || "#22c55e",
+      accentColor: league.accentColor || "#3b82f6",
       cascadeSubscription: true,
     });
     setError("");

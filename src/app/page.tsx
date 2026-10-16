@@ -132,7 +132,7 @@ export default function FlagOSPlatformLandingPage() {
       rulesFormat: "IFAF 5v5 Non-Contact",
       teamCount: 8,
       primaryColor: settings?.primaryColor || "#3ca505",
-      accentColor: settings?.accentColor || "#22c55e",
+      accentColor: settings?.accentColor || "#3b82f6",
       tagline: settings?.tagline || "The Flag Football Operating System",
       logoUrl: settings?.logoUrl || FLAGOS_LOGO,
       visibility: settings?.visibility || "public",
@@ -148,7 +148,7 @@ export default function FlagOSPlatformLandingPage() {
         rulesFormat: "IFAF 5v5 Non-Contact",
         teamCount: 8,
         primaryColor: l.primaryColor || "#3ca505",
-        accentColor: l.accentColor || "#22c55e",
+        accentColor: l.accentColor || "#3b82f6",
         tagline: "Official FlagOS Circuit",
         logoUrl: l.logoUrl || FLAGOS_LOGO,
         visibility: l.visibility || "public",
@@ -615,14 +615,14 @@ export default function FlagOSPlatformLandingPage() {
             </div>
 
             {/* TIER 2: THE LEAGUE PLAN (RIGHT) */}
-            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-5 sm:p-8 space-y-2 relative shadow-[0_0_50px_rgba(var(--league-primary-rgb),0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
+            <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-[#3b82f6]/40 rounded-3xl p-5 sm:p-8 space-y-2 relative shadow-[0_0_50px_rgba(59,130,246,0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-[#3b82f6]/60 transition-all">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="p-3 flex items-center gap-4 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
+                  <div className="p-3 flex items-center gap-4 bg-[#3b82f6]/20 text-[#60a5fa] rounded-2xl border border-[#3b82f6]/30">
                     <Crown className="w-6 h-6" />
                     <h3 className="text-xl font-black uppercase text-white tracking-tight">League Subscription</h3>
                   </div>
-                  <span className="px-3 py-1 text-center rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-mono font-bold border border-cyan-500/20">
+                  <span className="px-3 py-1 text-center rounded-full bg-[#3b82f6]/10 text-[#93c5fd] text-xs font-mono font-bold border border-[#3b82f6]/20">
                     For Leagues<br /> of 4-64 Teams
                   </span>
                 </div>
@@ -634,7 +634,7 @@ export default function FlagOSPlatformLandingPage() {
                 </div>
 
                 <div className="space-y-3 pt-2">
-                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#60a5fa] flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <ListChecks className="w-3.5 h-3.5" />
                       What you get with a league subscription
@@ -683,17 +683,17 @@ export default function FlagOSPlatformLandingPage() {
                     ].map((feat, idx) => (
                       <div
                         key={idx}
-                        className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/30 hover:bg-cyan-500/[0.03] transition-all group"
+                        className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-[#3b82f6]/30 hover:bg-[#3b82f6]/[0.03] transition-all group"
                       >
-                        <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-cyan-500/20 transition-all">
+                        <div className="p-2 rounded-xl bg-[#3b82f6]/10 text-[#60a5fa] border border-[#3b82f6]/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-[#3b82f6]/20 transition-all">
                           <feat.icon className="w-4 h-4" />
                         </div>
                         <div className="space-y-0.5 min-w-0 flex-1">
                           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1.5 sm:gap-2">
-                            <span className="text-xs font-bold text-white tracking-wide group-hover:text-cyan-300 transition-colors leading-snug min-w-0 break-words">
+                            <span className="text-xs font-bold text-white tracking-wide group-hover:text-[#93c5fd] transition-colors leading-snug min-w-0 break-words">
                               {feat.title}
                             </span>
-                            <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
+                            <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-[#3b82f6]/10 text-[#93c5fd] border border-[#3b82f6]/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
                               {feat.badge}
                             </span>
                           </div>
@@ -710,7 +710,7 @@ export default function FlagOSPlatformLandingPage() {
               <div className="pt-6 border-t border-white/10 mt-6">
                 <Link
                   href="/pricing"
-                  className="w-full py-4 rounded-xl bg-cyan-500 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.3)] hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full py-4 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <span>View Pricing</span>
                   <ArrowRight className="w-4 h-4" />

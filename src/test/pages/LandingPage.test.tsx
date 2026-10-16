@@ -73,6 +73,16 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     expect(screen.getAllByText("Explore Demo League").length).toBeGreaterThan(0);
   });
 
+  it("distinguishes the team and league plans with green and blue accents", () => {
+    render(<FlagOSPlatformLandingPage />);
+
+    const teamPlan = screen.getByRole("heading", { name: "Team Subscription" }).closest(".bg-gradient-to-b");
+    const leaguePlan = screen.getByRole("heading", { name: "League Subscription" }).closest(".bg-gradient-to-b");
+
+    expect(teamPlan).toHaveClass("border-emerald-500/40");
+    expect(leaguePlan).toHaveClass("border-[#3b82f6]/40");
+  });
+
   it("renders link to the dedicated My Story full page only for the creator (Dexter / platform owner)", () => {
     mockUseAuth.mockReturnValue({
       user: { uid: "dexter-1", email: "dextersargent@gmail.com" },
