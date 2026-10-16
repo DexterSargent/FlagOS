@@ -512,7 +512,7 @@ export default function PricingPage() {
               </div>
 
               {/* Pricing Callout */}
-              <div className="bg-black/60 border border-white/10 rounded-2xl p-5 space-y-2">
+              <div className="bg-black/60 border border-white/10 rounded-2xl p-5 min-h-[224px] flex flex-col justify-between">
                 <div className="flex items-baseline justify-between">
                   <div>
                     <span className="text-4xl md:text-5xl font-black text-white tabular-nums">$30</span>
@@ -522,9 +522,15 @@ export default function PricingPage() {
                     Single Flat Fee
                   </span>
                 </div>
-                <p className="text-xs text-neutral-400">
-                  Full standalone autonomy for 1 team without requiring a parent league.
-                </p>
+                <div className="flex items-center gap-1.5 text-xs text-neutral-300">
+                  <Users className="w-3.5 h-3.5 text-emerald-400" />
+                  One team, with no per-team add-ons
+                </div>
+                <div className="pt-3 border-t border-white/10">
+                  <p className="text-xs text-neutral-400">
+                    Full standalone autonomy for 1 team without requiring a parent league.
+                  </p>
+                </div>
               </div>
 
               {/* What You Get Inclusions */}
@@ -605,7 +611,7 @@ export default function PricingPage() {
               </div>
 
               {/* Pricing Breakdown & Dynamic Slider */}
-              <div className="bg-black/60 border border-white/10 rounded-2xl p-5 space-y-3">
+              <div className="bg-black/60 border border-white/10 rounded-2xl p-5 min-h-[224px] flex flex-col justify-between space-y-3">
                 <div className="flex items-baseline justify-between">
                   <div>
                     <span className="text-4xl md:text-5xl font-black text-white tabular-nums">${totalLeagueMonthly}</span>
