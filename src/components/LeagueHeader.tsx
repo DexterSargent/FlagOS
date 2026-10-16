@@ -29,6 +29,7 @@ import {
   X,
   BookOpen,
   LogIn,
+  Globe,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { FlagOSLogo, FLAGOS_LOGO, isDefaultFlagOSLogo } from "@/components/FlagOSLogo";
@@ -36,7 +37,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { useTheme } from "@/lib/themeContext";
 
 interface LeagueHeaderProps {
-  activePage?: "league" | "schedule" | "stats" | "teams" | "playbook" | "join" | "pricing";
+  activePage?: "league" | "schedule" | "stats" | "teams" | "playbook" | "join" | "pricing" | "leagues";
 }
 
 export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
@@ -79,6 +80,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
   // Dynamically resolve active tab if not passed explicitly as prop
   const resolvedActivePage = activePage || (
+    pathname?.startsWith("/leagues") ? "leagues" :
     pathname?.startsWith("/schedule") || pathname?.startsWith("/matches") ? "schedule" :
     pathname?.startsWith("/stats") ? "stats" :
     pathname?.includes("/playbook") ? "playbook" :
@@ -389,6 +391,18 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <span>Teams</span>
             </Link>
 
+            <Link
+              href="/leagues"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                resolvedActivePage === "leagues"
+                  ? "bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-white/10"
+                  : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/5"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Find a League</span>
+            </Link>
+
             {/* Strict RBAC: League Admin NEVER sees Playbook */}
             {!isLeagueAdmin && (playerTeamId || managedTeamId) && (
               <Link
@@ -562,6 +576,17 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             >
               <Users className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               <span>Teams</span>
+            </Link>
+
+            <Link
+              href="/leagues"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
+                resolvedActivePage === "leagues" ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30" : "text-slate-700 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-white/5"
+              }`}
+            >
+              <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <span>Find a League</span>
             </Link>
 
             {!isLeagueAdmin && (playerTeamId || managedTeamId) && (

@@ -156,7 +156,12 @@ export default function TeamsPage() {
     fetchData();
     if (isEffectiveDemo) {
       const unsub = subscribeDemoSandbox(() => {
-        setTeams((getSandboxTeams() as unknown as Team[]).filter(isRealTeam));
+        const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
+        const t = baseTeams.some(team => team.id === YORK_TEAM_ID || isYorkTeam(team.id))
+          ? baseTeams
+          : [...baseTeams, { ...YORK_LIONS_TEAM, id: YORK_TEAM_ID } as unknown as Team];
+        t.sort((a, b) => a.name.localeCompare(b.name));
+        setTeams(t);
         setPlayers(getSandboxPlayers() as unknown as Player[]);
         setMatches(getSandboxMatches());
         setPlays(getSandboxPlays());

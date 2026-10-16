@@ -76,6 +76,7 @@ import {
   X,
   Layers,
   MessageSquare,
+  HelpCircle,
 } from "lucide-react";
 
 const PRIMARY_FLAG_ROUTES = [
@@ -149,9 +150,16 @@ interface PlayCanvasProps {
   onChange: (updatedPlay: PlayDiagram) => void;
   readOnly?: boolean;
   playbook?: Playbook | null;
+  onOpenQuestions?: () => void;
 }
 
-export default function PlayCanvas({ play, onChange, readOnly = false, playbook }: PlayCanvasProps) {
+export default function PlayCanvas({
+  play,
+  onChange,
+  readOnly = false,
+  playbook,
+  onOpenQuestions,
+}: PlayCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -1563,6 +1571,30 @@ export default function PlayCanvas({ play, onChange, readOnly = false, playbook 
               <MessageSquare className="w-3.5 h-3.5" />
               <span className="hidden xl:inline">Notes</span>
             </button>
+
+            {/* Coach Q&A Button */}
+            {onOpenQuestions && (
+              <button
+                type="button"
+                onClick={onOpenQuestions}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  play.questions && play.questions.some((q) => !q.answered)
+                    ? "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm"
+                    : play.questions && play.questions.length > 0
+                    ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300"
+                    : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
+                }`}
+                title="Ask coach questions or view tactical Q&A for this play"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden xl:inline">Q&A</span>
+                {play.questions && play.questions.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-white/10 text-white">
+                    {play.questions.length}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Opposing Side Toggle */}
             <button

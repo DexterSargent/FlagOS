@@ -66,15 +66,20 @@ export function TeamLogo({
   icon,
   className = "w-12 h-12",
   customColor,
+  iconColor,
 }: {
   teamName?: string;
   logoUrl?: string;
   icon?: string;
   className?: string;
   customColor?: string;
+  iconColor?: string;
 }) {
   const color = customColor || getTeamColor(teamName);
-  const iconProps = { className: `${className} ${color}` };
+  const iconProps = {
+    className: `${className} ${iconColor ? "" : color}`.trim(),
+    style: iconColor ? { color: iconColor } : undefined,
+  };
 
   if (logoUrl && (logoUrl.startsWith("http") || logoUrl.startsWith("/") || logoUrl.startsWith("data:"))) {
     return <img src={logoUrl} alt={teamName} className={className} style={{ objectFit: "contain" }} />;
@@ -82,6 +87,25 @@ export function TeamLogo({
 
   const iconKey = (icon || "").toLowerCase();
   switch (iconKey) {
+    case "football":
+      return (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className={iconProps.className}
+          style={iconProps.style}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <g transform="rotate(-45 12 12)">
+            <ellipse cx="12" cy="12" rx="8.5" ry="5.5" />
+            <path d="M12 6.5v11M10.5 9.5h3M10.5 12h3M10.5 14.5h3" />
+          </g>
+        </svg>
+      );
     case "flame": return <Flame {...iconProps} />;
     case "zap": return <Zap {...iconProps} />;
     case "trophy": return <Trophy {...iconProps} />;

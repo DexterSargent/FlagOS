@@ -22,7 +22,8 @@ import {
   Edit2,
   ArrowRight,
   FolderPlus,
-  ShieldAlert
+  ShieldAlert,
+  HelpCircle,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -35,10 +36,12 @@ import PlayCanvas from "@/components/playbook/PlayCanvas";
 import CreatePlaybookModal from "@/components/playbook/CreatePlaybookModal";
 import CreateFormationModal from "@/components/playbook/CreateFormationModal";
 import PrintArmbandModal from "@/components/playbook/PrintArmbandModal";
+import PlayQuestionsModal from "@/components/playbook/PlayQuestionsModal";
 import MiniPlayDiagram from "@/components/playbook/MiniPlayDiagram";
 import {
   Playbook,
   PlayDiagram,
+  PlayQuestion,
   FormationAlignment,
   DEFAULT_LOS_Y,
   MAX_PLAYBOOKS_PER_TEAM,
@@ -58,7 +61,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
-  const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user } = useAuth();
+  const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, playerData } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const playersPerSide = settings?.rules?.playersOnField || 5;
@@ -71,6 +74,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const [activePlaybookId, setActivePlaybookId] = useState<string>("");
   const [selectedFormationName, setSelectedFormationName] = useState<string>("");
   const [activePlayId, setActivePlayId] = useState<string>("");
+  const [isQuestionsModalOpen, setIsQuestionsModalOpen] = useState(false);
 
   const isDemoTeam =
     !teamId.startsWith("team_live_") &&
@@ -137,13 +141,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Strict Playbook RBAC:
   // 1. League admins have NO access to customer team playbooks (competitive integrity & strategic confidentiality policy)
   // 2. Authorized team admins can EDIT playbooks for their team only
-  // 3. Players have VIEW-ONLY access to their team only
+  // 3. Players strictly have VIEW-ONLY access to their team: players CANNOT edit plays, formations, or playbooks,
+  //    but CAN post questions for their coach on individual plays.
   // 4. Opponent coaches, opponent players, spectators, and unauthenticated users have NO access
-  // 5. York Lions Varsity Portal: Fully unlocked for Dexter, team coaches, and rostered players
+  // 5. York Lions Varsity Portal: Dexter & varsity coaches have edit access; rostered players have view-only access.
   // Note: isEmbedded allows the interactive showcase on the marketing landing page (/page.tsx) to demo the studio
   const isYork = isYorkTeam(teamId);
   const isTeamAdminForThisTeam = isTeamAdmin(teamId) || (isYork && canManageTeam(teamId));
-  const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
+  const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && (!playerTeamId || isYorkTeam(playerTeamId))));
   const isOpponentCoach = isTeamAdmin() && !isTeamAdminForThisTeam;
   const isOpponentPlayer = isPlayer && !isRosteredPlayerOnTeam;
 
@@ -151,8 +156,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // but Dexter is the coach of his own varsity club team (York Lions).
   const isBlockedLeagueAdmin = !isEmbedded && !isYork && isLeagueAdmin;
 
-  // Edit access: strictly team admins of THIS team or York Lions coach
-  const hasEditAccess = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isYork);
+  // Edit access: strictly team admins/coaches of THIS team (or embedded marketing demo).
+  // Players strictly have VIEW-ONLY permissions (no editing plays, formations, or routes).
+  const hasEditAccess = !isBlockedLeagueAdmin && !isPlayer && (isEmbedded || isTeamAdminForThisTeam);
 
   // View access: team admins of THIS team OR rostered players of THIS team OR York team
   const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam || isYork);
@@ -510,6 +516,54 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           localStorage.setItem(`flagos_playbooks_${teamId}`, JSON.stringify(next));
         } catch (e) {}
       }
+      return next;
+    });
+  };
+
+  // Current user metadata for play Q&A author attribution
+  const currentUserForQuestions = {
+    name: playerData?.name || user?.displayName || (isPlayer ? "Rostered Player" : "Coach"),
+    email: user?.email || undefined,
+    jerseyNumber: playerData?.number || playerData?.jerseyNumber || undefined,
+    role: isPlayer ? "player" : hasEditAccess ? "coach" : "staff",
+  };
+
+  // Update play questions (accessible to rostered players and coaches)
+  const handleUpdateActivePlayQuestions = (updatedQuestions: PlayQuestion[]) => {
+    if (!activePlay) return;
+    const playId = activePlay.id;
+
+    setPlaybooks((prev) => {
+      const next = prev.map((book) => {
+        const hasPlay = book.plays.some((p) => p.id === playId);
+        if (!hasPlay) return book;
+        return {
+          ...book,
+          plays: book.plays.map((p) => (p.id === playId ? { ...p, questions: updatedQuestions } : p)),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(`flagos_playbooks_${teamId}`, JSON.stringify(next));
+        } catch (e) {}
+      }
+
+      // Persist questions update to Firestore meta doc
+      try {
+        setDoc(
+          doc(db, "teams", teamId, "meta", "playbook"),
+          {
+            playbooks: next,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        ).catch((err) => console.warn("Could not save questions to Firestore:", err));
+      } catch (e) {
+        console.warn("Firestore error saving questions:", e);
+      }
+
       return next;
     });
   };
@@ -908,7 +962,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 {(activePlaybook?.playersOnField || playersPerSide)}v{(activePlaybook?.playersOnField || playersPerSide)} Flag Format
               </span>
 
-              {isRosteredPlayerOnTeam && (
+              {(isRosteredPlayerOnTeam || (isPlayer && isYork)) && (
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-mono font-bold uppercase text-emerald-300 flex items-center gap-1">
                   <Eye className="w-3 h-3" />
                   <span>Player View Only</span>
@@ -1430,8 +1484,36 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
 
-              {/* Right: Actions (Save & Print) */}
+              {/* Right: Actions (Q&A, Print, Save) */}
               <div className="flex items-center gap-2">
+                {activePlay && (
+                  <button
+                    onClick={() => setIsQuestionsModalOpen(true)}
+                    className={`px-2.5 py-1 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border flex items-center gap-1.5 cursor-pointer relative ${
+                      activePlay.questions && activePlay.questions.some((q) => !q.answered)
+                        ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/10"
+                        : activePlay.questions && activePlay.questions.length > 0
+                        ? "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/30"
+                        : "bg-white/5 hover:bg-white/10 text-white border-white/10"
+                    }`}
+                    title="Ask coach questions or review discussion on this play"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="hidden sm:inline">Coach Q&A</span>
+                    <span className="sm:hidden">Q&A</span>
+                    {activePlay.questions && activePlay.questions.length > 0 && (
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                          activePlay.questions.some((q) => !q.answered)
+                            ? "bg-amber-500/30 text-amber-300 border border-amber-500/50"
+                            : "bg-cyan-500/20 text-cyan-300"
+                        }`}
+                      >
+                        {activePlay.questions.length}
+                      </span>
+                    )}
+                  </button>
+                )}
                 {canViewPlaybook && (
                   <button
                     onClick={() => setIsPrintModalOpen(true)}
@@ -1468,6 +1550,24 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </div>
             </div>
 
+            {/* Informative Player Notice */}
+            {isPlayer && (
+              <div className="px-3.5 py-1.5 bg-cyan-950/40 border-b border-cyan-500/20 text-cyan-300 text-xs flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 truncate">
+                  <Eye className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="truncate">
+                    <strong>Player View Only:</strong> Plays are view-only. Have questions about routes or reads?
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsQuestionsModalOpen(true)}
+                  className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 font-bold text-[11px] uppercase tracking-wider shrink-0 transition-colors cursor-pointer"
+                >
+                  Ask Coach
+                </button>
+              </div>
+            )}
+
             {/* Tactical Playmaker Canvas Workspace */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {activePlay ? (
@@ -1476,6 +1576,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   onChange={handleUpdateActivePlay}
                   readOnly={!hasEditAccess}
                   playbook={activePlaybook}
+                  onOpenQuestions={() => setIsQuestionsModalOpen(true)}
                 />
               ) : (
                 <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-8 text-center text-neutral-400">
@@ -1527,6 +1628,19 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           onClose={() => setIsPrintModalOpen(false)}
           playbook={activePlaybook}
           teamName={teamName}
+        />
+      )}
+
+      {/* MODAL 4: Player-to-Coach Play Questions & Answers */}
+      {activePlay && (
+        <PlayQuestionsModal
+          isOpen={isQuestionsModalOpen}
+          onClose={() => setIsQuestionsModalOpen(false)}
+          play={activePlay}
+          onUpdateQuestions={handleUpdateActivePlayQuestions}
+          isPlayer={isPlayer}
+          isCoach={hasEditAccess}
+          currentUser={currentUserForQuestions}
         />
       )}
 

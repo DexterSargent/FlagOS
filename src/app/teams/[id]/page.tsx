@@ -488,10 +488,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           The requested franchise does not exist or has been removed. Free agents are an unassigned draft pool, not a franchise.
         </p>
         <Link
-          href="/teams"
+          href="/"
           className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
         >
-          Back to Teams
+          Return Home
         </Link>
       </div>
     );
@@ -499,7 +499,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   const shortcode = team.shortcode || getTeamShortcode(team);
   const palette = resolveTeamColorPalette(team);
-  const isStandaloneOrPaidTeam = isYork || Boolean(team.isStandalone) || Boolean(team.subscription && team.subscription.status === "active");
+  const isIndependentTeam = isYork || Boolean(team.isIndependent) || Boolean(team.isStandalone) || !team.leagueId;
+  const isStandaloneOrPaidTeam = isIndependentTeam || Boolean(team.subscription && team.subscription.status === "active");
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 selection:text-cyan-200 relative font-sans flex flex-col">
@@ -520,19 +521,22 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       <main className="relative z-10 flex flex-col items-center justify-center flex-1 p-6 md:p-20">
         {/* Navigation Buttons */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
-          <Link
-            href="/teams"
-            className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2.5 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            All Teams
-          </Link>
+          {!isIndependentTeam && (
+            <Link
+              href="/teams"
+              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2.5 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              All Teams
+            </Link>
+          )}
           <Link
             href="/"
-            className="flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 p-2.5 rounded-full border border-white/10 backdrop-blur-md"
+            className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors bg-white/5 px-3.5 py-2.5 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
             title="Home"
           >
             <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">Home</span>
           </Link>
         </div>
 
@@ -582,8 +586,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <TeamLogo
                     teamName={team.name}
                     logoUrl=""
-                    icon={team.icon || (isYork ? "cat" : "shield")}
+                    icon={isDemoLeague ? "football" : team.icon || (isYork ? "cat" : "shield")}
                     className="w-8 h-8"
+                    iconColor={isDemoLeague ? palette.primary : undefined}
                     customColor={palette.primary === "#E31837" ? "text-red-400" : undefined}
                   />
                 </div>
@@ -603,7 +608,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               border: `1px solid ${palette.primary}40`,
             }}
           >
-            <TeamLogo teamName={team.name} logoUrl={team.logoUrl} icon={team.icon || (isYork ? "cat" : "shield")} className="w-5 h-5 text-red-400" />
+            <TeamLogo
+              teamName={team.name}
+              logoUrl={team.logoUrl}
+              icon={isDemoLeague ? "football" : team.icon || (isYork ? "cat" : "shield")}
+              className="w-5 h-5"
+              iconColor={isDemoLeague ? palette.primary : undefined}
+              customColor={palette.primary === "#E31837" ? "text-red-400" : undefined}
+            />
             <span 
               className="text-sm font-bold tracking-widest uppercase text-slate-800 dark:text-white"
               style={{ color: palette.secondary === "#FFFFFF" || palette.secondary === "#ffffff" ? undefined : palette.secondary }}

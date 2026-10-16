@@ -232,6 +232,25 @@ export function getPlayerRouteOrigin(player: PlayerNode): RoutePoint {
   return { x: player.x, y: player.y };
 }
 
+export interface PlayQuestionAnswer {
+  text: string;
+  answeredBy: string;
+  answeredAt: string;
+}
+
+export interface PlayQuestion {
+  id: string;
+  playId: string;
+  authorName: string;
+  authorRole: "player" | "coach";
+  authorEmail?: string;
+  authorNumber?: string;
+  text: string;
+  createdAt: string;
+  answered?: boolean;
+  answer?: PlayQuestionAnswer;
+}
+
 export interface PlayDiagram {
   id: string;
   teamId: string;
@@ -246,6 +265,7 @@ export interface PlayDiagram {
   fieldPosition?: string; // e.g. "Opp 20", "Midfield", "Own 20"
   fieldYardLine?: number; // 1 to 50
   fieldSide?: "own" | "opp" | "midfield";
+  questions?: PlayQuestion[];
   createdAt?: string;
   updatedAt?: string;
 }

@@ -7,7 +7,7 @@ import { useLeague } from "@/lib/leagueContext";
 
 export default function PrivateLeagueAccessDenied({
   requiredEmail = "dextersargent@gmail.com",
-  leagueName = "Apex Private League",
+  leagueName = "Private League",
 }: {
   requiredEmail?: string;
   leagueName?: string;

@@ -185,6 +185,9 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       // Check Powered by FlagOS disclaimer is present in footer as the sole FlagOS branding
       expect(screen.getByText(/Powered by/i)).toBeInTheDocument();
       expect(screen.getByText("OS")).toBeInTheDocument();
+
+      // STRICT REQUIREMENT: No Back to All Teams button on York team or independent team pages
+      expect(screen.queryByText(/All Teams/i)).toBeNull();
     });
 
     it("opens edit team details modal allowing customization of name, logo, and colours", async () => {
@@ -284,6 +287,48 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       await waitFor(() => {
         expect(screen.queryByText("Customize Team Stats Display")).not.toBeInTheDocument();
         expect(screen.getByText("PPG")).toBeInTheDocument();
+      });
+    });
+
+    it("renders All Teams button for league member teams but excludes it for York and independent teams", async () => {
+      // 1. York Lions (independent team) -> No All Teams button
+      const yorkPromise = Promise.resolve({ id: "york_lions" });
+      let unmountFn: () => void = () => {};
+      await act(async () => {
+        const { unmount } = render(
+          <Suspense fallback={<div>Loading suspense...</div>}>
+            <TeamPortalHome params={yorkPromise} />
+          </Suspense>
+        );
+        unmountFn = unmount;
+      });
+      await waitFor(() => {
+        expect(screen.queryByText("All Teams")).toBeNull();
+      });
+      unmountFn();
+
+      // 2. League member team with leagueId -> Has All Teams button
+      const { getDoc } = await import("firebase/firestore");
+      vi.mocked(getDoc).mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({
+          id: "team_buf",
+          name: "Buffalo",
+          shortcode: "BUF",
+          leagueId: "league_demo",
+        }),
+      } as any);
+
+      const bufPromise = Promise.resolve({ id: "team_buf" });
+      await act(async () => {
+        render(
+          <Suspense fallback={<div>Loading suspense...</div>}>
+            <TeamPortalHome params={bufPromise} />
+          </Suspense>
+        );
+      });
+      await waitFor(() => {
+        expect(screen.getByText("All Teams")).toBeInTheDocument();
       });
     });
   });

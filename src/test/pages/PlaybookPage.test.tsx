@@ -229,4 +229,46 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.getByText(/SCRIMMAGE \(LOS\)/i)).toBeInTheDocument();
     });
   });
+
+  it("STRICT RBAC RULE 7: York Lions rostered player has strictly VIEW-ONLY access (cannot edit plays or create playbooks)", async () => {
+    mockAuth.isLeagueAdmin = false;
+    mockAuth.isPlayer = true;
+    mockAuth.playerTeamId = "york_lions";
+    mockAuth.isTeamAdmin = vi.fn(() => false);
+    mockAuth.canManageTeam = vi.fn(() => false);
+
+    delete (window as any).location;
+    window.location = new URL("http://localhost:3000/teams/york_lions/playbook") as any;
+
+    await renderPage("york_lions");
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/York Lions/i).length).toBeGreaterThan(0);
+      expect(screen.getByText("Player View Only")).toBeInTheDocument();
+      // Player should NOT have edit controls even on York
+      expect(screen.queryByRole("button", { name: /Create a Playbook/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Save to Cloud/i })).toBeNull();
+    });
+  });
+
+  it("PLAYER INTERACTION: Rostered player in Playmaker view sees Coach Q&A button", async () => {
+    mockAuth.isLeagueAdmin = false;
+    mockAuth.isPlayer = true;
+    mockAuth.playerTeamId = "team_apex";
+    mockAuth.isTeamAdmin = vi.fn(() => false);
+
+    delete (window as any).location;
+    window.location = new URL("http://localhost:3000/teams/team_apex/playbook?level=plays") as any;
+
+    await renderPage("team_apex");
+
+    await waitFor(() => {
+      // Player sees Coach Q&A button
+      expect(screen.getByText(/Coach Q&A/i)).toBeInTheDocument();
+      // Player sees view-only notice
+      expect(screen.getByText(/Player View Only:/i)).toBeInTheDocument();
+      // Player does not see edit/save controls
+      expect(screen.queryByRole("button", { name: /^Save$/i })).toBeNull();
+    });
+  });
 });

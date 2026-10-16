@@ -138,7 +138,7 @@ export default function FlagOSPlatformLandingPage() {
       visibility: settings?.visibility || "public",
     },
     ...userLeagues
-      .filter((l) => l.id !== (activeLeagueId || "default"))
+      .filter((l) => l.id !== (activeLeagueId || "default") && l.id !== "league_private_live")
       .map((l) => ({
         id: l.id,
         name: l.name,
@@ -153,48 +153,6 @@ export default function FlagOSPlatformLandingPage() {
         logoUrl: l.logoUrl || FLAGOS_LOGO,
         visibility: l.visibility || "public",
       })),
-    {
-      id: "league_opfc",
-      name: "Ontario Premier Flag Conference",
-      shortcode: "OPFC",
-      seasonTitle: "2026 Spring Invitational",
-      location: "Lamport Stadium, Toronto",
-      rulesFormat: "IFAF 5v5 Non-Contact",
-      teamCount: 12,
-      primaryColor: "#0284c7",
-      accentColor: "#38bdf8",
-      tagline: "Premier competitive 5v5 tournament circuit",
-      logoUrl: FLAGOS_LOGO,
-      visibility: "public" as const,
-    },
-    {
-      id: "league_metro7",
-      name: "Metro 7v7 Non-Contact Circuit",
-      shortcode: "M7V7",
-      seasonTitle: "2026 Summer League",
-      location: "Centennial Park Field 3",
-      rulesFormat: "7v7 Screen Non-Contact",
-      teamCount: 8,
-      primaryColor: "#d97706",
-      accentColor: "#f59e0b",
-      tagline: "Fast-tempo non-contact 7-on-7 division",
-      logoUrl: FLAGOS_LOGO,
-      visibility: "public" as const,
-    },
-    {
-      id: "league_pcfa",
-      name: "Pacific Coast Flag Association",
-      shortcode: "PCFA",
-      seasonTitle: "2026 Open Division",
-      location: "Empire Fields, Vancouver",
-      rulesFormat: "IFAF 5v5 Non-Contact",
-      teamCount: 10,
-      primaryColor: "#059669",
-      accentColor: "#10b981",
-      tagline: "British Columbia collegiate and adult flag league",
-      logoUrl: FLAGOS_LOGO,
-      visibility: "public" as const,
-    },
   ];
 
   // STRICT FILTER: Private leagues are excluded from public directory
@@ -268,12 +226,12 @@ export default function FlagOSPlatformLandingPage() {
               Demo League
             </Link>
             {user && (
-              <a
-                href="#league-directory"
+              <Link
+                href="/leagues"
                 className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
               >
                 <span>League Directory</span>
-              </a>
+              </Link>
             )}
             {isMe && (
               <Link
@@ -379,14 +337,14 @@ export default function FlagOSPlatformLandingPage() {
               <span>Demo League</span>
             </Link>
             {user && (
-              <a
-                href="#league-directory"
+              <Link
+                href="/leagues"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
               >
                 <Globe className="w-4 h-4" />
                 <span>League Directory</span>
-              </a>
+              </Link>
             )}
             {isMe && (
               <Link
@@ -852,6 +810,15 @@ export default function FlagOSPlatformLandingPage() {
                 <p className="text-neutral-400 text-sm leading-relaxed">
                   Search publicly listed leagues across FlagOS. Prospective athletes and coaches can explore schedules, live standings, and open registration.
                 </p>
+                <div className="pt-2">
+                  <Link
+                    href="/leagues"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-cyan-500/20"
+                  >
+                    <span>Launch Full Near-Me League Locator Tool</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
 
               {/* Private League Notice */}
@@ -875,7 +842,7 @@ export default function FlagOSPlatformLandingPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by league name, shortcode (e.g. OPFC, FLAG), or city..."
+                  placeholder="Search by league name, shortcode (e.g. FLAG), or city..."
                   className="w-full bg-black/60 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-400 transition-colors"
                 />
                 {searchQuery && (
@@ -1110,7 +1077,7 @@ export default function FlagOSPlatformLandingPage() {
                 </Link>
               </li>
               {user && (
-                <li><a href="#league-directory" className="hover:text-cyan-400 transition-colors">League Directory</a></li>
+                <li><Link href="/leagues" className="hover:text-cyan-400 transition-colors">League Directory</Link></li>
               )}
             </ul>
           </div>

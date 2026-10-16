@@ -58,7 +58,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
-  const { canManageTeam, isLeagueAdmin, user } = useAuth();
+  const { canManageTeam, isLeagueAdmin, isTeamAdmin, user } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const [team, setTeam] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
@@ -453,7 +453,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const hasEditAccess = canManageTeam(teamId) || isYorkTeam(teamId);
+  const isTeamOrLeagueAdmin = isLeagueAdmin || canManageTeam(teamId) || (typeof isTeamAdmin === "function" && isTeamAdmin(teamId));
+  const hasEditAccess = isTeamOrLeagueAdmin;
   const teamName = team?.name || "Team";
 
   // Calculate Team Overview Stats
@@ -635,21 +636,19 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               >
                 Depth Chart
               </button>
-              {activeTab === "roster" && (
-                <button
-                  type="button"
-                  onClick={() => setShowStats(!showStats)}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                    showStats
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                      : "text-neutral-400 hover:text-white hover:bg-white/5"
-                  }`}
-                  title={showStats ? "Hide stats columns" : "Show stats columns"}
-                >
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowStats(!showStats)}
+                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                  showStats
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                    : "text-neutral-400 hover:text-white hover:bg-white/5"
+                }`}
+                title={showStats ? "Hide player stats" : "Show player stats"}
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
+              </button>
             </div>
           </div>
 
@@ -703,7 +702,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                             <span>Stats</span>
                           </span>
                         </button>
-                        {((p.emails && p.emails.length > 0) || p.email) && (
+                        {isTeamOrLeagueAdmin && ((p.emails && p.emails.length > 0) || p.email) && (
                           <div className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 mt-0.5">
                             <Mail className="w-3 h-3 text-cyan-400 shrink-0" />
                             <span className="truncate max-w-[240px]">
@@ -832,7 +831,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   return (
                     <div
                       key={pos}
-                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-between"
+                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-start"
                     >
                       <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
                         <span className="text-xs font-mono font-black text-cyan-300 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
@@ -843,33 +842,49 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
                       <div className="space-y-2">
                         {matchedPlayers.length > 0 ? (
-                          matchedPlayers.map((p, idx) => (
-                            <button
-                              key={p.id}
-                              onClick={() => setSelectedPlayerForStats(p)}
-                              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all ${
-                                idx === 0
-                                  ? "bg-cyan-500/10 border border-cyan-500/30 text-white font-bold hover:bg-cyan-500/20"
-                                  : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span
-                                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                                    idx === 0
-                                      ? "bg-cyan-400 text-black font-black"
-                                      : "bg-white/10 text-neutral-400"
-                                  }`}
-                                >
-                                  {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
-                                </span>
-                                <span className="text-xs truncate">{p.playerName}</span>
-                              </div>
-                              <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
-                                #{p.number || p.jerseyNumber || "0"}
-                              </span>
-                            </button>
-                          ))
+                          matchedPlayers.map((p, idx) => {
+                            const s = playerStats[p.playerName] || { gamesPlayed: 0, passTD: 0, recTD: 0, flagPulls: 0, int: 0 };
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => setSelectedPlayerForStats(p)}
+                                className={`w-full flex flex-col p-2.5 rounded-xl text-left transition-all ${
+                                  idx === 0
+                                    ? "bg-cyan-500/10 border border-cyan-500/30 text-white font-bold hover:bg-cyan-500/20"
+                                    : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
+                                }`}
+                              >
+                                <div className="w-full flex items-center justify-between">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
+                                        idx === 0
+                                          ? "bg-cyan-400 text-black font-black"
+                                          : "bg-white/10 text-neutral-400"
+                                      }`}
+                                    >
+                                      {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
+                                    </span>
+                                    <span className="text-xs truncate font-bold">{p.playerName}</span>
+                                  </div>
+                                  <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
+                                    #{p.number || p.jerseyNumber || "0"}
+                                  </span>
+                                </div>
+                                {showStats && (
+                                  <div className="flex items-center gap-2 text-[10px] font-mono text-neutral-400 mt-1 pl-7">
+                                    <span>{s.gamesPlayed || 0} GP</span>
+                                    <span>•</span>
+                                    {pos === "QB" ? (
+                                      <span className="text-cyan-300 font-semibold">{s.passTD || 0} Pass TD</span>
+                                    ) : (
+                                      <span className="text-cyan-300 font-semibold">{s.recTD || 0} Rec TD</span>
+                                    )}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })
                         ) : (
                           <div className="text-xs text-neutral-600 italic py-3 text-center">
                             No {pos} assigned
@@ -905,7 +920,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   return (
                     <div
                       key={pos}
-                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-between"
+                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-start"
                     >
                       <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
                         <span className="text-xs font-mono font-black text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
@@ -916,33 +931,51 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
                       <div className="space-y-2">
                         {matchedPlayers.length > 0 ? (
-                          matchedPlayers.map((p, idx) => (
-                            <button
-                              key={p.id}
-                              onClick={() => setSelectedPlayerForStats(p)}
-                              className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-all ${
-                                idx === 0
-                                  ? "bg-emerald-500/10 border border-emerald-500/30 text-white font-bold hover:bg-emerald-500/20"
-                                  : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span
-                                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                                    idx === 0
-                                      ? "bg-emerald-400 text-black font-black"
-                                      : "bg-white/10 text-neutral-400"
-                                  }`}
-                                >
-                                  {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
-                                </span>
-                                <span className="text-xs truncate">{p.playerName}</span>
-                              </div>
-                              <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
-                                #{p.number || p.jerseyNumber || "0"}
-                              </span>
-                            </button>
-                          ))
+                          matchedPlayers.map((p, idx) => {
+                            const s = playerStats[p.playerName] || { gamesPlayed: 0, passTD: 0, recTD: 0, flagPulls: 0, int: 0 };
+                            return (
+                              <button
+                                key={p.id}
+                                onClick={() => setSelectedPlayerForStats(p)}
+                                className={`w-full flex flex-col p-2.5 rounded-xl text-left transition-all ${
+                                  idx === 0
+                                    ? "bg-emerald-500/10 border border-emerald-500/30 text-white font-bold hover:bg-emerald-500/20"
+                                    : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
+                                }`}
+                              >
+                                <div className="w-full flex items-center justify-between">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
+                                        idx === 0
+                                          ? "bg-emerald-400 text-black font-black"
+                                          : "bg-white/10 text-neutral-400"
+                                      }`}
+                                    >
+                                      {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
+                                    </span>
+                                    <span className="text-xs truncate font-bold">{p.playerName}</span>
+                                  </div>
+                                  <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
+                                    #{p.number || p.jerseyNumber || "0"}
+                                  </span>
+                                </div>
+                                {showStats && (
+                                  <div className="flex items-center gap-2 text-[10px] font-mono text-neutral-400 mt-1 pl-7">
+                                    <span>{s.gamesPlayed || 0} GP</span>
+                                    <span>•</span>
+                                    {pos === "RUSH" ? (
+                                      <span className="text-emerald-300 font-semibold">{s.flagPulls || 0} Flags</span>
+                                    ) : pos === "DB" ? (
+                                      <span className="text-emerald-300 font-semibold">{s.int || 0} INT • {s.flagPulls || 0} Flags</span>
+                                    ) : (
+                                      <span className="text-emerald-300 font-semibold">{s.flagPulls || 0} Flags</span>
+                                    )}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })
                         ) : (
                           <div className="text-xs text-neutral-600 italic py-3 text-center">
                             No {pos} assigned
@@ -1200,7 +1233,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       {selectedPlayerForStats.position || selectedPlayerForStats.positions[0]}
                     </span>
                   )}
-                  {((selectedPlayerForStats.emails && selectedPlayerForStats.emails.length > 0) || selectedPlayerForStats.email) && (
+                  {isTeamOrLeagueAdmin && ((selectedPlayerForStats.emails && selectedPlayerForStats.emails.length > 0) || selectedPlayerForStats.email) && (
                     <span className="text-[11px] text-cyan-300 font-mono flex items-center gap-1">
                       • <Mail className="w-3 h-3 text-cyan-400" />
                       <span>{selectedPlayerForStats.emails ? selectedPlayerForStats.emails.join(", ") : selectedPlayerForStats.email}</span>

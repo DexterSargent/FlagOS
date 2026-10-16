@@ -280,18 +280,6 @@ export const DEFAULT_USER_LEAGUES: UserLeagueSummary[] = [
     visibility: "public",
     subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
   },
-  {
-    id: "league_private_live",
-    name: "Apex Private League",
-    shortcode: "APEX",
-    seasonTitle: "2026 Live Season",
-    role: "owner",
-    primaryColor: "#10b981",
-    accentColor: "#06b6d4",
-    visibility: "private",
-    adminEmails: ["dextersargent@gmail.com"],
-    subscription: PRIVATE_LIVE_LEAGUE_SUBSCRIPTION,
-  },
 ];
 
 export const isAuthorizedForLeague = (

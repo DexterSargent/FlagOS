@@ -49,7 +49,7 @@ export function usePrivateLeagueAccess(
     deniedElement: isDenied ? (
       <PrivateLeagueAccessDenied
         requiredEmail="dextersargent@gmail.com"
-        leagueName={settings?.leagueName || "Apex Private League"}
+        leagueName={settings?.leagueName || "Private League"}
       />
     ) : null,
   };
