@@ -165,6 +165,7 @@ export default function PlayCanvas({
 
   // Interaction State
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const selectedPlayContextRef = useRef<string | null>(null);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
   const [draggedWaypointIndex, setDraggedWaypointIndex] = useState<number | null>(null);
@@ -197,7 +198,6 @@ export default function PlayCanvas({
 
   // Active Tool Mode
   const [mode, setMode] = useState<"select" | "draw" | "man" | "zone">("select");
-  const [compactPane, setCompactPane] = useState<"field" | "assignments">("field");
   const [defensiveZoneCategory, setDefensiveZoneCategory] =
     useState<StandardZoneTemplate["category"]>("Deep Zones");
 
@@ -449,18 +449,22 @@ export default function PlayCanvas({
     }
   }, [play.id, playbook?.playersOnField, settings?.rules?.playersOnField]);
 
-  // Auto-select a receiver if none is selected so route presets are immediately visible and active in-frame
+  // Select an active-side player when switching plays, while preserving direct field selection within a play.
   useEffect(() => {
-    if (!selectedPlayerId && play.players && play.players.length > 0) {
-      const preferred =
-        play.players.find(
-          (p) => p.side === (play.type === "defense" ? "defense" : "offense") && p.label !== "QB" && p.label !== "C"
-        ) || play.players.find((p) => p.side === (play.type === "defense" ? "defense" : "offense"));
-      if (preferred) {
-        setSelectedPlayerId(preferred.id);
-      }
-    }
-  }, [play.id, play.type, selectedPlayerId]);
+    const selectionContext = `${play.id}:${play.type}`;
+    const contextChanged = selectedPlayContextRef.current !== selectionContext;
+    selectedPlayContextRef.current = selectionContext;
+
+    const playerExists = play.players.some((player) => player.id === selectedPlayerId);
+    if (!contextChanged && selectedPlayerId && playerExists) return;
+
+    const activeSide = play.type === "defense" ? "defense" : "offense";
+    const preferred =
+      play.players.find(
+        (player) => player.side === activeSide && player.label !== "QB" && player.label !== "C"
+      ) || play.players.find((player) => player.side === activeSide);
+    setSelectedPlayerId(preferred?.id ?? null);
+  }, [play.id, play.type, play.players, selectedPlayerId]);
 
   const offensePlayers = play.players.filter((p) => p.side === "offense");
   const defensePlayers = play.players.filter((p) => p.side === "defense");
@@ -479,14 +483,6 @@ export default function PlayCanvas({
 
   // Filter visible players based on showOpposingSide
   const visiblePlayers = (play.players || []).filter((p) => (showOpposingSide ? true : p.side === play.type));
-  const fieldPaneVisibility =
-    compactPane === "field"
-      ? "flex md:flex [@media(max-height:450px)]:flex"
-      : "hidden md:flex [@media(max-height:450px)]:hidden";
-  const assignmentsPaneVisibility =
-    compactPane === "assignments"
-      ? "flex md:flex [@media(max-height:450px)]:flex"
-      : "hidden md:flex [@media(max-height:450px)]:hidden";
 
   // Compute legal status across visible players in play
   const alignmentIssues = visiblePlayers
@@ -1451,48 +1447,18 @@ export default function PlayCanvas({
   };
 
   return (
-    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col gap-2.5 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0">
-      <div className="grid grid-cols-2 md:hidden [@media(max-height:450px)]:grid gap-1 rounded-xl border border-white/10 bg-[#0A0E17] p-1 shrink-0">
-        <button
-          type="button"
-          data-testid="designer-pane-field"
-          aria-pressed={compactPane === "field"}
-          onClick={() => setCompactPane("field")}
-          className={`rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wide transition-colors ${
-            compactPane === "field"
-              ? "bg-emerald-500 text-black"
-              : "text-neutral-400 hover:bg-white/5 hover:text-white"
-          }`}
-        >
-          Field
-        </button>
-        <button
-          type="button"
-          data-testid="designer-pane-assignments"
-          aria-pressed={compactPane === "assignments"}
-          onClick={() => setCompactPane("assignments")}
-          className={`rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wide transition-colors ${
-            compactPane === "assignments"
-              ? play.type === "offense"
-                ? "bg-emerald-500 text-black"
-                : "bg-purple-500 text-black"
-              : "text-neutral-400 hover:bg-white/5 hover:text-white"
-          }`}
-        >
-          Assignments{selectedPlayer ? ` · ${selectedPlayer.label}` : ""}
-        </button>
-      </div>
+    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col gap-1.5 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0">
       {/* ============================================================== */}
       {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
       {/* ============================================================== */}
-      <div className={`${fieldPaneVisibility} flex-1 min-w-0 min-h-0 flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative`}>
+      <div data-testid="designer-field-pane" className="flex flex-[0_0_42%] md:flex-1 [@media(max-width:639px)_and_(min-height:451px)_and_(max-height:750px)]:flex-[0_0_34%] [@media(max-height:450px)]:flex-[0_0_42%] min-w-0 min-h-0 flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
         {/* ============================================================== */}
         {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
         {/* ============================================================== */}
-        <div className="p-2 sm:p-2.5 [@media(max-height:450px)]:p-1 bg-gradient-to-r from-[#0B0F19] via-[#0D1220] to-[#0B0F19] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 [@media(max-height:450px)]:gap-1 shrink-0">
+        <div className="p-2 sm:p-2.5 [@media(max-height:450px)]:p-1 [@media(max-width:639px)]:p-1.5 bg-gradient-to-r from-[#0B0F19] via-[#0D1220] to-[#0B0F19] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 [@media(max-height:450px)]:gap-1 [@media(max-width:639px)]:gap-1 shrink-0">
           {/* Play Name Editable Field */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-[130px] sm:min-w-[180px] max-w-sm">
-            <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider">Play:</span>
+          <div className="flex items-center gap-1.5 flex-1 min-w-[130px] sm:min-w-[180px] max-w-sm [@media(max-width:639px)]:min-w-0 [@media(max-width:639px)]:max-w-none">
+            <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider [@media(max-width:639px)]:hidden">Play:</span>
             <input
               type="text"
               disabled={readOnly}
@@ -1504,10 +1470,10 @@ export default function PlayCanvas({
           </div>
 
           {/* Formation Dropdown & Gameday Situation Dropdown */}
-          <div className="flex items-center gap-1.5 flex-wrap [@media(max-height:450px)]:hidden">
+          <div className="flex items-center gap-1.5 flex-wrap [@media(max-height:450px)]:hidden [@media(max-width:639px)]:flex-nowrap [@media(max-width:639px)]:gap-1">
             {/* Formation Dropdown */}
             <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-xl px-2 py-1 shadow-inner">
-              <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono">Formation:</span>
+              <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono [@media(max-width:639px)]:hidden">Formation:</span>
               <select
                 disabled={readOnly}
                 value={play.formation}
@@ -1525,7 +1491,7 @@ export default function PlayCanvas({
                     onChange({ ...play, formation: val, players: updated });
                   }
                 }}
-                className="bg-transparent text-xs font-black text-cyan-300 outline-none cursor-pointer max-w-[150px] truncate"
+                className="bg-transparent text-xs font-black text-cyan-300 outline-none cursor-pointer max-w-[150px] truncate [@media(max-width:639px)]:max-w-[84px] [@media(max-width:639px)]:text-[10px]"
               >
                 {playbookFormations.map((fName) => (
                   <option key={fName} value={fName} className="bg-[#0B0F19] text-white">
@@ -1542,12 +1508,12 @@ export default function PlayCanvas({
 
             {/* Gameday Situation Dropdown */}
             <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-xl px-2 py-1 shadow-inner">
-              <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono">Situation:</span>
+              <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono [@media(max-width:639px)]:hidden">Situation:</span>
               <select
                 disabled={readOnly}
                 value={play.situation || "Standard"}
                 onChange={(e) => onChange({ ...play, situation: e.target.value })}
-                className="bg-transparent text-xs font-bold text-neutral-200 outline-none cursor-pointer"
+                className="bg-transparent text-xs font-bold text-neutral-200 outline-none cursor-pointer [@media(max-width:639px)]:max-w-[74px] [@media(max-width:639px)]:text-[10px]"
               >
                 {SITUATION_OPTIONS.map((sit) => (
                   <option key={sit} value={sit} className="bg-[#0B0F19] text-white">
@@ -1636,7 +1602,8 @@ export default function PlayCanvas({
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
-          className="relative flex-1 w-full aspect-[16/10] md:aspect-auto bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair min-h-[250px] md:min-h-0 [@media(max-height:450px)]:min-h-[180px]"
+          className="relative flex-1 w-full aspect-[16/10] md:aspect-auto [@media(max-width:639px)]:aspect-auto bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair min-h-[250px] md:min-h-0 [@media(max-width:639px)]:min-h-0 [@media(max-height:450px)]:min-h-[120px]"
+          data-testid="designer-field"
         >
           <svg
             ref={svgRef}
@@ -2396,14 +2363,14 @@ export default function PlayCanvas({
           )}
 
           {/* Quick On-Field Canvas Helper Tooltip */}
-          <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-neutral-400 font-mono flex items-center gap-2 pointer-events-none">
+          <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-neutral-400 font-mono hidden sm:flex items-center gap-2 pointer-events-none">
             <Move className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span>Drag players to reposition • Drag waypoints to shape cuts</span>
           </div>
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
-        <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden">
+        <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden [@media(max-width:639px)]:hidden">
           <div className="flex items-center gap-2">
             <button
               onClick={handleToggleAnimate}
@@ -2467,12 +2434,12 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
       {/* ============================================================== */}
-      <div className={`${assignmentsPaneVisibility} w-full md:w-[42%] lg:w-[390px] xl:w-[440px] 2xl:w-[480px] [@media(max-height:450px)]:w-full flex-1 md:flex-none md:shrink-0 flex-col bg-[#0A0E17] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl min-h-0`}>
-        <div className="p-3 sm:p-3.5 [@media(min-width:600px)_and_(max-height:450px)]:p-2 flex-1 min-h-0 overflow-y-auto space-y-2.5 [@media(min-width:600px)_and_(max-height:450px)]:space-y-1 scrollbar-thin">
+      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[42%] lg:w-[390px] xl:w-[440px] 2xl:w-[480px] [@media(max-height:450px)]:w-full flex-1 md:flex-none md:shrink-0 [@media(max-height:450px)]:flex-1 flex-col bg-[#0A0E17] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl min-h-0">
+        <div className="p-2 sm:p-3.5 [@media(min-width:600px)_and_(max-height:450px)]:p-2 [@media(max-width:639px)]:p-2 flex-1 min-h-0 overflow-y-auto space-y-2.5 [@media(min-width:600px)_and_(max-height:450px)]:space-y-1 [@media(max-width:639px)]:space-y-1.5 scrollbar-thin">
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
-          <div className="flex flex-wrap [@media(min-width:600px)_and_(max-height:450px)]:flex-nowrap items-center justify-between gap-2.5 [@media(min-width:600px)_and_(max-height:450px)]:gap-1.5">
+          <div className="flex flex-wrap [@media(min-width:600px)_and_(max-height:450px)]:flex-nowrap [@media(max-width:639px)]:flex-nowrap items-center justify-between gap-2.5 [@media(min-width:600px)_and_(max-height:450px)]:gap-1.5 [@media(max-width:639px)]:gap-1">
             {/* Player Selection Pills with Coaching Notes Indicator */}
-            <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto max-w-full hide-scrollbar">
+            <div className="flex items-center gap-1.5 [@media(max-width:639px)]:gap-1 flex-nowrap overflow-x-auto max-w-full hide-scrollbar">
               <span className="hidden sm:flex [@media(min-width:600px)_and_(max-height:450px)]:hidden text-[10px] font-black uppercase tracking-wider text-neutral-400 mr-1 items-center gap-1">
                 <Users className="w-3 h-3 text-cyan-400" />
                 <span>Player:</span>
@@ -2486,7 +2453,7 @@ export default function PlayCanvas({
                     key={p.id}
                     type="button"
                     onClick={() => setSelectedPlayerId(p.id)}
-                    className={`px-2.5 py-1 [@media(min-width:600px)_and_(max-height:450px)]:px-2 [@media(min-width:600px)_and_(max-height:450px)]:py-0.5 rounded-xl text-xs font-mono font-bold transition-all border flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1 [@media(min-width:600px)_and_(max-height:450px)]:px-2 [@media(min-width:600px)_and_(max-height:450px)]:py-0.5 [@media(max-width:639px)]:px-1.5 [@media(max-width:639px)]:py-0.5 rounded-xl text-xs [@media(max-width:639px)]:text-[10px] font-mono font-bold transition-all border flex items-center gap-1.5 [@media(max-width:639px)]:gap-1 ${
                       isSelected
                         ? p.side === "offense"
                           ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/25 ring-2 ring-cyan-400/30"
@@ -2525,7 +2492,7 @@ export default function PlayCanvas({
             </div>
 
             {/* Selected Player Status & Action Buttons */}
-            <div className="flex items-center gap-2 [@media(min-width:600px)_and_(max-height:450px)]:gap-1 ml-auto">
+            <div className="flex items-center gap-2 [@media(min-width:600px)_and_(max-height:450px)]:gap-1 [@media(max-width:639px)]:gap-1 ml-auto">
               {selectedPlayer && (
               <div className="hidden sm:flex [@media(min-width:600px)_and_(max-height:450px)]:hidden items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-mono">
                   <span className="text-neutral-400">{selectedPlayer.role}:</span>
@@ -2546,8 +2513,9 @@ export default function PlayCanvas({
               <button
                 type="button"
                 onClick={() => setIsPositionNotesModalOpen(true)}
-                className="px-2.5 py-1 rounded-xl text-xs font-bold text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5 [@media(min-width:600px)_and_(max-height:450px)]:hidden"
+                className="px-2.5 py-1 rounded-xl text-xs font-bold text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5 [@media(min-width:600px)_and_(max-height:450px)]:hidden [@media(max-width:639px)]:px-1.5"
                 title="View & Edit Coaching Notes for all positions"
+                aria-label="View and edit position notes"
               >
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
                 <span className="hidden sm:inline">Position Notes Sheet</span>
@@ -2559,15 +2527,16 @@ export default function PlayCanvas({
                   type="button"
                   onClick={() => setMode(mode === "draw" ? "select" : "draw")}
                   title={mode === "draw" ? "Drawing mode active: Click on field to add points" : "Enable Freehand Click-to-Draw"}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                  aria-label={mode === "draw" ? "Stop drawing route" : "Draw route"}
+                  className={`px-2.5 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
                     mode === "draw"
                       ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/25"
                       : "bg-white/5 hover:bg-white/10 text-neutral-300 border-white/10"
                   }`}
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{mode === "draw" ? "Drawing Active" : "Draw Route"}</span>
-                  <span className="md:hidden">Draw</span>
+                  <span className="hidden md:inline [@media(max-width:639px)]:hidden">{mode === "draw" ? "Drawing Active" : "Draw Route"}</span>
+                  <span className="md:hidden [@media(max-width:639px)]:hidden">Draw</span>
                 </button>
               )}
 
@@ -2577,10 +2546,11 @@ export default function PlayCanvas({
                   type="button"
                   onClick={handleClearRoute}
                   title="Clear Route / Assignment"
-                  className="px-2 py-1 rounded-xl text-xs font-bold text-neutral-400 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 transition-all flex items-center gap-1"
+                  aria-label="Clear route or assignment"
+                  className="px-2 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold text-neutral-400 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 transition-all flex items-center gap-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Clear</span>
+                  <span className="hidden sm:inline [@media(max-width:639px)]:hidden">Clear</span>
                 </button>
               )}
             </div>
@@ -2588,7 +2558,7 @@ export default function PlayCanvas({
 
           {/* Position Coaching Notes Bar for Currently Selected Player */}
           {selectedPlayer && (
-            <div className="flex items-center gap-2.5 bg-black/70 border border-white/10 rounded-2xl px-3 py-2 shadow-inner [@media(max-height:450px)]:hidden">
+            <div className="flex items-center gap-2.5 bg-black/70 border border-white/10 rounded-2xl px-3 py-2 shadow-inner [@media(max-height:450px)]:hidden [@media(max-width:639px)]:hidden">
               <div className="flex items-center gap-1.5 shrink-0 text-cyan-400 font-mono text-[11px] font-bold">
                 <FileText className="w-3.5 h-3.5" />
                 <span>{selectedPlayer.label} notes:</span>
@@ -2606,11 +2576,11 @@ export default function PlayCanvas({
 
           {/* Offense Route Presets Controls */}
           {selectedPlayer?.side === "offense" ? (
-            <div className="space-y-2 relative" ref={presetMenuRef}>
+            <div className="space-y-2 [@media(max-width:639px)]:space-y-1 relative" ref={presetMenuRef}>
               {/* Header row: Route assignment info & Action Buttons */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center justify-between flex-wrap gap-2 [@media(max-width:639px)]:gap-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1 [@media(max-width:639px)]:text-[9px]">
                     <Zap className="w-3 h-3" />
                     <span>Route Assignment ({selectedPlayer.label}):</span>
                   </span>
@@ -2640,14 +2610,15 @@ export default function PlayCanvas({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="flex items-center gap-2 [@media(max-width:639px)]:gap-1 ml-auto">
                   {/* Pre-Snap Motion Toggle Button */}
                   <button
                     type="button"
                     disabled={readOnly}
                     onClick={handleToggleMotion}
                     data-testid="toggle-motion-btn"
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                    aria-label={playerHasMotion(selectedPlayer) ? "Remove pre-snap motion" : "Add pre-snap motion"}
+                    className={`px-2 py-1.5 [@media(max-width:639px)]:p-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                       playerHasMotion(selectedPlayer)
                         ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30 font-black"
                         : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30 hover:border-amber-500/50"
@@ -2659,7 +2630,7 @@ export default function PlayCanvas({
                     }
                   >
                     <Activity className="w-3.5 h-3.5" />
-                    <span>{playerHasMotion(selectedPlayer) ? "Motion Active ⚡" : "Pre-Snap Motion"}</span>
+                    <span className="[@media(max-width:639px)]:hidden">{playerHasMotion(selectedPlayer) ? "Motion Active ⚡" : "Pre-Snap Motion"}</span>
                   </button>
 
                   {/* Preset Routes Menu Toggle Button */}
@@ -2668,14 +2639,15 @@ export default function PlayCanvas({
                     disabled={readOnly}
                     onClick={() => setIsPresetMenuOpen((prev) => !prev)}
                     data-testid="route-presets-toggle"
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                    aria-label={isPresetMenuOpen ? "Hide route catalog" : "Show route catalog"}
+                    className={`px-2 py-1.5 [@media(max-width:639px)]:p-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                       isPresetMenuOpen
                         ? "bg-cyan-500 text-black border-cyan-400 shadow-cyan-500/30"
                         : "bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40"
                     }`}
                   >
                     <Zap className="w-3.5 h-3.5" />
-                    <span>{isPresetMenuOpen ? "Hide Catalog" : "Preset Routes"}</span>
+                    <span className="[@media(max-width:639px)]:hidden">{isPresetMenuOpen ? "Hide Catalog" : "Preset Routes"}</span>
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isPresetMenuOpen ? "rotate-180" : ""}`} />
                   </button>
 
@@ -2696,7 +2668,7 @@ export default function PlayCanvas({
                       title={isDemo ? "Add temporary custom preset (session only)" : `Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
                     >
                       <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Add Preset</span>
+                      <span className="[@media(max-width:639px)]:hidden">Add Preset</span>
                     </button>
                   )}
                 </div>

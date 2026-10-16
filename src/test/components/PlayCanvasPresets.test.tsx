@@ -64,17 +64,25 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(screen.getByText("Pre-snap motion")).toBeDefined();
   });
 
-  it("switches between the field and assignment workspace on compact screens", () => {
+  it("keeps the field and assignment controls in one workspace", () => {
     render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
-    const fieldTab = screen.getByTestId("designer-pane-field");
-    const assignmentsTab = screen.getByTestId("designer-pane-assignments");
-    expect(fieldTab.getAttribute("aria-pressed")).toBe("true");
-    expect(assignmentsTab.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByTestId("designer-field-pane")).toBeInTheDocument();
+    expect(screen.getByTestId("designer-field")).toBeInTheDocument();
+    expect(screen.getByTestId("designer-assignments-pane")).toBeInTheDocument();
+    expect(screen.queryByTestId("designer-pane-field")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("designer-pane-assignments")).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(assignmentsTab);
-    expect(assignmentsTab.getAttribute("aria-pressed")).toBe("true");
-    expect(fieldTab.getAttribute("aria-pressed")).toBe("false");
+  it("selects a defender when switching from an offense play to a defense play", () => {
+    const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+    expect(screen.getByText("Route Assignment (X):")).toBeInTheDocument();
+
+    rerender(<PlayCanvas play={mockDefensePlay} onChange={vi.fn()} />);
+
+    expect(screen.getByText("Coverage & Assignment (RUSH):")).toBeInTheDocument();
+    expect(screen.queryByText(/Route Assignment/)).not.toBeInTheDocument();
   });
 
   it("applies a route preset when clicking a quick-route button", () => {
