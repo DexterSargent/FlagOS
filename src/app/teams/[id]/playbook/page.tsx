@@ -50,6 +50,7 @@ import {
 } from "@/lib/playbookTypes";
 import { getSandboxTeams } from "@/lib/demoSandbox";
 import { isYorkTeam, getYorkTeamData, getYorkLionsPlaybooks } from "@/lib/yorkTeamData";
+import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
 type PlaybookViewLevel = "playbooks" | "formations" | "plays";
 
@@ -57,12 +58,15 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
-  const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId } = useAuth();
+  const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const playersPerSide = settings?.rules?.playersOnField || 5;
 
   const [team, setTeam] = useState<any>(null);
+  const isDexter = isDexterUser(user?.email);
+  const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
+  const canDeletePlaybook = isPrimary;
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [activePlaybookId, setActivePlaybookId] = useState<string>("");
   const [selectedFormationName, setSelectedFormationName] = useState<string>("");
@@ -159,7 +163,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       try {
         if (isYork) {
           const yTeam = getYorkTeamData();
-          setTeam({ id: yTeam.id, name: yTeam.name, shortcode: yTeam.shortcode || "YORK" });
+          setTeam({ id: yTeam.id, name: yTeam.name, shortcode: yTeam.shortcode || "YORK", adminEmails: yTeam.adminEmails });
         } else if (isEmbedded) {
           const sTeam = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
           if (sTeam) {
@@ -358,6 +362,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Delete Playbook
   const handleDeletePlaybook = (bookId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!canDeletePlaybook) {
+      alert("Permission Denied: Only the primary team admin (head coach) can delete playbooks.");
+      return;
+    }
     if (!hasEditAccess) return;
     if (playbooks.length <= 1) {
       alert("A team must maintain at least one playbook.");
@@ -1083,7 +1091,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                           </span>
                         </div>
 
-                        {hasEditAccess && playbooks.length > 1 && (
+                        {hasEditAccess && canDeletePlaybook && playbooks.length > 1 && (
                           <button
                             type="button"
                             onClick={(e) => handleDeletePlaybook(book.id, e)}

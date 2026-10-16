@@ -17,6 +17,7 @@ import {
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
 import { isYorkTeam, getYorkTeamData, getYorkTeamMatches } from "@/lib/yorkTeamData";
+import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
 export default function TeamSchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -24,13 +25,16 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const isYork = isYorkTeam(teamId);
   const { settings, isDemoLeague } = useLeague();
 
-  const { canManageTeam, isLeagueAdmin } = useAuth();
+  const { canManageTeam, isLeagueAdmin, user } = useAuth();
   const [team, setTeam] = useState<any>(null);
   const [allTeams, setAllTeams] = useState<Record<string, any>>({});
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const isDexter = isDexterUser(user?.email);
+  const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
   const canScheduleMatches = isLeagueAdmin || canManageTeam(teamId) || isYork;
+  const canDeleteMatch = isLeagueAdmin || isPrimary;
 
   // Match Scheduling Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -44,6 +48,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const handleDeleteMatch = async (e: React.MouseEvent, matchId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!canDeleteMatch) {
+      alert("Permission Denied: Only the primary team admin (head coach) can delete scheduled games.");
+      return;
+    }
     if (!canScheduleMatches) return;
     if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
 
@@ -321,7 +329,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
                               {m.status === "in_progress" ? "● LIVE NOW" : "Scheduled"}
                             </span>
-                            {isLeagueAdmin && (
+                            {canDeleteMatch && (
                               <button
                                 type="button"
                                 onClick={(e) => handleDeleteMatch(e, m.id)}
@@ -450,7 +458,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                         >
                           {isWin ? "W" : isLoss ? "L" : "T"}
                         </span>
-                        {isLeagueAdmin && (
+                        {canDeleteMatch && (
                           <button
                             type="button"
                             onClick={(e) => handleDeleteMatch(e, m.id)}

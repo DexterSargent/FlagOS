@@ -235,7 +235,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Fallback: Check York Lions team admins & coaches
-    if (YORK_ADMIN_EMAILS.includes(cleanEmail)) {
+    const yorkAdmins = [
+      ...YORK_ADMIN_EMAILS,
+      ...(Array.isArray(YORK_LIONS_TEAM.adminEmails) ? YORK_LIONS_TEAM.adminEmails : []),
+    ].map((e) => String(e).trim().toLowerCase());
+    if (yorkAdmins.includes(cleanEmail)) {
       return { id: YORK_TEAM_ID, name: YORK_LIONS_TEAM.name };
     }
 
@@ -638,8 +642,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const isTeamAdmin = (teamId?: string) => {
     if (lockedEmbedRole === "team_admin") return true;
+    if (isDexter) return true;
     if (teamId && isYorkTeam(teamId)) {
-      if (isDexter || (!!user?.email && YORK_ADMIN_EMAILS.includes(user.email.trim().toLowerCase()))) {
+      const yorkAdmins = [
+        ...YORK_ADMIN_EMAILS,
+        ...(Array.isArray(YORK_LIONS_TEAM.adminEmails) ? YORK_LIONS_TEAM.adminEmails : []),
+      ].map((e) => String(e).trim().toLowerCase());
+      if (isDexter || (!!user?.email && yorkAdmins.includes(user.email.trim().toLowerCase()))) {
         return true;
       }
     }
@@ -653,9 +662,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const canManageTeam = (teamId: string) => {
     if (lockedEmbedRole === "team_admin") return true;
+    if (isDexter) return true;
     if (isLeagueAdmin) return true;
     if (isTeamAdmin(teamId)) return true;
-    if (isYorkTeam(teamId) && (isDexter || (!!user?.email && YORK_ADMIN_EMAILS.includes(user.email.trim().toLowerCase())))) return true;
+    if (isYorkTeam(teamId)) {
+      const yorkAdmins = [
+        ...YORK_ADMIN_EMAILS,
+        ...(Array.isArray(YORK_LIONS_TEAM.adminEmails) ? YORK_LIONS_TEAM.adminEmails : []),
+      ].map((e) => String(e).trim().toLowerCase());
+      if (isDexter || (!!user?.email && yorkAdmins.includes(user.email.trim().toLowerCase()))) return true;
+    }
     return false;
   };
 

@@ -50,6 +50,7 @@ import {
   getYorkTeamMatches,
   getYorkTeamPlays,
 } from "@/lib/yorkTeamData";
+import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
 const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
@@ -57,7 +58,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
-  const { canManageTeam, isLeagueAdmin } = useAuth();
+  const { canManageTeam, isLeagueAdmin, user } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const [team, setTeam] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
@@ -411,8 +412,15 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     setSavingPlayer(false);
   };
 
+  const isDexter = isDexterUser(user?.email);
+  const canDeletePlayer = isPrimaryTeamAdmin(user?.email, team, isDexter);
+
   // Handler: Delete Player
   const handleDeletePlayer = async (playerId: string, playerName: string) => {
+    if (!canDeletePlayer) {
+      alert("Permission Denied: Only the primary team admin (head coach) can delete players from the roster.");
+      return;
+    }
     if (!confirm(`Are you sure you want to remove "${playerName}" from the roster?`)) return;
 
     try {
@@ -766,13 +774,15 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button
-                                onClick={() => handleDeletePlayer(p.id, p.playerName)}
-                                className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors"
-                                title="Remove Player from Team"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {canDeletePlayer && (
+                                <button
+                                  onClick={() => handleDeletePlayer(p.id, p.playerName)}
+                                  className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors"
+                                  title="Remove Player from Team"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </>
                           )}
                         </div>

@@ -24,9 +24,16 @@ import {
   Upload,
   Palette,
   Sliders,
+  UserPlus,
+  UserCheck,
+  Trash2,
+  AlertCircle,
+  Mail,
+  ShieldCheck,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, getDocs, setDoc } from "firebase/firestore";
+import { isPrimaryTeamAdmin, getTeamAdminEmails, isDexterUser } from "@/lib/teamAdminRbac";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
@@ -100,6 +107,17 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Coaches & Team Admins Modal State
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [staffActionError, setStaffActionError] = useState("");
+  const [staffActionSuccess, setStaffActionSuccess] = useState("");
+  const [savingStaff, setSavingStaff] = useState(false);
+
+  const isDexter = isDexterUser(user?.email);
+  const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
+  const currentAdminEmails = getTeamAdminEmails(team);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -117,16 +135,109 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleAddCoachAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = newAdminEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
+      setStaffActionError("Please enter a valid email address.");
+      return;
+    }
+    const currentList = getTeamAdminEmails(team);
+    if (currentList.includes(cleanEmail)) {
+      setStaffActionError("This email is already an authorized team admin.");
+      return;
+    }
+
+    setSavingStaff(true);
+    setStaffActionError("");
+    const nextList = [...currentList, cleanEmail];
+
+    try {
+      if (isYork) {
+        if (typeof window !== "undefined") {
+          const cached = localStorage.getItem("flagos_york_team_custom");
+          const parsed = cached ? JSON.parse(cached) : {};
+          localStorage.setItem("flagos_york_team_custom", JSON.stringify({ ...parsed, adminEmails: nextList }));
+        }
+        YORK_LIONS_TEAM.adminEmails = nextList;
+        try {
+          await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+        } catch (e) {
+          console.warn("Could not sync York admin emails to remote Firestore:", e);
+        }
+      } else if (isDemoLeague) {
+        updateSandboxTeam(teamId, { adminEmails: nextList });
+      } else {
+        await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+      }
+
+      setTeam((prev: any) => ({ ...prev, adminEmails: nextList }));
+      setNewAdminEmail("");
+      setStaffActionSuccess(`Added ${cleanEmail} as a team admin!`);
+      setTimeout(() => setStaffActionSuccess(""), 4500);
+    } catch (err) {
+      console.error("Failed to add coach as team admin:", err);
+      setStaffActionError("Failed to add team admin. Please try again.");
+    } finally {
+      setSavingStaff(false);
+    }
+  };
+
+  const handleRemoveCoachAdmin = async (emailToRemove: string) => {
+    const cleanEmail = emailToRemove.trim().toLowerCase();
+    const currentList = getTeamAdminEmails(team);
+    if (currentList[0]?.toLowerCase() === cleanEmail) {
+      alert("The primary team admin (head coach) cannot be removed.");
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to remove ${cleanEmail} as a team admin?`)) {
+      return;
+    }
+
+    setSavingStaff(true);
+    setStaffActionError("");
+    const nextList = currentList.filter((e) => e.toLowerCase() !== cleanEmail);
+
+    try {
+      if (isYork) {
+        if (typeof window !== "undefined") {
+          const cached = localStorage.getItem("flagos_york_team_custom");
+          const parsed = cached ? JSON.parse(cached) : {};
+          localStorage.setItem("flagos_york_team_custom", JSON.stringify({ ...parsed, adminEmails: nextList }));
+        }
+        YORK_LIONS_TEAM.adminEmails = nextList;
+        try {
+          await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+        } catch (e) {
+          console.warn("Could not sync York admin emails to remote Firestore:", e);
+        }
+      } else if (isDemoLeague) {
+        updateSandboxTeam(teamId, { adminEmails: nextList });
+      } else {
+        await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+      }
+
+      setTeam((prev: any) => ({ ...prev, adminEmails: nextList }));
+      setStaffActionSuccess(`Removed ${cleanEmail} from team admins.`);
+      setTimeout(() => setStaffActionSuccess(""), 4500);
+    } catch (err) {
+      console.error("Failed to remove team admin:", err);
+      setStaffActionError("Failed to remove team admin. Please try again.");
+    } finally {
+      setSavingStaff(false);
+    }
+  };
+
   // Prevent background main page from scrolling when modal is open
   useEffect(() => {
-    if (isEditModalOpen || isStatsCustomizerOpen) {
+    if (isEditModalOpen || isStatsCustomizerOpen || isStaffModalOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = originalOverflow;
       };
     }
-  }, [isEditModalOpen, isStatsCustomizerOpen]);
+  }, [isEditModalOpen, isStatsCustomizerOpen, isStaffModalOpen]);
 
   useEffect(() => {
     const fetchTeam = async () => {
@@ -550,13 +661,24 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             </div>
 
             {hasEditAccess && (
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4 text-amber-400" />
-                <span>Edit Team Info</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsStaffModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4 text-emerald-400" />
+                  <span>Coaches &amp; Admins ({currentAdminEmails.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4 text-amber-400" />
+                  <span>Edit Team Info</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -1045,6 +1167,139 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 >
                   <Check className="w-4 h-4" />
                   <span>{saving ? "Saving..." : "Save Changes"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Team Coaches & Admins Management Modal */}
+      {isStaffModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-labelledby="team-staff-modal-title" className="w-full max-w-xl rounded-3xl border border-white/15 bg-neutral-900 p-6 sm:p-8 shadow-2xl text-white">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 id="team-staff-modal-title" className="text-xl font-black">Coaches &amp; Team Admins</h2>
+                  <p className="text-xs text-neutral-400 mt-0.5">{team?.name || "Team"}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStaffModalOpen(false);
+                  setStaffActionError("");
+                  setStaffActionSuccess("");
+                }}
+                className="rounded-lg p-1.5 text-neutral-400 hover:bg-white/10 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Explanation card */}
+            <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-neutral-300 space-y-1">
+              <div className="font-bold text-cyan-300 uppercase tracking-wide text-[11px] flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" />
+                <span>Team Administrative Permissions</span>
+              </div>
+              <p>
+                Authorized team admins can invite additional coaches. <strong>Only the primary team admin (the first coach)</strong> has permission to delete players, games, and playbooks.
+              </p>
+            </div>
+
+            {staffActionSuccess && (
+              <div role="status" className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-200">
+                <Check className="h-4 w-4 shrink-0 text-emerald-400" /> {staffActionSuccess}
+              </div>
+            )}
+
+            {staffActionError && (
+              <div role="alert" className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+                <AlertCircle className="h-4 w-4 shrink-0" /> {staffActionError}
+              </div>
+            )}
+
+            {/* Current Admins List */}
+            <div className="mt-5">
+              <div className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
+                Current Team Admins ({currentAdminEmails.length})
+              </div>
+              <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                {currentAdminEmails.map((email, idx) => {
+                  const isFirst = idx === 0;
+                  return (
+                    <div
+                      key={email}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-neutral-950/70 p-3.5 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                          <span className="font-mono text-xs text-white truncate font-semibold">{email}</span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                          {isFirst ? (
+                            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                              Primary Admin (Head Coach)
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+                              Team Admin / Coach
+                            </span>
+                          )}
+                          <span className="text-[10px] text-neutral-500">
+                            {isFirst ? "Full deletion rights" : "Standard management"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {!isFirst && isPrimary && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCoachAdmin(email)}
+                          disabled={savingStaff}
+                          className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/20 hover:text-red-300 text-xs font-bold transition-colors disabled:opacity-50 shrink-0"
+                          title="Remove team admin"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Add Team Admin Form */}
+            <form onSubmit={handleAddCoachAdmin} className="mt-6 pt-5 border-t border-white/10">
+              <label htmlFor="new-coach-email-input" className="block text-xs font-bold uppercase text-neutral-300 mb-1.5">
+                Add Coach as Team Admin
+              </label>
+              <p className="text-[11px] text-neutral-400 mb-3">
+                Enter the email address of an assistant coach, coordinator, or team manager.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  id="new-coach-email-input"
+                  type="email"
+                  required
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  placeholder="coach@example.com"
+                  className="flex-1 rounded-xl border border-white/10 bg-neutral-950 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none font-mono"
+                />
+                <button
+                  type="submit"
+                  disabled={savingStaff || !newAdminEmail.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>{savingStaff ? "Adding..." : "Add Admin"}</span>
                 </button>
               </div>
             </form>

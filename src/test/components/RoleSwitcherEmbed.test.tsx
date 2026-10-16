@@ -38,8 +38,9 @@ vi.mock("@/lib/demoSandbox", () => ({
   notifySandboxChange: vi.fn(),
 }));
 
+let mockPathname = "/schedule";
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/schedule",
+  usePathname: () => mockPathname,
 }));
 
 function RoleInspector() {
@@ -122,5 +123,66 @@ describe("RoleSwitcherBar & Auth Lock in Embed Mode", () => {
       expect(screen.getByTestId("is-league-admin").textContent).toBe("false");
       expect(screen.getByTestId("is-team-admin").textContent).toBe("true");
     });
+  });
+
+  it("strictly hides RoleSwitcherBar on /teams/york_lions when user is not Dexter", () => {
+    mockPathname = "/teams/york_lions";
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: new URL("http://localhost:3000/teams/york_lions"),
+    });
+
+    const { container } = render(
+      <AuthProvider>
+        <RoleSwitcherBar />
+      </AuthProvider>
+    );
+
+    // Role switcher bar must NOT be in the document
+    expect(container.querySelector("aside")).toBeNull();
+    expect(container.querySelector("nav")).toBeNull();
+    expect(screen.queryByText(/ROLE SWITCHER/i)).toBeNull();
+  });
+
+  it("renders RoleSwitcherBar on /teams/york_lions when signed in as Dexter", async () => {
+    mockPathname = "/teams/york_lions";
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: new URL("http://localhost:3000/teams/york_lions"),
+    });
+
+    // Mock onAuthStateChanged callback returning Dexter user
+    const { onAuthStateChanged } = await import("firebase/auth");
+    (onAuthStateChanged as any).mockImplementationOnce((_auth: any, callback: any) => {
+      callback({ uid: "dexter-uid", email: "dextersargent@gmail.com", displayName: "Dexter" });
+      return vi.fn();
+    });
+
+    const { container } = render(
+      <AuthProvider>
+        <RoleSwitcherBar />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector("aside")).not.toBeNull();
+    });
+  });
+
+  it("strictly hides RoleSwitcherBar on customer non-demo team pages", () => {
+    mockPathname = "/teams/customer_independent_team_99";
+    Object.defineProperty(window, "location", {
+      writable: true,
+      value: new URL("http://localhost:3000/teams/customer_independent_team_99"),
+    });
+
+    const { container } = render(
+      <AuthProvider>
+        <RoleSwitcherBar />
+      </AuthProvider>
+    );
+
+    expect(container.querySelector("aside")).toBeNull();
+    expect(container.querySelector("nav")).toBeNull();
   });
 });

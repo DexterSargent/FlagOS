@@ -7,7 +7,9 @@ import { useAuth, UserRole } from "@/lib/authContext";
 import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye, ArrowLeft } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
-import { YORK_LIONS_TEAM } from "@/lib/yorkTeamData";
+import { SEED_DEMO_TEAMS } from "@/lib/demoSeedData";
+import { YORK_LIONS_TEAM, isYorkTeam } from "@/lib/yorkTeamData";
+import { isDexterUser } from "@/lib/teamAdminRbac";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RoleSwitcherBar() {
@@ -41,16 +43,35 @@ export default function RoleSwitcherBar() {
     return false;
   });
 
-  const isPlatformOwner = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com";
+  const isPlatformOwner = isDexterUser(user?.email);
+
+  // Check if current page is a team page that is NOT part of the demo league
+  const isTeamPage = Boolean(pathname && pathname.startsWith("/teams/"));
+  const teamIdFromPath = isTeamPage ? pathname.split("/teams/")[1]?.split("/")[0] : null;
+
+  const isDemoTeam = Boolean(
+    teamIdFromPath &&
+    isDemoLeague &&
+    !isYorkTeam(teamIdFromPath) &&
+    SEED_DEMO_TEAMS.some((t) => t.id === teamIdFromPath)
+  );
+
+  const isNonDemoTeamPage = isTeamPage && Boolean(teamIdFromPath) && !isDemoTeam;
+
+  // Non-demo team pages (like york_lions or customer teams) MUST NOT have a role switcher unless signed in as Dexter
+  const isPageRoleSwitcherAllowed = !isNonDemoTeamPage || isPlatformOwner;
+
   const isEligibleHost = !isEmbed && (isLocalOrEmbed || isPlatformOwner || isDemoLeague);
+  const isChromeLessPage =
+    pathname === "/my-story" || Boolean(pathname?.includes("/play-by-play"));
   const isEligiblePage =
     !isEmbed &&
     isEligibleHost &&
+    isPageRoleSwitcherAllowed &&
+    !isChromeLessPage &&
     pathname !== "/" &&
     pathname !== "/pricing" &&
-    pathname !== "/login" &&
-    pathname !== "/my-story" &&
-    !pathname?.includes("/play-by-play");
+    pathname !== "/login";
 
   useEffect(() => {
     const root = document.documentElement;
