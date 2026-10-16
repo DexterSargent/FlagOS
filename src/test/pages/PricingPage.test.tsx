@@ -72,6 +72,8 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
 
     // Default 4 teams league plan is $100/mo ($40 base + 4 * $15)
     expect(screen.getAllByText("$100").length).toBeGreaterThan(0);
+    expect(screen.getByText("Starts At (4 Teams):")).toBeInTheDocument();
+    expect(screen.getByText("$100 / month")).toBeInTheDocument();
   });
 
   it("dynamically recalculates total league price when slider or stepper buttons are pressed", () => {

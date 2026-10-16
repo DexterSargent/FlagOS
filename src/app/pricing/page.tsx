@@ -851,8 +851,8 @@ export default function PricingPage() {
               </div>
 
               <div className="pt-3 border-t border-white/10 flex justify-between items-baseline">
-                <span className="text-xs text-neutral-400">Starts At (8 Teams):</span>
-                <span className="text-xl font-black text-cyan-400 font-mono">$160 / month</span>
+                <span className="text-xs text-neutral-400">Starts At (4 Teams):</span>
+                <span className="text-xl font-black text-cyan-400 font-mono">$100 / month</span>
               </div>
             </div>
           </div>
