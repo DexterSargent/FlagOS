@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/authContext";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
-import { getPlayerNumberMap, sortRosterWithNumbers } from "@/lib/playerNumberHelper";
+import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts } from "@/lib/playerNumberHelper";
 import {
   PENALTY_CATALOG,
   PenaltyDefinition,
@@ -183,6 +183,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
   const [isPlayLogDrawerOpen, setIsPlayLogDrawerOpen] = useState(false);
   const [matchPlaysList, setMatchPlaysList] = useState<any[]>([]);
+  const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
 
   const refreshPlays = useCallback(async () => {
@@ -210,11 +211,35 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             downsPerSeries,
           })
         );
+
+        // Restore last known QB for each team if previously logged in this match
+        const homePassPlays = pList.filter(
+          (p) => p.possessionTeamId === homeTeamId && p.playType === "Pass" && (p.qbPlayerId || p.passer)
+        );
+        const awayPassPlays = pList.filter(
+          (p) => p.possessionTeamId === awayTeamId && p.playType === "Pass" && (p.qbPlayerId || p.passer)
+        );
+        if (homePassPlays.length > 0) {
+          const lastH = homePassPlays[homePassPlays.length - 1].qbPlayerId || homePassPlays[homePassPlays.length - 1].passer;
+          if (lastH) setLastHomeQB((prev) => prev || lastH);
+        }
+        if (awayPassPlays.length > 0) {
+          const lastA = awayPassPlays[awayPassPlays.length - 1].qbPlayerId || awayPassPlays[awayPassPlays.length - 1].passer;
+          if (lastA) setLastAwayQB((prev) => prev || lastA);
+        }
       }
     } catch (e) {
       console.error("Error refreshing plays in admin:", e);
     }
   }, [matchId, isDemo, homeTeamName, awayTeamName, homeTeamId, downsPerSeries]);
+
+  const allPlaysForStats = useMemo(() => {
+    return [...historicalPlays, ...matchPlaysList];
+  }, [historicalPlays, matchPlaysList]);
+
+  const playerStatCounts = useMemo(() => {
+    return computePlayerStatCounts(allPlaysForStats);
+  }, [allPlaysForStats]);
 
   const isUnstartedGame =
     matchStatus === "scheduled" ||
@@ -388,6 +413,31 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         setHomePlayers([...homeP, ...matchSubs].sort());
         setAwayPlayers([...awayP, ...matchSubs].sort());
+
+        // Load historical/season plays for stats leader ordering
+        if (isDemo) {
+          setHistoricalPlays(getSandboxPlays().filter((p) => p.matchId !== matchId));
+        } else {
+          try {
+            const teamIds = [mData.homeTeamId, mData.awayTeamId].filter(Boolean);
+            if (teamIds.length > 0) {
+              const q = query(
+                collection(db, "plays"),
+                where("possessionTeamId", "in", teamIds),
+                limit(300)
+              );
+              const snap = await getDocs(q);
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+            }
+          } catch {
+            try {
+              const q = query(collection(db, "plays"), limit(200));
+              const snap = await getDocs(q);
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+            } catch {}
+          }
+        }
+
         refreshPlays();
       } catch (e) {
         console.error(e);
@@ -809,19 +859,35 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     }
     setPlayType(type);
     setOutcome(type === "Pass" ? "Complete" : "Gain");
-    setQbRunner("");
+
+    const teamQB = possession === homeTeamName ? lastHomeQB : lastAwayQB;
+    const offRoster = getOffensiveRoster();
+    const hasKnownQB = Boolean(type === "Pass" && teamQB && offRoster.includes(teamQB));
+
+    if (hasKnownQB) {
+      setQbRunner(teamQB);
+      setIsQbOpen(false);
+      setIsReceiverOpen(true);
+    } else {
+      setQbRunner("");
+      setIsQbOpen(true);
+      setIsReceiverOpen(false);
+    }
+
     setReceiver("");
     setDefenders([]);
     setFlaggers([]);
     setIsOobPrompt(false);
-    setIsQbOpen(true);
-    setIsReceiverOpen(false);
     setIsDefendersOpen(false);
     setStep('DETAILS');
   };
 
   const handleSelectQbRunner = (player: string) => {
     setQbRunner(player);
+    if (playType === "Pass") {
+      if (possession === homeTeamName) setLastHomeQB(player);
+      else setLastAwayQB(player);
+    }
     if (receiver === player) setReceiver("");
     setIsQbOpen(false);
     if (playType === "Pass" && outcome === "Complete") {
@@ -959,6 +1025,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       setIsGameClockRunning(false);
       setPlayClock(playClockSeconds);
       setIsPlayClockRunning(true);
+      const teamQB = possession === homeTeamName ? (lastHomeQB || qbRunner) : (lastAwayQB || qbRunner);
+      if (teamQB) {
+        setConvPasser(teamQB);
+        setIsConvPasserOpen(false);
+        setIsConvReceiverOpen(true);
+      }
       setStep('CONVERSION');
       return;
     }
@@ -972,6 +1044,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       setIsGameClockRunning(false);
       setPlayClock(playClockSeconds);
       setIsPlayClockRunning(true);
+      const teamQB = newPoss === homeTeamName ? lastHomeQB : lastAwayQB;
+      if (teamQB) {
+        setConvPasser(teamQB);
+        setIsConvPasserOpen(false);
+        setIsConvReceiverOpen(true);
+      }
       setStep('CONVERSION');
       return;
     }
@@ -1968,9 +2046,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             )}
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                            {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
+                            {sortRosterByStatLeader(
+                              getOffensiveRoster(),
+                              playerNumberMap,
+                              playType === 'Run' ? playerStatCounts.rushing : playerStatCounts.passing
+                            ).map((p) => {
                               const isSelected = qbRunner === p;
                               const pNum = playerNumberMap[p];
+                              const statCount = playType === 'Run' ? playerStatCounts.rushing[p] : playerStatCounts.passing[p];
                               return (
                                 <button
                                   key={p}
@@ -1990,6 +2073,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                       </span>
                                     )}
                                     <span className="truncate">{p}</span>
+                                    {statCount !== undefined && statCount > 0 && (
+                                      <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
+                                        ({statCount} {playType === 'Run' ? 'rush' : 'att'})
+                                      </span>
+                                    )}
                                   </div>
                                   {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                                 </button>
@@ -2050,12 +2138,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               )}
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                              {sortRosterWithNumbers(
+                              {sortRosterByStatLeader(
                                 getOffensiveRoster().filter((p) => p !== qbRunner || p === 'TEAM'),
-                                playerNumberMap
+                                playerNumberMap,
+                                playerStatCounts.receiving
                               ).map((p) => {
                                 const isSelected = receiver === p;
                                 const pNum = playerNumberMap[p];
+                                const recCount = playerStatCounts.receiving[p];
                                 return (
                                   <button
                                     key={p}
@@ -2075,6 +2165,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                         </span>
                                       )}
                                       <span className="truncate">{p}</span>
+                                      {recCount !== undefined && recCount > 0 && (
+                                        <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
+                                          ({recCount} rec)
+                                        </span>
+                                      )}
                                     </div>
                                     {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                                   </button>
@@ -2156,9 +2251,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               )}
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                              {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
+                              {sortRosterByStatLeader(getDefensiveRoster(), playerNumberMap, playerStatCounts.pbus).map((p) => {
                                 const isSelected = defenders.includes(p);
                                 const pNum = playerNumberMap[p];
+                                const pbuCount = playerStatCounts.pbus[p];
                                 return (
                                   <button
                                     key={p}
@@ -2181,6 +2277,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                         </span>
                                       )}
                                       <span className="truncate">{p}</span>
+                                      {pbuCount !== undefined && pbuCount > 0 && (
+                                        <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-blue-400/80'}`}>
+                                          ({pbuCount} PBU)
+                                        </span>
+                                      )}
                                     </div>
                                     {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                                   </button>
@@ -2236,9 +2337,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               )}
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                              {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
+                              {sortRosterByStatLeader(getDefensiveRoster(), playerNumberMap, playerStatCounts.interceptions).map((p) => {
                                 const isSelected = defenders.includes(p);
                                 const pNum = playerNumberMap[p];
+                                const intCount = playerStatCounts.interceptions[p];
                                 return (
                                   <button
                                     key={p}
@@ -2261,6 +2363,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                         </span>
                                       )}
                                       <span className="truncate">{p}</span>
+                                      {intCount !== undefined && intCount > 0 && (
+                                        <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-black/80' : 'text-amber-400/80'}`}>
+                                          ({intCount} INT)
+                                        </span>
+                                      )}
                                     </div>
                                     {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                                   </button>
@@ -2285,9 +2392,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             )}
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                            {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
+                            {sortRosterByStatLeader(getOffensiveRoster(), playerNumberMap, playerStatCounts.flags).map((p) => {
                               const isSelected = flaggers.includes(p);
                               const pNum = playerNumberMap[p];
+                              const flagCount = playerStatCounts.flags[p];
                               return (
                                 <button
                                   key={p}
@@ -2307,6 +2415,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                       </span>
                                     )}
                                     <span className="truncate">{p}</span>
+                                    {flagCount !== undefined && flagCount > 0 && (
+                                      <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
+                                        ({flagCount} flags)
+                                      </span>
+                                    )}
                                   </div>
                                   {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                                 </button>
@@ -2372,36 +2485,46 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               </div>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                              {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
-                                const isSelected = defenders.includes(p);
-                                const pNum = playerNumberMap[p];
-                                return (
-                                  <button
-                                    key={p}
-                                    type="button"
-                                    aria-label={p}
-                                    onClick={() => {
-                                      handleDefenders(p, 2);
-                                      if (outcome === 'Complete' || outcome === 'Gain') setIsDefendersOpen(false);
-                                    }}
-                                    className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
-                                      ? 'bg-amber-500 text-black font-black shadow-md'
-                                      : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                                      }`}
-                                  >
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      {pNum && (
-                                        <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                          }`}>
-                                          #{pNum}
-                                        </span>
-                                      )}
-                                      <span className="truncate">{p}</span>
-                                    </div>
-                                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                                  </button>
-                                );
-                              })}
+                              {(() => {
+                                const isSack = outcome === 'Sack' || outcome === 'FFL';
+                                const activeCounts = isSack ? playerStatCounts.sacks : playerStatCounts.flags;
+                                return sortRosterByStatLeader(getDefensiveRoster(), playerNumberMap, activeCounts).map((p) => {
+                                  const isSelected = defenders.includes(p);
+                                  const pNum = playerNumberMap[p];
+                                  const countVal = activeCounts[p];
+                                  return (
+                                    <button
+                                      key={p}
+                                      type="button"
+                                      aria-label={p}
+                                      onClick={() => {
+                                        handleDefenders(p, 2);
+                                        if (outcome === 'Complete' || outcome === 'Gain') setIsDefendersOpen(false);
+                                      }}
+                                      className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
+                                        ? 'bg-amber-500 text-black font-black shadow-md'
+                                        : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                        }`}
+                                    >
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        {pNum && (
+                                          <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                            }`}>
+                                            #{pNum}
+                                          </span>
+                                        )}
+                                        <span className="truncate">{p}</span>
+                                        {countVal !== undefined && countVal > 0 && (
+                                          <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-black/80' : 'text-amber-400/80'}`}>
+                                            ({countVal} {isSack ? 'sack' : 'flags'})
+                                          </span>
+                                        )}
+                                      </div>
+                                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                    </button>
+                                  );
+                                });
+                              })()}
                             </div>
                           </div>
                         )
@@ -2540,9 +2663,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         )}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                        {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map(p => {
+                        {sortRosterByStatLeader(getOffensiveRoster(), playerNumberMap, playerStatCounts.passing).map(p => {
                           const isSelected = convPasser === p;
                           const pNum = playerNumberMap[p];
+                          const passCount = playerStatCounts.passing[p];
                           return (
                             <button
                               key={p}
@@ -2550,6 +2674,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               aria-label={p}
                               onClick={() => {
                                 setConvPasser(p);
+                                if (possession === homeTeamName) setLastHomeQB(p);
+                                else setLastAwayQB(p);
                                 if (convReceiver === p) setConvReceiver("");
                                 setIsConvPasserOpen(false);
                                 setIsConvReceiverOpen(true);
@@ -2567,6 +2693,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                   </span>
                                 )}
                                 <span className="truncate">{p}</span>
+                                {passCount !== undefined && passCount > 0 && (
+                                  <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
+                                    ({passCount} att)
+                                  </span>
+                                )}
                               </div>
                               {isSelected && <Check className="w-4 h-4 shrink-0" />}
                             </button>
@@ -2616,12 +2747,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         )}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                        {sortRosterWithNumbers(
+                        {sortRosterByStatLeader(
                           getOffensiveRoster().filter(p => p !== convPasser || p === 'TEAM'),
-                          playerNumberMap
+                          playerNumberMap,
+                          playerStatCounts.receiving
                         ).map(p => {
                           const isSelected = convReceiver === p;
                           const pNum = playerNumberMap[p];
+                          const recCount = playerStatCounts.receiving[p];
                           return (
                             <button
                               key={p}
@@ -2645,6 +2778,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                   </span>
                                 )}
                                 <span className="truncate">{p}</span>
+                                {recCount !== undefined && recCount > 0 && (
+                                  <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
+                                    ({recCount} rec)
+                                  </span>
+                                )}
                               </div>
                               {isSelected && <Check className="w-4 h-4 shrink-0" />}
                             </button>

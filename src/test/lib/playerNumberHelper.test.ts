@@ -3,6 +3,7 @@ import {
   getPlayerNumberMap,
   sortRosterWithNumbers,
   formatPlayerDisplay,
+  computePlayerStatCounts,
 } from "@/lib/playerNumberHelper";
 
 describe("playerNumberHelper", () => {
@@ -84,5 +85,54 @@ describe("playerNumberHelper", () => {
     expect(formatPlayerDisplay("Patrick Mahomes", numberMap)).toBe("#15 Patrick Mahomes");
     expect(formatPlayerDisplay("TEAM", numberMap)).toBe("TEAM");
     expect(formatPlayerDisplay("Unknown Player", numberMap)).toBe("Unknown Player");
+  });
+
+  it("sorts players by stat leader category descending, falling back to jersey number for ties", () => {
+    const roster = ["Travis Kelce", "Patrick Mahomes", "Carson Wentz", "TEAM", "Rashee Rice"];
+    const numberMap = {
+      "Carson Wentz": "11",
+      "Patrick Mahomes": "15",
+      "Rashee Rice": "4",
+      "Travis Kelce": "87",
+    };
+    // Patrick Mahomes thrown 25 passes, Carson Wentz 3 passes, others 0
+    const passCounts = {
+      "Patrick Mahomes": 25,
+      "Carson Wentz": 3,
+    };
+
+    const sorted = sortRosterWithNumbers(roster, numberMap, passCounts);
+
+    expect(sorted).toEqual([
+      "Patrick Mahomes", // 25 passes (leader #1)
+      "Carson Wentz",    // 3 passes (#2)
+      "Rashee Rice",     // 0 passes (#4 jersey)
+      "Travis Kelce",    // 0 passes (#87 jersey)
+      "TEAM",            // TEAM always last
+    ]);
+  });
+
+  it("computes player stat counts accurately from plays", () => {
+    const mockPlays = [
+      { playType: "Pass", qbPlayerId: "Patrick Mahomes", passOutcome: "Complete", receiverPlayerId: "Travis Kelce", defenders: ["Trent McDuffie"] },
+      { playType: "Pass", qbPlayerId: "Patrick Mahomes", passOutcome: "PBU", defenders: ["L'Jarius Sneed"] },
+      { playType: "Pass", qbPlayerId: "Patrick Mahomes", passOutcome: "Interception", defenders: ["Sauce Gardner"], flaggers: ["Travis Kelce"] },
+      { playType: "Pass", qbPlayerId: "Patrick Mahomes", passOutcome: "Sack", defenders: ["Chris Jones"] },
+      { playType: "Run", runnerPlayerId: "Isiah Pacheco", defenders: ["Nick Bolton"] },
+    ];
+
+    const counts = computePlayerStatCounts(mockPlays);
+
+    expect(counts.passing["Patrick Mahomes"]).toBe(4);
+    expect(counts.receiving["Travis Kelce"]).toBe(1);
+    expect(counts.rushing["Isiah Pacheco"]).toBe(1);
+    expect(counts.interceptions["Sauce Gardner"]).toBe(1);
+    expect(counts.pbus["L'Jarius Sneed"]).toBe(1);
+    expect(counts.sacks["Chris Jones"]).toBe(1);
+    // Flag pulls include Trent McDuffie (complete tackle), Chris Jones (sack tackle), Nick Bolton (run tackle), Travis Kelce (flagger on INT)
+    expect(counts.flags["Trent McDuffie"]).toBe(1);
+    expect(counts.flags["Chris Jones"]).toBe(1);
+    expect(counts.flags["Nick Bolton"]).toBe(1);
+    expect(counts.flags["Travis Kelce"]).toBe(1);
   });
 });

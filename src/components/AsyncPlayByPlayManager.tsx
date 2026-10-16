@@ -41,7 +41,7 @@ import {
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo } from "@/components/TeamAssets";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
-import { getPlayerNumberMap, sortRosterWithNumbers } from "@/lib/playerNumberHelper";
+import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts } from "@/lib/playerNumberHelper";
 import {
   PENALTY_CATALOG,
   PenaltyDefinition,
@@ -143,6 +143,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score">("tracker");
   const [boxScoreTab, setBoxScoreTab] = useState<"home" | "away">("home");
   const [plays, setPlays] = useState<any[]>([]);
+  const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
   const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
 
   // Load Match Data & Plays
@@ -232,6 +233,30 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         setHomePlayers(Array.from(new Set([...homeP, ...(mData.homeRoster || []), ...matchSubs])).sort());
         setAwayPlayers(Array.from(new Set([...awayP, ...(mData.awayRoster || []), ...matchSubs])).sort());
+
+        // Load historical/season plays for stats leader ordering
+        if (isDemo) {
+          setHistoricalPlays(getSandboxPlays().filter((p: any) => p.matchId !== matchId));
+        } else {
+          try {
+            const teamIds = [mData.homeTeamId, mData.awayTeamId].filter(Boolean);
+            if (teamIds.length > 0) {
+              const q = query(
+                collection(db, "plays"),
+                where("possessionTeamId", "in", teamIds),
+                limit(300)
+              );
+              const snap = await getDocs(q);
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+            }
+          } catch {
+            try {
+              const q = query(collection(db, "plays"), limit(200));
+              const snap = await getDocs(q);
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+            } catch {}
+          }
+        }
       } catch (e) {
         console.error("Error loading match data for async stat keeper:", e);
       }
@@ -263,11 +288,35 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
             downsPerSeries,
           })
         );
+
+        // Restore last known QB for each team if previously logged in this match
+        const homePassPlays = pList.filter(
+          (p) => p.possessionTeamId === homeTeamId && p.playType === "Pass" && (p.qbPlayerId || p.passer)
+        );
+        const awayPassPlays = pList.filter(
+          (p) => p.possessionTeamId === awayTeamId && p.playType === "Pass" && (p.qbPlayerId || p.passer)
+        );
+        if (homePassPlays.length > 0) {
+          const lastH = homePassPlays[homePassPlays.length - 1].qbPlayerId || homePassPlays[homePassPlays.length - 1].passer;
+          if (lastH) setLastHomeQB((prev) => prev || lastH);
+        }
+        if (awayPassPlays.length > 0) {
+          const lastA = awayPassPlays[awayPassPlays.length - 1].qbPlayerId || awayPassPlays[awayPassPlays.length - 1].passer;
+          if (lastA) setLastAwayQB((prev) => prev || lastA);
+        }
       }
     } catch (e) {
       console.error("Error loading plays:", e);
     }
   };
+
+  const allPlaysForStats = useMemo(() => {
+    return [...historicalPlays, ...plays];
+  }, [historicalPlays, plays]);
+
+  const playerStatCounts = useMemo(() => {
+    return computePlayerStatCounts(allPlaysForStats);
+  }, [allPlaysForStats]);
 
   useEffect(() => {
     loadPlays();
