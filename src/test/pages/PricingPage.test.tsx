@@ -70,28 +70,28 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     // Standalone team plan is $30/mo
     expect(screen.getByText("$30")).toBeInTheDocument();
 
-    // Default 8 teams league plan is $160/mo ($40 base + 8 * $15)
-    expect(screen.getAllByText("$160").length).toBeGreaterThan(0);
+    // Default 4 teams league plan is $100/mo ($40 base + 4 * $15)
+    expect(screen.getAllByText("$100").length).toBeGreaterThan(0);
   });
 
   it("dynamically recalculates total league price when slider or stepper buttons are pressed", () => {
     render(<PricingPage />);
 
-    // Initial 8 teams -> $160
-    expect(screen.getAllByText("$160").length).toBeGreaterThan(0);
+    // Initial 4 teams -> $100
+    expect(screen.getAllByText("$100").length).toBeGreaterThan(0);
 
-    // Click increment '+' button -> 9 teams -> $40 + (9 * $15) = $175
+    // Click increment '+' button -> 5 teams -> $40 + (5 * $15) = $115
     const plusButton = screen.getByRole("button", { name: "+" });
     fireEvent.click(plusButton);
-    expect(screen.getAllByText("$175").length).toBeGreaterThan(0);
-    expect(screen.getByText("9 Teams")).toBeInTheDocument();
+    expect(screen.getAllByText("$115").length).toBeGreaterThan(0);
+    expect(screen.getByText("5 Teams")).toBeInTheDocument();
 
-    // Click decrement '-' button twice -> 7 teams -> $40 + (7 * $15) = $145
+    // Decrementing twice stops at the 4-team minimum -> $100
     const minusButton = screen.getByRole("button", { name: "-" });
     fireEvent.click(minusButton);
     fireEvent.click(minusButton);
-    expect(screen.getAllByText("$145").length).toBeGreaterThan(0);
-    expect(screen.getByText("7 Teams")).toBeInTheDocument();
+    expect(screen.getAllByText("$100").length).toBeGreaterThan(0);
+    expect(screen.getByText("4 Teams")).toBeInTheDocument();
   });
 
   it("filters feature comparison matrix rows when switching category tabs", () => {

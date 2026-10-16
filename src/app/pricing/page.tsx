@@ -40,7 +40,7 @@ export default function PricingPage() {
     (typeof window !== "undefined" && localStorage.getItem("dev_auth_role") === "league_admin");
 
   // League interactive slider
-  const [teamCount, setTeamCount] = useState<number>(8);
+  const [teamCount, setTeamCount] = useState<number>(4);
   const baseLeagueFee = 40;
   const perTeamFee = 15;
   const totalLeagueMonthly = baseLeagueFee + teamCount * perTeamFee;
