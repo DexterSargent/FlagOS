@@ -8,6 +8,7 @@ import {
   Shield,
   Zap,
   Sparkles,
+  ListChecks,
   ChevronRight,
   Play,
   PlayCircle,
@@ -16,20 +17,14 @@ import {
   Trophy,
   BookOpen,
   ArrowRight,
-  CheckCircle2,
   Sliders,
   Search,
   Building2,
-  Clock,
   Timer,
   Activity,
-  Layers,
   Flame,
-  Award,
   BadgeDollarSign,
   UserPlus,
-  RotateCw,
-  ExternalLink,
   Lock,
   Globe,
   Copy,
@@ -292,7 +287,7 @@ export default function FlagOSPlatformLandingPage() {
               href="/pricing"
               className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <BadgeDollarSign className="w-3.5 h-3.5" />
               <span>Pricing</span>
             </Link>
           </nav>
@@ -408,7 +403,7 @@ export default function FlagOSPlatformLandingPage() {
               onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
             >
-              <Sparkles className="w-4 h-4" />
+              <BadgeDollarSign className="w-4 h-4" />
               <span>Pricing</span>
             </Link>
           </div>
@@ -537,7 +532,7 @@ export default function FlagOSPlatformLandingPage() {
                 <div className="space-y-3 pt-2">
                   <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <ListChecks className="w-3.5 h-3.5" />
                       What You Get With a Team Subscription
                     </span>
                     <span className="text-neutral-500 text-[10px]">Key Features</span>
@@ -641,7 +636,7 @@ export default function FlagOSPlatformLandingPage() {
                 <div className="space-y-3 pt-2">
                   <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <ListChecks className="w-3.5 h-3.5" />
                       What you get with a league subscription
                     </span>
                     <span className="text-neutral-500 text-[10px]">Key Features</span>

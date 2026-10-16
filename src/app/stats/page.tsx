@@ -9,12 +9,17 @@ import {
   Users,
   Crosshair,
   Shield,
+  Flag,
+  Footprints,
+  Goal,
+  Hand,
+  Zap,
+  CheckCircle2,
   ArrowRight,
   ChevronUp,
   ChevronDown,
   LayoutGrid,
-  Table as TableIcon,
-  Flame
+  Table as TableIcon
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -371,14 +376,14 @@ export default function StatsAndStandings() {
 
   const statCategories = [
     { title: "Total Touchdowns", key: "totalTDs", subtab: "receiving" as const, icon: Trophy, color: "text-yellow-400" },
-    { title: "Passing TDs", key: "passTD", subtab: "passing" as const, icon: Crosshair, color: "text-cyan-400" },
-    { title: "Completions", key: "passComp", subtab: "passing" as const, icon: Crosshair, color: "text-sky-400" },
-    { title: "Receptions", key: "receptions", subtab: "receiving" as const, icon: Activity, color: "text-blue-400" },
-    { title: "Receiving TDs", key: "recTD", subtab: "receiving" as const, icon: Activity, color: "text-blue-400" },
-    { title: "Rushing TDs", key: "rushTD", subtab: "receiving" as const, icon: Flame, color: "text-emerald-400" },
-    { title: "Flags", key: "flagPulls", subtab: "defense" as const, icon: Shield, color: "text-amber-400" },
-    { title: "Sacks", key: "sacks", subtab: "defense" as const, icon: Shield, color: "text-orange-500" },
-    { title: "Interceptions", key: "int", subtab: "defense" as const, icon: Shield, color: "text-purple-400" },
+    { title: "Passing TDs", key: "passTD", subtab: "passing" as const, icon: Goal, color: "text-cyan-400" },
+    { title: "Completions", key: "passComp", subtab: "passing" as const, icon: CheckCircle2, color: "text-sky-400" },
+    { title: "Receptions", key: "receptions", subtab: "receiving" as const, icon: Hand, color: "text-blue-400" },
+    { title: "Receiving TDs", key: "recTD", subtab: "receiving" as const, icon: Goal, color: "text-blue-400" },
+    { title: "Rushing TDs", key: "rushTD", subtab: "receiving" as const, icon: Footprints, color: "text-emerald-400" },
+    { title: "Flags", key: "flagPulls", subtab: "defense" as const, icon: Flag, color: "text-amber-400" },
+    { title: "Sacks", key: "sacks", subtab: "defense" as const, icon: Zap, color: "text-orange-500" },
+    { title: "Interceptions", key: "int", subtab: "defense" as const, icon: Crosshair, color: "text-purple-400" },
     { title: "Pass Breakups", key: "pbu", subtab: "defense" as const, icon: Shield, color: "text-cyan-400" },
   ];
 

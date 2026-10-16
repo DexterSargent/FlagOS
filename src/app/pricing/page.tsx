@@ -4,35 +4,23 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Crown,
   Shield,
   Check,
-  Zap,
-  Sliders,
-  ChevronRight,
   ChevronDown,
   Sparkles,
+  ListChecks,
+  Receipt,
+  BadgeDollarSign,
   Building2,
   Users,
-  Timer,
-  BookOpen,
-  Calendar,
   X,
   Trophy,
-  Activity,
-  Award,
-  Flame,
   Play,
   ArrowRight,
   CreditCard,
-  Lock,
   CheckCircle2,
   Minus,
-  HelpCircle,
-  FileText,
   BadgePercent,
-  Layers,
-  Clock,
   Menu,
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
@@ -345,7 +333,7 @@ export default function PricingPage() {
               href="/pricing"
               className="text-emerald-400 font-extrabold flex items-center gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <BadgeDollarSign className="w-3.5 h-3.5" />
               <span>Pricing</span>
             </Link>
           </nav>
@@ -451,7 +439,7 @@ export default function PricingPage() {
         {/* Page Hero Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold uppercase tracking-widest">
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <Receipt className="w-3.5 h-3.5 text-emerald-400" />
             <span>Transparent, Predictable Rates</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight text-white">
@@ -509,7 +497,7 @@ export default function PricingPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl border border-emerald-500/30">
-                  <Shield className="w-6 h-6" />
+                  <Users className="w-6 h-6" />
                   <h3 className="text-xl font-black uppercase text-white tracking-tight">Team Subscription</h3>
                 </div>
                 <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 text-xs font-mono font-bold border border-emerald-500/20">
@@ -543,7 +531,7 @@ export default function PricingPage() {
               <div className="space-y-3 pt-2">
                 <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <ListChecks className="w-3.5 h-3.5" />
                     Included in Team Subscription
                   </span>
                   <span className="text-neutral-500 text-[10px]">All-Inclusive</span>
@@ -625,7 +613,7 @@ export default function PricingPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="p-3 flex items-center gap-4 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
-                  <Crown className="w-6 h-6" />
+                  <Building2 className="w-6 h-6" />
                   <h3 className="text-xl font-black uppercase text-white tracking-tight">League Subscription</h3>
                 </div>
                 <span className="px-3 py-1 text-center rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-mono font-bold border border-cyan-500/20">
@@ -699,7 +687,7 @@ export default function PricingPage() {
               <div className="space-y-3 pt-2">
                 <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
+                    <ListChecks className="w-3.5 h-3.5" />
                     Included in League Subscription
                   </span>
                   <span className="text-neutral-500 text-[10px]">Turnkey League Engine</span>
@@ -815,7 +803,7 @@ export default function PricingPage() {
             <div className="p-6 rounded-3xl bg-[#0B0F19] border border-emerald-500/30 space-y-4 shadow-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <Shield className="w-5 h-5" />
+                  <Users className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">Single Team</span>
@@ -852,7 +840,7 @@ export default function PricingPage() {
             <div className="p-6 rounded-3xl bg-gradient-to-b from-[#0B0F19] to-cyan-950/20 border border-cyan-500/40 space-y-4 shadow-xl">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                  <Crown className="w-5 h-5" />
+                  <Building2 className="w-5 h-5" />
                 </div>
                 <div>
                   <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-wider block">Ultimate Value</span>
@@ -1126,7 +1114,7 @@ export default function PricingPage() {
 
             <div className="flex items-center gap-3 mb-6">
               <div className="p-3 bg-cyan-500/20 rounded-2xl text-cyan-400 border border-cyan-500/30">
-                <Crown className="w-6 h-6" />
+                <Building2 className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-xl font-black uppercase text-white">Subscribe League Portal</h3>
@@ -1210,7 +1198,7 @@ export default function PricingPage() {
                 disabled={isSubmittingLeague}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
-                <Lock className="w-4 h-4" />
+                <CreditCard className="w-4 h-4" />
                 <span>{isSubmittingLeague ? "Provisioning League..." : `Confirm & Pay $${totalLeagueMonthly}/mo`}</span>
               </button>
             </form>
@@ -1231,7 +1219,7 @@ export default function PricingPage() {
 
             <div className="flex items-center gap-3 mb-6">
               <div className="p-3 bg-emerald-500/20 rounded-2xl text-emerald-400 border border-emerald-500/30">
-                <Shield className="w-6 h-6" />
+                <Users className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-xl font-black uppercase text-white">Subscribe Team Portal</h3>
@@ -1285,7 +1273,7 @@ export default function PricingPage() {
                 disabled={isSubmittingTeam}
                 className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
-                <Lock className="w-4 h-4" />
+                <CreditCard className="w-4 h-4" />
                 <span>{isSubmittingTeam ? "Provisioning Team..." : "Confirm & Pay $30/mo"}</span>
               </button>
             </form>
