@@ -314,7 +314,7 @@ export default function FlagOSPlatformLandingPage() {
               >
                 <Trophy className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span className="hidden sm:inline">League Portal:</span>
-                <span className="text-cyan-300 truncate max-w-[80px] sm:max-w-none">{settings?.shortcode || "Active"}</span>
+                <span className="text-cyan-300 max-w-[80px] sm:max-w-none break-all text-right">{settings?.shortcode || "Active"}</span>
               </Link>
             ) : (
               <div className="flex items-center gap-1.5 sm:gap-2">
@@ -455,7 +455,7 @@ export default function FlagOSPlatformLandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-4">
             <Link
               href="/pricing"
-              className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.4)] hover:scale-102 active:scale-98 flex items-center gap-2"
+              className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-[#3ca505] hover:bg-[#328b04] text-black font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(var(--league-primary-rgb),0.3)] hover:scale-102 active:scale-98 flex items-center gap-2"
             >
               <BadgeDollarSign className="w-4 h-4" />
               <span>View Pricing</span>
@@ -488,11 +488,11 @@ export default function FlagOSPlatformLandingPage() {
               <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Up to 5 Per Team</div>
             </div>
             <div>
-              <div className="text-lg sm:text-xl md:text-3xl font-black text-emerald-500 font-mono">Customizable <br /> League Rules</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-[#3b82f6] font-mono">Customizable <br /> League Rules</div>
               <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">5v5 IFAF Rules Pre-loaded</div>
             </div>
             <div>
-              <div className="text-lg sm:text-xl md:text-3xl font-black text-emerald-500 font-mono">Automatic <br /> Schedule Builder</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-[#3b82f6] font-mono">Automatic <br /> Schedule Builder</div>
               <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Plan your entire season in seconds</div>
             </div>
           </div>
@@ -618,11 +618,11 @@ export default function FlagOSPlatformLandingPage() {
             <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-[#3b82f6]/40 rounded-3xl p-5 sm:p-8 space-y-2 relative shadow-[0_0_50px_rgba(59,130,246,0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-[#3b82f6]/60 transition-all">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="p-3 flex items-center gap-4 bg-[#3b82f6]/20 text-[#60a5fa] rounded-2xl border border-[#3b82f6]/30">
+                  <div className="p-3 flex items-center gap-4 bg-[#3b82f6]/20 text-[#1d4ed8] dark:text-[#60a5fa] rounded-2xl border border-[#3b82f6]/30">
                     <Crown className="w-6 h-6" />
                     <h3 className="text-xl font-black uppercase text-white tracking-tight">League Subscription</h3>
                   </div>
-                  <span className="px-3 py-1 text-center rounded-full bg-[#3b82f6]/10 text-[#93c5fd] text-xs font-mono font-bold border border-[#3b82f6]/20">
+                  <span className="px-3 py-1 text-center rounded-full bg-[#3b82f6]/10 text-[#1d4ed8] dark:text-[#93c5fd] text-xs font-mono font-bold border border-[#3b82f6]/20">
                     For Leagues<br /> of 4-64 Teams
                   </span>
                 </div>
@@ -634,7 +634,7 @@ export default function FlagOSPlatformLandingPage() {
                 </div>
 
                 <div className="space-y-3 pt-2">
-                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#60a5fa] flex items-center justify-between">
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#1d4ed8] dark:text-[#60a5fa] flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <ListChecks className="w-3.5 h-3.5" />
                       What you get with a league subscription
@@ -685,15 +685,15 @@ export default function FlagOSPlatformLandingPage() {
                         key={idx}
                         className="flex items-start gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-[#3b82f6]/30 hover:bg-[#3b82f6]/[0.03] transition-all group"
                       >
-                        <div className="p-2 rounded-xl bg-[#3b82f6]/10 text-[#60a5fa] border border-[#3b82f6]/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-[#3b82f6]/20 transition-all">
+                        <div className="p-2 rounded-xl bg-[#3b82f6]/10 text-[#1d4ed8] dark:text-[#60a5fa] border border-[#3b82f6]/20 shrink-0 mt-0.5 group-hover:scale-105 group-hover:bg-[#3b82f6]/20 transition-all">
                           <feat.icon className="w-4 h-4" />
                         </div>
                         <div className="space-y-0.5 min-w-0 flex-1">
                           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1.5 sm:gap-2">
-                            <span className="text-xs font-bold text-white tracking-wide group-hover:text-[#93c5fd] transition-colors leading-snug min-w-0 break-words">
+                            <span className="text-xs font-bold text-white tracking-wide group-hover:text-[#1d4ed8] dark:group-hover:text-[#93c5fd] transition-colors leading-snug min-w-0 break-words">
                               {feat.title}
                             </span>
-                            <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-[#3b82f6]/10 text-[#93c5fd] border border-[#3b82f6]/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
+                            <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-[#3b82f6]/10 text-[#1d4ed8] dark:text-[#93c5fd] border border-[#3b82f6]/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
                               {feat.badge}
                             </span>
                           </div>
@@ -823,7 +823,7 @@ export default function FlagOSPlatformLandingPage() {
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
                 <span className="font-bold text-white">{getFeatureBadge().title}</span>
                 <span className="hidden sm:inline">•</span>
-                <span className="line-clamp-1">{getFeatureBadge().desc}</span>
+                <span>{getFeatureBadge().desc}</span>
               </div>
               <span className="font-mono text-[10px] text-neutral-500 shrink-0">
                 Isolated Client Sandbox
@@ -988,10 +988,10 @@ export default function FlagOSPlatformLandingPage() {
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-base font-black uppercase tracking-wide text-white group-hover:text-emerald-300 transition-colors leading-snug truncate">
+                          <h3 className="text-base font-black uppercase tracking-wide text-white group-hover:text-emerald-300 transition-colors leading-snug break-words">
                             {league.name}
                           </h3>
-                          <p className="text-[11px] text-neutral-400 line-clamp-1 mt-0.5">
+                          <p className="text-[11px] text-neutral-400 mt-0.5">
                             {league.tagline}
                           </p>
                         </div>
@@ -999,21 +999,21 @@ export default function FlagOSPlatformLandingPage() {
 
                       {/* Metadata Specs */}
                       <div className="p-3 rounded-2xl bg-black/50 border border-white/5 space-y-2 text-[11px]">
-                        <div className="flex items-center justify-between text-neutral-300">
+                        <div className="flex items-start justify-between gap-3 text-neutral-300">
                           <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
                             <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                             <span>Season</span>
                           </span>
-                          <span className="font-bold text-white truncate max-w-[150px]">
+                          <span className="font-bold text-white max-w-[60%] whitespace-normal text-right break-words">
                             {league.seasonTitle}
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-neutral-300">
+                        <div className="flex items-start justify-between gap-3 text-neutral-300">
                           <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
                             <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                             <span>Venue</span>
                           </span>
-                          <span className="font-mono text-[10px] text-neutral-300 truncate max-w-[150px]">
+                          <span className="font-mono text-[10px] text-neutral-300 max-w-[60%] whitespace-normal text-right break-words">
                             {league.location}
                           </span>
                         </div>
