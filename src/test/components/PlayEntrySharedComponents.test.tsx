@@ -21,6 +21,16 @@ describe("shared play-entry components", () => {
     expect(onAsyncSelect).toHaveBeenCalledWith("Pass");
   });
 
+  it("keeps sync play-type choices compact and readable without inheriting the team accent as text", () => {
+    render(<PlayTypeSelector onSelect={vi.fn()} variant="sync" accentColor="#ffffff" />);
+
+    const passButton = screen.getByRole("button", { name: /PASS/ });
+
+    expect(passButton.className).toContain("h-24 sm:h-28 md:h-36");
+    expect(passButton.style.color).toBe("");
+    expect(passButton.querySelector("span:last-child")?.className).toContain("text-blue-700");
+  });
+
   it("shares conversion point and result selection while allowing sync-specific confirmation", () => {
     const onPointsChange = vi.fn();
     const onResultChange = vi.fn();

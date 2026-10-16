@@ -1,23 +1,11 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-  Flag,
-  Shield,
-  ChevronLeft,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  RotateCcw,
-  Sparkles,
-  Users,
-  Check,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Flag, Shield } from "lucide-react";
 import {
   PENALTY_CATALOG,
   PenaltyDefinition,
   formatPenaltyStatement,
-  getOrdinal,
 } from "@/lib/playSentenceFormatter";
 import { sortRosterWithNumbers } from "@/lib/playerNumberHelper";
 
@@ -75,6 +63,7 @@ export default function PenaltyWizardStep({
 
   // 6. Player responsible
   const [player, setPlayer] = useState<string>("TEAM");
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
 
   // Filtered penalties for current side
   const availablePenalties = useMemo(
@@ -149,291 +138,308 @@ export default function PenaltyWizardStep({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 content-start min-h-0 h-full gap-2 md:gap-3 max-w-6xl mx-auto w-full overflow-y-auto md:overflow-hidden animate-in zoom-in-95 duration-200">
-      {/* Top Bar with Cancel */}
-      <div className="md:col-span-2 flex items-center justify-between">
-        <button
-          onClick={onCancel}
-          className="flex items-center gap-2 text-neutral-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-        >
-          <ChevronLeft className="w-4 h-4" /> Back to Play Type
-        </button>
-
-        <span className="text-xs font-mono font-bold text-amber-400 flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-          <Flag className="w-3.5 h-3.5" />
-          <span>Official Penalty Administration</span>
-        </span>
-      </div>
-
-      {/* LIVE STATEMENT CALLOUT CARD */}
-      <div
-        className="md:col-span-2 p-2 md:p-3 rounded-xl bg-gradient-to-r from-amber-950/40 via-neutral-900 to-black border border-amber-500/30 shadow-xl relative overflow-hidden"
-        style={accentColor ? { borderColor: `${accentColor}80` } : undefined}
-      >
-        <div className="absolute top-0 right-0 w-64 h-32 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex items-start gap-3 relative z-10">
-          <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-            <Flag className="w-4 h-4" />
-          </div>
-          <div className="space-y-1 min-w-0">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-amber-400 block">
-              Official Play-by-Play Statement (Preview)
-            </span>
-            <p className="text-xs md:text-sm font-black text-white leading-snug font-sans line-clamp-2">
-              {liveStatement}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* STEP 1: SELECT PENALTY SIDE (TEAM) */}
-      <div className="md:col-span-2 space-y-1">
-        <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
-          1. Infraction Committed By:
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => handleSideSwitch("defense")}
-            className={`py-2 px-3 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer ${
-              side === "defense"
-                ? "bg-amber-500/20 border-amber-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.25)] font-black"
-                : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white hover:bg-neutral-800"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Shield className={`w-4 h-4 ${side === "defense" ? "text-amber-400" : "text-neutral-500"}`} />
-              <div>
-                <span className="text-[10px] uppercase block text-neutral-400 font-bold">DEFENSE</span>
-                <span className="text-xs md:text-sm font-bold text-white">{defendingTeamName}</span>
-              </div>
-            </div>
-            {side === "defense" && <Check className="w-5 h-5 text-amber-400" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSideSwitch("offense")}
-            className={`py-2 px-3 rounded-xl border transition-all text-left flex items-center justify-between cursor-pointer ${
-              side === "offense"
-                ? "bg-amber-500/20 border-amber-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.25)] font-black"
-                : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white hover:bg-neutral-800"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Flag className={`w-4 h-4 ${side === "offense" ? "text-amber-400" : "text-neutral-500"}`} />
-              <div>
-                <span className="text-[10px] uppercase block text-neutral-400 font-bold">OFFENSE</span>
-                <span className="text-xs md:text-sm font-bold text-white">{possessionTeamName}</span>
-              </div>
-            </div>
-            {side === "offense" && <Check className="w-5 h-5 text-amber-400" />}
-          </button>
-        </div>
-      </div>
-
-      {/* STEP 2: SELECT PENALTY INFRACTION */}
-      <div className="space-y-1">
-        <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
-          2. Select Infraction ({side.toUpperCase()}):
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 max-h-none md:max-h-36 overflow-y-auto pr-1">
-          {availablePenalties.map((pDef) => {
-            const isSelected = selectedPenaltyId === pDef.id;
-            return (
-              <button
-                key={pDef.id}
-                type="button"
-                onClick={() => handleSelectPenalty(pDef)}
-                className={`p-2 rounded-lg border text-left transition-all flex flex-col justify-between gap-0.5 cursor-pointer ${
-                  isSelected
-                    ? "bg-white text-black border-white shadow-lg font-black"
-                    : "bg-neutral-900 border-white/10 text-neutral-300 hover:border-amber-500/40 hover:bg-neutral-800"
-                }`}
-              >
-                <span className="text-xs font-bold leading-tight line-clamp-2">
-                  {pDef.name}
-                </span>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span
-                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                      isSelected
-                        ? "bg-black/10 text-black"
-                        : "bg-amber-500/15 text-amber-300"
-                    }`}
-                  >
-                    {pDef.defaultYards} YDS
-                  </span>
-                  <span
-                    className={`text-[9px] font-mono uppercase truncate ${
-                      isSelected ? "text-neutral-700" : "text-neutral-400"
-                    }`}
-                  >
-                    {pDef.defaultDownResult === "automatic_first_down"
-                      ? "Auto 1st"
-                      : pDef.defaultDownResult === "loss_of_down"
-                      ? "Loss of Down"
-                      : "Replay"}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* STEP 3: ENFORCEMENT & YARDS CONFIG */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-1 gap-2 md:gap-3 pt-1">
-        {/* Enforcement Status */}
-        <div className="space-y-1">
-          <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
-            Enforcement
-          </label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {[
-              { id: "accepted", label: "Accepted" },
-              { id: "declined", label: "Declined" },
-              { id: "offset", label: "Offset" },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setEnforcement(opt.id as any)}
-                className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all border ${
-                  enforcement === opt.id
-                    ? "bg-amber-500 text-black border-amber-500 font-black shadow-md"
-                    : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Yardage Assessment */}
-        <div className="space-y-1">
-          <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
-            Yardage
-          </label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { yardsVal: 5, label: "5 Yds" },
-              { yardsVal: 10, label: "10 Yds" },
-              { yardsVal: 15, label: "15 Yds" },
-              { yardsVal: 0, label: "Spot" },
-            ].map((opt) => (
-              <button
-                key={opt.yardsVal}
-                type="button"
-                onClick={() => setYards(opt.yardsVal)}
-                className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all border ${
-                  yards === opt.yardsVal
-                    ? "bg-cyan-500 text-black border-cyan-500 font-black shadow-md"
-                    : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Down Result */}
-        <div className="space-y-1">
-          <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 block">
-            Down Impact
-          </label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {[
-              { id: "automatic_first_down", label: "Auto 1st" },
-              { id: "repeat_down", label: "Replay" },
-              { id: "loss_of_down", label: "Loss Down" },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setDownResult(opt.id as any)}
-                className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all border ${
-                  downResult === opt.id
-                    ? "bg-white text-black border-white font-black shadow-md"
-                    : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* STEP 4: PLAYER RESPONSIBLE (OPTIONAL) */}
-      <div className="md:col-span-2 space-y-1">
-        <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400 flex items-center justify-between">
-          <span>Athlete Responsible (Optional):</span>
-          <span className="text-[10px] text-neutral-500 font-normal">
-            Selected:{" "}
-            <strong className="text-white">
-              {player !== "TEAM" && playerNumbers[player] ? `#${playerNumbers[player]} ` : ""}
-              {player}
-            </strong>
-          </span>
-        </label>
-        <div className="flex flex-wrap gap-1 overflow-y-auto md:max-h-16">
-          <button
-            type="button"
-            onClick={() => setPlayer("TEAM")}
-            className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all border ${
-              player === "TEAM"
-                ? "bg-amber-500 text-black border-amber-500 font-black"
-                : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
-            }`}
-          >
-            TEAM Infraction
-          </button>
-          {sortRosterWithNumbers(currentRoster.filter((p) => p !== "TEAM"), playerNumbers).map((pName) => {
-            const pNum = playerNumbers[pName];
-            return (
-              <button
-                key={pName}
-                type="button"
-                aria-label={pName}
-                onClick={() => setPlayer(pName)}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold shrink-0 transition-all border flex items-center gap-1.5 ${
-                  player === pName
-                    ? "bg-amber-500 text-black border-amber-500 font-black"
-                    : "bg-neutral-900 border-white/10 text-neutral-400 hover:text-white"
-                }`}
-              >
-                {pNum && (
-                  <span
-                    className={`px-1 py-0.2 rounded font-mono font-bold text-[9px] ${
-                      player === pName
-                        ? "bg-black/15 text-black"
-                        : "bg-amber-500/20 text-amber-300"
-                    }`}
-                  >
-                    #{pNum}
-                  </span>
-                )}
-                <span>{pName}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* CONFIRM & SUBMIT BUTTON */}
-      <div className="md:col-span-2 pt-1">
+    <div className="flex h-full min-h-0 flex-col gap-1 overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="flex shrink-0 items-center justify-between gap-2">
         <button
           type="button"
-          onClick={handleSubmit}
-          className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-xs md:text-sm uppercase tracking-wider transition-all shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:scale-101 active:scale-99 cursor-pointer flex items-center justify-center gap-2"
+          onClick={() => activeStep === 1 ? onCancel() : setActiveStep((activeStep - 1) as 1 | 2)}
+          className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-neutral-400 transition-colors hover:text-white"
         >
-          <Flag className="w-5 h-5 fill-current" />
-          <span>ENFORCE PENALTY & RECORD PLAY</span>
+          <ChevronLeft className="h-4 w-4" />
+          {activeStep === 1 ? "Back to Play Type" : "Back"}
         </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase tracking-wider text-amber-500">Penalty</span>
+          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] font-mono font-bold text-amber-500">
+            STEP {activeStep} / 3
+          </span>
+        </div>
       </div>
+
+      {activeStep === 1 && (
+        <>
+          <div className="flex min-h-0 flex-1 flex-col gap-1">
+            <section className="shrink-0 space-y-1">
+              <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                Infraction committed by
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleSideSwitch("defense")}
+                  className={`flex items-center justify-between rounded-xl border px-2.5 py-1 text-left transition-all ${
+                    side === "defense"
+                      ? "border-amber-500 bg-amber-500/20 font-black text-white"
+                      : "border-white/10 bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Shield className="h-4 w-4 shrink-0 text-amber-500" />
+                    <span className="min-w-0">
+                      <span className="block text-[9px] font-bold uppercase text-neutral-400">Defense</span>
+                      <span className="block truncate text-xs font-bold text-white">{defendingTeamName}</span>
+                    </span>
+                  </span>
+                  {side === "defense" && <Check className="h-4 w-4 shrink-0 text-amber-500" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSideSwitch("offense")}
+                  className={`flex items-center justify-between rounded-xl border px-2.5 py-1 text-left transition-all ${
+                    side === "offense"
+                      ? "border-amber-500 bg-amber-500/20 font-black text-white"
+                      : "border-white/10 bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Flag className="h-4 w-4 shrink-0 text-amber-500" />
+                    <span className="min-w-0">
+                      <span className="block text-[9px] font-bold uppercase text-neutral-400">Offense</span>
+                      <span className="block truncate text-xs font-bold text-white">{possessionTeamName}</span>
+                    </span>
+                  </span>
+                  {side === "offense" && <Check className="h-4 w-4 shrink-0 text-amber-500" />}
+                </button>
+              </div>
+            </section>
+
+            <section className="flex min-h-0 flex-1 flex-col gap-1">
+              <label className="block shrink-0 text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                Select infraction ({side})
+              </label>
+              <div className="grid min-h-0 grid-cols-2 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-4">
+                {availablePenalties.map((pDef) => {
+                  const isSelected = selectedPenaltyId === pDef.id;
+                  return (
+                    <button
+                      key={pDef.id}
+                      type="button"
+                      onClick={() => handleSelectPenalty(pDef)}
+                      className={`flex min-h-10 flex-col justify-between gap-0.5 rounded-lg border p-1.5 text-left transition-all sm:p-2 ${
+                        isSelected
+                          ? "border-amber-500 bg-amber-500/15 text-white shadow-md"
+                          : "border-white/10 bg-neutral-900 text-neutral-300 hover:border-amber-500/40 hover:bg-neutral-800"
+                      }`}
+                    >
+                      <span className="line-clamp-2 text-[11px] font-bold leading-tight sm:text-xs">
+                        {pDef.name}
+                      </span>
+                      <span className="flex items-center gap-1.5 [@media(max-height:450px)]:hidden">
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
+                          {pDef.defaultYards} YDS
+                        </span>
+                        <span className="truncate text-[9px] font-mono uppercase text-neutral-400">
+                          {pDef.defaultDownResult === "automatic_first_down"
+                            ? "Auto 1st"
+                            : pDef.defaultDownResult === "loss_of_down"
+                            ? "Loss of Down"
+                            : "Replay"}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveStep(2)}
+            className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#3CA505] px-4 py-2 text-sm font-black text-black shadow-md transition-colors hover:bg-[#4abb0b]"
+          >
+            Continue to enforcement <ChevronRight className="h-4 w-4" />
+          </button>
+        </>
+      )}
+
+      {activeStep === 2 && (
+        <>
+          <div className="flex min-h-0 flex-1 items-center">
+            <div className="w-full">
+              <p className="mb-2 text-center text-xs font-bold text-neutral-400">
+                {selectedDef?.name ?? "Penalty"} · {penalizedTeamName}
+              </p>
+              <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 md:gap-3">
+              <section className="space-y-1">
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                  Enforcement
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: "accepted", label: "Accepted" },
+                    { id: "declined", label: "Declined" },
+                    { id: "offset", label: "Offset" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setEnforcement(opt.id as "accepted" | "declined" | "offset")}
+                      className={`rounded-lg border px-1 py-2 text-center text-[10px] font-bold transition-all sm:text-xs ${
+                        enforcement === opt.id
+                          ? "border-amber-500 bg-amber-500 text-black shadow-md"
+                          : "border-white/10 bg-neutral-900 text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-1">
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                  Yardage
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { yardsVal: 5, label: "5 Yds" },
+                    { yardsVal: 10, label: "10 Yds" },
+                    { yardsVal: 15, label: "15 Yds" },
+                    { yardsVal: 0, label: "Spot" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.yardsVal}
+                      type="button"
+                      onClick={() => setYards(opt.yardsVal)}
+                      className={`rounded-lg border px-1 py-2 text-center text-[10px] font-bold transition-all sm:text-xs ${
+                        yards === opt.yardsVal
+                          ? "border-cyan-500 bg-cyan-500 text-black shadow-md"
+                          : "border-white/10 bg-neutral-900 text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="space-y-1">
+                <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+                  Down impact
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: "automatic_first_down", label: "Auto 1st" },
+                    { id: "repeat_down", label: "Replay" },
+                    { id: "loss_of_down", label: "Loss Down" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setDownResult(opt.id as "automatic_first_down" | "repeat_down" | "loss_of_down")}
+                      className={`rounded-lg border px-1 py-2 text-center text-[10px] font-bold transition-all sm:text-xs ${
+                        downResult === opt.id
+                          ? "border-white bg-white text-black shadow-md"
+                          : "border-white/10 bg-neutral-900 text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveStep(1)}
+              className="rounded-xl border border-white/10 bg-neutral-900 px-4 py-2 text-xs font-bold text-neutral-300 hover:bg-neutral-800"
+            >
+              Back to infraction
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveStep(3)}
+              className="flex items-center gap-2 rounded-xl bg-[#3CA505] px-4 py-2 text-sm font-black text-black shadow-md transition-colors hover:bg-[#4abb0b]"
+            >
+              Continue to player <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </>
+      )}
+
+      {activeStep === 3 && (
+        <>
+          <div
+            className="shrink-0 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-neutral-900 to-black p-2"
+            style={accentColor ? { borderColor: `${accentColor}80` } : undefined}
+          >
+            <div className="flex items-center gap-2">
+              <Flag className="h-4 w-4 shrink-0 text-amber-500" />
+              <p className="line-clamp-2 text-xs font-bold leading-snug text-white">{liveStatement}</p>
+            </div>
+          </div>
+          <section className="flex min-h-0 flex-1 flex-col gap-1">
+            <label className="flex shrink-0 items-center justify-between gap-2 text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
+              <span>Athlete responsible (optional)</span>
+              <span className="font-normal text-neutral-500">
+                Selected:{" "}
+                <strong className="text-white">
+                  {player !== "TEAM" && playerNumbers[player] ? `#${playerNumbers[player]} ` : ""}
+                  {player}
+                </strong>
+              </span>
+            </label>
+            <div className="grid min-h-0 grid-cols-2 content-start gap-1.5 overflow-y-auto sm:grid-cols-4 [@media(max-height:450px)]:grid-cols-6">
+              <button
+                type="button"
+                onClick={() => setPlayer("TEAM")}
+                className={`rounded-lg border px-2 py-1.5 text-left text-[10px] font-bold transition-all ${
+                  player === "TEAM"
+                    ? "border-amber-500 bg-amber-500 text-black"
+                    : "border-white/10 bg-neutral-900 text-neutral-400 hover:text-white"
+                }`}
+              >
+                TEAM Infraction
+              </button>
+              {sortRosterWithNumbers(currentRoster.filter((p) => p !== "TEAM"), playerNumbers).map((pName) => {
+                const pNum = playerNumbers[pName];
+                return (
+                  <button
+                    key={pName}
+                    type="button"
+                    aria-label={pName}
+                    onClick={() => setPlayer(pName)}
+                    className={`flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left text-[10px] font-bold transition-all ${
+                      player === pName
+                        ? "border-amber-500 bg-amber-500 text-black"
+                        : "border-white/10 bg-neutral-900 text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    {pNum && (
+                      <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-[9px] font-bold ${
+                        player === pName ? "bg-black/15 text-black" : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                      }`}>
+                        #{pNum}
+                      </span>
+                    )}
+                    <span className="truncate">{pName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveStep(2)}
+              className="rounded-xl border border-white/10 bg-neutral-900 px-4 py-2 text-xs font-bold text-neutral-300 hover:bg-neutral-800"
+            >
+              Back to enforcement
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 px-4 py-2 text-xs font-black uppercase tracking-wider text-black shadow-lg transition-all hover:from-amber-400 hover:to-yellow-400"
+            >
+              <Flag className="h-4 w-4 fill-current" />
+              Enforce penalty
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

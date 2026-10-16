@@ -20,10 +20,16 @@ describe("PenaltyWizardStep", () => {
     onSavePenalty: vi.fn(),
   };
 
+  const continueToPlayerSelection = () => {
+    fireEvent.click(screen.getByRole("button", { name: /Continue to enforcement/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue to player/i }));
+  };
+
   it("renders jersey number badges for defensive athletes by default", () => {
     render(<PenaltyWizardStep {...defaultProps} />);
 
     // Defending team is penalized by default (e.g. DPI)
+    continueToPlayerSelection();
     expect(screen.getByText("#0")).toBeInTheDocument();
     expect(screen.getByText("#14")).toBeInTheDocument();
     expect(screen.getByText("Roquan Smith")).toBeInTheDocument();
@@ -36,6 +42,7 @@ describe("PenaltyWizardStep", () => {
     // Click Offense side button
     const offenseBtn = screen.getByRole("button", { name: /Offense/i });
     fireEvent.click(offenseBtn);
+    continueToPlayerSelection();
 
     expect(screen.getByText("#15")).toBeInTheDocument();
     expect(screen.getByText("#87")).toBeInTheDocument();
@@ -46,11 +53,40 @@ describe("PenaltyWizardStep", () => {
   it("updates Selected label to include player's jersey number", () => {
     render(<PenaltyWizardStep {...defaultProps} />);
 
+    continueToPlayerSelection();
+
     // Select Kyle Hamilton
     const kyleBtn = screen.getByRole("button", { name: "Kyle Hamilton" });
     fireEvent.click(kyleBtn);
 
     // Selected display shows #14 Kyle Hamilton
     expect(screen.getByText(/#14 Kyle Hamilton/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Back to enforcement/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Back to infraction/i }));
+    expect(screen.getByRole("button", { name: /Defensive Pass Interference/i })).toHaveClass("border-amber-500");
+    expect(screen.getByRole("button", { name: /Continue to enforcement/i })).toBeInTheDocument();
+  });
+
+  it("saves penalty details after stepping through the guided flow", () => {
+    const onSavePenalty = vi.fn();
+    render(<PenaltyWizardStep {...defaultProps} onSavePenalty={onSavePenalty} />);
+
+    continueToPlayerSelection();
+    fireEvent.click(screen.getByRole("button", { name: "Kyle Hamilton" }));
+    fireEvent.click(screen.getByRole("button", { name: /Back to enforcement/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Declined" }));
+    fireEvent.click(screen.getByRole("button", { name: "5 Yds" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue to player/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Enforce penalty/i }));
+
+    expect(onSavePenalty).toHaveBeenCalledWith(expect.objectContaining({
+      side: "defense",
+      penalizedTeamName: "Ravens",
+      yards: 5,
+      enforcement: "declined",
+      player: "Kyle Hamilton",
+      statement: expect.stringContaining("Kyle Hamilton"),
+    }));
   });
 });

@@ -826,6 +826,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     setIsQbOpen(false);
     if (playType === "Pass" && outcome === "Complete") {
       setIsReceiverOpen(true);
+      setIsDefendersOpen(false);
+    } else if (playType === "Run" && outcome === "Gain") {
+      setIsDefendersOpen(false);
     } else {
       setIsDefendersOpen(true);
     }
@@ -834,7 +837,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const handleSelectReceiver = (player: string) => {
     setReceiver(player);
     setIsReceiverOpen(false);
-    setIsDefendersOpen(true);
+    setIsDefendersOpen(false);
   };
 
   const handleDefenders = (player: string, max: number = 2) => {
@@ -1526,14 +1529,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         {/* SPOT BALL OVERLAY */}
         {!isBallSpotted && step !== 'CONVERSION' && step !== 'HALFTIME' && step !== 'GAME_OVER' && !isTimeoutActive && (
           <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-2 sm:p-4 md:p-8 overflow-hidden">
-            <div className="grid grid-cols-[1fr_1.4fr_1fr] sm:grid-cols-[1fr_1.5fr_1fr] w-full max-w-7xl items-center justify-items-center gap-x-2 gap-y-4 sm:gap-x-4 sm:gap-y-6 md:gap-8 min-h-0">
+            <div className="grid grid-cols-[1fr_1.4fr_1fr] sm:grid-cols-[1fr_1.5fr_1fr] w-full max-w-7xl items-center justify-items-center gap-x-2 gap-y-2 sm:gap-x-3 sm:gap-y-3 md:gap-4 min-h-0">
 
               {/* Top Row: Time and Half (Spans all 3 columns) */}
               <div className="col-span-3 flex flex-col items-center justify-center gap-0.5 sm:gap-1.5 w-full">
                 <span className="text-[clamp(0.7rem,1.8vw,1.25rem)] font-bold uppercase tracking-widest text-neutral-300">
                   {getOrdinal(half)} {periodType === 'quarters' ? 'Quarter' : 'Half'}
                 </span>
-                <span className="text-[clamp(2.25rem,7vw,5.5rem)] font-black leading-none text-white tracking-tighter tabular-nums">
+                <span className="text-[clamp(1.75rem,5vw,4rem)] font-black leading-none text-white tracking-tighter tabular-nums">
                   {formatTime(gameClock)}
                 </span>
               </div>
@@ -1547,14 +1550,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     style={{ color: homeTeamColors.primary }}
                   />
                   <span
-                    className="text-[clamp(0.75rem,2.5vw,2.25rem)] font-black uppercase truncate"
+                    className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase truncate"
                     style={{ color: homeTeamColors.primary }}
                   >
                     {homeTeamName}
                   </span>
                 </div>
                 <span
-                  className="text-[clamp(2.5rem,9vw,8rem)] font-black leading-none tabular-nums my-0.5 sm:my-1"
+                  className="text-[clamp(1.5rem,6vw,5rem)] font-black leading-none tabular-nums my-0.5"
                   style={{ color: homeTeamColors.primary }}
                 >
                   {homeScore}
@@ -1573,9 +1576,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               {/* Bottom Row - Column 2: Ball Spotted Overlay (Center) */}
               <div className="flex flex-col items-center justify-center w-full min-w-0">
                 {isFirstPlayOfHalf ? (
-                  <div className="bg-neutral-900 border border-cyan-500/30 p-2.5 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] w-full max-w-xl text-center min-h-0">
+                  <div className="bg-neutral-900 border border-cyan-500/30 p-2 sm:p-3 md:p-5 rounded-xl sm:rounded-2xl flex flex-col items-center shadow-[0_0_100px_rgba(var(--league-primary-rgb),0.2)] w-full max-w-xl text-center min-h-0">
                     <AlertCircle className="w-[clamp(1.25rem,3vw,2.5rem)] h-[clamp(1.25rem,3vw,2.5rem)] text-emerald-500 mb-1 sm:mb-2 shrink-0" />
-                    <h2 className="text-[clamp(0.65rem,1.8vw,1.35rem)] font-black mb-2 sm:mb-4 uppercase tracking-wide sm:tracking-widest leading-tight">
+                    <h2 className="text-[clamp(0.65rem,1.8vw,1.25rem)] font-black mb-1 sm:mb-2 uppercase tracking-wide sm:tracking-widest leading-tight">
                       THE CLOCK WILL BEGIN ON THE SNAP
                     </h2>
                     <button
@@ -1585,7 +1588,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         setIsGameClockRunning(true);
                         setIsPlayClockRunning(false);
                       }}
-                      className="py-1.5 sm:py-3 md:py-4 px-3 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[clamp(0.6rem,1.5vw,1.25rem)] rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer whitespace-nowrap"
+                      className="py-1.5 sm:py-2.5 md:py-3 px-3 sm:px-5 md:px-6 bg-white hover:bg-neutral-200 text-black font-black text-[clamp(0.6rem,1.5vw,1.125rem)] rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer whitespace-nowrap"
                     >
                       CLICK WHEN SNAPPED
                     </button>
@@ -1640,7 +1643,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <div className="flex flex-col items-center justify-center min-w-0 w-full">
                 <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
                   <span
-                    className="text-[clamp(0.75rem,2.5vw,2.25rem)] font-black uppercase truncate"
+                    className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase truncate"
                     style={{ color: awayTeamColors.primary }}
                   >
                     {awayTeamName}
@@ -1652,7 +1655,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   />
                 </div>
                 <span
-                  className="text-[clamp(2.5rem,9vw,8rem)] font-black leading-none tabular-nums my-0.5 sm:my-1"
+                  className="text-[clamp(1.5rem,6vw,5rem)] font-black leading-none tabular-nums my-0.5"
                   style={{ color: awayTeamColors.primary }}
                 >
                   {awayScore}
@@ -1827,7 +1830,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     {getOrdinal(currentDown)} Down
                   </span>
                 </div>
-                <div className="grid grid-cols-2 md:flex gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-white/10 rounded-2xl shrink-0 relative z-10 w-full">
+                <div className="flex flex-col flex-1 min-h-0 gap-2.5 w-full">
+                  <div className={`grid ${playType === 'Pass' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'} gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl shrink-0 relative z-10 w-full max-w-3xl mx-auto`}>
                   {playType === 'Pass' && ['Complete', 'Incomplete', 'Interception', 'Sack'].map((res) => {
                     const isActive = (res === 'Incomplete' && (outcome === 'Incomplete_Menu' || outcome === 'PBU' || outcome === 'Missed')) || outcome === res;
                     return (
@@ -1853,7 +1857,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             }
                           }
                         }}
-                        className={`flex-1 py-2 md:py-2.5 text-[11px] md:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${isActive ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
+                        className={`w-full min-h-10 px-2 py-2 text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${isActive ? 'bg-[#3CA505] text-black shadow-md' : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}
                       >
                         {res}
                       </button>
@@ -1861,13 +1865,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   })}
                   {playType === 'Run' && ['Gain', 'FFL'].map((res) => (
                     <button
-                      key={res} onClick={() => { setOutcome(res as any); setDefenders([]); setFlaggers([]); setIsOobPrompt(false); }}
-                      className={`flex-1 py-2 md:py-2.5 text-[11px] md:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${outcome === res ? 'bg-white text-black shadow-lg' : 'text-neutral-500 hover:text-white hover:bg-white/5'}`}
+                      key={res} onClick={() => { setOutcome(res as any); setDefenders([]); setFlaggers([]); setIsDefendersOpen(res === 'FFL'); setIsOobPrompt(false); }}
+                      className={`w-full min-h-10 px-2 py-2 text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${outcome === res ? 'bg-[#3CA505] text-black shadow-md' : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}
                     >
                       {res === 'FFL' ? 'Flag For Loss (FFL)' : 'Positive / No Gain'}
                     </button>
                   ))}
-                  <div className="flex-1 min-h-0 flex flex-col gap-2.5 overflow-y-auto pr-1 w-full max-w-3xl mx-auto">
+                  </div>
+                  <div className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:450px)]:gap-1 overflow-y-auto pr-1 w-full max-w-3xl mx-auto">
+                    <div className={`flex flex-col gap-2.5 min-w-0 ${playType === 'Pass' && outcome === 'Complete' && qbRunner && receiver && !isQbOpen && !isReceiverOpen ? '[@media(max-height:450px)]:grid [@media(max-height:450px)]:grid-cols-2 [@media(max-height:450px)]:gap-1.5' : ''}`}>
                     {/* SECTION 1: QUARTERBACK / RUNNER */}
                       {qbRunner && !isQbOpen ? (
                         <button
@@ -1876,7 +1882,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             setIsQbOpen(true);
                             setIsReceiverOpen(false);
                           }}
-                          className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
+                          className="w-full flex items-center justify-between p-3 sm:p-3.5 [@media(max-height:450px)]:p-1.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
                           aria-label={`${playType === 'Run' ? 'Runner' : 'Quarterback'}: ${qbRunner}. Click to change`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -1899,7 +1905,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         </button>
                       ) : (
                         <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg">
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center justify-between mb-2 [@media(max-height:450px)]:mb-1">
                             <div className="flex items-center gap-2">
                               <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
                                 {playType === 'Run' ? 'Select Runner' : 'Select Quarterback'}
@@ -1917,7 +1923,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               </button>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                             {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
                               const isSelected = qbRunner === p;
                               const pNum = playerNumberMap[p];
@@ -1958,7 +1964,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               setIsReceiverOpen(true);
                               setIsQbOpen(false);
                             }}
-                            className="w-full flex items-center justify-between p-3 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
+                            className="w-full flex items-center justify-between p-3 sm:p-3.5 [@media(max-height:450px)]:p-1.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/50 hover:bg-neutral-800/80 rounded-2xl transition-all shadow-md group text-left cursor-pointer"
                             aria-label={`Receiver: ${receiver}. Click to change`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -1999,7 +2005,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                 </button>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                               {sortRosterWithNumbers(
                                 getOffensiveRoster().filter((p) => p !== qbRunner || p === 'TEAM'),
                                 playerNumberMap
@@ -2036,6 +2042,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       )}
 
                       {/* SECTION 3: INCOMPLETE SUB-MENU (PBU vs Missed Throw) */}
+                    </div>
                       {outcome === 'Incomplete_Menu' && (
                         <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 animate-in zoom-in-95">
                           <button
@@ -2104,7 +2111,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                 </button>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                               {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
                                 const isSelected = defenders.includes(p);
                                 const pNum = playerNumberMap[p];
@@ -2184,7 +2191,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                 </button>
                               )}
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                               {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
                                 const isSelected = defenders.includes(p);
                                 const pNum = playerNumberMap[p];
@@ -2233,7 +2240,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               </span>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                             {sortRosterWithNumbers(getOffensiveRoster(), playerNumberMap).map((p) => {
                               const isSelected = flaggers.includes(p);
                               const pNum = playerNumberMap[p];
@@ -2267,51 +2274,100 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
                       {/* SECTION 7: DEFENSE FLAGGERS (COMPLETE, GAIN, SACK, FFL) */}
                       {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain' || outcome === 'Sack' || outcome === 'FFL') && (
-                        <div className="bg-neutral-900 rounded-2xl p-3 sm:p-3.5 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
-                          <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
-                            <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
-                              {outcome === 'Sack' || outcome === 'FFL' ? 'Sacked By / Flag' : 'Flagger(s)'}
-                            </label>
-                            <span className="text-[11px] sm:text-xs font-bold text-amber-400">
-                              {defenders.length === 0
-                                ? (outcome === 'Sack' || outcome === 'FFL' ? 'Select defender' : 'Pick flagger(s) or leave unflagged for TD/OOB')
-                                : `Selected (${defenders.length}/2): ${defenders.map(p => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}`}
-                            </span>
+                        (outcome === 'Complete' || outcome === 'Gain') && !isDefendersOpen ? (
+                          defenders.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setIsDefendersOpen(true)}
+                              aria-label={`Flagger(s): ${defenders.join(', ')}. Click to change`}
+                              className="w-full flex items-center justify-between gap-2 p-2 sm:p-3 bg-neutral-900 border border-white/10 hover:border-amber-500/40 rounded-xl sm:rounded-2xl transition-all text-left"
+                            >
+                              <span className="min-w-0 truncate text-xs sm:text-sm font-bold text-white">
+                                Flagger(s): {defenders.map((p) => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}
+                              </span>
+                              <span className="flex items-center gap-1 text-xs font-bold text-neutral-400 shrink-0">
+                                Change <ChevronDown className="w-4 h-4 text-amber-400" />
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2 p-2 sm:p-3 [@media(max-height:450px)]:py-1.5 bg-neutral-900 border border-white/10 rounded-xl sm:rounded-2xl">
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold uppercase tracking-wider text-white">Flagger(s)</p>
+                                <p className="text-[10px] sm:text-xs text-neutral-400">Optional — leave empty for no flag.</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setIsDefendersOpen(true)}
+                                className="px-3 py-2 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-xs font-bold whitespace-nowrap hover:bg-amber-500/25"
+                              >
+                                Add flagger
+                              </button>
+                            </div>
+                          )
+                        ) : (
+                          <div className="bg-neutral-900 rounded-2xl p-2 sm:p-3.5 border border-white/10 flex flex-col shadow-lg animate-in fade-in">
+                            <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                              <label className="text-xs text-neutral-400 font-bold uppercase tracking-widest">
+                                {outcome === 'Sack' || outcome === 'FFL' ? 'Sacked By / Flag' : 'Flagger(s)'}
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] sm:text-xs font-bold text-amber-400">
+                                  {defenders.length === 0
+                                    ? 'Select up to 2'
+                                    : `Selected (${defenders.length}/2): ${defenders.map(p => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}`}
+                                </span>
+                                {(outcome === 'Complete' || outcome === 'Gain') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsDefendersOpen(false)}
+                                    className="flex items-center gap-1 text-xs font-bold text-neutral-400 hover:text-white cursor-pointer"
+                                  >
+                                    Done <ChevronUp className="w-4 h-4 text-amber-400" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
+                              {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
+                                const isSelected = defenders.includes(p);
+                                const pNum = playerNumberMap[p];
+                                return (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    aria-label={p}
+                                    onClick={() => {
+                                      handleDefenders(p, 2);
+                                      if (outcome === 'Complete' || outcome === 'Gain') setIsDefendersOpen(false);
+                                    }}
+                                    className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
+                                      ? 'bg-amber-500 text-black font-black shadow-md'
+                                      : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {pNum && (
+                                        <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                          }`}>
+                                          #{pNum}
+                                        </span>
+                                      )}
+                                      <span className="truncate">{p}</span>
+                                    </div>
+                                    {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                            {sortRosterWithNumbers(getDefensiveRoster(), playerNumberMap).map((p) => {
-                              const isSelected = defenders.includes(p);
-                              const pNum = playerNumberMap[p];
-                              return (
-                                <button
-                                  key={p}
-                                  type="button"
-                                  aria-label={p}
-                                  onClick={() => handleDefenders(p, (outcome === 'Sack' || outcome === 'FFL') ? 2 : 2)}
-                                  className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
-                                    ? 'bg-amber-500 text-black font-black shadow-md'
-                                    : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                                    }`}
-                                >
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    {pNum && (
-                                      <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-black/20 text-black' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                        }`}>
-                                        #{pNum}
-                                      </span>
-                                    )}
-                                    <span className="truncate">{p}</span>
-                                  </div>
-                                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        )
                       )}
                     {/* SECTION 8: RESULTS & OUTCOMES ROW */}
-                    {outcome !== 'Incomplete_Menu' && (
-                      <div className="shrink-0 pt-2 pb-4 w-full min-h-[60px] md:min-h-[75px]">
+                    {outcome !== 'Incomplete_Menu' &&
+                      (isOobPrompt || (hasOffenseSelected() && (
+                        outcome === 'Complete' || outcome === 'Gain' || isPlayReadyToSave()
+                      ))) && (
+                      <div className="shrink-0 pt-2 pb-4 [@media(max-height:450px)]:py-0 [@media(max-height:450px)]:!min-h-0 w-full min-h-[60px] md:min-h-[75px]">
                         {/* OOB Prompt Logic */}
                         {isOobPrompt && (
                           <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
@@ -2326,8 +2382,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             {/* Immediate Touchdown & OOB for Complete/Gain */}
                             {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain') && defenders.length === 0 && (
                               <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in fade-in">
-                                <button onClick={() => handleSavePlay('Touchdown')} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">TOUCHDOWN</button>
-                                <button onClick={() => setIsOobPrompt(true)} className="py-3 sm:py-4 md:py-5 rounded-2xl md:rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-xs sm:text-base md:text-lg border border-white/10 hover:text-white hover:bg-neutral-700 cursor-pointer">OUT OF BOUNDS</button>
+                                <button onClick={() => handleSavePlay('Touchdown')} className="py-3 sm:py-4 md:py-5 [@media(max-height:450px)]:py-2 rounded-2xl md:rounded-3xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-base md:text-lg shadow-lg cursor-pointer">TOUCHDOWN</button>
+                                <button onClick={() => setIsOobPrompt(true)} className="py-3 sm:py-4 md:py-5 [@media(max-height:450px)]:py-2 rounded-2xl md:rounded-3xl bg-neutral-800 text-neutral-300 font-bold text-xs sm:text-base md:text-lg border border-white/10 hover:text-white hover:bg-neutral-700 cursor-pointer">OUT OF BOUNDS</button>
                               </div>
                             )}
 

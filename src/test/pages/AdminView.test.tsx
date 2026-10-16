@@ -217,7 +217,8 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     expect(screen.getByRole("button", { name: /TOUCHDOWN/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /OUT OF BOUNDS/i })).toBeInTheDocument();
 
-    // 5. Select a defender (David Kim) as flagger -> outcomes update to First Down / Short
+    // 5. Open optional flaggers and select David Kim -> outcomes update to First Down / Short
+    fireEvent.click(screen.getByRole("button", { name: /Add flagger/i }));
     const davidBtn = screen.getByRole("button", { name: "David Kim" });
     fireEvent.click(davidBtn);
     expect(screen.getByRole("button", { name: /FIRST DOWN/i })).toBeInTheDocument();
@@ -289,5 +290,4 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
   });
 });
-
 
