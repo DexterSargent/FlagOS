@@ -384,7 +384,7 @@ export default function PlayCanvas({
       ...(playbook?.plays?.map((p) => p.formation) || []),
       play.formation,
       ...(play.type === "defense"
-        ? ["Cover 2 Zone", "Cover 1 Man Lock", "Cover 3 Cloud", "Goal Line Tight"]
+        ? ["Cover 2 Zone", "Cover 1 Man", "Cover 3 Cloud", "Goal Line Tight"]
         : ["Spread 2x1", "Trips Right", "Bunch Right", "Spread 2x2", "I-Formation", "Empty", "Double Wing"]),
     ].filter(Boolean))
   );
@@ -1225,7 +1225,7 @@ export default function PlayCanvas({
           coverageType: "man" as const,
           zoneId: undefined,
           route: [],
-          quickRouteName: "Man Lock",
+          quickRouteName: "Man",
           routeType: undefined,
         };
       }
@@ -1235,7 +1235,7 @@ export default function PlayCanvas({
     onChange({ ...play, players: updatedPlayers });
   };
 
-  // Set Pass Rush for defender: auto-shows offense, draws line to QB, with bend point
+  // Set rush for defender: auto-shows offense, draws line to QB, with bend point
   const handleSetPassRush = () => {
     if (readOnly || !selectedPlayer) return;
     setShowOpposingSide(true); // Auto show offense so QB is visible
@@ -1259,7 +1259,7 @@ export default function PlayCanvas({
           ...p,
           coverageType: "rush" as const,
           routeType: "rush" as const,
-          quickRouteName: "Pass Rush",
+          quickRouteName: "Rush",
           manTargetId: undefined,
           zoneId: undefined,
           route: [
@@ -1912,7 +1912,7 @@ export default function PlayCanvas({
                         letterSpacing="0.8"
                         className="select-none pointer-events-none"
                       >
-                        MAN LOCK
+                        MAN
                       </text>
                     </g>
                   </g>
@@ -1920,7 +1920,7 @@ export default function PlayCanvas({
               })}
 
             {/* ============================================================== */}
-            {/* ROUTE PATHS (WAYPOINTS, PASS RUSH BEND & ARROWHEADS)           */}
+            {/* ROUTE PATHS (WAYPOINTS, Rush BEND & ARROWHEADS)           */}
             {/* ============================================================== */}
             {visiblePlayers.map((player) => {
               const isSelected = selectedPlayerId === player.id;
@@ -2327,7 +2327,7 @@ export default function PlayCanvas({
                     </g>
                   )}
 
-                  {/* Pass Rush target indicator around QB when rusher is highlighted */}
+                  {/* Rush target indicator around QB when rusher is highlighted */}
                   {selectedPlayer?.side === "defense" && selectedPlayer.coverageType === "rush" && isOffense && (player.label === "QB" || player.role.toLowerCase().includes("qb")) && (
                     <circle
                       cx={px}
@@ -2930,7 +2930,7 @@ export default function PlayCanvas({
                   }`}
                 >
                   <Lock className="w-3 h-3" />
-                  <span>Man Lock</span>
+                  <span>Man</span>
                 </button>
 
                 <button
@@ -2945,7 +2945,7 @@ export default function PlayCanvas({
                   title={`Rusher must line up at least ${rushLineDistanceYards} yards behind the line of scrimmage`}
                 >
                   <Zap className="w-3 h-3" />
-                  <span>Pass Rush</span>
+                  <span>Rush</span>
                   <span className="text-[10px] opacity-80">{rushLineDistanceYards} yd</span>
                 </button>
               </div>
@@ -3029,7 +3029,7 @@ export default function PlayCanvas({
             </div>
           ) : (
             <div className="text-xs text-neutral-400 py-1 font-mono">
-              Select a defensive player to assign zone, man lock, or pass rush.
+              Select a defensive player to assign zone, man, or rush.
             </div>
           )}
         </div>
