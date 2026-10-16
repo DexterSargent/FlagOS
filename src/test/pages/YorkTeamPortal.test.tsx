@@ -20,15 +20,20 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Mock contexts
-vi.mock("@/lib/leagueContext", () => ({
-  useLeague: () => ({
-    isDemoLeague: false,
-    settings: {
-      leagueName: "FlagOS",
-      rules: { playersOnField: 5, maxRosterSize: 30, minRosterSize: 5 },
-    },
-  }),
-}));
+vi.mock("@/lib/leagueContext", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/leagueContext")>();
+  return {
+    ...actual,
+    useLeague: () => ({
+      isDemoLeague: false,
+      activeLeagueId: "default",
+      settings: {
+        leagueName: "FlagOS",
+        rules: { playersOnField: 5, maxRosterSize: 30, minRosterSize: 5 },
+      },
+    }),
+  };
+});
 
 vi.mock("@/lib/authContext", () => ({
   useAuth: () => ({
@@ -307,7 +312,7 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       });
       unmountFn();
 
-      // 2. League member team with leagueId -> Has All Teams button
+      // 2. League member team with leagueId -> Has All Teams button pointing to specifically its league
       const { getDoc } = await import("firebase/firestore");
       vi.mocked(getDoc).mockResolvedValueOnce({
         exists: () => true,
@@ -321,14 +326,42 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
 
       const bufPromise = Promise.resolve({ id: "team_buf" });
       await act(async () => {
-        render(
+        const { unmount } = render(
           <Suspense fallback={<div>Loading suspense...</div>}>
             <TeamPortalHome params={bufPromise} />
           </Suspense>
         );
+        unmountFn = unmount;
       });
       await waitFor(() => {
-        expect(screen.getByText("All Teams")).toBeInTheDocument();
+        const allTeamsBtn = screen.getByRole("link", { name: /all teams/i });
+        expect(allTeamsBtn).toBeInTheDocument();
+        expect(allTeamsBtn).toHaveAttribute("href", "/league/league_demo");
+      });
+      unmountFn();
+
+      // 3. Demo league team without explicit leagueId -> Has All Teams button pointing specifically to demo league
+      vi.mocked(getDoc).mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({
+          id: "team_kc",
+          name: "Kansas City",
+          shortcode: "KC",
+        }),
+      } as any);
+
+      const kcPromise = Promise.resolve({ id: "team_kc" });
+      await act(async () => {
+        render(
+          <Suspense fallback={<div>Loading suspense...</div>}>
+            <TeamPortalHome params={kcPromise} />
+          </Suspense>
+        );
+      });
+      await waitFor(() => {
+        const allTeamsBtn = screen.getByRole("link", { name: /all teams/i });
+        expect(allTeamsBtn).toBeInTheDocument();
+        expect(allTeamsBtn).toHaveAttribute("href", "/league/default");
       });
     });
   });

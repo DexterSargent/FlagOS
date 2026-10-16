@@ -25,3 +25,17 @@ export function resolveTeamColorPalette(team?: TeamColorSource | null): TeamColo
     tertiary: team?.tertiaryColor || primary,
   };
 }
+
+export function getTeamBadgeStyle(team?: TeamColorSource | null): {
+  color: string;
+  backgroundColor: string;
+  borderColor: string;
+} {
+  const palette = resolveTeamColorPalette(team);
+  return {
+    color: palette.primary,
+    backgroundColor: palette.secondary,
+    borderColor: `${palette.primary}40`,
+  };
+}
+

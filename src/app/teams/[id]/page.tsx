@@ -76,7 +76,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const teamId = unwrappedParams.id;
   const isYork = isYorkTeam(teamId);
 
-  const { settings, isDemoLeague } = useLeague();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
   const { canManageTeam, isLeagueAdmin, isTeamAdmin, isAdmin, isPlayer, playerTeamId, user } = useAuth();
   // Playbooks RBAC:
   // - League admins have NO access to opponent customer teams (confidential franchise strategy)
@@ -499,7 +499,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   const shortcode = team.shortcode || getTeamShortcode(team);
   const palette = resolveTeamColorPalette(team);
-  const isIndependentTeam = isYork || Boolean(team.isIndependent) || Boolean(team.isStandalone) || !team.leagueId;
+  const isTeamYork = isYork || isYorkTeam(team?.id);
+  const isExplicitIndependent = isTeamYork || Boolean(team?.isIndependent) || Boolean(team?.isStandalone);
+  const isDemoTeamInSandbox = isDemoLeague || teamId.startsWith("team_") || getSandboxTeams().some((t) => t.id === teamId);
+  const targetLeagueId: string | null = !isExplicitIndependent
+    ? (team?.leagueId || (isDemoTeamInSandbox ? (activeLeagueId || "default") : (activeLeagueId && activeLeagueId !== "default" ? activeLeagueId : null)))
+    : null;
+
+  const isIndependentTeam = isExplicitIndependent || !targetLeagueId;
   const isStandaloneOrPaidTeam = isIndependentTeam || Boolean(team.subscription && team.subscription.status === "active");
 
   return (
@@ -521,10 +528,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       <main className="relative z-10 flex flex-col items-center justify-center flex-1 p-6 md:p-20">
         {/* Navigation Buttons */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
-          {!isIndependentTeam && (
+          {!isIndependentTeam && targetLeagueId && (
             <Link
-              href="/teams"
-              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2.5 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
+              href={`/league/${targetLeagueId}`}
+              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
             >
               <ChevronLeft className="w-4 h-4" />
               All Teams
@@ -602,10 +609,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           </div>
 
           <div 
-            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full backdrop-blur-md mb-2 shadow-2xl"
+            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full backdrop-blur-md mb-2 shadow-2xl border"
             style={{
-              backgroundColor: `${palette.primary}20`,
-              border: `1px solid ${palette.primary}40`,
+              backgroundColor: palette.secondary,
+              borderColor: `${palette.primary}40`,
             }}
           >
             <TeamLogo
@@ -613,12 +620,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               logoUrl={team.logoUrl}
               icon={isDemoLeague ? "football" : team.icon || (isYork ? "cat" : "shield")}
               className="w-5 h-5"
-              iconColor={isDemoLeague ? palette.primary : undefined}
-              customColor={palette.primary === "#E31837" ? "text-red-400" : undefined}
+              iconColor={palette.primary}
+              primaryColor={palette.primary}
             />
             <span 
-              className="text-sm font-bold tracking-widest uppercase text-slate-800 dark:text-white"
-              style={{ color: palette.secondary === "#FFFFFF" || palette.secondary === "#ffffff" ? undefined : palette.secondary }}
+              className="text-sm font-black tracking-widest uppercase"
+              style={{ color: palette.primary }}
             >
               {shortcode} • {isYork ? "Varsity Club Team Portal" : isStandaloneOrPaidTeam ? "Independent Team Portal" : `${settings.leagueName} Member Club`}
             </span>
@@ -757,10 +764,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-white/5 relative z-10">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 rounded-2xl flex items-center justify-center border border-white/10"
-                      style={{ backgroundColor: `${palette.primary}25` }}
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm"
+                      style={{ backgroundColor: palette.secondary, borderColor: `${palette.primary}40` }}
                     >
-                      <Trophy className="w-5 h-5 text-amber-400" />
+                      <Trophy className="w-5 h-5" style={{ color: palette.primary }} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -1333,6 +1340,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         )}
         teamName={team?.name || "Team"}
         primaryColor={palette.primary}
+        secondaryColor={palette.secondary}
       />
 
       {/* Standalone / Paid Team Portal Footer with subtle Powered by FlagOS Disclaimer */}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette } from "@/lib/teamColors";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, getTeamBadgeStyle } from "@/lib/teamColors";
 
 describe("resolveTeamColorPalette", () => {
   it("uses legacy team colors and sensible defaults when newer palette fields are missing", () => {
@@ -22,4 +22,19 @@ describe("resolveTeamColorPalette", () => {
       tertiary: "#333333",
     });
   });
+
+  it("renders team color text in front of a secondary colored background for Green Bay and other teams", () => {
+    const greenBay = {
+      name: "Green Bay",
+      color: "#203731",
+      primaryColor: "#203731",
+      secondaryColor: "#FFB612",
+      tertiaryColor: "#FFFFFF",
+    };
+    const style = getTeamBadgeStyle(greenBay);
+    expect(style.color).toBe("#203731");
+    expect(style.backgroundColor).toBe("#FFB612");
+    expect(style.borderColor).toBe("#20373140");
+  });
 });
+

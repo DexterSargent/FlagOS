@@ -8,7 +8,7 @@ import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye, Ar
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
 import { SEED_DEMO_TEAMS } from "@/lib/demoSeedData";
-import { YORK_LIONS_TEAM, isYorkTeam } from "@/lib/yorkTeamData";
+import { isYorkTeam } from "@/lib/yorkTeamData";
 import { isDexterUser } from "@/lib/teamAdminRbac";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -99,10 +99,9 @@ export default function RoleSwitcherBar() {
 
     const loadData = () => {
       try {
-        const tList = getSandboxTeams().map((t) => ({ id: t.id, name: t.name }));
-        if (!tList.some((t) => t.id === YORK_LIONS_TEAM.id)) {
-          tList.push({ id: YORK_LIONS_TEAM.id, name: YORK_LIONS_TEAM.name });
-        }
+        const tList = getSandboxTeams()
+          .filter((team) => !isYorkTeam(team.id))
+          .map((t) => ({ id: t.id, name: t.name }));
         tList.sort((a, b) => a.name.localeCompare(b.name));
         setTeams(tList);
 

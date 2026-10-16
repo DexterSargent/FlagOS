@@ -908,10 +908,21 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       <div className="bg-gradient-to-b from-neutral-950 to-neutral-900 border-b border-white/10 p-2.5 md:p-3 relative shrink-0">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* HOME TEAM */}
-          <div className="flex flex-col items-center gap-1 flex-1">
+          <div 
+            className="flex flex-col items-center gap-1 flex-1 px-3 py-1.5 rounded-2xl border shadow-sm"
+            style={{
+              backgroundColor: homeTeamPalette.secondary,
+              borderColor: `${homeTeamPalette.primary}40`,
+            }}
+          >
             <div className="flex items-center gap-2">
-              <TeamLogo teamName={homeTeamName} className="w-5 h-5 md:w-6 md:h-6" />
-              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none">
+              <TeamLogo
+                teamName={homeTeamName}
+                className="w-5 h-5 md:w-6 md:h-6"
+                isDemo={isDemo}
+                primaryColor={homeTeamPalette.primary}
+              />
+              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: homeTeamPalette.primary }}>
                 {homeTeamName}
               </span>
               {possession === homeTeamName && (
@@ -952,15 +963,26 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </div>
 
           {/* AWAY TEAM */}
-          <div className="flex flex-col items-center gap-1 flex-1">
+          <div 
+            className="flex flex-col items-center gap-1 flex-1 px-3 py-1.5 rounded-2xl border shadow-sm"
+            style={{
+              backgroundColor: awayTeamPalette.secondary,
+              borderColor: `${awayTeamPalette.primary}40`,
+            }}
+          >
             <div className="flex items-center gap-2">
               {possession === awayTeamName && (
                 <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: awayTeamPalette.primary }} title="Possession" />
               )}
-              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none text-neutral-300">
+              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: awayTeamPalette.primary }}>
                 {awayTeamName}
               </span>
-              <TeamLogo teamName={awayTeamName} className="w-5 h-5 md:w-6 md:h-6" />
+              <TeamLogo
+                teamName={awayTeamName}
+                className="w-5 h-5 md:w-6 md:h-6"
+                isDemo={isDemo}
+                primaryColor={awayTeamPalette.primary}
+              />
             </div>
             <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: awayTeamPalette.primary }}>
               {awayScore}

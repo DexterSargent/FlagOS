@@ -14,6 +14,17 @@ describe("TeamLogo", () => {
     expect(football?.querySelector("ellipse")).toBeInTheDocument();
   });
 
+  it("replaces the demo shield fallback with a primary-color football", () => {
+    const { container } = render(
+      <TeamLogo teamName="Arizona" icon="shield" isDemo primaryColor="#97233F" />
+    );
+
+    const football = container.querySelector("svg");
+    expect(football).toBeInTheDocument();
+    expect(football).toHaveStyle({ color: "#97233F" });
+    expect(football?.querySelector("ellipse")).toBeInTheDocument();
+  });
+
   it("keeps the shield icon available for non-demo teams", () => {
     const { container } = render(<TeamLogo teamName="Custom Club" icon="shield" />);
 

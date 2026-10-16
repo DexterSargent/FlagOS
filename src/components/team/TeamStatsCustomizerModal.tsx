@@ -30,6 +30,7 @@ interface TeamStatsCustomizerModalProps {
   teamStats: TeamComprehensiveStats;
   teamName: string;
   primaryColor?: string;
+  secondaryColor?: string;
 }
 
 const CATEGORY_ICONS: Record<StatCategory, React.ReactNode> = {
@@ -82,6 +83,7 @@ export default function TeamStatsCustomizerModal({
   teamStats,
   teamName,
   primaryColor = "#06B6D4",
+  secondaryColor = "#E2E8F0",
 }: TeamStatsCustomizerModalProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(initialVisibleStats);
   const [saving, setSaving] = useState(false);
@@ -156,10 +158,10 @@ export default function TeamStatsCustomizerModal({
         <div className="p-5 md:p-6 border-b border-white/10 flex items-center justify-between shrink-0 bg-neutral-950/80 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center border border-white/10"
-              style={{ backgroundColor: `${primaryColor}20` }}
+              className="w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm"
+              style={{ backgroundColor: secondaryColor, borderColor: `${primaryColor}40` }}
             >
-              <Sliders className="w-5 h-5 text-white" style={{ color: primaryColor }} />
+              <Sliders className="w-5 h-5" style={{ color: primaryColor }} />
             </div>
             <div>
               <div className="flex items-center gap-2">

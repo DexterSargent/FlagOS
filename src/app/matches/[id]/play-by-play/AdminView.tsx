@@ -1154,18 +1154,24 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             <span className="text-[12rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
           </div>
           <div className="flex justify-between items-center px-24">
-            <div className="flex flex-col items-center gap-6">
+            <div 
+              className="flex flex-col items-center gap-6 p-8 rounded-3xl border shadow-2xl"
+              style={{
+                backgroundColor: homeTeamColors.secondary,
+                borderColor: `${homeTeamColors.primary}40`,
+              }}
+            >
               <div className="flex items-center gap-6">
-                <FootballIcon active={possession === (homeTeamName || "HOME")} className={`w-12 h-12 ${possession === (homeTeamName || "HOME") ? '' : 'text-neutral-500'}`} style={possession === homeTeamName ? { color: homeTeamColors.primary } : undefined} />
-                <span className="text-6xl font-black text-white uppercase">{homeTeamName}</span>
+                <FootballIcon active={possession === (homeTeamName || "HOME")} className="w-12 h-12" style={{ color: homeTeamColors.primary }} />
+                <span className="text-6xl font-black uppercase" style={{ color: homeTeamColors.primary }}>{homeTeamName}</span>
               </div>
-              <span className="text-[15rem] font-black leading-none" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
+              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
               <div className="flex gap-3">
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 rounded-full ${i < homeTimeouts ? '' : 'bg-neutral-800'}`}
-                    style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary, boxShadow: `0 0 15px ${homeTeamColors.secondary}99` } : undefined}
+                    className={`w-8 h-8 rounded-full ${i < homeTimeouts ? '' : 'opacity-30'}`}
+                    style={{ backgroundColor: homeTeamColors.primary, boxShadow: `0 0 15px ${homeTeamColors.primary}99` }}
                   />
                 ))}
               </div>
@@ -1176,18 +1182,24 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 {playClock}
               </span>
             </div>
-            <div className="flex flex-col items-center gap-6">
+            <div 
+              className="flex flex-col items-center gap-6 p-8 rounded-3xl border shadow-2xl"
+              style={{
+                backgroundColor: awayTeamColors.secondary,
+                borderColor: `${awayTeamColors.primary}40`,
+              }}
+            >
               <div className="flex items-center gap-6">
-                <span className="text-6xl font-black text-white uppercase">{awayTeamName}</span>
-                <FootballIcon active={possession === (awayTeamName || "AWAY")} className={`w-12 h-12 ${possession === (awayTeamName || "AWAY") ? '' : 'text-neutral-500'}`} style={possession === awayTeamName ? { color: awayTeamColors.primary } : undefined} />
+                <span className="text-6xl font-black uppercase" style={{ color: awayTeamColors.primary }}>{awayTeamName}</span>
+                <FootballIcon active={possession === (awayTeamName || "AWAY")} className="w-12 h-12" style={{ color: awayTeamColors.primary }} />
               </div>
-              <span className="text-[15rem] font-black leading-none" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
+              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
               <div className="flex gap-3">
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
                     key={i}
-                    className={`w-8 h-8 rounded-full ${i < awayTimeouts ? '' : 'bg-neutral-800'}`}
-                    style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary, boxShadow: `0 0 15px ${awayTeamColors.secondary}99` } : undefined}
+                    className={`w-8 h-8 rounded-full ${i < awayTimeouts ? '' : 'opacity-30'}`}
+                    style={{ backgroundColor: awayTeamColors.primary, boxShadow: `0 0 15px ${awayTeamColors.primary}99` }}
                   />
                 ))}
               </div>
@@ -1364,8 +1376,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </button>
           </div>
 
-          <div className="flex flex-col items-center flex-1 min-w-0 max-w-[7rem]">
-            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-bold uppercase truncate max-w-full" style={{ color: homeTeamColors.primary }}>
+          <div 
+            className="flex flex-col items-center flex-1 min-w-0 max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
+            style={{
+              backgroundColor: homeTeamColors.secondary,
+              borderColor: `${homeTeamColors.primary}40`,
+            }}
+          >
+            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: homeTeamColors.primary }}>
               {homeTeamName}
               <FootballIcon active={possession === homeTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: homeTeamColors.primary }} />
             </span>
@@ -1374,14 +1392,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <button
                 disabled={homeTimeouts === 0}
                 onClick={() => callTimeout("home")}
-                className="px-0.5 sm:px-1 py-0.5 rounded bg-white/10 text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/20"
+                className="px-1 py-0.5 rounded text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
+                style={{ backgroundColor: `${homeTeamColors.primary}20`, color: homeTeamColors.primary }}
                 title="Call home team timeout"
               >
                 TO {homeTimeouts}
               </button>
               <div className="hidden min-[360px]:flex gap-0.5 items-center" aria-label={`${homeTimeouts} home timeouts remaining`}>
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                  <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < homeTimeouts ? "" : "bg-neutral-700"}`} style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary } : undefined} />
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < homeTimeouts ? "" : "opacity-30"}`} style={{ backgroundColor: homeTeamColors.primary }} />
                 ))}
               </div>
             </div>
@@ -1468,8 +1487,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </button>
           </div>
 
-          <div className="flex flex-col items-center flex-1 min-w-0 max-w-[7rem]">
-            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-bold uppercase truncate max-w-full" style={{ color: awayTeamColors.primary }}>
+          <div 
+            className="flex flex-col items-center flex-1 min-w-0 max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
+            style={{
+              backgroundColor: awayTeamColors.secondary,
+              borderColor: `${awayTeamColors.primary}40`,
+            }}
+          >
+            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: awayTeamColors.primary }}>
               <FootballIcon active={possession === awayTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: awayTeamColors.primary }} />
               {awayTeamName}
             </span>
@@ -1478,14 +1503,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <button
                 disabled={awayTimeouts === 0}
                 onClick={() => callTimeout("away")}
-                className="px-0.5 sm:px-1 py-0.5 rounded bg-white/10 text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through hover:bg-white/20"
+                className="px-1 py-0.5 rounded text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
+                style={{ backgroundColor: `${awayTeamColors.primary}20`, color: awayTeamColors.primary }}
                 title="Call away team timeout"
               >
                 TO {awayTimeouts}
               </button>
               <div className="hidden min-[360px]:flex gap-0.5 items-center" aria-label={`${awayTimeouts} away timeouts remaining`}>
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                  <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < awayTimeouts ? "" : "bg-neutral-700"}`} style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary } : undefined} />
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full ${i < awayTimeouts ? "" : "opacity-30"}`} style={{ backgroundColor: awayTeamColors.primary }} />
                 ))}
               </div>
             </div>
@@ -1542,7 +1568,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </div>
 
               {/* Bottom Row - Column 1: Home Score (Left) */}
-              <div className="flex flex-col items-center justify-center min-w-0 w-full">
+              <div 
+                className="flex flex-col items-center justify-center min-w-0 w-full p-2 rounded-2xl border shadow-sm"
+                style={{
+                  backgroundColor: homeTeamColors.secondary,
+                  borderColor: `${homeTeamColors.primary}40`,
+                }}
+              >
                 <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
                   <FootballIcon
                     active={possession === (homeTeamName || "HOME")}
@@ -1566,8 +1598,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                     <div
                       key={i}
-                      className="w-[clamp(0.4rem,1vw,0.75rem)] h-[clamp(0.4rem,1vw,0.75rem)] rounded-full bg-neutral-800"
-                      style={i < homeTimeouts ? { backgroundColor: homeTeamColors.secondary } : undefined}
+                      className={`w-[clamp(0.4rem,1vw,0.75rem)] h-[clamp(0.4rem,1vw,0.75rem)] rounded-full ${i < homeTimeouts ? "" : "opacity-30"}`}
+                      style={{ backgroundColor: homeTeamColors.primary }}
                     />
                   ))}
                 </div>
@@ -1640,7 +1672,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </div>
 
               {/* Bottom Row - Column 3: Away Score (Right) */}
-              <div className="flex flex-col items-center justify-center min-w-0 w-full">
+              <div 
+                className="flex flex-col items-center justify-center min-w-0 w-full p-2 rounded-2xl border shadow-sm"
+                style={{
+                  backgroundColor: awayTeamColors.secondary,
+                  borderColor: `${awayTeamColors.primary}40`,
+                }}
+              >
                 <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
                   <span
                     className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase truncate"
@@ -1664,8 +1702,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                     <div
                       key={i}
-                      className="w-[clamp(0.4rem,1vw,0.75rem)] h-[clamp(0.4rem,1vw,0.75rem)] rounded-full bg-neutral-800"
-                      style={i < awayTimeouts ? { backgroundColor: awayTeamColors.secondary } : undefined}
+                      className={`w-[clamp(0.4rem,1vw,0.75rem)] h-[clamp(0.4rem,1vw,0.75rem)] rounded-full ${i < awayTimeouts ? "" : "opacity-30"}`}
+                      style={{ backgroundColor: awayTeamColors.primary }}
                     />
                   ))}
                 </div>
@@ -1699,13 +1737,19 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           <div className="absolute inset-0 z-40 bg-black/95 backdrop-blur-xl flex flex-col items-center p-4 sm:p-8 overflow-y-auto">
             <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-8 uppercase tracking-widest text-emerald-500 mt-4 sm:mt-12">Game Over</h2>
             <div className="flex flex-col md:flex-row w-full max-w-4xl justify-between items-center mb-8 sm:mb-16 gap-4 sm:gap-8 md:gap-0">
-              <div className="flex flex-col items-center gap-2 sm:gap-4">
-                <span className="text-xl sm:text-3xl font-black text-white uppercase">{homeTeamName}</span>
+              <div 
+                className="flex flex-col items-center gap-2 sm:gap-4 px-8 py-5 rounded-3xl border shadow-xl"
+                style={{ backgroundColor: homeTeamColors.secondary, borderColor: `${homeTeamColors.primary}40` }}
+              >
+                <span className="text-xl sm:text-3xl font-black uppercase" style={{ color: homeTeamColors.primary }}>{homeTeamName}</span>
                 <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
               </div>
               <div className="text-neutral-500 font-bold text-lg sm:text-2xl tracking-widest">FINAL</div>
-              <div className="flex flex-col items-center gap-2 sm:gap-4">
-                <span className="text-xl sm:text-3xl font-black text-white uppercase">{awayTeamName}</span>
+              <div 
+                className="flex flex-col items-center gap-2 sm:gap-4 px-8 py-5 rounded-3xl border shadow-xl"
+                style={{ backgroundColor: awayTeamColors.secondary, borderColor: `${awayTeamColors.primary}40` }}
+              >
+                <span className="text-xl sm:text-3xl font-black uppercase" style={{ color: awayTeamColors.primary }}>{awayTeamName}</span>
                 <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
               </div>
             </div>

@@ -344,13 +344,23 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
                         <div className="flex items-center justify-between my-4">
                           <div className="flex items-center gap-3">
-                            <TeamLogo teamName={teamName} className="w-8 h-8" />
+                            <TeamLogo
+                              teamName={teamName}
+                              className="w-8 h-8"
+                              isDemo={isDemoLeague}
+                              primaryColor={team?.primaryColor || team?.color}
+                            />
                             <span className="font-bold text-base">{teamName}</span>
                           </div>
                           <span className="text-xs font-black text-neutral-500 uppercase">VS</span>
                           <div className="flex items-center gap-3">
                             <span className="font-bold text-base text-neutral-300">{opponentName}</span>
-                            <TeamLogo teamName={opponentName} className="w-8 h-8" />
+                            <TeamLogo
+                              teamName={opponentName}
+                              className="w-8 h-8"
+                              isDemo={isDemoLeague}
+                              primaryColor={allTeams[opponentId]?.primaryColor || allTeams[opponentId]?.color}
+                            />
                           </div>
                         </div>
 

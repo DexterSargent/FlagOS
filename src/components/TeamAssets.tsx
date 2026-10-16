@@ -67,6 +67,8 @@ export function TeamLogo({
   className = "w-12 h-12",
   customColor,
   iconColor,
+  isDemo = false,
+  primaryColor,
 }: {
   teamName?: string;
   logoUrl?: string;
@@ -74,18 +76,26 @@ export function TeamLogo({
   className?: string;
   customColor?: string;
   iconColor?: string;
+  isDemo?: boolean;
+  primaryColor?: string;
 }) {
   const color = customColor || getTeamColor(teamName);
+  const hasValidLogo =
+    !!logoUrl &&
+    (logoUrl.startsWith("http") || logoUrl.startsWith("/") || logoUrl.startsWith("data:"));
+  const isDemoFootballFallback =
+    isDemo && !hasValidLogo && (!icon || icon.toLowerCase() === "shield");
+  const effectiveIconColor = iconColor || (isDemoFootballFallback ? primaryColor : undefined);
   const iconProps = {
-    className: `${className} ${iconColor ? "" : color}`.trim(),
-    style: iconColor ? { color: iconColor } : undefined,
+    className: `${className} ${effectiveIconColor ? "" : color}`.trim(),
+    style: effectiveIconColor ? { color: effectiveIconColor } : undefined,
   };
 
-  if (logoUrl && (logoUrl.startsWith("http") || logoUrl.startsWith("/") || logoUrl.startsWith("data:"))) {
+  if (hasValidLogo) {
     return <img src={logoUrl} alt={teamName} className={className} style={{ objectFit: "contain" }} />;
   }
 
-  const iconKey = (icon || "").toLowerCase();
+  const iconKey = (isDemoFootballFallback ? "football" : icon || "").toLowerCase();
   switch (iconKey) {
     case "football":
       return (

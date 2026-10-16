@@ -46,6 +46,7 @@ import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
+import { resolveTeamColorPalette } from "@/lib/teamColors";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -837,6 +838,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             teams={teams}
             standingsMap={standingsMap}
             isLeagueAdmin={true}
+            isDemo={isEffectiveDemo}
           />
 
           {/* Section: 2-Column Standings & League Superstars */}
@@ -885,6 +887,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                     logoUrl={teamObj?.logoUrl}
                                     icon={teamObj?.icon}
                                     className="w-full h-full object-contain"
+                                    isDemo={isEffectiveDemo}
+                                    primaryColor={teamObj?.primaryColor || teamObj?.color}
                                   />
                                 </div>
                                 <span>{row.name}</span>
@@ -1033,11 +1037,25 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             logoUrl={team.logoUrl}
                             icon={team.icon}
                             className="w-full h-full object-contain"
+                            isDemo={isEffectiveDemo}
+                            primaryColor={team.primaryColor || team.color}
                           />
                         </div>
-                        <span className="font-mono text-xs font-bold text-neutral-400 bg-surface-muted px-2 py-0.5 rounded border border-line-subtle">
-                          {team.shortcode || getTeamShortcode(team)}
-                        </span>
+                        {(() => {
+                          const tPalette = resolveTeamColorPalette(team);
+                          return (
+                            <span 
+                              className="font-mono text-xs font-black px-2 py-0.5 rounded border shadow-sm"
+                              style={{
+                                backgroundColor: tPalette.secondary,
+                                color: tPalette.primary,
+                                borderColor: `${tPalette.primary}40`,
+                              }}
+                            >
+                              {team.shortcode || getTeamShortcode(team)}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <h4 className="text-lg font-black text-white truncate">{team.name}</h4>
@@ -1084,6 +1102,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     logoUrl={managedTeam?.logoUrl}
                     icon={managedTeam?.icon}
                     className="w-full h-full object-contain"
+                    isDemo={isEffectiveDemo}
+                    primaryColor={managedTeam?.primaryColor || managedTeam?.color}
                   />
                 </div>
                 <div>
@@ -1216,6 +1236,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       logoUrl={managedTeam?.logoUrl}
                       icon={managedTeam?.icon}
                       className="w-full h-full object-contain"
+                      isDemo={isEffectiveDemo}
+                      primaryColor={managedTeam?.primaryColor || managedTeam?.color}
                     />
                   </div>
                   <div>
@@ -1255,6 +1277,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       logoUrl={nextOpponentTeam?.logoUrl}
                       icon={nextOpponentTeam?.icon}
                       className="w-full h-full object-contain"
+                      isDemo={isEffectiveDemo}
+                      primaryColor={nextOpponentTeam?.primaryColor || nextOpponentTeam?.color}
                     />
                   </div>
                 </div>
@@ -1282,6 +1306,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             teams={teams}
             standingsMap={standingsMap}
             isLeagueAdmin={false}
+            isDemo={isEffectiveDemo}
           />
 
           {/* 2-COLUMN SECTION: MY TEAM ROSTER & MY TEAM STAT LEADERS */}
@@ -1505,6 +1530,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                 logoUrl={teamObj?.logoUrl}
                                 icon={teamObj?.icon}
                                 className="w-full h-full object-contain"
+                                isDemo={isEffectiveDemo}
+                                primaryColor={teamObj?.primaryColor || teamObj?.color}
                               />
                             </div>
                             <span className={isMyTeam ? "text-cyan-300 font-black text-sm" : ""}>{row.name}</span>
@@ -1796,6 +1823,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       logoUrl={myPlayerTeam?.logoUrl}
                       icon={myPlayerTeam?.icon}
                       className="w-full h-full object-contain"
+                      isDemo={isEffectiveDemo}
+                      primaryColor={myPlayerTeam?.primaryColor || myPlayerTeam?.color}
                     />
                   </div>
                   <div>
@@ -1839,6 +1868,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                       logoUrl={myPlayerOpponentTeam?.logoUrl}
                       icon={myPlayerOpponentTeam?.icon}
                       className="w-full h-full object-contain"
+                      isDemo={isEffectiveDemo}
+                      primaryColor={myPlayerOpponentTeam?.primaryColor || myPlayerOpponentTeam?.color}
                     />
                   </div>
                 </div>
@@ -1898,6 +1929,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             teams={teams}
             standingsMap={standingsMap}
             isLeagueAdmin={false}
+            isDemo={isEffectiveDemo}
           />
 
           {/* ATHLETE STATS MATRIX (Individual Season Breakdown) */}
@@ -2275,6 +2307,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                 logoUrl={teamObj?.logoUrl}
                                 icon={teamObj?.icon}
                                 className="w-full h-full object-contain"
+                                isDemo={isEffectiveDemo}
+                                primaryColor={teamObj?.primaryColor || teamObj?.color}
                               />
                             </div>
                             <span className={isMyTeam ? "text-emerald-300 font-black text-sm" : ""}>{row.name}</span>
@@ -2438,6 +2472,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             standingsMap={standingsMap}
             isLeagueAdmin={false}
             isEmbedded={isEmbedded}
+            isDemo={isEffectiveDemo}
           />
 
           {/* 2-Column: Fan Standings & Stat Leaders */}
@@ -2484,6 +2519,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                       logoUrl={teamObj?.logoUrl}
                                       icon={teamObj?.icon}
                                       className="w-full h-full object-contain"
+                                      isDemo={isEffectiveDemo}
+                                      primaryColor={teamObj?.primaryColor || teamObj?.color}
                                     />
                                   </div>
                                   <span>{row.name}</span>
@@ -2500,6 +2537,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                       logoUrl={teamObj?.logoUrl}
                                       icon={teamObj?.icon}
                                       className="w-full h-full object-contain"
+                                      isDemo={isEffectiveDemo}
+                                      primaryColor={teamObj?.primaryColor || teamObj?.color}
                                     />
                                   </div>
                                   <span>{row.name}</span>
@@ -2652,11 +2691,25 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             logoUrl={team.logoUrl}
                             icon={team.icon}
                             className="w-full h-full object-contain"
+                            isDemo={isEffectiveDemo}
+                            primaryColor={team.primaryColor || team.color}
                           />
                         </div>
-                        <span className="font-mono text-xs font-bold text-neutral-400 bg-surface-muted px-2 py-0.5 rounded border border-line-subtle">
-                          {team.shortcode || getTeamShortcode(team)}
-                        </span>
+                        {(() => {
+                          const tPalette = resolveTeamColorPalette(team);
+                          return (
+                            <span 
+                              className="font-mono text-xs font-black px-2 py-0.5 rounded border shadow-sm"
+                              style={{
+                                backgroundColor: tPalette.secondary,
+                                color: tPalette.primary,
+                                borderColor: `${tPalette.primary}40`,
+                              }}
+                            >
+                              {team.shortcode || getTeamShortcode(team)}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <h4 className="text-lg font-black text-white truncate">
@@ -2691,11 +2744,25 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             logoUrl={team.logoUrl}
                             icon={team.icon}
                             className="w-full h-full object-contain"
+                            isDemo={isEffectiveDemo}
+                            primaryColor={team.primaryColor || team.color}
                           />
                         </div>
-                        <span className="font-mono text-xs font-bold text-neutral-400 bg-surface-muted px-2 py-0.5 rounded border border-line-subtle">
-                          {team.shortcode || getTeamShortcode(team)}
-                        </span>
+                        {(() => {
+                          const tPalette = resolveTeamColorPalette(team);
+                          return (
+                            <span 
+                              className="font-mono text-xs font-black px-2 py-0.5 rounded border shadow-sm"
+                              style={{
+                                backgroundColor: tPalette.secondary,
+                                color: tPalette.primary,
+                                borderColor: `${tPalette.primary}40`,
+                              }}
+                            >
+                              {team.shortcode || getTeamShortcode(team)}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       <h4 className="text-lg font-black text-white group-hover:text-cyan-400 transition-colors truncate">
@@ -2872,6 +2939,7 @@ function LiveAndUpcomingGamesSection({
   standingsMap,
   isLeagueAdmin,
   isEmbedded,
+  isDemo,
 }: {
   games: any[];
   liveCount: number;
@@ -2879,6 +2947,7 @@ function LiveAndUpcomingGamesSection({
   standingsMap: Record<string, any>;
   isLeagueAdmin?: boolean;
   isEmbedded?: boolean;
+  isDemo?: boolean;
 }) {
   const formatClock = (seconds: number) => {
     const m = Math.floor(Math.max(0, seconds) / 60);
@@ -3018,6 +3087,8 @@ function LiveAndUpcomingGamesSection({
                             logoUrl={hTeam?.logoUrl}
                             icon={hTeam?.icon}
                             className="w-full h-full object-contain"
+                            isDemo={isDemo}
+                            primaryColor={hTeam?.primaryColor || hTeam?.color}
                           />
                         </div>
                         <div className="min-w-0">
@@ -3052,6 +3123,8 @@ function LiveAndUpcomingGamesSection({
                             logoUrl={aTeam?.logoUrl}
                             icon={aTeam?.icon}
                             className="w-full h-full object-contain"
+                            isDemo={isDemo}
+                            primaryColor={aTeam?.primaryColor || aTeam?.color}
                           />
                         </div>
                         <div className="min-w-0">

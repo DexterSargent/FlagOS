@@ -12,7 +12,7 @@ import {
   SEED_DEMO_PLAYS,
 } from "./demoSeedData";
 import { getGeneratedSeasonPlays } from "./demoPlayGenerator";
-import { YORK_LIONS_MATCHES, YORK_LIONS_PLAYS, YORK_LIONS_PLAYERS, YORK_LIONS_TEAM } from "./yorkTeamData";
+import { isYorkTeam, YORK_LIONS_MATCHES, YORK_LIONS_PLAYS } from "./yorkTeamData";
 
 export type { DemoTeam, DemoPlayer, DemoMatch, DemoPlay };
 export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS, getGeneratedSeasonPlays };
@@ -248,7 +248,12 @@ export const getSandboxTeams = (): DemoTeam[] => {
   initDemoSandbox();
   const filterActual = (list: DemoTeam[]) =>
     list.filter(
-      (t) => t.id !== "team_free_agents" && t.name?.trim().toLowerCase() !== "free agent" && t.name?.trim().toLowerCase() !== "free agents"
+      (t) =>
+        !isYorkTeam(t.id) &&
+        !(t as DemoTeam & { isStandalone?: boolean }).isStandalone &&
+        t.id !== "team_free_agents" &&
+        t.name?.trim().toLowerCase() !== "free agent" &&
+        t.name?.trim().toLowerCase() !== "free agents"
     );
 
   if (typeof window === "undefined") return filterActual(SEED_DEMO_TEAMS);
@@ -305,15 +310,13 @@ export const deleteSandboxTeam = (id: string): void => {
 
 export const getSandboxPlayers = (): DemoPlayer[] => {
   initDemoSandbox();
-  const baseline = [...SEED_DEMO_PLAYERS, ...YORK_LIONS_PLAYERS];
+  const baseline = SEED_DEMO_PLAYERS.filter((player) => !isYorkTeam(player.teamId));
   if (typeof window === "undefined") return baseline;
   const raw = sessionStorage.getItem(KEY_PLAYERS);
   if (raw) {
     try {
       const stored = JSON.parse(raw);
-      const storedIds = new Set(stored.map((p: any) => p.id));
-      const missingYork = YORK_LIONS_PLAYERS.filter((yp) => !storedIds.has(yp.id));
-      return [...stored, ...missingYork];
+      return stored.filter((player: DemoPlayer) => !isYorkTeam(player.teamId));
     } catch {}
   }
   return baseline;
@@ -381,7 +384,13 @@ export const getSandboxMatches = (): DemoMatch[] => {
   const deduplicated: DemoMatch[] = [];
 
   for (const m of list) {
-    if (m.id === "match_demo_1" || m.id === "match_demo_3") continue;
+    if (
+      m.id === "match_demo_1" ||
+      m.id === "match_demo_3" ||
+      m.id.startsWith("match_york_") ||
+      isYorkTeam(m.homeTeamId) ||
+      isYorkTeam(m.awayTeamId)
+    ) continue;
     const matchupKey = `${m.week || ""}_${m.homeTeamId || ""}_${m.awayTeamId || ""}`;
     if (!seenIds.has(m.id) && !seenMatchups.has(matchupKey)) {
       seenIds.add(m.id);
@@ -502,7 +511,7 @@ export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
     if (yPlays.length > 0) return yPlays;
   }
   const baselineSeasonPlays = getGeneratedSeasonPlays();
-  const combinedBaseline = [...baselineSeasonPlays, ...SEED_DEMO_PLAYS, ...YORK_LIONS_PLAYS];
+  const combinedBaseline = [...baselineSeasonPlays, ...SEED_DEMO_PLAYS];
 
   if (typeof window === "undefined") {
     if (matchId) {
@@ -524,7 +533,9 @@ export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
   // Combine baseline season plays with session additions/overrides
   const playMap = new Map<string, DemoPlay>();
   combinedBaseline.forEach((p) => playMap.set(p.id, p));
-  sessionPlays.forEach((p) => playMap.set(p.id, p));
+  sessionPlays
+    .filter((play) => !play.matchId.startsWith("match_york_"))
+    .forEach((p) => playMap.set(p.id, p));
   const all = Array.from(playMap.values());
 
   if (matchId) {

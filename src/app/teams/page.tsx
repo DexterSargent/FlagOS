@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam, TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
+import { resolveTeamColorPalette } from "@/lib/teamColors";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
   getSandboxTeams,
@@ -23,11 +24,18 @@ import {
   getSandboxPlays,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import { YORK_TEAM_ID, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS, isYorkTeam } from "@/lib/yorkTeamData";
+import { YORK_TEAM_ID, isYorkTeam } from "@/lib/yorkTeamData";
 
 interface Team {
   id: string;
   name: string;
+  color?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  tertiaryColor?: string;
+  icon?: string;
+  logoUrl?: string;
+  [key: string]: any;
 }
 
 interface Player {
@@ -93,10 +101,7 @@ export default function TeamsPage() {
     setLoading(true);
     if (isEffectiveDemo) {
       const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-      const t = baseTeams.some(team => team.id === YORK_TEAM_ID || isYorkTeam(team.id))
-        ? baseTeams
-        : [...baseTeams, { ...YORK_LIONS_TEAM, id: YORK_TEAM_ID } as unknown as Team];
-      t.sort((a, b) => a.name.localeCompare(b.name));
+      const t = baseTeams.filter((team) => !isYorkTeam(team.id)).sort((a, b) => a.name.localeCompare(b.name));
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();
@@ -111,36 +116,37 @@ export default function TeamsPage() {
       const teamsSnap = await getDocs(collection(db, "teams"));
       const tData = teamsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as Team))
-        .filter(t => isRealTeam(t) && (!((t as any).leagueId) || (t as any).leagueId === activeLeagueId));
-      if (!tData.some(t => t.id === YORK_TEAM_ID || isYorkTeam(t.id))) {
-        tData.push({
-          ...YORK_LIONS_TEAM,
-          id: YORK_TEAM_ID,
-        } as unknown as Team);
-      }
+        .filter(t => isRealTeam(t) && !isYorkTeam(t.id) && (!((t as any).leagueId) || (t as any).leagueId === activeLeagueId));
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
 
       const playersSnap = await getDocs(collection(db, "players"));
-      const pData = playersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
+      const pData = playersSnap.docs
+        .map(d => ({ id: d.id, ...d.data() } as Player))
+        .filter((player) => !isYorkTeam(player.teamId));
       setPlayers(pData);
 
       const matchesSnap = await getDocs(collection(db, "matches"));
       const mData = matchesSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as any))
-        .filter(m => !m.isHidden && (!m.leagueId || m.leagueId === activeLeagueId));
+        .filter(m =>
+          !m.isHidden &&
+          !String(m.id).startsWith("match_york_") &&
+          !isYorkTeam(m.homeTeamId) &&
+          !isYorkTeam(m.awayTeamId) &&
+          (!m.leagueId || m.leagueId === activeLeagueId)
+        );
       setMatches(mData);
 
       const playsSnap = await getDocs(collection(db, "plays"));
-      const playData = playsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const playData = playsSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter((play: any) => !String(play.matchId).startsWith("match_york_"));
       setPlays(playData);
     } catch (e) {
       console.warn("Unable to fetch live teams data, falling back to sandbox:", e);
       const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-      const t = baseTeams.some(team => team.id === YORK_TEAM_ID || isYorkTeam(team.id))
-        ? baseTeams
-        : [...baseTeams, { ...YORK_LIONS_TEAM, id: YORK_TEAM_ID } as unknown as Team];
-      t.sort((a, b) => a.name.localeCompare(b.name));
+      const t = baseTeams.filter((team) => !isYorkTeam(team.id)).sort((a, b) => a.name.localeCompare(b.name));
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();
@@ -157,10 +163,7 @@ export default function TeamsPage() {
     if (isEffectiveDemo) {
       const unsub = subscribeDemoSandbox(() => {
         const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-        const t = baseTeams.some(team => team.id === YORK_TEAM_ID || isYorkTeam(team.id))
-          ? baseTeams
-          : [...baseTeams, { ...YORK_LIONS_TEAM, id: YORK_TEAM_ID } as unknown as Team];
-        t.sort((a, b) => a.name.localeCompare(b.name));
+        const t = baseTeams.filter((team) => !isYorkTeam(team.id)).sort((a, b) => a.name.localeCompare(b.name));
         setTeams(t);
         setPlayers(getSandboxPlayers() as unknown as Player[]);
         setMatches(getSandboxMatches());
@@ -376,7 +379,7 @@ export default function TeamsPage() {
     .filter(p => p.teamId === activeTeamId)
     .sort((a, b) => a.playerName.localeCompare(b.playerName));
 
-  const competitiveTeams = teams.filter(isRealTeam);
+  const competitiveTeams = teams.filter((team) => isRealTeam(team) && !isYorkTeam(team.id));
   const freeAgentPlayers = players.filter(
     (p) =>
       p.status === "Free Agent" ||
@@ -627,7 +630,7 @@ export default function TeamsPage() {
 
           /* GRID VIEW */
           <div className="space-y-12 animate-in fade-in zoom-in-95 duration-300">
-            {/* Featured Standalone Team Portal: York Lions */}
+            {!isEffectiveDemo && (
             <div className="bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-black border border-red-500/30 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
@@ -691,6 +694,7 @@ export default function TeamsPage() {
                 </div>
               </div>
             </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -734,9 +738,21 @@ export default function TeamsPage() {
                         <div>
                           <h3 className="text-2xl font-black text-white group-hover:text-cyan-400 transition-colors">{team.name}</h3>
                           <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <span className="px-2 py-0.5 bg-white/10 rounded-md text-xs font-mono font-bold tracking-widest text-neutral-300">
-                              {getShorthand(team.name)}
-                            </span>
+                            {(() => {
+                              const tPalette = resolveTeamColorPalette(team);
+                              return (
+                                <span 
+                                  className="px-2 py-0.5 rounded-md text-xs font-mono font-black tracking-widest border shadow-sm"
+                                  style={{
+                                    backgroundColor: tPalette.secondary,
+                                    color: tPalette.primary,
+                                    borderColor: `${tPalette.primary}40`,
+                                  }}
+                                >
+                                  {getShorthand(team.name)}
+                                </span>
+                              );
+                            })()}
                             <span className="text-neutral-400 text-xs font-medium">
                               {teamRosterCount}/30 Players
                             </span>
@@ -756,9 +772,10 @@ export default function TeamsPage() {
                           <TeamLogo
                             teamName={team.name}
                             logoUrl={(team as any).logoUrl}
-                            icon={(team as any).icon || (isYorkTeam(team.id) ? "cat" : "shield")}
+                            icon={(team as any).icon || "shield"}
                             className="w-full h-full object-contain"
-                            customColor={isYorkTeam(team.id) ? "text-red-400" : undefined}
+                            isDemo={isEffectiveDemo}
+                            primaryColor={(team as any).primaryColor || (team as any).color}
                           />
                         </div>
                       </div>
