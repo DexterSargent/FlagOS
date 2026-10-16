@@ -592,14 +592,14 @@ export default function PricingPage() {
           </div>
 
           {/* TIER 2: THE LEAGUE PLAN (RIGHT) */}
-          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-cyan-500/40 rounded-3xl p-5 sm:p-8 space-y-6 relative shadow-[0_0_50px_rgba(6,182,212,0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-cyan-500/60 transition-all">
+          <div className="bg-gradient-to-b from-neutral-900/90 to-neutral-950/90 border border-[#3b82f6]/40 rounded-3xl p-5 sm:p-8 space-y-6 relative shadow-[0_0_50px_rgba(59,130,246,0.15)] flex flex-col justify-between backdrop-blur-xl hover:border-[#3b82f6]/60 transition-all">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <div className="p-3 flex items-center gap-4 bg-cyan-500/20 text-cyan-400 rounded-2xl border border-cyan-500/30">
+                <div className="p-3 flex items-center gap-4 bg-[#3b82f6]/20 text-[#60a5fa] rounded-2xl border border-[#3b82f6]/30">
                   <Building2 className="w-6 h-6" />
                   <h3 className="text-xl font-black uppercase text-white tracking-tight">League Subscription</h3>
                 </div>
-                <span className="px-3 py-1 text-center rounded-full bg-cyan-500/10 text-cyan-300 text-xs font-mono font-bold border border-cyan-500/20">
+                <span className="px-3 py-1 text-center rounded-full bg-[#3b82f6]/10 text-[#93c5fd] text-xs font-mono font-bold border border-[#3b82f6]/20">
                   For Leagues<br /> of 4-64 Teams
                 </span>
               </div>
@@ -617,7 +617,7 @@ export default function PricingPage() {
                     <span className="text-4xl md:text-5xl font-black text-white tabular-nums">${totalLeagueMonthly}</span>
                     <span className="text-neutral-400 text-sm font-semibold ml-2">/ month</span>
                   </div>
-                  <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-md font-bold">
+                  <span className="text-xs font-mono text-[#60a5fa] bg-[#3b82f6]/10 px-2.5 py-1 rounded-md font-bold">
                     ${baseLeagueFee} base + ${perTeamFee}/team
                   </span>
                 </div>
@@ -626,7 +626,7 @@ export default function PricingPage() {
                 <div className="pt-2 border-t border-white/10 space-y-2">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-neutral-300 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-cyan-400" />
+                      <Users className="w-3.5 h-3.5 text-[#60a5fa]" />
                       Active Teams: <span className="text-white font-mono">{teamCount} Teams</span>
                     </span>
                     <span className="text-neutral-400 font-mono">
@@ -646,7 +646,7 @@ export default function PricingPage() {
                       max={64}
                       value={teamCount}
                       onChange={(e) => setTeamCount(Number(e.target.value))}
-                      className="flex-1 accent-cyan-400 cursor-pointer"
+                      className="flex-1 accent-[#3b82f6] cursor-pointer"
                     />
                     <button
                       onClick={() => setTeamCount((c) => Math.min(64, c + 1))}
@@ -658,9 +658,9 @@ export default function PricingPage() {
                 </div>
 
                 {/* Bulk Savings Badge */}
-                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-2.5 text-[11px] flex items-center justify-between text-cyan-300">
+                <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-xl p-2.5 text-[11px] flex items-center justify-between text-[#93c5fd]">
                   <span>Standalone Value: ${teamCount * 30}/mo</span>
-                  <span className="font-bold text-white bg-cyan-500/20 px-2 py-0.5 rounded font-mono">
+                  <span className="font-bold text-white bg-[#3b82f6]/20 px-2 py-0.5 rounded font-mono">
                     Save ${teamCount * 15}/mo (50% Off)
                   </span>
                 </div>
@@ -668,7 +668,7 @@ export default function PricingPage() {
 
               {/* What You Get Inclusions */}
               <div className="space-y-3 pt-2">
-                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
+                <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#60a5fa] flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <ListChecks className="w-3.5 h-3.5" />
                     Included in League Subscription
@@ -678,35 +678,35 @@ export default function PricingPage() {
 
                 <ul className="space-y-2.5 text-xs text-neutral-300">
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">All Team Features Included:</strong> Every team gets their private portal, full stats, and up to 5 playbooks.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">Official Gameday Clocks:</strong> Synchronized 20-min countdown clocks, 25s play clock, and timeouts.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">Automated Seasonal Scheduler:</strong> Generate round-robin match slates, reorder slots, and assign fields.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">Standings &amp; Playoff Brackets:</strong> Automated tiebreaker logic, point differential, and seeded brackets.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">League Stat Leaderboards:</strong> Automatic leaderboards for passers, receivers, flaggers, and scorers.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">Customizable League Portal:</strong> Custom brand colors, logo, season titles, and custom shortcodes.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">Registration Pipeline:</strong> Optional public registration intake &amp; free agent recruit pool.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
                     <span><strong className="text-white">Multi-Division Ready:</strong> Run recreational, competitive, and co-ed divisions seamlessly.</span>
                   </li>
                 </ul>
@@ -722,7 +722,7 @@ export default function PricingPage() {
                     setShowDevelopmentNotice(true);
                   }
                 }}
-                className="w-full py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                className="w-full py-4 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(37,99,235,0.3)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <span>Launch &amp; Subscribe League (${totalLeagueMonthly}/mo)</span>
                 <ArrowRight className="w-4 h-4" />
@@ -820,39 +820,39 @@ export default function PricingPage() {
             </div>
 
             {/* Column 3: FlagOS Bundled League */}
-            <div className="p-6 rounded-3xl bg-gradient-to-b from-[#0B0F19] to-cyan-950/20 border border-cyan-500/40 space-y-4 shadow-xl">
+            <div className="p-6 rounded-3xl bg-gradient-to-b from-[#0B0F19] to-[#1e3a8a]/20 border border-[#3b82f6]/40 space-y-4 shadow-xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                <div className="w-10 h-10 rounded-xl bg-[#3b82f6]/10 border border-[#3b82f6]/20 flex items-center justify-center text-[#60a5fa]">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-mono text-cyan-300 uppercase tracking-wider block">Ultimate Value</span>
+                  <span className="text-[10px] font-mono text-[#93c5fd] uppercase tracking-wider block">Ultimate Value</span>
                   <h3 className="text-base font-black text-white uppercase">FlagOS League Plan</h3>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs text-neutral-300 border-t border-white/5 pt-3">
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400" />
+                  <Check className="w-4 h-4 text-[#60a5fa]" />
                   <span>Turnkey scheduling &amp; live gameday clocks</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400" />
+                  <Check className="w-4 h-4 text-[#60a5fa]" />
                   <span>Full Team Plan hubs for <strong>every team</strong></span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400" />
+                  <Check className="w-4 h-4 text-[#60a5fa]" />
                   <span>50% bulk discount ($15 vs $30/team)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-cyan-400" />
+                  <Check className="w-4 h-4 text-[#60a5fa]" />
                   <span>Automated standings, brackets &amp; leaders</span>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-white/10 flex justify-between items-baseline">
                 <span className="text-xs text-neutral-400">Starts At (4 Teams):</span>
-                <span className="text-xl font-black text-cyan-400 font-mono">$100 / month</span>
+                <span className="text-xl font-black text-[#60a5fa] font-mono">$100 / month</span>
               </div>
             </div>
           </div>
