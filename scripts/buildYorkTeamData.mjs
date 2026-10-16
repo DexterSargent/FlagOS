@@ -198,6 +198,66 @@ const players = [
     emails: ["giovanna.s@my.yorku.ca"],
     joinedAt: "2026-08-15T00:00:00Z",
   },
+  {
+    id: "p_york_catherine_chase",
+    teamId: "york_lions",
+    playerName: "Catherine Chase",
+    position: "ATH",
+    positions: ["ATH"],
+    experience: "Tournament Reserve",
+    status: "Reserve",
+    email: "catherine.chase@my.yorku.ca",
+    emails: ["catherine.chase@my.yorku.ca"],
+    joinedAt: "2026-08-15T00:00:00Z",
+  },
+  {
+    id: "p_york_ciara_bagby_sue",
+    teamId: "york_lions",
+    playerName: "Ciara Bagby-Sue",
+    position: "ATH",
+    positions: ["ATH"],
+    experience: "Tournament Reserve",
+    status: "Reserve",
+    email: "ciara.bagbysue@my.yorku.ca",
+    emails: ["ciara.bagbysue@my.yorku.ca"],
+    joinedAt: "2026-08-15T00:00:00Z",
+  },
+  {
+    id: "p_york_ciara_williams",
+    teamId: "york_lions",
+    playerName: "Ciara Williams",
+    position: "ATH",
+    positions: ["ATH"],
+    experience: "Tournament Reserve",
+    status: "Reserve",
+    email: "ciara.williams@my.yorku.ca",
+    emails: ["ciara.williams@my.yorku.ca"],
+    joinedAt: "2026-08-15T00:00:00Z",
+  },
+  {
+    id: "p_york_melina_bosco",
+    teamId: "york_lions",
+    playerName: "Melina Bosco",
+    position: "ATH",
+    positions: ["ATH"],
+    experience: "Tournament Reserve",
+    status: "Reserve",
+    email: "melina.bosco@my.yorku.ca",
+    emails: ["melina.bosco@my.yorku.ca"],
+    joinedAt: "2026-08-15T00:00:00Z",
+  },
+  {
+    id: "p_york_nicole_stylianou",
+    teamId: "york_lions",
+    playerName: "Nicole Stylianou",
+    position: "ATH",
+    positions: ["ATH"],
+    experience: "Tournament Reserve",
+    status: "Reserve",
+    email: "nicole.stylianou@my.yorku.ca",
+    emails: ["nicole.stylianou@my.yorku.ca"],
+    joinedAt: "2026-08-15T00:00:00Z",
+  },
 ];
 
 const teamDataHeader = `import { DemoTeam, DemoPlayer, DemoMatch, DemoPlay } from "./demoSeedData";
@@ -232,11 +292,14 @@ export const YORK_LIONS_TEAM: DemoTeam & Record<string, any> = {
   tertiaryColor: "#000000", // Black
   icon: "cat", // Lion
   logoUrl: "",
-  bio: "Official Varsity Club Portal for York University Women's Flag Football (YUWFFL Lions). Led by Head Coach Dexter Sargent & Offensive Coordinator Theo.",
   coachName: "Dexter Sargent",
-  coachRole: "Head Coach & Defensive Coordinator",
+  coachRole: "Head Coach",
   assistantCoach: "Theo",
-  assistantCoachRole: "Offensive Coordinator",
+  assistantCoachRole: "Defensive Coordinator",
+  defensiveCoordinator: "Theo",
+  defensiveCoordinatorRole: "Defensive Coordinator",
+  offensiveCoordinator: "Justin Fawcett",
+  offensiveCoordinatorRole: "Offensive Coordinator",
   coachEmail: "dextersargent@gmail.com",
   adminEmails: YORK_ADMIN_EMAILS,
   isStandalone: true,
@@ -282,13 +345,14 @@ export function getYorkLionsPlaybooks(): Playbook[] {
     plays: [
       {
         id: "play-york-jet-motion-1",
-        playbookId: \`pb-off-\${YORK_TEAM_ID}\`,
+        teamId: YORK_TEAM_ID,
         name: "Lion Jet Sweep Motion",
         formation: "Spread 2x2",
-        type: "pass",
-        tags: ["motion", "quick", "redzone"],
+        type: "offense",
+        situation: "Standard",
+        losY: DEFAULT_LOS_Y,
         notes: "Z goes in pre-snap motion across formation. Quick flip or deep post read.",
-        squad: [
+        players: [
           { id: "qb", label: "QB", role: "Quarterback", x: 50, y: DEFAULT_LOS_Y + 7, side: "offense", notes: "Catch snap, read flat to post" },
           { id: "c", label: "C", role: "Center", x: 50, y: DEFAULT_LOS_Y, side: "offense", quickRouteName: "Block", route: [{ x: 50, y: DEFAULT_LOS_Y - 4 }], notes: "Snap & short release" },
           { id: "x", label: "X", role: "Receiver Left", x: 20, y: DEFAULT_LOS_Y, side: "offense", quickRouteName: "Post", route: [{ x: 20, y: DEFAULT_LOS_Y - 14 }, { x: 45, y: DEFAULT_LOS_Y - 26 }], notes: "Deep Post (Primary Target)" },
@@ -337,6 +401,14 @@ export function getYorkTeamPlays(): DemoPlay[] {
 
 const fileContent = `${teamDataHeader}
 export const YORK_LIONS_PLAYERS: DemoPlayer[] = ${JSON.stringify(players, null, 2)};
+
+export const YORK_LIONS_RESERVE_PLAYERS: DemoPlayer[] = YORK_LIONS_PLAYERS.filter(
+  (p) => p.status === "Reserve"
+);
+
+export const YORK_LIONS_ACTIVE_PLAYERS: DemoPlayer[] = YORK_LIONS_PLAYERS.filter(
+  (p) => p.status !== "Reserve"
+);
 
 export const YORK_LIONS_MATCHES: DemoMatch[] = ${JSON.stringify(matches, null, 2)};
 

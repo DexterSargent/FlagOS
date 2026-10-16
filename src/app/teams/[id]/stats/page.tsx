@@ -124,7 +124,12 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           const isEligible = (name: string) => name && statsMap[name];
 
           const isConversionPlay = Boolean(
-            play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+            play.isConversion === true ||
+            play.playType === "Conversion" ||
+            (!play.isTouchdown && (
+              (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+              play.conversionSuccess === true
+            ))
           );
 
           // Passing
@@ -164,7 +169,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
               if (play.passOutcome === "Interception") {
                 statsMap[defenderName].int += 1;
-                if (play.isPick6) {
+                if (play.isPick6 || play.result === "Pick 6" || play.result === "Pick 6 Touchdown") {
                   statsMap[defenderName].totalTDs += 1;
                 }
               } else if (play.passOutcome === "PBU") {

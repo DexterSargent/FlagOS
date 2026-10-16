@@ -757,7 +757,12 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       const defTeam = offTeam === homeTeamId ? awayTeamId : homeTeamId;
 
       const isConversionPlay = Boolean(
-        play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+        play.isConversion === true ||
+        play.playType === "Conversion" ||
+        (!play.isTouchdown && (
+          (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+          play.conversionSuccess === true
+        ))
       );
 
       if (play.playType === "Pass" && play.qbPlayerId && !isConversionPlay) {

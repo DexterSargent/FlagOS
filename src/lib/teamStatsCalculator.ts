@@ -433,7 +433,7 @@ export function calculateTeamComprehensiveStats(
     // York aliases
     if (
       (teamId === "york_lions" || teamId === "team_york" || teamId === "york" || teamId === "yuwffl_lions") &&
-      (idOrName === "york_lions" || idOrName === "team_york" || idOrName === "york" || idOrName === "yuwffl_lions" || idOrName === "York Lions")
+      (idOrName === "york_lions" || idOrName === "team_york" || idOrName === "york" || idOrName === "yuwffl_lions" || idOrName === "York Lions" || idOrName === "York Lions Women's Flag Football")
     ) {
       return true;
     }
@@ -527,19 +527,24 @@ export function calculateTeamComprehensiveStats(
     if (!isInvolved && !isOffense) return;
 
     const isConversionPlay = Boolean(
-      play.isConversion ||
-      (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+      play.isConversion === true ||
+      play.playType === "Conversion" ||
+      (!play.isTouchdown && (
+        (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+        play.conversionSuccess === true
+      ))
     );
 
     // PATs (Points After Touchdown)
-    if (isOffense && play.conversionAttempt !== undefined && play.conversionAttempt !== null) {
-      const convPts = Number(play.conversionAttempt);
+    const convPts = play.conversionAttempt ?? play.conversionPts;
+    if (isOffense && convPts !== undefined && convPts !== null) {
+      const numPts = Number(convPts);
       const isGood = Boolean(play.conversionSuccess);
 
-      if (convPts === 1) {
+      if (numPts === 1) {
         pat1Attempts += 1;
         if (isGood) pat1Conversions += 1;
-      } else if (convPts === 2) {
+      } else if (numPts === 2) {
         pat2Attempts += 1;
         if (isGood) pat2Conversions += 1;
       }
@@ -658,7 +663,7 @@ export function calculateTeamComprehensiveStats(
           pbus += 1;
         }
 
-        if (play.isPick6 || play.result === "Pick 6") {
+        if (play.isPick6 || play.result === "Pick 6" || play.result === "Pick 6 Touchdown") {
           defTDs += 1;
           totalTDs += 1;
         }

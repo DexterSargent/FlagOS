@@ -668,7 +668,7 @@ Unknown QB pass broken up by EMMA GIANGROSSO (Next Down)
 Canadore Panthers - 1st Down
 Unknown Runner run (Flagged by GIOVANNA SCOUNTRIANOS) (Short)
 
-York Lions - 4th Down
+Canadore Panthers - 4th Down
 Unknown QB pass intercepted by ALEXXANDRIA OLIVIER for a Pick 6!
 1-PT CONVERSION FAILED
 
@@ -813,7 +813,8 @@ SONIA CABRAL pass complete to TIZANA SUTHARSAN for a FIRST DOWN.`
 
 function titleCase(name) {
   if (!name) return "";
-  return name.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  const cleaned = name.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  return cleaned.replace(/-\s*([a-z])/g, (_, letter) => `-${letter.toUpperCase()}`);
 }
 
 function parseBlocks(gameKey, game) {
@@ -985,20 +986,21 @@ function parseBlocks(gameKey, game) {
 
     // Conversion details
     let isConversion = false;
-    let conversionSuccess = false;
-    let conversionPts = null;
+    let conversionSuccess = undefined;
+    let conversionAttempt = undefined;
+    let conversionPts = undefined;
     let conversionPasser = null;
     let conversionReceiver = null;
     let conversionRunner = null;
 
     if (convLine) {
-      isConversion = true;
-      if (convLine.includes("1-PT")) conversionPts = 1;
-      else if (convLine.includes("2-PT")) conversionPts = 2;
+      if (convLine.includes("1-PT")) conversionAttempt = 1;
+      else if (convLine.includes("2-PT")) conversionAttempt = 2;
+      conversionPts = conversionAttempt;
 
       if (convLine.includes("GOOD")) {
         conversionSuccess = true;
-        points += (conversionPts || 1);
+        points += (conversionAttempt || 1);
 
         const passConvMatch = convLine.match(/pass to ([A-Z\s\-]+)$/i);
         if (passConvMatch) {
@@ -1040,6 +1042,7 @@ function parseBlocks(gameKey, game) {
       points,
       pointsScored: points,
       isConversion,
+      conversionAttempt,
       conversionSuccess,
       conversionPts,
       conversionPasser,
@@ -1077,8 +1080,8 @@ Object.entries(rawGames).forEach(([key, g], gIdx) => {
     time: g.time,
     location: "Field 1",
     status: "completed",
-    homeScore: g.isYorkHome ? g.homeScore : g.awayScore,
-    awayScore: g.isYorkHome ? g.awayScore : g.homeScore,
+    homeScore: g.homeScore,
+    awayScore: g.awayScore,
     matchdayIndex: gIdx + 1,
     order: gIdx + 1,
     isIndependent: true,

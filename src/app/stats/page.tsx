@@ -254,7 +254,12 @@ export default function StatsAndStandings() {
 
           // Check if this play is a conversion attempt (special try play)
           const isConversionPlay = Boolean(
-            play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+            play.isConversion === true ||
+            play.playType === "Conversion" ||
+            (!play.isTouchdown && (
+              (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+              play.conversionSuccess === true
+            ))
           );
 
           // Passing

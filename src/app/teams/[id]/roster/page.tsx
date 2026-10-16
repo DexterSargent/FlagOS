@@ -189,7 +189,12 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         const isEligible = (name: string) => name && statsMap[name];
 
         const isConversionPlay = Boolean(
-          play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+          play.isConversion === true ||
+          play.playType === "Conversion" ||
+          (!play.isTouchdown && (
+            (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+            play.conversionSuccess === true
+          ))
         );
 
         if (play.playType === "Pass" && isEligible(play.qbPlayerId) && !isConversionPlay) {

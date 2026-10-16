@@ -463,33 +463,6 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* The Platform Multiplier Architecture Banner */}
-        <div className="rounded-3xl bg-gradient-to-r from-emerald-500/10 via-cyan-500/15 to-blue-500/10 border border-cyan-500/30 p-6 md:p-8 text-neutral-200 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl shadow-2xl">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold uppercase tracking-wider">
-              <BadgePercent className="w-3.5 h-3.5 text-cyan-400" />
-              <span>The 50% League Bundle Advantage</span>
-            </div>
-            <h2 className="text-xl md:text-2xl font-black uppercase text-white tracking-tight">
-              Leagues Include Full Team Plan Hubs For Every Team
-            </h2>
-            <p className="text-neutral-300 text-sm leading-relaxed">
-              When you subscribe to a League, you aren&apos;t just buying admin scheduling tools. <strong className="text-white">Every single team in your organization receives their own private Team Portal</strong> — complete player stats, career records, and up to 5 custom playbooks — at <strong>$15/team/mo (50% off the standalone team subscription)</strong>.
-            </p>
-          </div>
-          <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-2 sm:gap-3 shrink-0 w-full sm:w-auto">
-            <div className="text-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-black/60 border border-emerald-500/30 flex-1 sm:flex-initial min-w-[130px]">
-              <div className="text-[10px] sm:text-[11px] text-emerald-400 font-mono font-bold uppercase">Team Side</div>
-              <div className="text-xs sm:text-sm md:text-base font-black text-white whitespace-nowrap">Stats + 5 Playbooks</div>
-            </div>
-            <div className="text-cyan-400 font-black text-base sm:text-lg">➕</div>
-            <div className="text-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-black/60 border border-cyan-500/30 flex-1 sm:flex-initial min-w-[130px]">
-              <div className="text-[10px] sm:text-[11px] text-cyan-400 font-mono font-bold uppercase">League Side</div>
-              <div className="text-xs sm:text-sm md:text-base font-black text-white whitespace-nowrap">Live Clocks + Infra</div>
-            </div>
-          </div>
-        </div>
-
         {/* SIDE-BY-SIDE PLANS GRID (TEAM VS LEAGUE) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
           {/* TIER 1: THE TEAM PLAN (LEFT) */}

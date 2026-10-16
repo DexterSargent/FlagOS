@@ -191,7 +191,12 @@ export default function PlayerProfilePage() {
             if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
 
             const isConversionPlay = Boolean(
-              play.isConversion || (!play.isTouchdown && (play.conversionSuccess !== undefined || play.conversionAttempt !== undefined))
+              play.isConversion === true ||
+              play.playType === "Conversion" ||
+              (!play.isTouchdown && (
+                (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+                play.conversionSuccess === true
+              ))
             );
 
             // Passing
