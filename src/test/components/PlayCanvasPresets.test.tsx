@@ -32,6 +32,23 @@ const mockOffensePlay: PlayDiagram = {
   notes: "Primary read is X on quick slant",
 };
 
+const mockDefensePlay: PlayDiagram = {
+  ...mockOffensePlay,
+  id: "test_defense_play_1",
+  name: "Cover 2 Shell",
+  type: "defense",
+  formation: "Cover 2 Zone",
+  players: [
+    ...mockOffensePlay.players,
+    { id: "p_rush", label: "RUSH", role: "Pass Rusher", side: "defense", x: 50, y: 57, coverageType: "rush", routeType: "rush", route: [{ x: 50, y: 79 }] },
+    { id: "p_cb1", label: "CB1", role: "Cornerback Left", side: "defense", x: 18, y: 62, coverageType: "zone", route: [] },
+    { id: "p_cb2", label: "CB2", role: "Cornerback Right", side: "defense", x: 82, y: 62, coverageType: "zone", route: [] },
+    { id: "p_fs", label: "FS", role: "Free Safety", side: "defense", x: 34, y: 54, coverageType: "zone", route: [] },
+    { id: "p_ss", label: "SS", role: "Strong Safety", side: "defense", x: 66, y: 54, coverageType: "zone", route: [] },
+  ],
+  zones: [],
+};
+
 describe("PlayCanvas Route Presets Suite", () => {
   it("renders the 1-click quick-route ribbon for offensive receivers", () => {
     const handleChange = vi.fn();
@@ -44,6 +61,20 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(screen.getByTestId("quick-route-corner")).toBeDefined();
     expect(screen.getByTestId("quick-route-go")).toBeDefined();
     expect(screen.getByTestId("quick-route-jet-motion")).toBeDefined();
+    expect(screen.getByText("Pre-snap motion")).toBeDefined();
+  });
+
+  it("switches between the field and assignment workspace on compact screens", () => {
+    render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+    const fieldTab = screen.getByTestId("designer-pane-field");
+    const assignmentsTab = screen.getByTestId("designer-pane-assignments");
+    expect(fieldTab.getAttribute("aria-pressed")).toBe("true");
+    expect(assignmentsTab.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(assignmentsTab);
+    expect(assignmentsTab.getAttribute("aria-pressed")).toBe("true");
+    expect(fieldTab.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("applies a route preset when clicking a quick-route button", () => {
@@ -89,6 +120,33 @@ describe("PlayCanvas Route Presets Suite", () => {
     const jetPlayer = updatedPlay.players.find((p) => p.quickRouteName === "Jet Motion");
     expect(jetPlayer).toBeDefined();
     expect(jetPlayer?.routeType).toBe("motion");
+  });
+
+  it("assigns QB spy as a distinct defensive responsibility", () => {
+    const handleChange = vi.fn();
+    render(<PlayCanvas play={mockDefensePlay} onChange={handleChange} />);
+
+    expect(screen.queryByTestId("coverage-qb-spy")).toBeNull();
+    fireEvent.click(screen.getByTestId("coverage-category-special"));
+    fireEvent.click(screen.getByTestId("coverage-qb-spy"));
+
+    const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const spyPlayer = updatedPlay.players.find((p) => p.id === "p_rush");
+    expect(spyPlayer?.coverageType).toBe("spy");
+    expect(spyPlayer?.routeType).toBeUndefined();
+    expect(spyPlayer?.zoneId).toBeDefined();
+  });
+
+  it("clears pass-rush routing when a defender is reassigned to a zone", () => {
+    const handleChange = vi.fn();
+    render(<PlayCanvas play={mockDefensePlay} onChange={handleChange} />);
+
+    fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
+
+    const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const defender = updatedPlay.players.find((p) => p.id === "p_rush");
+    expect(defender?.coverageType).toBe("zone");
+    expect(defender?.routeType).toBeUndefined();
   });
 
   it("toggles the route presets catalog drawer without clipping", () => {

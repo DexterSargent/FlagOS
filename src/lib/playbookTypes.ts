@@ -23,7 +23,7 @@ export interface StandardZoneTemplate {
   id: string;
   name: string;
   shortName: string;
-  category: "Deep Zones" | "Underneath & Hook" | "Flats & Short";
+  category: "Deep Zones" | "Underneath & Hook" | "Flats & Short" | "Special Assignment";
   color: string;
   relY: number; // percentage downfield relative to losY (negative = downfield into defensive backfield)
   x: number;
@@ -160,7 +160,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     id: "qb-spy",
     name: "QB Spy",
     shortName: "QB Spy",
-    category: "Flats & Short",
+    category: "Special Assignment",
     color: "#06B6D4",
     relY: -7,
     x: 50,
@@ -346,11 +346,16 @@ export interface LegalPositionCheck {
   warning?: string;
 }
 
+function isAssignedPassRusher(player: PlayerNode): boolean {
+  if (player.coverageType) return player.coverageType === "rush";
+  return player.label.toUpperCase().includes("RUSH");
+}
+
 /**
  * Clamps coordinates during drag to strictly enforce Line of Scrimmage and 5v5 legal alignment.
  * Offense cannot move beyond LOS (y >= losY). Center is fixed on LOS (y = losY).
  * QB is set in backfield (y >= losY + 4).
- * Defense cannot cross LOS into offense (y <= losY - 1). Rusher is at least 7 yards back (y <= rushY).
+ * Defense cannot cross LOS into offense (y <= losY - 1). Assigned pass rushers must stay behind the rush line.
  */
 export function clampLegalPosition(
   player: PlayerNode,
@@ -374,7 +379,7 @@ export function clampLegalPosition(
       clampedY = Math.max(losY, Math.min(94, clampedY));
     }
   } else {
-    if (player.label.toUpperCase().includes("RUSH") || player.coverageType === "rush") {
+    if (isAssignedPassRusher(player)) {
       // Pass Rusher must be at least 7 yards behind LOS (marked by yellow rush cone)
       clampedY = Math.max(12, Math.min(rushLineY, clampedY));
     } else {
@@ -432,7 +437,7 @@ export function checkLegalPosition(player: PlayerNode, losY = DEFAULT_LOS_Y): Le
     }
 
     // 2. Rusher must be at least 7 yards behind LOS at the snap
-    if (player.label.toUpperCase().includes("RUSH") || player.coverageType === "rush") {
+    if (isAssignedPassRusher(player)) {
       if (player.y > rushLineY + 0.5) {
         return {
           isLegal: false,
@@ -1588,4 +1593,3 @@ export function createPlayInFormation(
     updatedAt: new Date().toISOString(),
   };
 }
-

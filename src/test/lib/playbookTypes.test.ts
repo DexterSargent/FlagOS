@@ -6,9 +6,50 @@ import {
   migrateRawPlaysToPlaybooks,
   createPlayInFormation,
   DEFAULT_LOS_Y,
+  RUSH_LINE_DISTANCE,
+  clampLegalPosition,
+  checkLegalPosition,
 } from "@/lib/playbookTypes";
 
 describe("playbookTypes", () => {
+  describe("defensive alignment rules", () => {
+    it.each(["spy", "zone", "man"] as const)(
+      "allows a former rusher assigned to %s to align like a coverage defender",
+      (coverageType) => {
+        const reassignedDefender = {
+          id: "spy",
+          label: "RUSH",
+          role: "Pass Rusher",
+          side: "defense" as const,
+          x: 50,
+          y: DEFAULT_LOS_Y - 2,
+          coverageType,
+        };
+
+        expect(
+          clampLegalPosition(reassignedDefender, { x: 50, y: DEFAULT_LOS_Y - 2 }, DEFAULT_LOS_Y).y
+        ).toBe(DEFAULT_LOS_Y - 2);
+        expect(checkLegalPosition(reassignedDefender, DEFAULT_LOS_Y)).toEqual({ isLegal: true });
+      }
+    );
+
+    it("keeps legacy RUSH-labeled defenders behind the rush line", () => {
+      const legacyRusher = {
+        id: "legacy-rush",
+        label: "RUSH",
+        role: "Pass Rusher",
+        side: "defense" as const,
+        x: 50,
+        y: DEFAULT_LOS_Y - 2,
+      };
+
+      expect(
+        clampLegalPosition(legacyRusher, { x: 50, y: DEFAULT_LOS_Y - 2 }, DEFAULT_LOS_Y).y
+      ).toBe(DEFAULT_LOS_Y - RUSH_LINE_DISTANCE);
+      expect(checkLegalPosition(legacyRusher, DEFAULT_LOS_Y).isLegal).toBe(false);
+    });
+  });
+
   describe("ensureSquadMatchup", () => {
     it("creates exactly 5 offense and 5 defense players for 5v5 flag football", () => {
       const players = ensureSquadMatchup([], DEFAULT_LOS_Y, 5);
