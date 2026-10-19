@@ -65,9 +65,8 @@ describe("My Story Page (/my-story)", () => {
     expect(screen.getByText(/sleep on a couch in their living room/i)).toBeInTheDocument();
     expect(screen.getByText(/17-8 to qualify for the playoffs/i)).toBeInTheDocument();
     expect(screen.getByText(/york university women's flag football league/i)).toBeInTheDocument();
-    expect(
-      screen.getAllByText(/\$30\/month for team playbooks/i).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByText(/\$30\/month for team playbooks/i)).toBeInTheDocument();
+    expect(screen.getByText(/dextersargent@gmail\.com/i)).toBeInTheDocument();
 
     const storySections = Array.from(document.querySelectorAll("article[id]")).map(
       (section) => section.id,
