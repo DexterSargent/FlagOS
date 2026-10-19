@@ -19,7 +19,6 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@rolldown/binding-darwin-arm64": "^1.2.13",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",

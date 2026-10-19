@@ -427,13 +427,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 limit(300)
               );
               const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)).filter((p) => p.matchId !== matchId));
             }
           } catch {
             try {
               const q = query(collection(db, "plays"), limit(200));
               const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)).filter((p) => p.matchId !== matchId));
             } catch {}
           }
         }
