@@ -38,35 +38,36 @@ describe("My Story Page (/my-story)", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /i grew up carrying a football to school/i,
+        name: /building flagos: software born out of necessity/i,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /it started with two footballs/i }),
+      screen.getByRole("heading", { name: /childhood roots in dartmouth/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /i made my own way to toronto/i }),
+      screen.getByRole("heading", { name: /high school & the recruiting grind/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /i learned how much the team matters/i }),
+      screen.getByRole("heading", { name: /york university varsity career/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /a week helping out became something bigger/i }),
+      screen.getByRole("heading", { name: /coaching york women's flag football/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /at 0–7, we had one week to prepare/i }),
+      screen.getByRole("heading", { name: /rebuilding & varsity status/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /the software came from a problem we had/i }),
+      screen.getByRole("heading", { name: /^building flagos$/i }),
     ).toBeInTheDocument();
 
     expect(screen.getAllByText(/dartmouth destroyers/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/\$4,500 athletic scholarship from york/i)).toBeInTheDocument();
-    expect(screen.getByText(/alfred olay/i)).toBeInTheDocument();
-    expect(screen.getByText(/slept on theo's pull-out couch/i)).toBeInTheDocument();
-    expect(screen.getByText(/17–8 to reach the playoffs/i)).toBeInTheDocument();
-    expect(screen.getByText(/ninety athletes came to 5v5 tryouts/i)).toBeInTheDocument();
-    expect(screen.getByText(/partners for planning/i)).toBeInTheDocument();
+    expect(screen.getByText(/full oua athletic scholarship to york university/i)).toBeInTheDocument();
+    expect(screen.getByText(/sleep on a couch in their living room/i)).toBeInTheDocument();
+    expect(screen.getByText(/17-8 to qualify for the playoffs/i)).toBeInTheDocument();
+    expect(screen.getByText(/york university women's flag football league/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/\$30\/month for team playbooks/i).length,
+    ).toBeGreaterThan(0);
 
     const storySections = Array.from(document.querySelectorAll("article[id]")).map(
       (section) => section.id,

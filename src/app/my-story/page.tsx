@@ -14,81 +14,81 @@ const STORY = [
     id: "first-football",
     number: "01",
     period: "Dartmouth, Nova Scotia",
-    title: "It started with two footballs.",
-    lead: "In Grade 3, I played football at recess and was hooked. I asked both my parents for a football, separately. The next day, they each came home with one.",
+    title: "Childhood Roots in Dartmouth",
+    lead: "In the third grade, I played football for the first time with some older kids at my school and immediately fell in love with the game. Soon after, I asked both of my parents to buy me a football without telling the other, and they both came home with one for me.",
     paragraphs: [
-      "I brought a ball to school every day after that. In Grade 4, a friend and I wrote a persuasive letter asking our parents to let us play for the Dartmouth Destroyers. It worked. My friend stayed for one season; I kept going.",
-      "Growing up in Nova Scotia, I played both tackle and flag football. There were fewer opportunities to play tackle, so flag was part of how I learned the game—not a break from it.",
+      "From then on, I was always the kid who brought a football to school. When the older kids went to junior high, I would beg my friends to spend their recesses and lunches playing football with me on the field.",
+      "The next year, in a grade 4/5 split classroom, during our persuasive writing unit, I wrote a letter to convince my mom to let me join the Dartmouth Destroyers, laying out my case line by line: why it was safe, how I would keep my grades up, and how I would care for my gear. My mom agreed, setting off my lifelong involvement with the sport.",
     ],
     momentLabel: "The first big ask",
-    moment: "A Grade 4 letter got me onto the Dartmouth Destroyers.",
+    moment: "A Grade 4 persuasive letter convinced my mom to let me join the Dartmouth Destroyers.",
   },
   {
     id: "leaving-home",
     number: "02",
-    period: "High school → York University",
-    title: "I made my own way to Toronto.",
-    lead: "In Grade 11, I made an all-star team, cut my own game film, and emailed it to university coaches across the country.",
+    period: "High School → York University",
+    title: "High School & The Recruiting Grind",
+    lead: "Growing up, opportunities for tackle football were limited; I always played both flag and tackle football to get my fill, lining up at safety, linebacker, cornerback, quarterback, tight end, and just about any other position they would let me play throughout high school.",
     paragraphs: [
-      "I played for Team Nova Scotia Flag Football and received its Sportsmanship Award. At that banquet, I met Brian Jones, fresh off a Grey Cup win with the Toronto Argonauts. Years later, he would coach me at York.",
-      "The next year, I was named an all-star again. I had grown into a 6'3\", 205-pound middle linebacker and received offers from several schools, including a $4,500 athletic scholarship from York. I chose Toronto with two goals: play university football and study software engineering.",
+      "Coming out of Nova Scotia, Canada, getting recruited didn’t mean NIL and ten-million-dollar locker rooms, it meant putting in hours of cold-emailing, clipping game film, and sending highlight tapes directly to every university head coach and defensive coordinator in the country.",
+      "That effort paid off when I earned a full OUA athletic scholarship to York University alongside academic scholarships for software engineering. I packed my bags for Toronto, ready to balance competitive athletics with an engineering degree.",
     ],
-    momentLabel: "The leap",
-    moment: "A self-made highlight reel helped turn a cold email into a place at York.",
+    momentLabel: "The recruiting grind",
+    moment: "Cold emails and self-cut film earned a full OUA athletic scholarship to York.",
   },
   {
     id: "york",
     number: "03",
     period: "York Lions · 2021–2024",
-    title: "I learned how much the team matters.",
-    lead: "I started on special teams. In 2022, against Windsor, I recovered a blocked kick and ran it in for a touchdown with my family watching.",
+    title: "York University Varsity Career",
+    lead: "I spent four seasons as a varsity athlete with the York Lions, playing linebacker and key special teams units. One of the highlights of my playing career came right before Thanksgiving in 2022 against Windsor, when I scooped up a blocked kick and returned it for a touchdown right before halftime with my family in the stands.",
     paragraphs: [
-      "I also blocked for my roommate, Alfred Olay, on the way to becoming York's first U SPORTS first-team All-Canadian returner in nearly 20 years.",
-      "After the 2022 season, worn down by losing and unsure of my place on defense, I quit. Three weeks before camp the next year, Brian Jones called to ask if I was really done. I wasn't. I came back with nowhere to stay and slept on Theo's pull-out couch. By Week 2, I was a captain. I played linebacker, tight end, and defensive end while finishing my software engineering degree and working.",
+      "Balancing engineering coursework with varsity football was exhausting, and despite moments like that, overwhelmed by team struggle and a lack of clear opportunity after the 2022 season, I stepped away from the program. But before the 2023 training camp, I felt pulled back to finish what I started.",
+      "I returned on a whim, academically ineligible and with nowhere to live. My teammate Theo, having lived with me the year before, took me in alongside his roommates. They opened their door and let me sleep on a couch in their living room for weeks while we went through training camp and began our season. Staying there and having nowhere to go except the main gathering space forged a bond between us.",
+      "In Week 3 of that season, I was named a team captain after we lost one of our top players and captains for the season, reflecting the leadership and resilience Theo and I pushed each other to bring every day. After a few weeks on the couch, I moved into a dingy, overpriced apartment to finish out the year before eventually moving in with other teammates at season's end.",
     ],
-    momentLabel: "A turning point",
-    moment: "I left the team, got a call, and came back. The next season, I was named captain.",
+    momentLabel: "Resilience & brotherhood",
+    moment: "From sleeping on Theo's living room couch to being named team captain in Week 3.",
   },
   {
     id: "coaching",
     number: "04",
     period: "Winter 2024",
-    title: "A week helping out became something bigger.",
-    lead: "Over reading week, Theo and I volunteered to help York's women's flag team prepare for its OWIFA season.",
+    title: "Coaching York Women's Flag Football",
+    lead: "During Reading Week in 2024, when the new head coach of the men's team asked people to come out and help the women’s flag team, everybody jumped at the opportunity so we could make a good impression on our new coach. Theo and I volunteered.",
     paragraphs: [
-      "The players were serious about learning. They wanted to understand coverages, matchups, and why a play worked—not just memorize where to line up. But the program wasn't getting the structure or level of coaching those athletes were ready for.",
-      "We started teaching the game the way we had learned it: with real schemes, clear explanations, and respect for the players' ability to execute. It changed what I thought coaching could look like.",
+      "We quickly realized how much potential the women's flag team had, fell in love with it, and kept coming back to share our knowledge. After a few weeks, the program parted ways with their previous coaches and asked us to take over. We found a group of dedicated athletes who loved the game and wanted to learn, establishing a balanced coaching standard: combining my engineering mindset for structured tactical schemes with Theo's relentless effort and determination.",
+      "Sitting at 0-7, our coaching staff took over full leadership just one week before the OWIFA play-in tournament. Many people in this situation would look to simplify, go with what works, but we knew our athletes had far more capacity if they were treated like the intelligent football players they are. We overhauled everything, installing an entirely new, more complex defensive playbook in a single week.",
+      "After losing our first two in close games, we headed into the play-in game against Waterloo 0-9. We executed smoothly and won 17-8 to qualify for the playoffs, proving what we could accomplish when we provided clear structure.",
     ],
-    momentLabel: "What I saw",
-    moment: "The players didn't need football simplified. They needed the chance to learn it.",
+    momentLabel: "The 17–8 breakthrough",
+    moment: "Installing a complex defensive playbook in one week and winning 17–8 to qualify for the playoffs.",
   },
   {
     id: "turnaround",
     number: "05",
-    period: "The OWIFA play-in",
-    title: "At 0–7, we had one week to prepare.",
-    lead: "The student executive brought our coaching group in a week before the final tournament. Braden became head coach; Theo and I took on defense.",
+    period: "Spring 2024 → 2027",
+    title: "Rebuilding & Varsity Status",
+    lead: "After the playoff run, we turned our focus toward building the long-term foundation of the program. We handed out flyers across campus and organized recruitment events.",
     paragraphs: [
-      "We installed a new defensive system and reworked the offense. On tournament day, we lost close games to Guelph and Waterloo. Before the 8th-versus-9th play-in rematch with Waterloo, Theo and I noticed a tendency in their offense and prepared the team for it.",
-      "The players made the adjustment on the field and won 17–8 to reach the playoffs. We later lost to eventual champion Western, but the win against Waterloo stayed with me. A team that had started 0–7 had learned a new system, read the game, and executed under pressure.",
-      "When Braden later transferred to Windsor, Theo and I took over as head coach and defensive coordinator. We kept building the club, handing out flyers and trying to make it a serious, welcoming place to play. In 2026, women's flag football was approved to move toward varsity status across Ontario universities.",
+      "Theo worked countless hours as a graduate assistant, which directly led to his hiring as a full-time university coach and recruiting coordinator for the men's team at age 25, one of the youngest full-time university football coaches in the nation.",
+      "Together, we continued pushing for women's flag football to achieve official varsity recognition across Canadian universities, and in 2026, it was announced that USports would pilot a varsity flag football program beginning in 2027. It is now up to us to convince the school that our athletes deserve varsity recognition.",
     ],
-    momentLabel: "The result",
-    moment: "0–7 to a 17–8 play-in win—and a team that had earned the chance to keep growing.",
+    momentLabel: "The road to varsity",
+    moment: "USports announced a varsity pilot for 2027—now we fight for our athletes' varsity recognition.",
   },
   {
     id: "flagos",
     number: "06",
     period: "From the sideline to FlagOS",
-    title: "The software came from a problem we had.",
-    lead: "Ninety athletes came to 5v5 tryouts. I didn't want the answer to be turning most of them away, so I started the York University Women's Flag Football League.",
+    title: "Building FlagOS",
+    lead: "When 90 students showed up for tryouts the following season, we knew we needed to maintain numbers for our 11v11 season that comes after our 5v5 season. I created the York University Women's Flag Football League (YUWFFL) so everyone had a place to play and to help maintain our participation numbers outside of our competitive travel team.",
     paragraphs: [
-      "We couldn't keep every player involved as classes and work took over, but the league gave more athletes a chance to play. At the same time, I was coaching a travel team and trying to handle field operations. Those jobs pulled me in opposite directions.",
-      "My volunteer assistants were former varsity teammates. The tools we had for tracking a game were clunky and hard to use. Drawing on my software engineering studies and workflow automation work at Partners for Planning, I built a phone-friendly play-by-play tool to handle the routine details—like downs and yardage—so coaches could focus on the game.",
-      "That tool became FlagOS: game-day operations for leagues, alongside playbooks and coaching tools for teams. I want the basics to stay useful and accessible, with pricing that reflects the size of a league rather than putting essential features behind expensive tiers.",
+      "Since my primary focus had to remain on managing the competitive team, I built FlagOS out of necessity to reduce the administrative load on my volunteer assistant coaches. The team acted as a product tester and focus group as we used the early versions of the app; I would go home after practices, tweak it, add features, and stay up until 4am night after night building it, because I knew firsthand that I had built something that works.",
+      "Although we didn't maintain all 90 athletes as classes, jobs, and a disinterest in less competitive football pulled people away, we successfully used the system to run the entire league. I tried to keep pricing fair and accessible ($30/month for team playbooks and custom wristband generation, or $40/month + $15 per team for full league management) to give community programs practical tools built by coaches who lived through the grind.",
     ],
-    momentLabel: "Why FlagOS exists",
-    moment: "I built it first for the people beside me on the sideline. The platform grew from there.",
+    momentLabel: "Software born out of necessity",
+    moment: "Built late at night for our team, tested on our sideline, and priced fairly for community programs.",
   },
 ] as const;
 
@@ -177,20 +177,21 @@ export default function MyStoryPage() {
         <section className="grid gap-10 pb-14 pt-14 sm:pb-20 sm:pt-20 md:grid-cols-12 md:items-end">
           <div className="md:col-span-8">
             <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-[#287A06] dark:text-[#70CB42]">
-              Dexter Sargent <span className="px-2 text-neutral-400">/</span> My story
+              Dexter Sargent <span className="px-2 text-neutral-400">/</span> Head Coach, York University Women&apos;s Flag Football
             </p>
             <h1 className="max-w-4xl text-4xl font-semibold leading-[1.08] tracking-[-0.045em] sm:text-6xl md:text-7xl">
-              I grew up carrying a football to school.
-              <span className="mt-2 block text-neutral-500 dark:text-neutral-400">
-                Years later, I built the tools I wished our coaches had.
+              Building FlagOS: Software Born Out of Necessity
+              <span className="mt-4 block text-xl font-normal leading-relaxed tracking-normal text-neutral-600 dark:text-neutral-400 sm:text-2xl sm:leading-snug md:text-3xl">
+                Reflections on varsity football, coaching York University, and building accessible tools for community athletics
               </span>
             </h1>
             <p className="mt-7 max-w-2xl text-base leading-7 text-neutral-600 dark:text-neutral-300 sm:text-lg sm:leading-8">
-              From Dartmouth to York, football has taken me from player to coach
-              to builder. FlagOS began on the sideline, with a practical question:
-              how do you make it easier for a small volunteer staff to run a game
-              well?
+              I spent four years as a varsity football player and team captain at York University while studying software engineering. When I took over coaching the York women&apos;s flag football team, I inherited a program with incredible athletes but zero structural support. Watching our team struggle with fragmented schedules, unorganized playbooks, and overpriced software made it clear how broken amateur sports administration really is. I built FlagOS late at night to give our team practical tools to operate without dealing with excessive software costs or corporate hassle.
             </p>
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/[0.03] px-3.5 py-1.5 text-xs font-medium text-neutral-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-neutral-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#3CA505]" />
+              Dexter Sargent • Head Coach, York University Women&apos;s Flag Football
+            </div>
           </div>
 
           <aside className="border-l-2 border-[#3CA505] pl-5 md:col-span-4 md:ml-auto md:max-w-xs">
@@ -198,7 +199,7 @@ export default function MyStoryPage() {
               The through line
             </p>
             <p className="mt-3 text-lg font-medium leading-7">
-              Give people the room to play. Give coaches the tools to teach.
+              Built late at night to give community programs practical tools without corporate hassle.
             </p>
             <a
               href="#first-football"
@@ -212,12 +213,12 @@ export default function MyStoryPage() {
 
         <section aria-label="A few milestones" className="grid grid-cols-3 border-y border-black/10 py-5 dark:border-white/10">
           <div className="pr-3">
-            <p className="text-2xl font-semibold tracking-tight sm:text-3xl">4 years</p>
-            <p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">with York Lions football</p>
+            <p className="text-2xl font-semibold tracking-tight sm:text-3xl">4 seasons</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">varsity player & captain at York</p>
           </div>
           <div className="border-l border-black/10 px-4 dark:border-white/10 sm:px-6">
             <p className="text-2xl font-semibold tracking-tight sm:text-3xl">17–8</p>
-            <p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">the Waterloo play-in win</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500 dark:text-neutral-400">play-in win over Waterloo</p>
           </div>
           <div className="border-l border-black/10 pl-4 dark:border-white/10 sm:pl-6">
             <p className="text-2xl font-semibold tracking-tight sm:text-3xl">90</p>
@@ -284,7 +285,7 @@ export default function MyStoryPage() {
           </p>
           <div className="mt-4 grid gap-6 md:grid-cols-12 md:items-end">
             <h2 className="text-3xl font-semibold leading-tight tracking-[-0.035em] sm:text-4xl md:col-span-8">
-              Useful tools for the people who keep a season moving.
+              Practical tools built by coaches who lived through the grind.
             </h2>
             <Link
               href="/"
@@ -295,14 +296,12 @@ export default function MyStoryPage() {
             </Link>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-neutral-600 dark:text-neutral-300">
-            The goal is straightforward: make the work around football easier to
-            manage, so coaches and volunteers can spend more attention on the
-            people and the game.
+            Fair and accessible tools ($30/month for team playbooks and custom wristband generation, or $40/month + $15 per team for full league management) to give community athletics the operational foundation they deserve.
           </p>
         </section>
 
         <footer className="flex flex-col gap-3 border-t border-black/10 py-6 text-xs text-neutral-500 dark:border-white/10 dark:text-neutral-400 sm:flex-row sm:items-center sm:justify-between">
-          <span>Dexter Sargent · Founder, FlagOS</span>
+          <span>Dexter Sargent · Head Coach, York University Women&apos;s Flag Football & Founder, FlagOS</span>
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 transition hover:text-[#287A06] dark:hover:text-[#70CB42]"
