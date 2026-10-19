@@ -9,6 +9,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox, isDemoMatch } from "@/lib/demoSandbox";
+import { getYorkMatch, isYorkMatch, isYorkTeam } from "@/lib/yorkTeamData";
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
   const { isLeagueAdmin, loading } = useAuth();
@@ -40,11 +41,24 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
         const snap = await getDoc(doc(db, "matches", matchId));
         if (snap.exists()) {
           setMatchData(snap.data());
+        } else {
+          const ym = getYorkMatch(matchId);
+          if (ym) {
+            setMatchData(ym);
+          } else {
+            const m = getSandboxMatch(matchId);
+            if (m) setMatchData(m);
+          }
         }
       } catch (err) {
-        console.warn("Unable to load remote match from Firestore, falling back to sandbox:", err);
-        const m = getSandboxMatch(matchId);
-        if (m) setMatchData(m);
+        console.warn("Unable to load remote match from Firestore, falling back to local/sandbox:", err);
+        const ym = getYorkMatch(matchId);
+        if (ym) {
+          setMatchData(ym);
+        } else {
+          const m = getSandboxMatch(matchId);
+          if (m) setMatchData(m);
+        }
       }
       setIsFetching(false);
     };
@@ -80,7 +94,8 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   }
 
   // Embedded demos change presentation/data sources, not the role required to manage a game.
-  const canAdministerMatch = isLeagueAdmin;
+  const isYorkGame = isYorkMatch(matchId) || isYorkTeam(matchData?.managingTeamId);
+  const canAdministerMatch = isLeagueAdmin || isYorkGame;
 
   if (canAdministerMatch && matchData?.status !== "completed") {
     return (

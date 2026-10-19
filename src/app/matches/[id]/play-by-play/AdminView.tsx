@@ -32,6 +32,7 @@ import {
   isDemoMatch,
 } from "@/lib/demoSandbox";
 import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette, TeamColorSource } from "@/lib/teamColors";
+import { getYorkMatch, getYorkTeamPlaysForMatch, getYorkTeamPlayers } from "@/lib/yorkTeamData";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -77,6 +78,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [matchStatus, setMatchStatus] = useState<string>("scheduled");
+  const [matchData, setMatchData] = useState<any>(null);
   // Match Info
   const [homeTeamName, setHomeTeamName] = useState("HOME");
   const [awayTeamName, setAwayTeamName] = useState("AWAY");
@@ -199,6 +201,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         );
         const snap = await getDocs(q);
         pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (pList.length === 0) {
+          const yp = getYorkTeamPlaysForMatch(matchId);
+          if (yp.length > 0) pList = yp;
+        }
       }
       setMatchPlaysList(pList);
       if (pList.length > 0) {
@@ -324,22 +330,46 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           try {
             const matchDoc = await getDoc(doc(db, "matches", matchId));
             if (!matchDoc.exists()) {
-              mData = getSandboxMatch(matchId);
-              if (!mData) return;
-              allP = getSandboxPlayers();
+              const ym = getYorkMatch(matchId);
+              if (ym) {
+                mData = ym;
+                allP = getYorkTeamPlayers();
+              } else {
+                mData = getSandboxMatch(matchId);
+                if (!mData) {
+                  setLoadingData(false);
+                  return;
+                }
+                allP = getSandboxPlayers();
+              }
             } else {
               mData = matchDoc.data() as any;
               const playersSnap = await getDocs(collection(db, "players"));
               allP = playersSnap.docs.map(d => d.data());
             }
           } catch (err) {
-            console.warn("Unable to fetch live match from Firestore, falling back to sandbox:", err);
-            mData = getSandboxMatch(matchId);
-            if (!mData) return;
-            allP = getSandboxPlayers();
+            console.warn("Unable to fetch live match from Firestore, falling back to local/sandbox:", err);
+            const ym = getYorkMatch(matchId);
+            if (ym) {
+              mData = ym;
+              allP = getYorkTeamPlayers();
+            } else {
+              mData = getSandboxMatch(matchId);
+              if (!mData) {
+                setLoadingData(false);
+                return;
+              }
+              allP = getSandboxPlayers();
+            }
           }
         }
 
+        if (!mData) {
+          setLoadingData(false);
+          return;
+        }
+
+        setMatchData(mData);
         setHomeTeamName(mData.homeTeamName || "HOME");
         setAwayTeamName(mData.awayTeamName || "AWAY");
         setHomeTeamId(mData.homeTeamId);
@@ -1214,6 +1244,24 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return (
       <div className="h-[100dvh] bg-black text-white flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!matchData) {
+    return (
+      <div className="h-[100dvh] bg-black text-white flex flex-col items-center justify-center p-6 text-center font-sans">
+        <Shield className="w-16 h-16 text-neutral-600 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Game Not Found</h2>
+        <p className="text-neutral-400 text-sm mb-6 max-w-md">
+          The requested game ({matchId}) could not be loaded from online records or local cache.
+        </p>
+        <Link
+          href="/schedule"
+          className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
+        >
+          Return to Schedule
+        </Link>
       </div>
     );
   }

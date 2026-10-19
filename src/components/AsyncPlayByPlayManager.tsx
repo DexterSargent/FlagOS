@@ -32,6 +32,7 @@ import {
   doc,
   serverTimestamp,
   updateDoc,
+  setDoc,
   deleteDoc,
   query,
   where,
@@ -59,6 +60,16 @@ import {
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
 import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette, TeamColorSource } from "@/lib/teamColors";
+import {
+  getYorkMatch,
+  getYorkTeamPlayers,
+  getYorkTeamPlaysForMatch,
+  saveYorkPlay,
+  deleteYorkPlay,
+  saveYorkCustomMatch,
+  isYorkTeam,
+  YORK_TEAM_ID,
+} from "@/lib/yorkTeamData";
 
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
@@ -148,6 +159,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   // Load Match Data & Plays
   useEffect(() => {
+    let isCancelled = false;
     const loadMatchData = async () => {
       try {
         let mData: any = null;
@@ -155,15 +167,75 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         if (isDemo) {
           mData = getSandboxMatches().find((m: any) => m.id === matchId);
-          if (!mData) return;
+          if (!mData) {
+            setLoadingData(false);
+            return;
+          }
           allP = getSandboxPlayers();
         } else {
-          const matchDoc = await getDoc(doc(db, "matches", matchId));
-          if (!matchDoc.exists()) return;
-          mData = matchDoc.data() as any;
-          const playersSnap = await getDocs(collection(db, "players"));
-          allP = playersSnap.docs.map((d) => d.data());
+          try {
+            const matchDoc = await getDoc(doc(db, "matches", matchId));
+            if (matchDoc.exists()) {
+              mData = { id: matchDoc.id, ...matchDoc.data() };
+            }
+          } catch (e) {
+            console.warn("Could not load match from remote Firestore:", e);
+          }
+
+          if (!mData) {
+            const yMatch = getYorkMatch(matchId);
+            if (yMatch) {
+              mData = { ...yMatch };
+            }
+          }
+
+          if (!mData) {
+            mData = getSandboxMatches().find((m: any) => m.id === matchId);
+          }
+
+          if (!mData && typeof window !== "undefined") {
+            try {
+              const raw = localStorage.getItem("flagos_york_matches");
+              if (raw) {
+                const list = JSON.parse(raw);
+                const found = list.find((m: any) => m.id === matchId);
+                if (found) mData = { ...found };
+              }
+            } catch {}
+          }
+
+          if (!mData) {
+            console.warn("Match not found:", matchId);
+            if (!isCancelled) setLoadingData(false);
+            return;
+          }
+
+          try {
+            const playersSnap = await getDocs(collection(db, "players"));
+            allP = playersSnap.docs.map((d) => d.data());
+          } catch (e) {
+            console.warn("Could not load players from Firestore:", e);
+          }
+
+          if (
+            mData.homeTeamId === YORK_TEAM_ID ||
+            mData.awayTeamId === YORK_TEAM_ID ||
+            isYorkTeam(mData.homeTeamId) ||
+            isYorkTeam(mData.awayTeamId) ||
+            isYorkTeam(mData.managingTeamId) ||
+            matchId.startsWith("match_york_")
+          ) {
+            const yPlayers = getYorkTeamPlayers();
+            const existingNames = new Set(allP.map((p: any) => p.playerName || p.name));
+            for (const yp of yPlayers) {
+              if (!existingNames.has(yp.playerName)) {
+                allP.push(yp);
+              }
+            }
+          }
         }
+
+        if (isCancelled) return;
         setMatchData(mData);
 
         const hName = mData.homeTeamName || "HOME";
@@ -225,14 +297,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         const matchSubs = mData.subs || [];
         setSubs(matchSubs);
 
-        // players loaded above
         setAllPlayers(allP);
 
         const homeP = allP.filter((p: any) => p.teamId === mData.homeTeamId).map((p: any) => p.playerName || p.name);
         const awayP = allP.filter((p: any) => p.teamId === mData.awayTeamId).map((p: any) => p.playerName || p.name);
 
-        setHomePlayers(Array.from(new Set([...homeP, ...(mData.homeRoster || []), ...matchSubs])).sort());
-        setAwayPlayers(Array.from(new Set([...awayP, ...(mData.awayRoster || []), ...matchSubs])).sort());
+        const homeRosterFromDoc = Array.isArray(mData.roster?.home) ? mData.roster.home : (mData.homeRoster || []);
+        const awayRosterFromDoc = Array.isArray(mData.roster?.away) ? mData.roster.away : (mData.awayRoster || []);
+
+        setHomePlayers(Array.from(new Set([...homeP, ...homeRosterFromDoc, ...matchSubs])).sort());
+        setAwayPlayers(Array.from(new Set([...awayP, ...awayRosterFromDoc, ...matchSubs])).sort());
 
         // Load historical/season plays for stats leader ordering
         if (isDemo) {
@@ -259,11 +333,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         }
       } catch (e) {
         console.error("Error loading match data for async stat keeper:", e);
+      } finally {
+        if (!isCancelled) setLoadingData(false);
       }
-      setLoadingData(false);
     };
 
     loadMatchData();
+    return () => {
+      isCancelled = true;
+    };
   }, [matchId, isDemo]);
 
   // Fetch plays feed
@@ -273,9 +351,20 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       if (isDemo) {
         pList = getSandboxPlays(matchId);
       } else {
-        const q = query(collection(db, "plays"), where("matchId", "==", matchId), orderBy("timestamp", "asc"));
-        const snap = await getDocs(q);
-        pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        try {
+          const q = query(collection(db, "plays"), where("matchId", "==", matchId), orderBy("timestamp", "asc"));
+          const snap = await getDocs(q);
+          pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+          console.warn("Could not query Firestore plays:", e);
+        }
+
+        if (pList.length === 0) {
+          const yorkPlays = getYorkTeamPlaysForMatch(matchId);
+          if (yorkPlays && yorkPlays.length > 0) {
+            pList = yorkPlays;
+          }
+        }
       }
       setPlays(pList);
       if (pList.length > 0) {
@@ -304,6 +393,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           const lastA = awayPassPlays[awayPassPlays.length - 1].qbPlayerId || awayPassPlays[awayPassPlays.length - 1].passer;
           if (lastA) setLastAwayQB((prev) => prev || lastA);
         }
+      } else {
+        setLastLoggedPlayStatement("");
       }
     } catch (e) {
       console.error("Error loading plays:", e);
@@ -326,25 +417,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   useEffect(() => {
     if (loadingData || matchStatus === "scheduled" && step === "IDLE" && homeScore === 0 && awayScore === 0 && half === 1 && currentDown === 1) return;
     const saveState = setTimeout(() => {
-      if (isDemo) {
-        updateSandboxMatch(matchId, {
-          status: matchStatus === "completed" ? "completed" : "in_progress",
-          homeScore,
-          awayScore,
-          matchState: {
-            currentDown,
-            possession,
-            homeScore,
-            awayScore,
-            half,
-            firstHalfStartPossession,
-            isAsyncStatKeeping: true,
-          },
-        });
-        return;
-      }
-      updateDoc(doc(db, "matches", matchId), {
-        status: matchStatus === "completed" ? "completed" : "in_progress",
+      const updatedMatchState = {
+        status: (matchStatus === "completed" ? "completed" : "in_progress") as "completed" | "in_progress",
         homeScore,
         awayScore,
         matchState: {
@@ -356,15 +430,30 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           firstHalfStartPossession,
           isAsyncStatKeeping: true,
         },
-      }).catch(console.error);
+      };
+
+      if (isDemo) {
+        updateSandboxMatch(matchId, updatedMatchState);
+        return;
+      }
+
+      Promise.resolve(setDoc(doc(db, "matches", matchId), updatedMatchState, { merge: true })).catch((err) => {
+        console.warn("Could not save match state to Firestore, saving locally:", err);
+      });
+      if (matchData) {
+        saveYorkCustomMatch({
+          ...matchData,
+          ...updatedMatchState,
+        });
+      }
     }, 800);
     return () => clearTimeout(saveState);
-  }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus, isDemo]);
+  }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus, isDemo, matchData]);
 
   const handleAddSub = async (subName: string, teamToAdd: "HOME" | "AWAY") => {
     if (!subName.trim()) return;
     const name = subName.trim();
-    const newSubs = [...subs, name];
+    const newSubs = Array.from(new Set([...subs, name]));
     setSubs(newSubs);
     if (teamToAdd === "HOME") {
       setHomePlayers((prev) => Array.from(new Set([...prev, name])).sort());
@@ -378,9 +467,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       return;
     }
     try {
-      await updateDoc(doc(db, "matches", matchId), { subs: newSubs });
+      await setDoc(doc(db, "matches", matchId), { subs: newSubs }, { merge: true });
     } catch (e) {
-      console.error("Error saving sub to match:", e);
+      console.warn("Error saving sub to match Firestore, saving locally:", e);
+    }
+    if (matchData) {
+      saveYorkCustomMatch({
+        ...matchData,
+        subs: newSubs,
+      });
     }
   };
 
@@ -413,33 +508,40 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   };
 
   const finalizeGame = async () => {
+    const finalUpdate = {
+      status: "completed" as const,
+      homeScore,
+      awayScore,
+      completedAt: new Date().toISOString(),
+      roster: {
+        home: homePlayers,
+        away: awayPlayers,
+      },
+    };
+
     try {
       if (isDemo) {
-        updateSandboxMatch(matchId, {
-          status: "completed",
-          homeScore,
-          awayScore,
-          roster: {
-            home: homePlayers,
-            away: awayPlayers,
-          },
-        });
+        updateSandboxMatch(matchId, finalUpdate);
         setMatchStatus("completed");
         setActiveTab("play-by-play");
         setStep("IDLE");
         alert("Game finalized successfully!");
         return;
       }
-      await updateDoc(doc(db, "matches", matchId), {
-        status: "completed",
-        homeScore,
-        awayScore,
-        completedAt: serverTimestamp(),
-        roster: {
-          home: homePlayers,
-          away: awayPlayers,
-        },
-      });
+      try {
+        await setDoc(doc(db, "matches", matchId), {
+          ...finalUpdate,
+          completedAt: serverTimestamp(),
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Could not finalize in Firestore, saving locally:", err);
+      }
+      if (matchData) {
+        saveYorkCustomMatch({
+          ...matchData,
+          ...finalUpdate,
+        });
+      }
       setMatchStatus("completed");
       setActiveTab("play-by-play");
       setStep("IDLE");
@@ -537,15 +639,24 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       loadPlays();
       return;
     }
+    const fullPlay = {
+      ...playData,
+      matchId,
+      timestamp: new Date().toISOString(),
+    };
     try {
       await addDoc(collection(db, "plays"), {
         ...playData,
         timestamp: serverTimestamp(),
       });
-      loadPlays();
     } catch (e) {
-      console.error("Error logging play:", e);
+      console.warn("Error logging play to Firestore, saving locally:", e);
+      saveYorkPlay(matchId, {
+        ...fullPlay,
+        id: `play_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      });
     }
+    loadPlays();
   };
 
   const handleSavePlay = (result: "Touchdown" | "First Down" | "Short" | "Safety" | "Turnover" | "Next Down" | "Pick 6" | "Repeat Down") => {
@@ -756,7 +867,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         loadPlays();
         alert("Last play undone successfully.");
       } else {
-        alert("No plays found to undo.");
+        const localPlays = getYorkTeamPlaysForMatch(matchId);
+        if (localPlays.length > 0) {
+          const lastPlay = localPlays[localPlays.length - 1];
+          deleteYorkPlay(matchId, lastPlay.id);
+          resetPlayForm();
+          loadPlays();
+          alert("Last play undone successfully.");
+        } else {
+          alert("No plays found to undo.");
+        }
       }
     } catch (e) {
       console.error("Error undoing play:", e);
@@ -895,6 +1015,24 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!matchData) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center">
+        <Shield className="w-16 h-16 text-neutral-600 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Game Not Found</h2>
+        <p className="text-neutral-400 text-sm mb-6 max-w-md">
+          The requested game could not be loaded from online records or local cache.
+        </p>
+        <Link
+          href={backUrl || "/schedule"}
+          className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
+        >
+          Return to Schedule
+        </Link>
       </div>
     );
   }

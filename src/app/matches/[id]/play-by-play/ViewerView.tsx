@@ -20,6 +20,7 @@ import {
   subscribeDemoSandbox,
   isDemoMatch as checkIsDemoMatch,
 } from "@/lib/demoSandbox";
+import { getYorkMatch, getYorkTeamPlaysForMatch } from "@/lib/yorkTeamData";
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -270,11 +271,18 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     const unsub = onSnapshot(doc(db, "matches", matchId), (docSnap) => {
       if (docSnap.exists()) {
         setMatchData(docSnap.data());
+      } else {
+        const ym = getYorkMatch(matchId);
+        if (ym) setMatchData(ym);
       }
     }, (err) => {
       console.warn("ViewerView match snapshot warning:", err);
-      const m = getSandboxMatch(matchId);
-      if (m) setMatchData(m);
+      const ym = getYorkMatch(matchId);
+      if (ym) setMatchData(ym);
+      else {
+        const m = getSandboxMatch(matchId);
+        if (m) setMatchData(m);
+      }
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
@@ -300,6 +308,13 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     );
     const unsub = onSnapshot(q, (snap) => {
       const p = snap.docs.map(d => d.data());
+      if (p.length === 0) {
+        const yp = getYorkTeamPlaysForMatch(matchId);
+        if (yp.length > 0) {
+          setPlays(yp);
+          return;
+        }
+      }
       p.sort((a, b) => {
         const tA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
         const tB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
@@ -308,8 +323,13 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       setPlays(p);
     }, (err) => {
       console.warn("ViewerView plays snapshot warning:", err);
-      const pList = getSandboxPlays(matchId);
-      setPlays(pList);
+      const yp = getYorkTeamPlaysForMatch(matchId);
+      if (yp.length > 0) {
+        setPlays(yp);
+      } else {
+        const pList = getSandboxPlays(matchId);
+        setPlays(pList);
+      }
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
@@ -318,10 +338,22 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     return deniedElement;
   }
 
-  if (!matchData) {
+  const effectiveMatchData = matchData || getYorkMatch(matchId);
+
+  if (!effectiveMatchData) {
     return (
-      <div className="h-[100dvh] bg-black text-white flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="h-[100dvh] bg-black text-white flex flex-col items-center justify-center p-6 text-center font-sans">
+        <Shield className="w-16 h-16 text-neutral-600 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Game Not Found</h2>
+        <p className="text-neutral-400 text-sm mb-6 max-w-md">
+          The requested game ({matchId}) could not be loaded from online records or local cache.
+        </p>
+        <Link
+          href="/schedule"
+          className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
+        >
+          Return to Schedule
+        </Link>
       </div>
     );
   }
