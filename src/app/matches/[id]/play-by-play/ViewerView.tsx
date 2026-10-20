@@ -556,16 +556,21 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                 <div key={idx} className="bg-neutral-900 border border-white/5 p-4 sm:p-6 rounded-2xl flex flex-col gap-2 shadow-lg">
                   <div className="flex justify-between items-center text-xs sm:text-sm font-bold tracking-widest text-neutral-500 uppercase">
                     <span>
-                      {play.half
-                        ? settings.rules?.periodType === "quarters" || play.half > 2
-                          ? `Q${play.half}`
-                          : play.half === 2
-                          ? "2nd Half"
-                          : "1st Half"
-                        : ""}
-                      {!play.isAsyncStatKeeping && play.gameClock != null ? ` • ${formatTime(play.gameClock)}` : ""}
-                      {" • "}
-                      {play.possessionTeamId === matchData.homeTeamId ? matchData.homeTeamName : matchData.awayTeamName} - {getOrdinal(play.down)} Down
+                      {[
+                        play.half
+                          ? settings.rules?.periodType === "quarters" || play.half > 2
+                            ? `Q${play.half}`
+                            : play.half === 2
+                            ? "2nd Half"
+                            : "1st Half"
+                          : null,
+                        !play.isAsyncStatKeeping && play.gameClock != null ? formatTime(play.gameClock) : null,
+                        `${play.possessionTeamId === matchData.homeTeamId ? matchData.homeTeamName : matchData.awayTeamName}${
+                          play.down ? ` - ${getOrdinal(play.down)} Down` : ""
+                        }`,
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")}
                     </span>
                     <span>{(play.points || play.pointsScored) > 0 ? `+${play.points || play.pointsScored} PTS` : ''}</span>
                   </div>

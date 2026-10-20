@@ -76,7 +76,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
                           : "text-neutral-400 hover:text-white hover:bg-white/10"
                       }`}
                     >
-                      {getOrdinal(d)} Down
+                      {getOrdinal(d)}<span className="hidden sm:inline"> Down</span>
                     </button>
                   ))}
                 </div>
@@ -112,7 +112,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
                         : "text-neutral-400 hover:text-white hover:bg-white/10"
                     }`}
                   >
-                    {getOrdinal(d)} Down
+                    {getOrdinal(d)}<span className="hidden sm:inline"> Down</span>
                   </button>
                 ))}
               </div>

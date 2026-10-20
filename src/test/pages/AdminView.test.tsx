@@ -107,7 +107,7 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
 
     await waitFor(() => {
       // Down indicator rendered underneath clock (starts at 1st)
-      expect(screen.getByText("1st")).toBeInTheDocument();
+      expect(screen.getAllByText("1st").length).toBeGreaterThan(0);
 
       // Click Increase Down button (+) to move to 2nd
       const increaseBtn = screen.getByRole("button", { name: /Increase Down/i });

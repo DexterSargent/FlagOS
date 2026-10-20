@@ -2223,7 +2223,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                       )}
                                       <span className="truncate">{p}</span>
                                       {recCount !== undefined && recCount > 0 && (
-                                        <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
+                                        <span className={`hidden sm:inline text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
                                           ({recCount} rec)
                                         </span>
                                       )}
@@ -2836,7 +2836,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                 )}
                                 <span className="truncate">{p}</span>
                                 {recCount !== undefined && recCount > 0 && (
-                                  <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
+                                  <span className={`hidden sm:inline text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
                                     ({recCount} rec)
                                   </span>
                                 )}

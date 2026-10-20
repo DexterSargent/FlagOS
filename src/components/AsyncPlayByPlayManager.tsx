@@ -1099,7 +1099,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* HOME TEAM */}
           <div 
-            className="flex flex-col items-center gap-1 flex-1 px-3 py-1.5 rounded-2xl border shadow-sm"
+            className="flex flex-col items-center gap-1 flex-1 min-w-0 px-2 md:px-3 py-1.5 rounded-2xl border shadow-sm"
             style={{
               backgroundColor: homeTeamPalette.secondary,
               borderColor: `${homeTeamPalette.primary}40`,
@@ -1125,36 +1125,21 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </div>
 
           {/* PERIOD BADGE (FIRST HALF / SECOND HALF ONLY - NO TIMERS) */}
-          <div className="flex flex-col items-center justify-center gap-0.5 px-2 md:px-5 py-1.5 rounded-xl bg-black/60 border border-white/10 shadow-inner">
+          <div className="flex flex-col items-center justify-center gap-0.5 px-2 md:px-5 py-1.5 rounded-xl bg-black/60 border border-white/10 shadow-inner shrink-0">
             <span className="text-[8px] md:text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">
               Current Period
             </span>
             <span className="text-sm md:text-lg font-black tracking-wider uppercase text-white">
               {half === 1 ? "First Half" : "Second Half"}
             </span>
-            <div className="flex items-center gap-1 bg-black/60 border border-white/10 rounded-xl p-0.5 mt-0.5 shadow-inner">
-              {Array.from({ length: downsPerSeries }, (_, i) => i + 1).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setCurrentDown(d)}
-                  aria-label={`${getOrdinal(d)} Down`}
-                  title={`Set to ${getOrdinal(d)} Down`}
-                  className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                    currentDown === d
-                      ? "bg-white text-black shadow-sm font-black"
-                      : "text-neutral-400 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  {getOrdinal(d)} Down
-                </button>
-              ))}
-            </div>
+            <span className="text-xs md:text-sm font-black tracking-wider uppercase text-emerald-300 mt-0.5">
+              {getOrdinal(currentDown)} Down
+            </span>
           </div>
 
           {/* AWAY TEAM */}
           <div 
-            className="flex flex-col items-center gap-1 flex-1 px-3 py-1.5 rounded-2xl border shadow-sm"
+            className="flex flex-col items-center gap-1 flex-1 min-w-0 px-2 md:px-3 py-1.5 rounded-2xl border shadow-sm"
             style={{
               backgroundColor: awayTeamPalette.secondary,
               borderColor: `${awayTeamPalette.primary}40`,
@@ -1230,7 +1215,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           : "text-neutral-400 hover:text-white hover:bg-white/10"
                       }`}
                     >
-                      {getOrdinal(d)} Down
+                      {getOrdinal(d)}<span className="hidden sm:inline"> Down</span>
                     </button>
                   ))}
                 </div>
