@@ -21,6 +21,7 @@ import {
   isDemoMatch as checkIsDemoMatch,
 } from "@/lib/demoSandbox";
 import { getYorkMatch, getYorkTeamPlaysForMatch, isYorkMatch } from "@/lib/yorkTeamData";
+import { isTrackablePlayer } from "@/lib/opponentPlaceholder";
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -214,7 +215,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       statsMap[p.playerName].inferredTeam = targetTeamId;
     });
 
-    const allStats = Object.values(statsMap);
+    const allStats = Object.values(statsMap).filter((s) => isTrackablePlayer(s.name));
     const filtered = allStats.filter(s => {
       // If we inferred a team from their plays, use that. Otherwise, try to fall back to the player's DB team.
       if (s.inferredTeam) {
@@ -261,10 +262,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const downsPerSeries = settings?.rules?.downsPerSeries || 4;
 
   const formatPlaySentence = (play: any) => {
+    const ctxMatch: any = matchData || getYorkMatch(matchId);
     return formatPlaySentenceEngine(play, {
-      homeTeamName: matchData?.homeTeamName,
-      awayTeamName: matchData?.awayTeamName,
-      homeTeamId: matchData?.homeTeamId,
+      homeTeamName: ctxMatch?.homeTeamName,
+      awayTeamName: ctxMatch?.awayTeamName,
+      homeTeamId: ctxMatch?.homeTeamId,
       downsPerSeries,
     });
   };

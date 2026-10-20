@@ -71,6 +71,12 @@ import {
   isYorkMatch,
   YORK_TEAM_ID,
 } from "@/lib/yorkTeamData";
+import {
+  OPPONENT_QB_PLACEHOLDER,
+  displayPlayerName,
+  isOpponentPlaceholder,
+  isTrackablePlayer,
+} from "@/lib/opponentPlaceholder";
 
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
@@ -160,10 +166,17 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
   const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
 
+  // Error handling
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [playsError, setPlaysError] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{ kind: "warning" | "error"; message: string } | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
   // Load Match Data & Plays
   useEffect(() => {
     let isCancelled = false;
     const loadMatchData = async () => {
+      setLoadError(null);
       try {
         let mData: any = null;
         let allP: any[] = [];
@@ -339,6 +352,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         }
       } catch (e) {
         console.error("Error loading match data for async stat keeper:", e);
+        if (!isCancelled) {
+          setLoadError(
+            e instanceof Error && e.message
+              ? `We couldn't load this game: ${e.message}`
+              : "We couldn't load this game. Check your connection and try again."
+          );
+        }
       } finally {
         if (!isCancelled) setLoadingData(false);
       }
@@ -348,12 +368,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     return () => {
       isCancelled = true;
     };
-  }, [matchId, isDemo]);
+  }, [matchId, isDemo, reloadKey]);
 
   // Fetch plays feed
   const loadPlays = async () => {
     try {
       let pList: any[] = [];
+      let firestoreFailed = false;
       if (isDemo) {
         pList = getSandboxPlays(matchId);
       } else {
@@ -363,6 +384,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         } catch (e) {
           console.warn("Could not query Firestore plays:", e);
+          firestoreFailed = true;
         }
 
         if (pList.length === 0) {
@@ -372,6 +394,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           }
         }
       }
+      setPlaysError(
+        firestoreFailed && pList.length === 0 && !isYorkMatch(matchId)
+          ? "Couldn't reach the server to load plays. Showing nothing until the connection is restored."
+          : null
+      );
       setPlays(pList);
       if (pList.length > 0) {
         const last = pList[pList.length - 1];
@@ -404,6 +431,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       }
     } catch (e) {
       console.error("Error loading plays:", e);
+      setPlaysError("Something went wrong loading the play log. Try refreshing.");
     }
   };
 
@@ -576,11 +604,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const handlePlayTypeSelect = (type: "Pass" | "Run" | "Penalty") => {
     setPlayType(type);
+    // The opponent has no roster in a team stat tracker; auto-fill their passer so our
+    // defenders/flaggers are still credited without inventing opponent player stats.
+    const offenseIsUnrostered = (possession === homeTeamName ? homePlayers : awayPlayers).length === 0;
     if (type === "Pass") {
-      const lastQb = possession === homeTeamName ? lastHomeQB : lastAwayQB;
+      const lastQb = offenseIsUnrostered
+        ? OPPONENT_QB_PLACEHOLDER
+        : possession === homeTeamName ? lastHomeQB : lastAwayQB;
       setOutcome("Complete");
       setQbRunner(lastQb);
-      setOpenSection(lastQb ? "receiver" : "qb");
+      setOpenSection(lastQb ? (offenseIsUnrostered ? "defenders" : "receiver") : "qb");
     } else if (type === "Run") {
       setOutcome("Gain");
       setQbRunner("");
@@ -665,12 +698,18 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         ...playData,
         matchId,
       });
+      setSaveNotice(null);
     } catch (e) {
       console.warn("Error logging play to Firestore, saving locally:", e);
-      saveYorkPlay(matchId, {
+      const savedLocally = saveYorkPlay(matchId, {
         ...fullPlay,
         id: `play_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       });
+      setSaveNotice(
+        savedLocally
+          ? { kind: "warning", message: "Couldn't reach the server — this play was saved on this device only." }
+          : { kind: "error", message: "This play could not be saved. Check your connection and log it again." }
+      );
     }
     loadPlays();
   };
@@ -1026,6 +1065,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     const ownRoster = new Set(boxScoreTab === "home" ? homePlayers : awayPlayers);
     const otherRoster = new Set(boxScoreTab === "home" ? awayPlayers : homePlayers);
     return Object.values(statsMap).filter((stat: any) => {
+      // Opponent placeholders (e.g. "Unknown QB") are never individual stat lines.
+      if (!isTrackablePlayer(stat.name)) return false;
       // Roster membership wins over play-inferred team (guards against mis-tagged plays).
       if (ownRoster.has(stat.name) && !otherRoster.has(stat.name)) return true;
       if (otherRoster.has(stat.name) && !ownRoster.has(stat.name)) return false;
@@ -1043,6 +1084,34 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (loadError && !matchData) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-sans p-6 text-center" role="alert">
+        <Shield className="w-16 h-16 text-red-500/70 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Couldn&apos;t Load Game</h2>
+        <p className="text-neutral-400 text-sm mb-6 max-w-md">{loadError}</p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setLoadingData(true);
+              setReloadKey((k) => k + 1);
+            }}
+            className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all"
+          >
+            Retry
+          </button>
+          <Link
+            href={backUrl || "/schedule"}
+            className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
+          >
+            Return to Schedule
+          </Link>
+        </div>
       </div>
     );
   }
@@ -1193,6 +1262,33 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
       {/* MAIN CONTENT AREA */}
       <main className="flex flex-col flex-1 min-h-0 w-full p-2 md:p-3 overflow-visible md:overflow-hidden">
+        {(saveNotice || playsError) && (
+          <div className="mb-2 space-y-1 shrink-0">
+            {saveNotice && (
+              <div
+                role="alert"
+                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-bold ${
+                  saveNotice.kind === "error"
+                    ? "bg-red-500/10 border-red-500/40 text-red-300"
+                    : "bg-amber-500/10 border-amber-500/40 text-amber-200"
+                }`}
+              >
+                <span>{saveNotice.message}</span>
+                <button type="button" aria-label="Dismiss" onClick={() => setSaveNotice(null)} className="shrink-0 opacity-70 hover:opacity-100">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {playsError && (
+              <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs font-bold bg-red-500/10 border-red-500/40 text-red-300">
+                <span>{playsError}</span>
+                <button type="button" onClick={() => loadPlays()} className="shrink-0 underline">
+                  Retry
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {/* TAB 1: INTERACTIVE STAT KEEPER */}
         {activeTab === "tracker" && (
           <div className="flex flex-col flex-1 min-h-0 space-y-2">
@@ -1439,7 +1535,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 {openSection !== "qb" && (
                   <SectionSummary
                     label={playType === "Pass" ? "Quarterback" : "Ball Carrier"}
-                    value={qbRunner ? `${playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ""}${qbRunner}` : "Select player"}
+                    value={qbRunner ? `${playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ""}${displayPlayerName(qbRunner, possession)}` : "Select player"}
                     filled={!!qbRunner}
                     onOpen={() => setOpenSection("qb")}
                   />
@@ -1451,24 +1547,31 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     </label>
                     {qbRunner && (
                       <span className="text-[10px] font-bold text-cyan-400">
-                        Selected: {playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ""}{qbRunner}
+                        Selected: {playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ""}{displayPlayerName(qbRunner, possession)}
                       </span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-36 md:max-h-40 [@media(max-height:450px)]:max-h-24 overflow-y-auto">
-                    {sortRosterByStatLeader(
-                      offensePlayers,
-                      playerNumberMap,
-                      playType === "Run" ? playerStatCounts.rushing : playerStatCounts.passing
+                    {(offensePlayers.length === 0
+                      ? [OPPONENT_QB_PLACEHOLDER]
+                      : sortRosterByStatLeader(
+                          offensePlayers,
+                          playerNumberMap,
+                          playType === "Run" ? playerStatCounts.rushing : playerStatCounts.passing
+                        )
                     ).map((p) => {
                       const pNum = playerNumberMap[p];
                       const isSelected = qbRunner === p;
-                      const statCount = playType === "Run" ? playerStatCounts.rushing[p] : playerStatCounts.passing[p];
+                      const isPlaceholder = isOpponentPlaceholder(p);
+                      const label = displayPlayerName(p, possession);
+                      const statCount = isPlaceholder
+                        ? undefined
+                        : playType === "Run" ? playerStatCounts.rushing[p] : playerStatCounts.passing[p];
                       return (
                         <button
                           key={p}
                           type="button"
-                          aria-label={p}
+                          aria-label={label}
                           onClick={() => {
                             setQbRunner(p);
                             setOpenSection(playType === "Pass" && outcome === "Complete" ? "receiver" : "defenders");
@@ -1491,7 +1594,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                                 #{pNum}
                               </span>
                             )}
-                            <span className="truncate">{p}</span>
+                            <span className="truncate">{label}</span>
                             {statCount !== undefined && statCount > 0 && (
                               <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? "text-black/80" : "text-cyan-400/80"}`}>
                                 ({statCount} {playType === "Run" ? "rush" : "att"})

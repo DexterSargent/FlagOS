@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent, within } from "@testing-library/react";
 import TeamPlaybookPage from "@/app/teams/[id]/playbook/page";
+import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 
 import { Suspense } from "react";
 
@@ -111,6 +112,93 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     });
     return result;
   };
+
+  const openFormationCards = async (empty = false, type: "offense" | "defense" = "offense") => {
+    const book = createDefaultPlaybooks("team_apex").find((item) => item.type === type)!;
+    const formation = book.formations[0];
+    if (empty) book.plays = book.plays.filter((play) => play.formation !== formation.name);
+    localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify([book]));
+    await renderPage();
+    fireEvent.click(screen.getByRole("heading", { name: book.title }));
+    fireEvent.click(screen.getByRole("heading", { name: formation.name }));
+    return { book, formation, plays: book.plays.filter((play) => play.formation === formation.name) };
+  };
+
+  it.each(["offense", "defense"] as const)("shows each %s play as a card with its own route preview, filtered to the selected formation", async (type) => {
+    const { book, plays } = await openFormationCards(false, type);
+
+    expect(screen.getAllByRole("button", { name: /^Open play / })).toHaveLength(plays.length);
+    expect(screen.getAllByRole("img", { name: /^Preview of / })).toHaveLength(plays.length);
+    for (const play of plays) {
+      const card = screen.getByRole("button", { name: `Open play ${play.name}` });
+      const preview = within(card).getByRole("img", { name: `Preview of ${play.name}` });
+      expect(preview.querySelector("svg")).toBeInTheDocument();
+      expect(preview.querySelector("path[marker-end]")).toBeInTheDocument();
+    }
+    for (const play of book.plays.filter((play) => !plays.includes(play))) {
+      expect(screen.queryByRole("button", { name: `Open play ${play.name}` })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByText("Coach Q&A")).not.toBeInTheDocument();
+  });
+
+  it("opens the selected play from its card and returns to the play grid without tabs", async () => {
+    const { plays } = await openFormationCards();
+    const play = plays[plays.length - 1];
+    fireEvent.click(screen.getByRole("button", { name: `Open play ${play.name}` }));
+
+    expect(await screen.findByDisplayValue(play.name)).toBeInTheDocument();
+    expect(screen.getByText("Coach Q&A")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Open play / })).not.toBeInTheDocument();
+    const otherPlay = plays.find((item) => item.id !== play.id);
+    if (otherPlay) {
+      expect(screen.queryByText(otherPlay.name.replace(/^\d+v\d+\s+/, ""))).not.toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Back to plays" }));
+    expect(screen.getAllByRole("button", { name: /^Open play / })).toHaveLength(plays.length);
+    fireEvent.click(screen.getByRole("button", { name: "Back to formations" }));
+    expect(screen.getByRole("heading", { name: "Spread 2x1" })).toBeInTheDocument();
+  });
+
+  it("duplicates and deletes plays from their cards without opening the editor", async () => {
+    const { plays } = await openFormationCards();
+    const play = plays[0];
+    fireEvent.click(screen.getByRole("button", { name: `Duplicate ${play.name}` }));
+    expect(screen.getByRole("button", { name: `Open play ${play.name} (Copy)` })).toBeInTheDocument();
+    expect(screen.getAllByRole("img", { name: /^Preview of / })).toHaveLength(plays.length + 1);
+
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: `Delete ${play.name} (Copy)` }));
+    expect(screen.queryByRole("button", { name: `Open play ${play.name} (Copy)` })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("img", { name: /^Preview of / })).toHaveLength(plays.length);
+    const cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
+    expect(cached[0].plays.some((item: { name: string }) => item.name.endsWith("(Copy)"))).toBe(false);
+    confirm.mockRestore();
+  });
+
+  it("shows an empty formation without another formation's play and creates a new play in the editor", async () => {
+    await openFormationCards(true);
+    expect(screen.getByText("No Plays in this Formation")).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /^Preview of / })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "New Play" }));
+    expect(await screen.findByText("Coach Q&A")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Back to plays" }));
+    expect(screen.getAllByRole("button", { name: /^Open play / })).toHaveLength(1);
+  });
+
+  it("allows rostered players to open previews but not create, duplicate, or delete plays", async () => {
+    mockAuth.isPlayer = true;
+    mockAuth.playerTeamId = "team_apex";
+    mockAuth.isTeamAdmin = vi.fn(() => false);
+    const { plays } = await openFormationCards();
+
+    expect(screen.queryByRole("button", { name: "New Play" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Duplicate / })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Delete / })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: `Open play ${plays[0].name}` }));
+    expect(await screen.findByText("Coach Q&A")).toBeInTheDocument();
+    expect(screen.getByText(/Player View Only:/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Duplicate Play" })).not.toBeInTheDocument();
+  });
 
   it("STRICT RBAC RULE 1: Blocks League Administrator from accessing franchise playbook", async () => {
     // League Admin signed in

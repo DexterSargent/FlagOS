@@ -4,6 +4,8 @@
  * so stat trackers can track plays by numbers even if they don't know everyone's names.
  */
 
+import { isTrackablePlayer } from "@/lib/opponentPlaceholder";
+
 export interface PlayerNumberItem {
   id?: string;
   playerName?: string;
@@ -136,7 +138,7 @@ export function computePlayerStatCounts(plays: any[] = []): PlayerCategoryStatCo
   };
 
   const inc = (map: Record<string, number>, name?: string | null) => {
-    if (!name || name === "TEAM") return;
+    if (!name || name === "TEAM" || !isTrackablePlayer(name)) return;
     map[name] = (map[name] || 0) + 1;
   };
 

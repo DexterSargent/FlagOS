@@ -7642,14 +7642,17 @@ export function getYorkCustomPlays(matchId: string): DemoPlay[] {
   }
 }
 
-export function saveYorkPlay(matchId: string, play: DemoPlay & Record<string, any>): void {
-  if (typeof window === "undefined" || !matchId || !play) return;
+/** Returns true when the play was persisted to local storage. */
+export function saveYorkPlay(matchId: string, play: DemoPlay & Record<string, any>): boolean {
+  if (typeof window === "undefined" || !matchId || !play) return false;
   try {
     const existing = getYorkCustomPlays(matchId);
     const updated = [...existing, play];
     localStorage.setItem(`${YORK_CUSTOM_PLAYS_KEY_PREFIX}${matchId}`, JSON.stringify(updated));
+    return true;
   } catch (e) {
     console.warn("Failed to save York play locally:", e);
+    return false;
   }
 }
 

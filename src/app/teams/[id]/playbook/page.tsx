@@ -57,7 +57,7 @@ import { getSandboxTeams } from "@/lib/demoSandbox";
 import { isYorkTeam, getYorkTeamData } from "@/lib/yorkTeamData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
-type PlaybookViewLevel = "playbooks" | "formations" | "plays";
+type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
 
 export default function TeamPlaybookPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -103,12 +103,12 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     return false;
   });
 
-  // 3-Level Drilldown View State: "playbooks" -> "formations" -> "plays"
+  // Embedded demos and existing studio links open directly in the editor.
   const [viewLevel, setViewLevel] = useState<PlaybookViewLevel>(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       if (sp.get("embed") === "true" || sp.get("level") === "plays") {
-        return "plays";
+        return "editor";
       }
     }
     return "playbooks";
@@ -133,7 +133,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       }
       if (sp.get("embed") === "true") {
         setIsEmbedded(true);
-        setViewLevel("plays");
+        setViewLevel("editor");
       }
     }
   }, [teamId, isDemoTeam, isDemoLeague]);
@@ -284,7 +284,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             setActivePlayId(matchingPlay.id);
           }
           if (isEmbedded || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true")) {
-            setViewLevel("plays");
+            setViewLevel("editor");
           }
         }
       } catch (err) {
@@ -495,7 +495,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     });
 
     setActivePlayId(newPlay.id);
-    setViewLevel("plays");
+    setViewLevel("editor");
   };
 
   // Update Play from Canvas edits
@@ -899,7 +899,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className={`${viewLevel === "plays" ? "h-dvh overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
+    <div className={`${viewLevel === "editor" ? "h-dvh overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -908,7 +908,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       </div>
 
       <div className={`max-w-7xl mx-auto ${
-        viewLevel === "plays"
+        viewLevel === "editor"
           ? "p-2 sm:p-2.5 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 h-full min-h-0 flex-1 overflow-hidden"
           : isEmbedded
           ? "space-y-3 p-2 sm:p-3 flex-1"
@@ -917,7 +917,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         {/* ============================================================== */}
         {/* 1. TOP HEADER & BREADCRUMBS (FOR LEVEL 1 & 2 DRILLDOWN)       */}
         {/* ============================================================== */}
-        {viewLevel !== "plays" && (
+        {viewLevel !== "editor" && (
         <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 ${isEmbedded ? "pb-2.5" : "pb-5"}`}>
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -1016,10 +1016,30 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
             )}
+            {viewLevel === "plays" && (
+              <div>
+                <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
+                  {effectiveFormationName} <span className="text-cyan-400">Plays</span>
+                </h1>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Preview each play, then select a card to {hasEditAccess ? "edit" : "view"} its routes and assignments.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
+            {viewLevel === "plays" && hasEditAccess && (
+              <button
+                type="button"
+                onClick={handleCreatePlayInFormationClick}
+                className="px-5 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Play</span>
+              </button>
+            )}
             {/* Level 1: "+ Create Playbook" */}
             {viewLevel === "playbooks" && hasEditAccess && (
               <button
@@ -1053,7 +1073,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             )}
 
             {/* Print Armbands (Available for Formations view) */}
-            {viewLevel === "formations" && canViewPlaybook && (
+            {(viewLevel === "formations" || viewLevel === "plays") && canViewPlaybook && (
               <button
                 onClick={() => setIsPrintModalOpen(true)}
                 className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2 cursor-pointer"
@@ -1379,22 +1399,113 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         )}
 
         {/* ============================================================== */}
-        {/* LEVEL 3: PLAYS WITHIN FORMATION & INTERACTIVE CANVAS EDITOR    */}
+        {/* LEVEL 3: PLAY CARDS WITH ROUTE PREVIEWS                       */}
         {/* ============================================================== */}
         {viewLevel === "plays" && activePlaybook && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setViewLevel("formations")}
+                className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 hover:text-white transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Back to formations
+              </button>
+              <span className="text-xs font-mono text-neutral-400">
+                {playsInActiveFormation.length} {playsInActiveFormation.length === 1 ? "Play" : "Plays"}
+              </span>
+            </div>
+
+            {playsInActiveFormation.length === 0 ? (
+              <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-12 text-center text-neutral-400">
+                <BookOpen className="w-12 h-12 mx-auto text-neutral-600 mb-4" />
+                <h2 className="text-xl font-bold uppercase text-white mb-2">No Plays in this Formation</h2>
+                <p className="text-xs">
+                  {hasEditAccess ? "Choose New Play to create the first play in this formation." : "Your coach has not added any plays to this formation yet."}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {playsInActiveFormation.map((play) => (
+                  <div
+                    key={play.id}
+                    className="bg-[#0B0F19] hover:bg-[#0E1424] border border-white/10 hover:border-cyan-500/50 rounded-3xl p-5 transition-all duration-200 shadow-xl group"
+                  >
+                    <button
+                      type="button"
+                      aria-label={`Open play ${play.name}`}
+                      onClick={() => {
+                        setActivePlayId(play.id);
+                        setViewLevel("editor");
+                      }}
+                      className="w-full text-left space-y-4 cursor-pointer rounded-2xl focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-4"
+                    >
+                      <div>
+                        <h3 className="text-lg font-black uppercase text-white group-hover:text-cyan-400 transition-colors">
+                          {play.name.replace(/^\d+v\d+\s+/, "")}
+                        </h3>
+                        <span className="text-[11px] font-mono text-neutral-400">{play.situation}</span>
+                      </div>
+                      <div
+                        role="img"
+                        aria-label={`Preview of ${play.name}`}
+                        className="w-full aspect-[10/7] bg-[#102319] rounded-2xl border border-white/10 overflow-hidden shadow-inner group-hover:border-cyan-500/30 transition-colors"
+                      >
+                        <MiniPlayDiagram play={play} theme="dark" showLabels={true} showOpposingSide={showOpposingSide} />
+                      </div>
+                      <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                        <span className="text-xs font-mono text-neutral-400">{play.formation}</span>
+                        <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                          {hasEditAccess ? "Edit Play" : "View Play"}
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </button>
+                    {hasEditAccess && (
+                      <div className="flex justify-end gap-2 mt-3">
+                        <button
+                          type="button"
+                          aria-label={`Duplicate ${play.name}`}
+                          onClick={() => handleDuplicatePlay(play)}
+                          className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        {activePlaybook.plays.length > 1 && (
+                          <button
+                            type="button"
+                            aria-label={`Delete ${play.name}`}
+                            onClick={() => handleDeletePlay(play.id)}
+                            className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-white/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Full editor for the selected play */}
+        {viewLevel === "editor" && activePlaybook && (
           <div className="flex flex-col gap-2 flex-1 min-h-0 h-full overflow-hidden">
             {/* Unified Studio Top Toolbar */}
             <div className="flex flex-wrap [@media(max-height:450px)]:flex-nowrap items-center justify-between gap-x-2 gap-y-1.5 bg-[#0B0F19] px-2 sm:px-3 py-1.5 sm:py-2 [@media(max-height:450px)]:py-1 rounded-2xl border border-white/10 shrink-0 shadow-lg">
               {/* Left: Navigation & Formation */}
               <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-none sm:flex-wrap">
                 <button
-                  onClick={() => setViewLevel("formations")}
+                  onClick={() => setViewLevel("plays")}
                   className="p-2 sm:p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
-                  title="Back to Formations"
-                  aria-label="Back to formations"
+                  title="Back to Plays"
+                  aria-label="Back to plays"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span className="hidden sm:[@media(min-height:451px)]:inline">Formations</span>
+                  <span className="hidden sm:[@media(min-height:451px)]:inline">Plays</span>
                 </button>
                 <span className="hidden sm:[@media(min-height:451px)]:inline text-xs text-neutral-500">•</span>
                 <span className="hidden sm:[@media(min-height:451px)]:inline text-xs font-mono text-cyan-400 font-black">
@@ -1408,8 +1519,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   onChange={(e) => {
                     const name = e.target.value;
                     setSelectedFormationName(name);
-                    const firstPlay = activePlaybook.plays.find((p) => p.formation === name);
-                    if (firstPlay) setActivePlayId(firstPlay.id);
+                    setViewLevel("plays");
                   }}
                   className="sm:[@media(min-height:451px)]:hidden min-w-0 flex-1 h-10 [@media(max-height:450px)]:h-8 [@media(max-height:450px)]:max-w-[40vw] px-2 rounded-xl bg-black/50 border border-white/10 text-xs font-mono font-black text-cyan-400"
                 >
@@ -1427,8 +1537,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       key={f.id}
                       onClick={() => {
                         setSelectedFormationName(f.name);
-                        const firstPlay = activePlaybook.plays.find((p) => p.formation === f.name);
-                        if (firstPlay) setActivePlayId(firstPlay.id);
+                        setViewLevel("plays");
                       }}
                       className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all border cursor-pointer ${
                         selectedFormationName === f.name
@@ -1442,48 +1551,37 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </div>
               </div>
 
-              {/* Center: Play Selector Tape */}
+              {/* Selected play and editing actions */}
               <div className="order-last sm:order-none [@media(max-height:450px)]:order-none [@media(max-height:450px)]:flex-1 [@media(max-height:450px)]:min-w-0 flex items-center gap-1 overflow-x-auto w-full sm:w-auto max-w-full scrollbar-thin">
-                {playsInActiveFormation.map((p) => {
-                  const isSelected = activePlayId === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => setActivePlayId(p.id)}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase transition-all whitespace-nowrap border flex items-center gap-1.5 cursor-pointer ${
-                        isSelected
-                          ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-md shadow-cyan-500/10"
-                          : "bg-black/40 border-white/5 text-neutral-400 hover:text-white"
-                      }`}
+                {activePlay && (
+                  <>
+                    <span className="px-2.5 py-1 text-xs font-black uppercase text-cyan-300">
+                      {activePlay.name.replace(/^\d+v\d+\s+/, "")}
+                    </span>
+                    {hasEditAccess && (
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicatePlay(activePlay)}
+                        className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
+                        title="Duplicate Play"
+                        aria-label="Duplicate Play"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {hasEditAccess && playsInActiveFormation.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePlay(activePlay.id)}
+                        className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-white/10"
+                        title="Delete Play"
+                        aria-label="Delete Play"
                     >
-                      <span>{p.name.replace(/^\d+v\d+\s+/, "")}</span>
-                      {hasEditAccess && isSelected && (
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDuplicatePlay(p);
-                          }}
-                          className="hover:text-white text-neutral-400 ml-0.5"
-                          title="Duplicate Play"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </span>
-                      )}
-                      {hasEditAccess && isSelected && playsInActiveFormation.length > 1 && (
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePlay(p.id);
-                          }}
-                          className="hover:text-red-400 text-neutral-400"
-                          title="Delete Play"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </>
+                )}
 
                 {hasEditAccess && (
                   <button

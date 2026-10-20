@@ -30,6 +30,8 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const [team, setTeam] = useState<any>(null);
   const [stats, setStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -208,8 +210,10 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         });
 
         setStats(Object.values(statsMap));
+        setLoadError(null);
       } catch (e) {
         console.error("Error fetching team stats:", e);
+        setLoadError("We couldn't load this team's stats. Check your connection and try again.");
       }
       setLoading(false);
     };
@@ -219,7 +223,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
       const unsub = subscribeDemoSandbox(() => fetchData());
       return () => unsub();
     }
-  }, [teamId, isDemoLeague]);
+  }, [teamId, isDemoLeague, reloadKey]);
 
   const getTop3 = (key: string) => {
     const sorted = [...stats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
@@ -243,6 +247,34 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
         <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (loadError && stats.length === 0) {
+    return (
+      <div role="alert" className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
+        <Shield className="w-14 h-14 text-red-500/70 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Couldn&apos;t Load Stats</h2>
+        <p className="text-neutral-400 text-sm mb-6 max-w-md">{loadError}</p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              setReloadKey((k) => k + 1);
+            }}
+            className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider"
+          >
+            Retry
+          </button>
+          <Link
+            href={`/teams/${teamId}`}
+            className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider border border-white/10"
+          >
+            Back to Team
+          </Link>
+        </div>
       </div>
     );
   }

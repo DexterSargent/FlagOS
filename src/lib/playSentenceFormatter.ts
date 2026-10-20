@@ -4,6 +4,8 @@
  * administrative wizards, viewer streams, and box score recaps.
  */
 
+import { displayPlayerName, replacePlaceholderInText } from "./opponentPlaceholder";
+
 export interface PenaltyDefinition {
   id: string;
   name: string;
@@ -239,11 +241,18 @@ export function formatPlaySentence(
     downsPerSeries?: number;
   }
 ): string {
-  if (!play) return "";
+  if (!play || typeof play !== "object") return "";
+
+  const possessionTeamName =
+    context?.homeTeamId && play.possessionTeamId
+      ? play.possessionTeamId === context.homeTeamId
+        ? context.homeTeamName
+        : context.awayTeamName
+      : undefined;
 
   // 1. If play already has a pre-formatted coherent statement, use it
   if (play.playStatement && typeof play.playStatement === "string" && play.playStatement.trim().length > 0) {
-    return play.playStatement;
+    return replacePlaceholderInText(play.playStatement, possessionTeamName);
   }
 
   const downsPerSeries = context?.downsPerSeries || 4;
@@ -294,8 +303,8 @@ export function formatPlaySentence(
 
   // 3. PASS PLAY
   if (play.playType === "Pass") {
-    const qb = play.qbPlayerId || "Quarterback";
-    const rec = play.receiverPlayerId || "receiver";
+    const qb = displayPlayerName(play.qbPlayerId, possessionTeamName) || "Quarterback";
+    const rec = displayPlayerName(play.receiverPlayerId, possessionTeamName) || "receiver";
     const defs = Array.isArray(play.defenders) && play.defenders.length > 0
       ? play.defenders.join(" & ")
       : "";
@@ -351,7 +360,10 @@ export function formatPlaySentence(
 
   // 4. RUN PLAY
   if (play.playType === "Run") {
-    const runner = play.runnerPlayerId || play.qbPlayerId || "Runner";
+    const runner =
+      displayPlayerName(play.runnerPlayerId, possessionTeamName) ||
+      displayPlayerName(play.qbPlayerId, possessionTeamName) ||
+      "Runner";
     const defs = Array.isArray(play.defenders) && play.defenders.length > 0
       ? play.defenders.join(" & ")
       : "";
