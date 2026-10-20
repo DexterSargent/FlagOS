@@ -145,24 +145,25 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // 3. Players strictly have VIEW-ONLY access to their team: players CANNOT edit plays, formations, or playbooks,
   //    but CAN post questions for their coach on individual plays.
   // 4. Opponent coaches, opponent players, spectators, and unauthenticated users have NO access
-  // 5. York Lions Varsity Portal: Dexter & varsity coaches have edit access; rostered players have view-only access.
+  // 5. York Lions follows the same rules as every other independent team.
   // Note: isEmbedded allows the interactive showcase on the marketing landing page (/page.tsx) to demo the studio
   const isYork = isYorkTeam(teamId);
-  const isTeamAdminForThisTeam = isTeamAdmin(teamId) || (isYork && canManageTeam(teamId));
-  const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && (!playerTeamId || isYorkTeam(playerTeamId))));
+  const isTeamAdminForThisTeam = isTeamAdmin(teamId);
+  const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
   const isOpponentCoach = isTeamAdmin() && !isTeamAdminForThisTeam;
   const isOpponentPlayer = isPlayer && !isRosteredPlayerOnTeam;
 
   // League admins are strictly forbidden from viewing or modifying customer playbooks,
-  // but Dexter is the coach of his own varsity club team (York Lions).
-  const isBlockedLeagueAdmin = !isEmbedded && !isYork && isLeagueAdmin;
+  // unless they are explicitly listed as an admin of this team.
+  const isListedTeamAdmin = !!user?.email && Array.isArray(team?.adminEmails) && team.adminEmails.some((e: string) => String(e).trim().toLowerCase() === user.email!.trim().toLowerCase());
+  const isBlockedLeagueAdmin = !isEmbedded && isLeagueAdmin && !isListedTeamAdmin;
 
   // Edit access: strictly team admins/coaches of THIS team (or embedded marketing demo).
   // Players strictly have VIEW-ONLY permissions (no editing plays, formations, or routes).
   const hasEditAccess = !isBlockedLeagueAdmin && !isPlayer && (isEmbedded || isTeamAdminForThisTeam);
 
-  // View access: team admins of THIS team OR rostered players of THIS team OR York team
-  const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam || isYork);
+  // View access: team admins of THIS team OR rostered players of THIS team
+  const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
 
   // 1. Fetch Team & Playbooks from Firestore / LocalStorage
   useEffect(() => {
@@ -204,7 +205,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         }
 
         // If user is blocked league admin or unauthorized, do not load confidential playbooks
-        if (!isEmbedded && !isYork && (isBlockedLeagueAdmin || (!isTeamAdminForThisTeam && !isRosteredPlayerOnTeam))) {
+        if (!isEmbedded && (isBlockedLeagueAdmin || (!isTeamAdminForThisTeam && !isRosteredPlayerOnTeam))) {
           setLoading(false);
           return;
         }
@@ -956,7 +957,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 {(activePlaybook?.playersOnField || playersPerSide)}v{(activePlaybook?.playersOnField || playersPerSide)} Flag Format
               </span>
 
-              {(isRosteredPlayerOnTeam || (isPlayer && isYork)) && (
+              {isRosteredPlayerOnTeam && (
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-mono font-bold uppercase text-emerald-300 flex items-center gap-1">
                   <Eye className="w-3 h-3" />
                   <span>Player View Only</span>

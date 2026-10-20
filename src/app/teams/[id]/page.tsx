@@ -87,7 +87,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   // - York Lions Varsity Portal: Fully unlocked for Dexter, team coaches, and rostered players
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
   const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
-  const canAccessPlaybook = isYork || (!isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam));
+  const canAccessPlaybook = !isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
   const hasEditAccess = canManageTeam(teamId) || isLeagueAdmin;
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [team, setTeam] = useState<any>(null);
