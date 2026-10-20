@@ -134,7 +134,7 @@ export default function Calendar() {
   const [isEmbedded, setIsEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      const isEmbedQuery = sp.get("embed") === "true" || sp.get("demo") === "true";
+      const isEmbedQuery = sp.get("embed") === "true";
       let isIframe = false;
       try {
         isIframe = window.self !== window.top;
@@ -146,7 +146,7 @@ export default function Calendar() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      const isEmbedQuery = sp.get("embed") === "true" || sp.get("demo") === "true";
+      const isEmbedQuery = sp.get("embed") === "true";
       let isIframe = false;
       try {
         isIframe = window.self !== window.top;
@@ -849,7 +849,7 @@ export default function Calendar() {
                                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                                 <span>LIVE</span>
                                 {Boolean((match as any).half || (match as any).matchState?.half) && (
-                                  <span className="font-mono text-cyan-200">
+                                  <span className="font-mono">
                                     • Q{(match as any).half || (match as any).matchState?.half}
                                     {typeof ((match as any).gameClock ?? (match as any).matchState?.gameClock) === "number" && (
                                       ` ${Math.floor(((match as any).gameClock ?? (match as any).matchState?.gameClock) / 60)}:${String(((match as any).gameClock ?? (match as any).matchState?.gameClock) % 60).padStart(2, "0")}`

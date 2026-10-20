@@ -47,7 +47,7 @@ import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 
 import { renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
-import { resolveTeamColorPalette } from "@/lib/teamColors";
+import { getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -1060,7 +1060,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                               className="font-mono text-xs font-black px-2 py-0.5 rounded border shadow-sm"
                               style={{
                                 backgroundColor: tPalette.secondary,
-                                color: tPalette.primary,
+                                color: getReadableTextColor(tPalette.secondary, tPalette.primary),
                                 borderColor: `${tPalette.primary}40`,
                               }}
                             >
@@ -2714,7 +2714,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                               className="font-mono text-xs font-black px-2 py-0.5 rounded border shadow-sm"
                               style={{
                                 backgroundColor: tPalette.secondary,
-                                color: tPalette.primary,
+                                color: getReadableTextColor(tPalette.secondary, tPalette.primary),
                                 borderColor: `${tPalette.primary}40`,
                               }}
                             >
@@ -2767,7 +2767,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                               className="font-mono text-xs font-black px-2 py-0.5 rounded border shadow-sm"
                               style={{
                                 backgroundColor: tPalette.secondary,
-                                color: tPalette.primary,
+                                color: getReadableTextColor(tPalette.secondary, tPalette.primary),
                                 borderColor: `${tPalette.primary}40`,
                               }}
                             >

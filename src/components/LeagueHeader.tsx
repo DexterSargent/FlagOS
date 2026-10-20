@@ -29,6 +29,7 @@ import {
   X,
   BookOpen,
   LogIn,
+  LogOut,
   Globe,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
@@ -55,7 +56,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
     isSubscriptionPastDue,
     resumeSubscription,
   } = useLeague();
-  const { user, role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId } = useAuth();
+  const { user, role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId, logout } = useAuth();
 
   const isCustomOrPaidLeague =
     (activeLeagueId !== "default" && activeLeagueId !== "demo") ||
@@ -520,6 +521,18 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               </Link>
             )}
 
+            {user && !isDemoLeague && (
+              <button
+                onClick={() => void logout()}
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-red-500/10 text-slate-700 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-400 border border-slate-200 dark:border-white/10 text-xs font-bold transition-colors cursor-pointer shrink-0"
+                title="Sign out"
+                aria-label="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden xl:inline">Sign Out</span>
+              </button>
+            )}
+
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -613,6 +626,19 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 <UserPlus className="w-4 h-4" />
                 <span>Player Registration</span>
               </Link>
+            )}
+
+            {user && !isDemoLeague && (
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  void logout();
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
             )}
 
             {/* Public Platform Navigation (Easy exit from Demo League to unlogged-in pages) */}

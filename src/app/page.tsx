@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   Crown,
   Shield,
+  LogOut,
   Zap,
   Sparkles,
   ListChecks,
@@ -43,7 +44,7 @@ import { useTheme } from "@/lib/themeContext";
 export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
-  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin } = useAuth();
+  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin, logout } = useAuth();
   const isMe = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" || Boolean(isPlatformAdmin);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -274,10 +275,10 @@ export default function FlagOSPlatformLandingPage() {
                 <span className="hidden sm:inline">League Portal:</span>
                 <span className="text-cyan-300 max-w-[80px] sm:max-w-none break-all text-right">{settings?.shortcode || "Active"}</span>
               </Link>
-            ) : (
+            ) : user ? (<Link href="/login" className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-white hover:text-[#3CA505] text-xs font-semibold transition-colors">Account</Link>) : (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <Link
-                  href="/login"
+                href="/login"
                   className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-white hover:text-[#3CA505] text-xs font-semibold transition-colors"
                 >
                   Sign In
@@ -297,6 +298,9 @@ export default function FlagOSPlatformLandingPage() {
                 </Link>
               </div>
             )}
+
+            {user && (<button onClick={() => void logout()} className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-white/5 hover:bg-red-500/10 text-neutral-300 hover:text-red-300 border border-white/10 text-xs font-bold transition-colors cursor-pointer shrink-0" aria-label="Sign out" title="Sign out"><LogOut className="w-3.5 h-3.5" /><span className="hidden sm:inline">Sign Out</span></button>)}
+
 
             {/* Mobile Menu Toggle Button */}
             <button

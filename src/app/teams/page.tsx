@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam, TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
-import { resolveTeamColorPalette } from "@/lib/teamColors";
+import { getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
   getSandboxTeams,
@@ -769,7 +769,7 @@ export default function TeamsPage() {
                                   className="px-2 py-0.5 rounded-md text-xs font-mono font-black tracking-widest border shadow-sm"
                                   style={{
                                     backgroundColor: tPalette.secondary,
-                                    color: tPalette.primary,
+                                    color: getReadableTextColor(tPalette.secondary, tPalette.primary),
                                     borderColor: `${tPalette.primary}40`,
                                   }}
                                 >

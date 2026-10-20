@@ -7,6 +7,7 @@ import { collection, doc, getDocs, updateDoc, query, limit } from "firebase/fire
 import {
   AlertCircle,
   ArrowLeft,
+  LogOut,
   Building2,
   Check,
   ChevronDown,
@@ -66,7 +67,7 @@ const getText = (value: unknown, fallback: string) =>
 
 export default function PlatformAdminPage() {
   const router = useRouter();
-  const { user, isPlatformAdmin, loading: authLoading } = useAuth();
+  const { user, isPlatformAdmin, loading: authLoading, logout } = useAuth();
   const [leagues, setLeagues] = useState<ManagedRecord[]>([]);
   const [teams, setTeams] = useState<ManagedRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
@@ -554,6 +555,11 @@ export default function PlatformAdminPage() {
           <Link href="/" className="mt-6 inline-flex rounded-xl bg-white/10 px-4 py-2 text-sm font-bold hover:bg-white/15">
             Return to FlagOS
           </Link>
+          {user && (
+            <button type="button" onClick={() => void logout()} className="mt-3 block w-full text-xs font-bold text-neutral-400 hover:text-white cursor-pointer">
+              Sign out to switch accounts
+            </button>
+          )}
         </section>
       </main>
     );
@@ -577,6 +583,13 @@ export default function PlatformAdminPage() {
             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold hover:bg-white/10 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${loadingRecords ? "animate-spin" : ""}`} /> Refresh
+          </button>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-neutral-300 hover:bg-red-500/10 hover:text-red-300 cursor-pointer"
+          >
+            <LogOut className="h-4 w-4" /> Sign out
           </button>
         </div>
 

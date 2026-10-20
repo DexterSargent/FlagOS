@@ -47,7 +47,7 @@ import {
   getSandboxPlays,
 } from "@/lib/demoSandbox";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
-import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette } from "@/lib/teamColors";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette , getReadableTextColor } from "@/lib/teamColors";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import {
   isYorkTeam,
@@ -88,7 +88,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
   const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
   const canAccessPlaybook = isYork || (!isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam));
-  const hasEditAccess = canManageTeam(teamId) || isYork || isDemoLeague || isLeagueAdmin;
+  const hasEditAccess = canManageTeam(teamId) || isLeagueAdmin;
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -638,14 +638,15 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             ) : (
               <button
                 type="button"
-                onClick={() => setIsEditModalOpen(true)}
-                className="group/placeholder relative w-28 h-28 md:w-32 md:h-32 rounded-3xl p-3 flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-xl bg-slate-100 dark:bg-transparent"
+                onClick={() => hasEditAccess && setIsEditModalOpen(true)}
+                disabled={!hasEditAccess}
+                className={`group/placeholder relative w-28 h-28 md:w-32 md:h-32 rounded-3xl p-3 flex flex-col items-center justify-center text-center transition-all duration-300 backdrop-blur-xl bg-slate-100 dark:bg-transparent ${hasEditAccess ? "hover:scale-105 cursor-pointer" : "cursor-default"}`}
                 style={{
                   backgroundColor: `${palette.primary}15`,
-                  border: `2px dashed ${palette.primary}80`,
+                  border: `2px ${hasEditAccess ? "dashed" : "solid"} ${palette.primary}80`,
                   boxShadow: `0 0 30px ${palette.primary}20`,
                 }}
-                title="Click to add team logo"
+                title={hasEditAccess ? "Click to add team logo" : undefined}
               >
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-1 text-slate-900 dark:text-white group-hover/placeholder:scale-110 transition-transform">
                   <TeamLogo
@@ -657,11 +658,15 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     customColor={palette.primary === "#E31837" ? "text-red-400" : undefined}
                   />
                 </div>
-                <div className="flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
-                  <Upload className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                  <span>Add Logo</span>
-                </div>
-                <span className="text-[9px] text-slate-500 dark:text-neutral-400 font-mono">Click to Upload</span>
+                {hasEditAccess && (
+                  <>
+                    <div className="flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
+                      <Upload className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+                      <span>Add Logo</span>
+                    </div>
+                    <span className="text-[9px] text-slate-500 dark:text-neutral-400 font-mono">Click to Upload</span>
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -683,7 +688,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             />
             <span 
               className="text-sm font-black tracking-widest uppercase"
-              style={{ color: palette.primary }}
+              style={{ color: getReadableTextColor(palette.secondary, palette.primary) }}
             >
               {shortcode} • {isYork ? "Varsity Club Team Portal" : isStandaloneOrPaidTeam ? "Independent Team Portal" : `${settings.leagueName} Member Club`}
             </span>
@@ -694,7 +699,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           </h1>
 
           <p className="text-lg md:text-xl text-neutral-400 font-light max-w-2xl mx-auto leading-relaxed mt-4">
-            {team.bio || `The official portal for the ${team.name}. View roster, schedule, team stats, and more.`}
+            {team.bio || `The official portal for ${team.name}. View roster, schedule, team stats, and more.`}
           </p>
 
           {/* Coaching Staff Banner */}
