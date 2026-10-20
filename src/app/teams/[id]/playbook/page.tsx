@@ -833,9 +833,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Dedicated Embedded Layout for Showcase (Directly renders PlayCanvas with compact controls)
   if (isEmbedded) {
     return (
-      <div className="min-h-screen bg-black text-white font-sans p-2 sm:p-4 flex flex-col gap-3 selection:bg-cyan-500/30 selection:text-cyan-200 w-full max-w-full overflow-x-hidden">
+      <div className="h-dvh min-h-0 bg-black text-white font-sans p-2 sm:p-3 flex flex-col gap-2 selection:bg-cyan-500/30 selection:text-cyan-200 w-full max-w-full overflow-hidden">
         {/* Compact Header for Embedded Showcase */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 bg-[#0B0F19] p-3 rounded-2xl border border-white/10 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0B0F19] p-2 rounded-xl border border-white/10 shrink-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5" />
@@ -891,19 +891,21 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Tactical Playmaker Canvas Workspace */}
-        {activePlay ? (
-          <PlayCanvas
-            play={activePlay}
-            onChange={handleUpdateActivePlay}
-            readOnly={false}
-            playbook={activePlaybook}
-          />
-        ) : (
-          <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-12 text-center text-neutral-400">
-            <BookOpen className="w-12 h-12 mx-auto text-neutral-600 mb-4" />
-            <h3 className="text-xl font-bold uppercase text-white mb-2">Loading Playbook Studio...</h3>
-          </div>
-        )}
+        <div className="flex-1 min-h-0">
+          {activePlay ? (
+            <PlayCanvas
+              play={activePlay}
+              onChange={handleUpdateActivePlay}
+              readOnly={false}
+              playbook={activePlaybook}
+            />
+          ) : (
+            <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-12 text-center text-neutral-400">
+              <BookOpen className="w-12 h-12 mx-auto text-neutral-600 mb-4" />
+              <h3 className="text-xl font-bold uppercase text-white mb-2">Loading Playbook Studio...</h3>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
