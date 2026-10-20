@@ -50,7 +50,7 @@ export default function PlayTypeSelector({ onSelect, variant, accentColor }: Pla
             {type === "Run" && variant === "async" ? "⚡" : icon}
           </span>
           <span
-            className={`font-black ${variant === "sync" ? "text-[11px] sm:text-sm md:text-xl" : ""} ${type === "Pass" ? "text-blue-700 dark:text-blue-300" : type === "Run" ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}
+            className={`font-black text-[11px] sm:text-sm md:text-xl ${type === "Pass" ? "text-blue-700 dark:text-blue-300" : type === "Run" ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}
           >
             {variant === "async" && type === "Pass"
               ? "PASS PLAY"

@@ -152,6 +152,14 @@ The clockless play log and box score each have their own focusable scroll area.
 In one-sided clockless tracking, team defense is implied: there is no generic
 Team Defense choice or empty opponent-defense selector. Individual defensive
 player credit remains available for the rostered team.
+The async play-entry panel scrolls within the mobile viewport, respects the bottom
+safe area, and places Start Next Play before the previous play's description.
+Result choices follow the live tracker: incomplete/PBU advances the down;
+sacks, flag-for-loss and rushing losses allow loss of yards or safety;
+completed passes/gains offer touchdown, out-of-bounds or first-down/short results
+according to flag-pull credit; interceptions offer turnover or pick-six unless
+the return was flagged. Required player selections are enforced only for known
+rosters, so York can track an unrostered opponent without inventing player stats.
 
 Game details, synchronous administration, clockless stat keeping, and the live
 spectator scoreboard use the same team-palette subscription. Saved primary and

@@ -86,6 +86,9 @@ interface AsyncPlayByPlayManagerProps {
   backUrl?: string;
 }
 
+type PlayOutcome = "Complete" | "Incomplete" | "PBU" | "Interception" | "Sack" | "Gain" | "Loss" | "FFL";
+type PlayResult = "Touchdown" | "First Down" | "Short" | "Safety" | "Turnover" | "Next Down" | "Pick 6" | "Repeat Down";
+
 export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayByPlayManagerProps) {
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
@@ -148,7 +151,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   // 'GAME_OVER' = Match Final Confirmation
   const [step, setStep] = useState<"IDLE" | "PLAY_TYPE" | "DETAILS" | "CONVERSION" | "GAME_OVER">("IDLE");
   const [playType, setPlayType] = useState<"Pass" | "Run" | "Penalty" | null>(null);
-  const [outcome, setOutcome] = useState<"Complete" | "Incomplete" | "PBU" | "Interception" | "Sack" | "Gain" | "Loss" | "FFL" | null>(null);
+  const [outcome, setOutcome] = useState<PlayOutcome | null>(null);
+  const [isOobPrompt, setIsOobPrompt] = useState(false);
 
   const [qbRunner, setQbRunner] = useState<string>("");
   const [receiver, setReceiver] = useState<string>("");
@@ -169,6 +173,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   // View tabs
   const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score">("tracker");
+  const playEntryRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (playEntryRef.current) playEntryRef.current.scrollTop = 0;
+  }, [step, activeTab]);
   useEffect(() => {
     if (!canEdit) setActiveTab("box-score");
   }, [canEdit]);
@@ -569,6 +577,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setStep("IDLE");
     setPlayType(null);
     setOutcome(null);
+    setIsOobPrompt(false);
     setQbRunner("");
     setReceiver("");
     setOpenSection("qb");
@@ -580,6 +589,46 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setConvReceiver("");
     setPlayResult("");
   };
+
+  const offensePlayers = possession === homeTeamName ? homePlayers : awayPlayers;
+  const defensePlayers = possession === homeTeamName ? awayPlayers : homePlayers;
+  const hasBothRosters = homePlayers.length > 0 && awayPlayers.length > 0;
+  const showDefensiveActions = outcome !== "Incomplete" &&
+    (defensePlayers.length > 0 || (outcome === "Interception" && offensePlayers.length > 0));
+  const hasOffenseSelected = !!qbRunner && (
+    outcome !== "Complete" || !!receiver || offensePlayers.length === 0
+  );
+  const resultOptions: { result: PlayResult | "Out of Bounds"; label: string }[] = [];
+  if (hasOffenseSelected && outcome) {
+    if (outcome === "Complete" || outcome === "Gain") {
+      if (isOobPrompt || defenders.length > 0 || defensePlayers.length === 0) {
+        if (!isOobPrompt && defenders.length === 0) resultOptions.push({ result: "Touchdown", label: "TOUCHDOWN (+6)" });
+        resultOptions.push(
+          { result: "First Down", label: isOobPrompt ? "OOB - FIRST DOWN" : "FIRST DOWN" },
+          { result: "Short", label: isOobPrompt ? "OOB - SHORT" : "SHORT OF LINE" },
+        );
+      } else {
+        resultOptions.push(
+          { result: "Touchdown", label: "TOUCHDOWN (+6)" },
+          { result: "Out of Bounds", label: "OUT OF BOUNDS" },
+        );
+      }
+    } else if (outcome === "Interception") {
+      if (defenders.length === 1 || defensePlayers.length === 0) {
+        if (flaggers.length === 0) resultOptions.push({ result: "Pick 6", label: "PICK 6 (+6)" });
+        resultOptions.push({ result: "Turnover", label: flaggers.length > 0 ? "FLAGGED (Save Turnover)" : "OOB / DOWNED (Save Turnover)" });
+      }
+    } else if (outcome === "Incomplete" || outcome === "PBU") {
+      if (outcome === "Incomplete" || defenders.length > 0 || defensePlayers.length === 0) {
+        resultOptions.push({ result: "Next Down", label: "SAVE & NEXT DOWN" });
+      }
+    } else if (outcome === "Loss" || defenders.length > 0 || defensePlayers.length === 0) {
+      resultOptions.push(
+        { result: "Short", label: "LOSS OF YARDS" },
+        { result: "Safety", label: "SAFETY (+2 DEF)" },
+      );
+    }
+  }
 
   const handlePlayTypeSelect = (type: "Pass" | "Run" | "Penalty") => {
     setPlayType(type);
@@ -603,16 +652,18 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setStep("DETAILS");
   };
 
-  const selectOutcome = (id: string) => {
+  const selectOutcome = (id: PlayOutcome) => {
     setDefenders([]);
     setFlaggers([]);
+    setIsOobPrompt(false);
     if (id !== "Complete") setReceiver("");
-    setOutcome(id as any);
+    setOutcome(id);
     if (!qbRunner) setOpenSection("qb");
-    else setOpenSection(playType === "Pass" && id === "Complete" ? "receiver" : "defenders");
+    else setOpenSection(playType === "Pass" && id === "Complete" && offensePlayers.length > 0 ? "receiver" : "defenders");
   };
 
   const handleDefenders = (player: string) => {
+    setIsOobPrompt(false);
     if (outcome === "PBU" || outcome === "Interception") {
       setDefenders(defenders.includes(player) ? [] : [player]);
       return;
@@ -635,7 +686,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const buildPlayData = (result: string, extra?: any) => {
     return {
       matchId,
-      possessionTeamId: possession === homeTeamName ? homeTeamId : awayTeamId,
+      possessionTeamId: (playResult === "Pick 6" ? possession !== homeTeamName : possession === homeTeamName) ? homeTeamId : awayTeamId,
       down: currentDown,
       playType,
       firstDown: result === "First Down" || result === "Touchdown",
@@ -651,7 +702,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       turnover:
         result === "Turnover" ||
         result === "Pick 6" ||
-        (currentDown === downsPerSeries && result !== "First Down" && result !== "Repeat Down"),
+        (currentDown === downsPerSeries && result !== "First Down" && result !== "Touchdown" && result !== "Repeat Down"),
       result,
       isThirdDownAttempt: currentDown === 3 && playType !== "Penalty",
       isThirdDownConversion: currentDown === 3 && (result === "First Down" || result === "Touchdown" || extra?.firstDown),
@@ -701,7 +752,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     loadPlays();
   };
 
-  const handleSavePlay = (result: "Touchdown" | "First Down" | "Short" | "Safety" | "Turnover" | "Next Down" | "Pick 6" | "Repeat Down") => {
+  const handleSavePlay = (result: PlayResult) => {
+    if (!resultOptions.some((option) => option.result === result)) {
+      setSaveNotice({ kind: "error", message: "Select the required players and a valid result for this play outcome." });
+      return;
+    }
     setPlayResult(result);
 
     if (playType === "Pass") {
@@ -1061,10 +1116,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     });
   };
 
-  const offensePlayers = possession === homeTeamName ? homePlayers : awayPlayers;
-  const defensePlayers = possession === homeTeamName ? awayPlayers : homePlayers;
-  const hasBothRosters = homePlayers.length > 0 && awayPlayers.length > 0;
-  const showDefensiveActions = defensePlayers.length > 0 || (outcome === "Interception" && offensePlayers.length > 0);
   const homeTeamPalette = homeTeamColors;
   const awayTeamPalette = awayTeamColors;
   const homeTeamText = getReadableTextColor(homeTeamPalette.secondary, homeTeamPalette.primary);
@@ -1126,20 +1177,21 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   }
 
   return (
-    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden">
+    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 min-w-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden pb-[env(safe-area-inset-bottom)]">
       {/* Top Banner & Navigation */}
-      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-3 md:px-5 py-2 md:py-2.5 flex items-center justify-between shrink-0 sticky z-30" style={{ top: "var(--role-switcher-height, 0px)" }}>
-        <div className="flex items-center gap-3">
+      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-2 md:px-5 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30">
+        <div className="flex min-w-0 items-center gap-2">
           {!isEmbedded && (
             <Link
               href={backUrl || `/matches/${matchId}`}
               className="flex items-center gap-1.5 text-neutral-400 hover:text-white text-xs font-bold bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>Exit Stat Keeper</span>
+              <span className="sm:hidden">Exit</span>
+              <span className="hidden sm:inline">Exit Stat Keeper</span>
             </Link>
           )}
-          <div className="hidden sm:flex items-center gap-2">
+          <div className="hidden lg:flex min-w-0 items-center gap-2">
             <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Clockless Async Stat Keeper</span>
@@ -1151,10 +1203,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         </div>
 
         {/* View mode tabs */}
-        <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-bold">
+        <div className="flex min-w-0 items-center gap-0.5 bg-black/60 p-1 rounded-xl border border-white/10 text-[10px] sm:text-xs font-bold">
           {canEdit && <button
             onClick={() => setActiveTab("tracker")}
-            className={`px-3 py-1 rounded-lg transition-all ${
+            className={`px-2 sm:px-3 py-2 rounded-lg transition-all ${
               activeTab === "tracker" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
             }`}
           >
@@ -1162,7 +1214,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </button>}
           <button
             onClick={() => setActiveTab("play-by-play")}
-            className={`px-3 py-1 rounded-lg transition-all ${
+            className={`px-2 sm:px-3 py-2 rounded-lg transition-all ${
               activeTab === "play-by-play" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
             }`}
           >
@@ -1170,7 +1222,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </button>
           <button
             onClick={() => setActiveTab("box-score")}
-            className={`px-3 py-1 rounded-lg transition-all ${
+            className={`px-2 sm:px-3 py-2 rounded-lg transition-all ${
               activeTab === "box-score" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
             }`}
           >
@@ -1190,18 +1242,18 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               borderColor: `${homeTeamPalette.primary}40`,
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-1 min-w-0 w-full">
               <TeamLogo
                 teamName={homeTeamName}
-                className="w-5 h-5 md:w-6 md:h-6"
+                className="hidden sm:block w-5 h-5 md:w-6 md:h-6 shrink-0"
                 isDemo={isDemo}
                 primaryColor={homeTeamText}
               />
-              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: homeTeamText }}>
+              <span title={homeTeamName} className="min-w-0 text-[10px] sm:text-xs md:text-base font-black uppercase tracking-wide truncate" style={{ color: homeTeamText }}>
                 {homeTeamName}
               </span>
               {possession === homeTeamName && (
-                <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: homeTeamPalette.primary }} title="Possession" />
+                <span className="w-2 h-2 shrink-0 rounded-full animate-pulse" style={{ backgroundColor: homeTeamPalette.primary }} title="Possession" />
               )}
             </div>
             <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: homeTeamText }}>
@@ -1232,16 +1284,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               borderColor: `${awayTeamPalette.primary}40`,
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-1 min-w-0 w-full">
               {possession === awayTeamName && (
-                <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: awayTeamPalette.primary }} title="Possession" />
+                <span className="w-2 h-2 shrink-0 rounded-full animate-pulse" style={{ backgroundColor: awayTeamPalette.primary }} title="Possession" />
               )}
-              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: awayTeamText }}>
+              <span title={awayTeamName} className="min-w-0 text-[10px] sm:text-xs md:text-base font-black uppercase tracking-wide truncate" style={{ color: awayTeamText }}>
                 {awayTeamName}
               </span>
               <TeamLogo
                 teamName={awayTeamName}
-                className="w-5 h-5 md:w-6 md:h-6"
+                className="hidden sm:block w-5 h-5 md:w-6 md:h-6 shrink-0"
                 isDemo={isDemo}
                 primaryColor={awayTeamText}
               />
@@ -1254,7 +1306,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex flex-col flex-1 min-h-0 w-full p-2 md:p-3 overflow-visible md:overflow-hidden">
+      <main className="flex flex-col flex-1 min-h-0 min-w-0 w-full p-2 md:p-3 overflow-hidden">
         {(saveNotice || playsError) && (
           <div className="mb-2 space-y-1 shrink-0">
             {saveNotice && (
@@ -1284,14 +1336,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         )}
         {/* TAB 1: INTERACTIVE STAT KEEPER */}
         {canEdit && activeTab === "tracker" && (
-          <div className="flex flex-col flex-1 min-h-0 space-y-2">
+          <div ref={playEntryRef} role="region" aria-label="Play entry" tabIndex={0} className="flex flex-col flex-1 min-h-0 min-w-0 gap-2 overflow-y-auto overscroll-contain">
             {/* MASTER PERIOD & ACTION CONTROLS */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0">
-              <div className="flex items-center gap-2 text-xs font-bold text-neutral-300">
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] sm:flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-neutral-300 w-full">
                 <span>Possession:</span>
                 <button
                   onClick={() => setPossession(homeTeamName)}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                  title={homeTeamName}
+                  className={`min-w-0 truncate px-2 py-2 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
                     possession === homeTeamName
                       ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
                       : "bg-white/5 border-white/10 text-neutral-400"
@@ -1302,7 +1355,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </button>
                 <button
                   onClick={() => setPossession(awayTeamName)}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                  title={awayTeamName}
+                  className={`min-w-0 truncate px-2 py-2 rounded-lg border text-[10px] sm:text-xs font-bold transition-all ${
                     possession === awayTeamName
                       ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
                       : "bg-white/5 border-white/10 text-neutral-400"
@@ -1336,7 +1390,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               </div>
 
               {/* ACTION BUTTONS: Halftime, Game Over, Undo, Add Sub */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {half === 1 && (
                   <button
                     onClick={handleHalftime}
@@ -1377,19 +1431,26 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: IDLE -> THE USER-REQUESTED "START PLAY" BUTTON */}
             {step === "IDLE" && (
-              <div className="bg-neutral-900/80 border border-white/10 rounded-3xl p-10 md:p-14 text-center space-y-6 shadow-2xl backdrop-blur-xl">
-                <div className="space-y-2">
+              <div className="bg-neutral-900/80 border border-white/10 rounded-2xl p-2.5 sm:p-5 md:p-8 text-center flex flex-col gap-2 sm:gap-3 shrink-0 shadow-2xl backdrop-blur-xl">
+                <div className="space-y-1">
                   <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
                     {half === 1 ? "First Half" : "Second Half"} • {getOrdinal(currentDown)} Down
                   </span>
-                  <h2 className="text-3xl md:text-4xl font-black uppercase text-white">
+                  <h2 className="text-base sm:text-2xl md:text-3xl leading-tight break-words font-black uppercase text-white">
                     {possession} on Offense
                   </h2>
-                  <p className="text-neutral-400 text-sm max-w-md mx-auto">
+                  <p className="hidden sm:block text-neutral-400 text-sm max-w-md mx-auto">
                     Press the button below when ready to track the next play. Timing and timeouts are disabled.
                   </p>
                 </div>
 
+                <button
+                  onClick={handleStartPlay}
+                  className="w-full max-w-md min-h-12 py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm sm:text-lg uppercase tracking-wide transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 mx-auto shrink-0"
+                >
+                  <Play className="w-5 h-5 fill-current shrink-0" />
+                  <span>START NEXT PLAY</span>
+                </button>
                 {lastLoggedPlayStatement && (
                   <div className="max-w-md mx-auto p-4 rounded-2xl bg-black/60 border border-amber-500/30 text-left space-y-1.5 shadow-md">
                     <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
@@ -1402,15 +1463,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                 )}
 
-                <div className="pt-2">
-                  <button
-                    onClick={handleStartPlay}
-                    className="w-full max-w-md py-5 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-lg uppercase tracking-wider transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:scale-102 active:scale-98 cursor-pointer flex items-center justify-center gap-3 mx-auto"
-                  >
-                    <Play className="w-6 h-6 fill-current" />
-                    <span>START NEXT PLAY</span>
-                  </button>
-                </div>
               </div>
             )}
 
@@ -1448,10 +1500,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
             )}
 
             {step === "DETAILS" && playType !== "Penalty" && (
-              <div className="flex-1 min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-4 grid grid-cols-1 md:grid-cols-2 content-start gap-2 md:gap-3 shadow-2xl overflow-y-auto md:overflow-hidden">
+              <div className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-4 grid grid-cols-1 md:grid-cols-2 content-start gap-2 md:gap-3 shadow-2xl md:overflow-y-auto">
                 <div className="md:col-span-2 flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
                   <div>
-                    <h3 className="text-xl font-black uppercase text-white">
+                    <h3 className="text-base sm:text-xl font-black uppercase text-white">
                       {playType} Play Details
                     </h3>
                     <p className="text-xs text-neutral-400">
@@ -1477,18 +1529,19 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   <div className="flex flex-wrap gap-1.5">
                     {playType === "Pass" ? (
                       <>
-                        {[
+                        {([
                           { id: "Complete", label: "Complete" },
                           { id: "Incomplete", label: "Incomplete" },
                           { id: "PBU", label: "Pass Breakup (PBU)" },
                           { id: "Interception", label: "Interception" },
                           { id: "Sack", label: "Sack" },
                           { id: "FFL", label: "Flag Guarding / FFL" },
-                        ].map((opt) => (
+                        ] satisfies { id: PlayOutcome; label: string }[]).map((opt) => (
                           <button
                             key={opt.id}
                             type="button"
                             onClick={() => selectOutcome(opt.id)}
+                            aria-pressed={outcome === opt.id}
                             className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
                               outcome === opt.id
                                 ? "bg-emerald-500 text-black border-emerald-500 font-black"
@@ -1501,15 +1554,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       </>
                     ) : (
                       <>
-                        {[
+                        {([
                           { id: "Gain", label: "Positive Gain" },
                           { id: "Loss", label: "Loss of Yards" },
                           { id: "FFL", label: "Flag Guarding / FFL" },
-                        ].map((opt) => (
+                        ] satisfies { id: PlayOutcome; label: string }[]).map((opt) => (
                           <button
                             key={opt.id}
                             type="button"
                             onClick={() => selectOutcome(opt.id)}
+                            aria-pressed={outcome === opt.id}
                             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
                               outcome === opt.id
                                 ? "bg-cyan-500 text-black border-cyan-500 font-black"
@@ -1604,7 +1658,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {/* Receiver Selection (for Complete pass) */}
-                {playType === "Pass" && outcome === "Complete" && openSection !== "receiver" && (
+                {playType === "Pass" && outcome === "Complete" && offensePlayers.length > 0 && openSection !== "receiver" && (
                   <SectionSummary
                     label="Receiver"
                     value={receiver ? `${playerNumberMap[receiver] ? `#${playerNumberMap[receiver]} ` : ""}${receiver}` : "Select receiver"}
@@ -1612,7 +1666,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     onOpen={() => setOpenSection("receiver")}
                   />
                 )}
-                {playType === "Pass" && outcome === "Complete" && (
+                {playType === "Pass" && outcome === "Complete" && offensePlayers.length > 0 && (
                   <div hidden={openSection !== "receiver"} className={`min-w-0 ${openSection === "receiver" ? "" : "hidden"}`}>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
@@ -1723,50 +1777,30 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                 )}
 
-                {/* ACTION RESULTS BUTTONS (STICKY IN-FRAME) */}
-                <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1 bg-neutral-900/95 backdrop-blur-md pb-1">
+                <div role="group" aria-label="Save play result" className="md:col-span-2 border-t border-white/10 pt-2 space-y-2 bg-neutral-900/95 pb-1">
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
                     Save Play Result
                   </span>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
-                    <button
-                      onClick={() => handleSavePlay("Touchdown")}
-                      className="py-2 px-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
-                    >
-                      TOUCHDOWN (+6)
-                    </button>
-                    <button
-                      onClick={() => handleSavePlay("First Down")}
-                      className="py-2 px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      FIRST DOWN
-                    </button>
-                    <button
-                      onClick={() => handleSavePlay("Next Down")}
-                      className="py-2 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      NEXT DOWN
-                    </button>
-                    {outcome === "Interception" && (
+                  {resultOptions.length === 0 && (
+                    <p className="text-xs text-neutral-400">Select the required offensive and defensive players to save this outcome.</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {resultOptions.map(({ result, label }) => (
                       <button
-                        onClick={() => handleSavePlay("Pick 6")}
-                        className="py-2 px-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
+                        key={result}
+                        type="button"
+                        onClick={() => result === "Out of Bounds" ? setIsOobPrompt(true) : handleSavePlay(result)}
+                        className={`min-h-11 py-3 px-2 rounded-xl border font-black text-xs uppercase tracking-wide transition-colors cursor-pointer ${
+                          result === "Touchdown" || result === "Pick 6"
+                            ? "bg-emerald-500 hover:bg-emerald-400 border-emerald-400 text-black"
+                            : result === "Safety" || result === "Turnover"
+                            ? "bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300"
+                            : "bg-neutral-800 hover:bg-neutral-700 border-white/10 text-white"
+                        }`}
                       >
-                        PICK 6 (+6)
+                        {label}
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleSavePlay("Turnover")}
-                      className="py-2 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      TURNOVER
-                    </button>
-                    <button
-                      onClick={() => handleSavePlay("Safety")}
-                      className="py-2 px-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      SAFETY (+2 DEF)
-                    </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1814,7 +1848,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     <button
                       onClick={finalizeConversion}
                       disabled={convIsGood === null}
-                      className="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                      className="w-full min-h-11 py-2.5 px-2 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
                     >
                       Confirm Conversion & Flip Possession
                     </button>
@@ -1825,7 +1859,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: GAME_OVER MODAL */}
             {step === "GAME_OVER" && (
-              <div className="flex-1 min-h-0 bg-neutral-900 border border-red-500/40 rounded-2xl p-3 md:p-5 flex flex-col justify-center gap-3 shadow-2xl text-center overflow-y-auto md:overflow-hidden">
+              <div className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-red-500/40 rounded-2xl p-3 md:p-5 flex flex-col gap-3 shadow-2xl text-center md:overflow-y-auto">
                 <div className="space-y-2">
                   <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto border border-red-500/30">
                     <Trophy className="w-6 h-6" />
@@ -1834,12 +1868,12 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   <p className="text-neutral-400 text-xs max-w-sm mx-auto">
                     Are you ready to mark this game as completed? Final score will be recorded as:
                   </p>
-                  <div className="text-3xl font-black text-white font-mono py-2">
+                  <div className="text-lg sm:text-3xl break-words font-black text-white font-mono py-2">
                     {homeTeamName} {homeScore} - {awayScore} {awayTeamName}
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-center">
+                <div className="flex flex-wrap gap-3 justify-center">
                   <button
                     onClick={() => setStep("IDLE")}
                     className="py-3 px-6 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-xs uppercase tracking-wider transition-all"
@@ -1861,8 +1895,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         {/* TAB 2: PLAY-BY-PLAY FEED (ZERO TIMESTAMPS OTHER THAN FIRST HALF / SECOND HALF) */}
         {activeTab === "play-by-play" && (
           <div role="region" aria-label="Game play log" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-black uppercase text-white">Game Play Log</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-base sm:text-xl font-black uppercase text-white">Game Play Log</h3>
               <span className="text-xs text-neutral-400 font-mono">
                 {plays.length} Total Plays (Asynchronous)
               </span>
@@ -1877,10 +1911,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 {plays.map((p, idx) => (
                   <div
                     key={p.id || idx}
-                    className="bg-neutral-900/80 border border-white/5 rounded-2xl p-4 flex items-start justify-between gap-4 shadow-sm"
+                    className="bg-neutral-900/80 border border-white/5 rounded-2xl p-3 sm:p-4 flex items-start justify-between gap-2 sm:gap-4 shadow-sm"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
                         {/* ONLY FIRST HALF / SECOND HALF MARKER - NO TIMESTAMPS */}
                         <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold uppercase">
                           {p.half === 2 ? "Second Half" : "First Half"}
@@ -1893,7 +1927,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                         </span>
                       </div>
 
-                      <p className="text-sm font-bold text-white leading-relaxed">
+                      <p className="text-sm break-words font-bold text-white leading-relaxed">
                         {formatPlaySentence(p, {
                           homeTeamName,
                           awayTeamName,
@@ -1903,7 +1937,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       </p>
                     </div>
 
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 max-w-[30%] break-words">
                       <span className="text-xs font-bold text-emerald-400">
                         {p.result || "Play"}
                       </span>
@@ -1923,12 +1957,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         {/* TAB 3: BOX SCORE */}
         {activeTab === "box-score" && (
           <div role="region" aria-label="Player box score" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-black uppercase text-white">Player Box Score</h3>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+              <h3 className="text-base sm:text-xl font-black uppercase text-white">Player Box Score</h3>
+              <div className="grid grid-cols-2 gap-2 min-w-0">
                 <button
                   onClick={() => setBoxScoreTab("home")}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border ${
+                  title={homeTeamName}
+                  className={`min-w-0 truncate px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
                     boxScoreTab === "home"
                       ? "bg-emerald-500 text-black border-emerald-500 font-black"
                       : "bg-neutral-800 text-neutral-300 border-white/10"
@@ -1938,7 +1973,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </button>
                 <button
                   onClick={() => setBoxScoreTab("away")}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border ${
+                  title={awayTeamName}
+                  className={`min-w-0 truncate px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
                     boxScoreTab === "away"
                       ? "bg-emerald-500 text-black border-emerald-500 font-black"
                       : "bg-neutral-800 text-neutral-300 border-white/10"
@@ -2080,12 +2116,12 @@ function SectionSummary({
       aria-label={`${label}: ${value}. Click to change`}
       className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-white/10 bg-neutral-800 hover:border-cyan-500/50 text-left transition-all cursor-pointer ${className}`}
     >
-      <span className="flex items-center gap-2 min-w-0">
-        <span className="text-[10px] uppercase tracking-widest font-bold text-neutral-400 shrink-0">{label}:</span>
+      <span className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
+        <span className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">{label}:</span>
         <span className={`text-xs font-black truncate ${filled ? "text-white" : "text-neutral-400 font-semibold"}`}>{value}</span>
       </span>
       <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 shrink-0">
-        Change
+        <span className="hidden sm:inline">Change</span>
         <ChevronDown className="w-3.5 h-3.5" />
       </span>
     </button>

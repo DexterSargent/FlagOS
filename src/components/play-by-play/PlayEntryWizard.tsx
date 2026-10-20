@@ -89,10 +89,10 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
     }
 
     return (
-      <div className="flex-1 min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-5 flex flex-col gap-3 md:gap-4 shadow-2xl">
+      <div className="shrink-0 md:shrink md:flex-1 min-h-48 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-5 flex flex-col gap-3 md:gap-4 shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
           <div>
-            <h3 className="text-xl font-black uppercase text-white">Select Play Type</h3>
+            <h3 className="text-base sm:text-xl font-black uppercase text-white">Select Play Type</h3>
             <p className="text-xs text-neutral-400">
               {props.possession} • {getOrdinal(props.currentDown)} Down
             </p>
@@ -132,7 +132,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
     );
 
     return props.variant === "async" ? (
-      <div className="flex-1 min-h-0 bg-neutral-900 border border-amber-500/30 rounded-2xl p-2 md:p-3 overflow-y-auto md:overflow-hidden shadow-2xl">
+      <div className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-amber-500/30 rounded-2xl p-2 md:p-3 md:overflow-y-auto shadow-2xl">
         {penaltyWizard}
       </div>
     ) : (
@@ -161,14 +161,14 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
     </div>
   ) : (
     <div
-      className="flex-1 min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-3 md:p-4 flex flex-col gap-3 md:gap-4 shadow-2xl overflow-y-auto"
+      className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-3 md:p-4 flex flex-col gap-3 md:gap-4 shadow-2xl md:overflow-y-auto"
       style={props.accentColor ? { borderColor: `${props.accentColor}80` } : undefined}
     >
       <div className="space-y-1 text-center">
         <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
           Touchdown Scored!
         </span>
-        <h3 className="text-2xl font-black uppercase text-white">Point After Conversion (PAT)</h3>
+        <h3 className="text-lg sm:text-2xl font-black uppercase text-white">Point After Conversion (PAT)</h3>
         <p className="text-xs text-neutral-400">Select attempt value and result</p>
       </div>
       <ConversionAttemptSelector

@@ -113,6 +113,86 @@ describe.each(["sync", "async"] as const)("%s stat keeper selection parity", (mo
 describe("async copied workflows", () => {
   beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); });
 
+  it.each([
+    ["Incomplete", ["SAVE & NEXT DOWN"]],
+    ["Pass Breakup (PBU)", ["SAVE & NEXT DOWN"]],
+    ["Sack", ["LOSS OF YARDS", "SAFETY (+2 DEF)"]],
+    ["Flag Guarding / FFL", ["LOSS OF YARDS", "SAFETY (+2 DEF)"]],
+    ["Interception", ["PICK 6 (+6)", "OOB / DOWNED (Save Turnover)"]],
+  ])("limits %s to valid results after the required players are selected", async (outcome, results) => {
+    await start("async");
+    fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: outcome }));
+    const resultGroup = screen.getByRole("group", { name: "Save play result" });
+    if (outcome !== "Incomplete") {
+      expect(within(resultGroup).queryAllByRole("button")).toHaveLength(0);
+      fireEvent.click(screen.getByRole("button", { name: "INT Leader" }));
+    } else {
+      expect(screen.queryByText("Defenders Involved / Flag")).not.toBeInTheDocument();
+    }
+    expect(within(resultGroup).getAllByRole("button").map((button) => button.textContent)).toEqual(results);
+    expect(screen.queryByRole("button", { name: "TOUCHDOWN (+6)" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "FIRST DOWN" })).not.toBeInTheDocument();
+    fireEvent.click(within(resultGroup).getByRole("button", { name: results[0] }));
+    if (outcome !== "Interception") {
+      expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+        result: outcome === "Incomplete" || outcome === "Pass Breakup (PBU)" ? "Next Down" : "Short",
+        gameClock: null,
+      }));
+    }
+  });
+
+  it("requires a receiver and switches gained-play results between scoring, OOB and flag pulls", async () => {
+    await start("async");
+    const results = screen.getByRole("group", { name: "Save play result" });
+    expect(within(results).queryAllByRole("button")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
+    expect(within(results).queryAllByRole("button")).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Catch Leader" }));
+    expect(within(results).getAllByRole("button").map((button) => button.textContent)).toEqual(["TOUCHDOWN (+6)", "OUT OF BOUNDS"]);
+    fireEvent.click(screen.getByRole("button", { name: "OUT OF BOUNDS" }));
+    expect(within(results).getAllByRole("button").map((button) => button.textContent)).toEqual(["OOB - FIRST DOWN", "OOB - SHORT"]);
+    fireEvent.click(screen.getByRole("button", { name: "Flag Leader" }));
+    expect(within(results).getAllByRole("button").map((button) => button.textContent)).toEqual(["FIRST DOWN", "SHORT OF LINE"]);
+  });
+
+  it("does not allow touchdowns or first downs on a run for a loss", async () => {
+    await start("async", "Run");
+    fireEvent.click(screen.getByRole("button", { name: "Catch Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: "Loss of Yards" }));
+    const results = screen.getByRole("group", { name: "Save play result" });
+    expect(within(results).getAllByRole("button").map((button) => button.textContent)).toEqual(["LOSS OF YARDS", "SAFETY (+2 DEF)"]);
+  });
+
+  it("keeps the original offense on a pick-six record while crediting the defending team's score", async () => {
+    await start("async");
+    fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: "Interception" }));
+    fireEvent.click(screen.getByRole("button", { name: "INT Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: "PICK 6 (+6)" }));
+    fireEvent.click(screen.getByRole("button", { name: /^1 POINT /i }));
+    fireEvent.click(screen.getByRole("button", { name: /NO GOOD/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
+    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+      possessionTeamId: "home", defenders: ["INT Leader"], isPick6: true, pointsScored: 6,
+    }));
+    expect(screen.getByTestId("away-scoreboard")).toHaveTextContent("6");
+  });
+
+  it("does not classify a fourth-down touchdown as a turnover on downs", async () => {
+    await start("async");
+    fireEvent.click(screen.getByRole("button", { name: "4th Down" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: "Catch Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: "TOUCHDOWN (+6)" }));
+    fireEvent.click(screen.getByRole("button", { name: /^1 POINT /i }));
+    fireEvent.click(screen.getByRole("button", { name: /NO GOOD/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
+    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+      down: 4, result: "Touchdown", turnover: false, isFourthDownConversion: true,
+    }));
+  });
+
   it("records interception return flaggers and only one interceptor, without a clock", async () => {
     await start("async");
     fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
@@ -123,6 +203,7 @@ describe("async copied workflows", () => {
     expect(within(defenders).getByRole("button", { name: "PBU Leader" })).toHaveAttribute("aria-pressed", "false");
     const flaggers = screen.getByRole("group", { name: "Flagger(s) on Interception Return" });
     fireEvent.click(within(flaggers).getByRole("button", { name: "Catch Leader" }));
+    expect(screen.queryByRole("button", { name: /PICK 6/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Turnover/i }));
     expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       defenders: ["INT Leader"], flaggers: ["Catch Leader"], gameClock: null,
