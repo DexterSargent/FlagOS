@@ -291,7 +291,13 @@ export async function POST(request: Request) {
     const authorization = request.headers.get("authorization") || "";
     const idToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
     if (!idToken) return Response.json({ error: "Authentication is required." }, { status: 401 });
-    const token = await adminAuth.verifyIdToken(idToken, true);
+    let token: DecodedIdToken;
+    try {
+      token = await adminAuth.verifyIdToken(idToken, true);
+    } catch (authError) {
+      console.error("ID token verification failed:", authError);
+      return Response.json({ error: "Your session could not be verified. Sign in again." }, { status: 401 });
+    }
     if (token.email_verified !== true) {
       return Response.json({ error: "Verify your email before accessing private data." }, { status: 403 });
     }

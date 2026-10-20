@@ -5,7 +5,8 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 const useFirebaseEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true";
-const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+// Hosting env values can arrive wrapped in literal quotes, which breaks ID token audience checks.
+const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim().replace(/^["']+|["']+$/g, "");
 
 if (process.env.NODE_ENV !== "production" && !useFirebaseEmulators) {
   throw new Error(
