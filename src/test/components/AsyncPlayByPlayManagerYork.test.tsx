@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import AsyncPlayByPlayManager from "@/components/AsyncPlayByPlayManager";
-import { setDoc } from "firebase/firestore";
+import { getDoc, setDoc } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
+import { getYorkMatch } from "@/lib/yorkTeamData";
 
 const { authState } = vi.hoisted(() => ({
   authState: { canManageTeam: true },
@@ -15,6 +17,9 @@ vi.mock("@/lib/authContext", () => ({
 }));
 
 vi.mock("@/lib/firebase", () => ({ db: {} }));
+vi.mock("@/lib/secureWrites", () => ({
+  createSecureRecord: vi.fn().mockResolvedValue({ id: "saved-play" }),
+}));
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(),
   getDoc: vi.fn().mockResolvedValue({ exists: () => false, data: () => null }),
@@ -102,5 +107,77 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
     expect(log).toHaveAttribute("tabindex", "0");
     fireEvent.click(screen.getByRole("button", { name: "Box Score" }));
     expect(screen.getByRole("region", { name: "Player box score" })).toHaveClass("overflow-y-auto");
+  });
+
+  it("omits the unrostered defense selector and saves offensive plays without team selection", async () => {
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: /START (NEXT )?PLAY/i }));
+    fireEvent.click(screen.getByRole("button", { name: "RUN PLAY" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+
+    expect(screen.queryByRole("button", { name: "Team Defense" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Defenders Involved / Flag")).not.toBeInTheDocument();
+    expect(screen.queryByText("Flagger(s):")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "NEXT DOWN" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      possessionTeamId: "york_lions",
+      runnerPlayerId: "Sonia Cabral",
+      defenders: [],
+      result: "Next Down",
+    })));
+  });
+
+  it("keeps individual defensive credit without a team defense choice in one-sided tracking", async () => {
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: "McMaster Marauders" }));
+    fireEvent.click(screen.getByRole("button", { name: /START (NEXT )?PLAY/i }));
+    fireEvent.click(screen.getByRole("button", { name: "PASS PLAY" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sack" }));
+
+    expect(screen.queryByRole("button", { name: "Team Defense" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    fireEvent.click(screen.getByRole("button", { name: "NEXT DOWN" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      possessionTeamId: "opponent_mcmaster",
+      passOutcome: "Sack",
+      defenders: ["Sonia Cabral"],
+    })));
+  });
+
+  it("preserves the team defense option when both teams have rosters", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce({
+      exists: () => true,
+      id: "match_york_mcmaster",
+      data: () => ({
+        ...getYorkMatch("match_york_mcmaster"),
+        roster: { home: [], away: ["Opponent Defender"] },
+      }),
+    } as Awaited<ReturnType<typeof getDoc>>);
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: /START (NEXT )?PLAY/i }));
+    fireEvent.click(screen.getByRole("button", { name: "RUN PLAY" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Team Defense" }));
+    fireEvent.click(screen.getByRole("button", { name: "NEXT DOWN" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      defenders: ["TEAM"],
+    })));
+  });
+
+  it("retains interception-return flaggers when the opponent defense has no roster", async () => {
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: /START (NEXT )?PLAY/i }));
+    fireEvent.click(screen.getByRole("button", { name: "PASS PLAY" }));
+    fireEvent.click(screen.getByRole("button", { name: "Interception" }));
+    expect(screen.getByRole("group", { name: "Flagger(s) on Interception Return" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Team Defense" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    fireEvent.click(screen.getByRole("button", { name: "NEXT DOWN" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      passOutcome: "Interception",
+      defenders: [],
+      flaggers: ["Sonia Cabral"],
+    })));
   });
 });

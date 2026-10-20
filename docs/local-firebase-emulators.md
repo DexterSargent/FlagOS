@@ -149,6 +149,9 @@ Turning access off and saving blocks subsequent player reads.
 Playoff bracket lines follow explicit winner/loser feeder IDs, including byes
 and double-elimination advancement; dashed lines indicate loser feeds.
 The clockless play log and box score each have their own focusable scroll area.
+In one-sided clockless tracking, team defense is implied: there is no generic
+Team Defense choice or empty opponent-defense selector. Individual defensive
+player credit remains available for the rostered team.
 
 Game details, synchronous administration, clockless stat keeping, and the live
 spectator scoreboard use the same team-palette subscription. Saved primary and

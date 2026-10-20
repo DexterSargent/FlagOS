@@ -1063,6 +1063,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const offensePlayers = possession === homeTeamName ? homePlayers : awayPlayers;
   const defensePlayers = possession === homeTeamName ? awayPlayers : homePlayers;
+  const hasBothRosters = homePlayers.length > 0 && awayPlayers.length > 0;
+  const showDefensiveActions = defensePlayers.length > 0 || (outcome === "Interception" && offensePlayers.length > 0);
   const homeTeamPalette = homeTeamColors;
   const awayTeamPalette = awayTeamColors;
   const homeTeamText = getReadableTextColor(homeTeamPalette.secondary, homeTeamPalette.primary);
@@ -1671,51 +1673,55 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 )}
 
                 {/* Defenders / Flags */}
-                {openSection !== "defenders" && (
+                {showDefensiveActions && openSection !== "defenders" && (
                   <SectionSummary
                     className="md:col-span-2"
-                    label={outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
-                    value={defenders.length > 0 ? defenders.map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(" & ") : "Optional – tap to add"}
-                    filled={defenders.length > 0}
+                    label={defensePlayers.length === 0 ? "Flagger(s) on Interception Return" : outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
+                    value={[...defenders, ...flaggers].length > 0 ? [...defenders, ...flaggers].map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(" & ") : "Optional – tap to add"}
+                    filled={defenders.length > 0 || flaggers.length > 0}
                     onOpen={() => setOpenSection("defenders")}
                   />
                 )}
-                <div hidden={openSection !== "defenders"} className={`md:col-span-2 ${openSection === "defenders" ? "" : "hidden"}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-                      Defenders Involved / Flag
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setOpenSection(null)}
-                      className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider"
-                    >
-                      Done
-                    </button>
-                  </div>
-                  <StatPlayerPicker
-                    label={outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
-                    roster={[...defensePlayers, "TEAM"]}
-                    playerNumbers={playerNumberMap}
-                    counts={playerStatCounts[getDefensiveStatCategory(outcome)]}
-                    countLabel={getDefensiveStatLabel(getDefensiveStatCategory(outcome))}
-                    selected={defenders}
-                    onSelect={handleDefenders}
-                  />
-                  {outcome === "Interception" && (
-                    <div className="mt-3">
-                      <StatPlayerPicker
-                        label="Flagger(s) on Interception Return"
-                        roster={offensePlayers}
-                        playerNumbers={playerNumberMap}
-                        counts={playerStatCounts.flags}
-                        countLabel="flags"
-                        selected={flaggers}
-                        onSelect={(player) => setFlaggers((current) => current.includes(player) ? current.filter((name) => name !== player) : [...current, player])}
-                      />
+                {showDefensiveActions && (
+                  <div hidden={openSection !== "defenders"} className={`md:col-span-2 ${openSection === "defenders" ? "" : "hidden"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
+                        Defenders Involved / Flag
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setOpenSection(null)}
+                        className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider"
+                      >
+                        Done
+                      </button>
                     </div>
-                  )}
-                </div>
+                    {defensePlayers.length > 0 && (
+                      <StatPlayerPicker
+                        label={outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
+                        roster={hasBothRosters ? [...defensePlayers, "TEAM"] : defensePlayers}
+                        playerNumbers={playerNumberMap}
+                        counts={playerStatCounts[getDefensiveStatCategory(outcome)]}
+                        countLabel={getDefensiveStatLabel(getDefensiveStatCategory(outcome))}
+                        selected={defenders}
+                        onSelect={handleDefenders}
+                      />
+                    )}
+                    {outcome === "Interception" && offensePlayers.length > 0 && (
+                      <div className="mt-3">
+                        <StatPlayerPicker
+                          label="Flagger(s) on Interception Return"
+                          roster={offensePlayers}
+                          playerNumbers={playerNumberMap}
+                          counts={playerStatCounts.flags}
+                          countLabel="flags"
+                          selected={flaggers}
+                          onSelect={(player) => setFlaggers((current) => current.includes(player) ? current.filter((name) => name !== player) : [...current, player])}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* ACTION RESULTS BUTTONS (STICKY IN-FRAME) */}
                 <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1 bg-neutral-900/95 backdrop-blur-md pb-1">
