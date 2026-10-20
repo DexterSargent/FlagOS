@@ -156,7 +156,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const [qbRunner, setQbRunner] = useState<string>("");
   const [receiver, setReceiver] = useState<string>("");
-  const [openSection, setOpenSection] = useState<"qb" | "receiver" | "defenders" | null>("qb");
+  const [openSection, setOpenSection] = useState<"qb" | "receiver" | "defenders" | "flaggers" | null>("qb");
+  const [isOutcomeOpen, setIsOutcomeOpen] = useState(true);
+  const [conversionSection, setConversionSection] = useState<"passer" | "receiver" | null>("passer");
   const [defenders, setDefenders] = useState<string[]>([]);
   const [flaggers, setFlaggers] = useState<string[]>([]);
 
@@ -578,6 +580,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setPlayType(null);
     setOutcome(null);
     setIsOobPrompt(false);
+    setIsOutcomeOpen(true);
+    setConversionSection("passer");
     setQbRunner("");
     setReceiver("");
     setOpenSection("qb");
@@ -658,12 +662,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setIsOobPrompt(false);
     if (id !== "Complete") setReceiver("");
     setOutcome(id);
+    setIsOutcomeOpen(false);
     if (!qbRunner) setOpenSection("qb");
     else setOpenSection(playType === "Pass" && id === "Complete" && offensePlayers.length > 0 ? "receiver" : "defenders");
   };
 
   const handleDefenders = (player: string) => {
     setIsOobPrompt(false);
+    setOpenSection(outcome === "Interception" && offensePlayers.length > 0 ? "flaggers" : null);
+    setIsOutcomeOpen(false);
     if (outcome === "PBU" || outcome === "Interception") {
       setDefenders(defenders.includes(player) ? [] : [player]);
       return;
@@ -1336,9 +1343,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         )}
         {/* TAB 1: INTERACTIVE STAT KEEPER */}
         {canEdit && activeTab === "tracker" && (
-          <div ref={playEntryRef} role="region" aria-label="Play entry" tabIndex={0} className="flex flex-col flex-1 min-h-0 min-w-0 gap-2 overflow-y-auto overscroll-contain">
+          <div ref={playEntryRef} role="region" aria-label="Play entry" tabIndex={0} className={`flex flex-col flex-1 min-h-0 min-w-0 gap-2 ${step === "IDLE" || step === "GAME_OVER" ? "overflow-y-auto overscroll-contain" : "overflow-hidden"}`}>
             {/* MASTER PERIOD & ACTION CONTROLS */}
-            <div className="flex flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0">
+            <div className={`${step === "IDLE" ? "flex" : "hidden"} flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0`}>
               <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] sm:flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-neutral-300 w-full">
                 <span>Possession:</span>
                 <button
@@ -1500,7 +1507,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
             )}
 
             {step === "DETAILS" && playType !== "Penalty" && (
-              <div className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-3 md:p-4 grid grid-cols-1 md:grid-cols-2 content-start gap-2 md:gap-3 shadow-2xl md:overflow-y-auto">
+              <div className="flex flex-col flex-1 min-h-0 bg-neutral-900 border border-white/10 rounded-2xl p-2 md:p-4 gap-2 shadow-2xl overflow-hidden">
                 <div className="md:col-span-2 flex items-center justify-between border-b border-white/10 pb-2 shrink-0">
                   <div>
                     <h3 className="text-base sm:text-xl font-black uppercase text-white">
@@ -1521,8 +1528,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                 </div>
 
-                {/* Outcome Toggle */}
-                <div className="md:col-span-2">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain grid grid-cols-1 md:grid-cols-2 content-start gap-2">
+                {!isOutcomeOpen && outcome && (
+                  <SectionSummary className="md:col-span-2" label="Play Outcome" value={outcome} filled onOpen={() => setIsOutcomeOpen(true)} />
+                )}
+                {isOutcomeOpen && <div className="md:col-span-2">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
                     Play Outcome
                   </label>
@@ -1576,7 +1586,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       </>
                     )}
                   </div>
-                </div>
+                </div>}
 
                 {/* Quarterback / Runner Selection */}
                 {openSection !== "qb" && (
@@ -1622,6 +1632,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           aria-pressed={isSelected}
                           onClick={() => {
                             setQbRunner(p);
+                            setIsOutcomeOpen(false);
                             if (receiver === p) setReceiver("");
                             setOpenSection(playType === "Pass" && outcome === "Complete" ? "receiver" : "defenders");
                             if (playType === "Pass") {
@@ -1695,6 +1706,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                             aria-pressed={isSelected}
                             onClick={() => {
                               setReceiver(p);
+                              setIsOutcomeOpen(false);
                               setOpenSection("defenders");
                             }}
                             className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-between gap-1.5 ${
@@ -1727,31 +1739,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 )}
 
                 {/* Defenders / Flags */}
-                {showDefensiveActions && openSection !== "defenders" && (
-                  <SectionSummary
-                    className="md:col-span-2"
-                    label={defensePlayers.length === 0 ? "Flagger(s) on Interception Return" : outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
-                    value={[...defenders, ...flaggers].length > 0 ? [...defenders, ...flaggers].map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(" & ") : "Optional – tap to add"}
-                    filled={defenders.length > 0 || flaggers.length > 0}
-                    onOpen={() => setOpenSection("defenders")}
-                  />
-                )}
                 {showDefensiveActions && (
-                  <div hidden={openSection !== "defenders"} className={`md:col-span-2 ${openSection === "defenders" ? "" : "hidden"}`}>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-                        Defenders Involved / Flag
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setOpenSection(null)}
-                        className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider"
-                      >
-                        Done
-                      </button>
-                    </div>
+                  <div className="md:col-span-2 space-y-2 min-w-0">
                     {defensePlayers.length > 0 && (
                       <StatPlayerPicker
+                        collapsible
+                        expanded={openSection === "defenders"}
+                        onExpandedChange={(expanded) => setOpenSection(expanded ? "defenders" : outcome === "Interception" && offensePlayers.length > 0 ? "flaggers" : null)}
                         label={outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
                         roster={hasBothRosters ? [...defensePlayers, "TEAM"] : defensePlayers}
                         playerNumbers={playerNumberMap}
@@ -1762,8 +1756,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       />
                     )}
                     {outcome === "Interception" && offensePlayers.length > 0 && (
-                      <div className="mt-3">
                         <StatPlayerPicker
+                          collapsible
+                          expanded={openSection === "flaggers" || (defensePlayers.length === 0 && openSection === "defenders")}
+                          onExpandedChange={(expanded) => setOpenSection(expanded ? "flaggers" : null)}
                           label="Flagger(s) on Interception Return"
                           roster={offensePlayers}
                           playerNumbers={playerNumberMap}
@@ -1772,12 +1768,12 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           selected={flaggers}
                           onSelect={(player) => setFlaggers((current) => current.includes(player) ? current.filter((name) => name !== player) : [...current, player])}
                         />
-                      </div>
                     )}
                   </div>
                 )}
+                </div>
 
-                <div role="group" aria-label="Save play result" className="md:col-span-2 border-t border-white/10 pt-2 space-y-2 bg-neutral-900/95 pb-1">
+                <div role="group" aria-label="Save play result" className="shrink-0 border-t border-white/10 pt-2 space-y-1 bg-neutral-900 pb-1">
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
                     Save Play Result
                   </span>
@@ -1816,11 +1812,22 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 onPointsChange={setConvPts}
                 onResultChange={setConvIsGood}
                 accentColor={possessionTeamPalette.tertiary}
+                footer={convPts && (
+                  <button
+                    onClick={finalizeConversion}
+                    disabled={convIsGood === null}
+                    className="w-full min-h-11 py-2.5 px-2 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                  >
+                    Confirm Conversion & Flip Possession
+                  </button>
+                )}
               >
                 {convPts && convIsGood && (
-                  <div className="space-y-3">
-                    <p className="text-xs text-neutral-400">Select players to award stats (optional)</p>
+                  <div className="space-y-2">
                     <StatPlayerPicker
+                      collapsible
+                      expanded={conversionSection === "passer"}
+                      onExpandedChange={(expanded) => setConversionSection(expanded ? "passer" : "receiver")}
                       label="Conversion Passer / Runner"
                       roster={offensePlayers}
                       playerNumbers={playerNumberMap}
@@ -1833,6 +1840,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       }}
                     />
                     <StatPlayerPicker
+                      collapsible
+                      expanded={conversionSection === "receiver"}
+                      onExpandedChange={(expanded) => setConversionSection(expanded ? "receiver" : null)}
                       label="Conversion Receiver"
                       roster={getEligibleReceivers(offensePlayers, convPasser)}
                       playerNumbers={playerNumberMap}
@@ -1841,17 +1851,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       selected={convReceiver ? [convReceiver] : []}
                       onSelect={(player) => setConvReceiver(convReceiver === player ? "" : player)}
                     />
-                  </div>
-                )}
-                {convPts && (
-                  <div className="space-y-2 pt-1">
-                    <button
-                      onClick={finalizeConversion}
-                      disabled={convIsGood === null}
-                      className="w-full min-h-11 py-2.5 px-2 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
-                    >
-                      Confirm Conversion & Flip Possession
-                    </button>
                   </div>
                 )}
               </PlayEntryWizard>

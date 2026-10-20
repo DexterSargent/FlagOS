@@ -77,6 +77,12 @@ function expectBefore(first: string, second: string) {
   expect(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 }
 
+function chooseOutcome(name: string | RegExp) {
+  const summary = screen.queryByRole("button", { name: /^Play Outcome:.*Click to change/ });
+  if (summary) fireEvent.click(summary);
+  fireEvent.click(screen.getByRole("button", { name }));
+}
+
 describe.each(["sync", "async"] as const)("%s stat keeper selection parity", (mode) => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -103,10 +109,49 @@ describe.each(["sync", "async"] as const)("%s stat keeper selection parity", (mo
     await start(mode);
     fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
     if (outcome === "PBU" && mode === "sync") {
-      fireEvent.click(screen.getByRole("button", { name: /^Incomplete$/i }));
+      chooseOutcome(/^Incomplete$/i);
     }
-    fireEvent.click(screen.getByRole("button", { name: outcome === "PBU" ? /PBU|Pass Break Up/i : /^Interception$/i }));
+    chooseOutcome(outcome === "PBU" ? /PBU|Pass Break Up/i : /^Interception$/i);
     expectBefore(leader, "Flag Leader");
+  });
+
+  it("collapses a chosen sacker and allows reopening to add shared sack credit", async () => {
+    await start(mode);
+    fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
+    chooseOutcome("Sack");
+    fireEvent.click(screen.getByRole("button", { name: "Flag Leader" }));
+    expect(screen.queryByRole("button", { name: "INT Leader" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Sacker\(s\):.*Click to change/ }));
+    fireEvent.click(screen.getByRole("button", { name: "INT Leader" }));
+    expect(screen.getByRole("button", { name: /^Sacker\(s\):.*Click to change/ })).toHaveTextContent("INT Leader");
+    const results = screen.getByRole("group", { name: "Save play result" });
+    expect(results).toHaveClass("shrink-0");
+    fireEvent.click(within(results).getByRole("button", { name: /loss of yards/i }));
+    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+      defenders: ["Flag Leader", "INT Leader"], passOutcome: "Sack",
+    }));
+  });
+
+  it("collapses conversion categories and keeps the save action outside the selection scroller", async () => {
+    await start(mode);
+    fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: "Catch Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: /Touchdown/i }));
+    fireEvent.click(screen.getByRole("button", { name: mode === "sync" ? /From 5 Yd/i : /^1 POINT /i }));
+    fireEvent.click(screen.getByRole("button", { name: mode === "sync" ? /^GOOD$/ : /^✓ GOOD/i }));
+    expect(screen.getByRole("button", { name: /^Conversion attempt:.*Click to change/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Conversion result:.*Click to change/ })).toBeInTheDocument();
+    if (mode === "async") {
+      fireEvent.click(within(screen.getByRole("group", { name: "Conversion Passer / Runner" })).getByRole("button", { name: "Pass Leader" }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Catch Leader" }));
+    expect(screen.queryByRole("button", { name: "Catch Leader" })).not.toBeInTheDocument();
+    const save = screen.getByRole("button", { name: mode === "sync" ? /SAVE CONVERSION STATS/ : /Confirm Conversion/ });
+    expect(save.parentElement).toHaveClass("shrink-0");
+    fireEvent.click(save);
+    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+      conversionSuccess: true, conversionPasser: "Pass Leader", conversionReceiver: "Catch Leader",
+    }));
   });
 });
 
@@ -122,7 +167,7 @@ describe("async copied workflows", () => {
   ])("limits %s to valid results after the required players are selected", async (outcome, results) => {
     await start("async");
     fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
-    fireEvent.click(screen.getByRole("button", { name: outcome }));
+    chooseOutcome(outcome);
     const resultGroup = screen.getByRole("group", { name: "Save play result" });
     if (outcome !== "Incomplete") {
       expect(within(resultGroup).queryAllByRole("button")).toHaveLength(0);
@@ -159,7 +204,7 @@ describe("async copied workflows", () => {
   it("does not allow touchdowns or first downs on a run for a loss", async () => {
     await start("async", "Run");
     fireEvent.click(screen.getByRole("button", { name: "Catch Leader" }));
-    fireEvent.click(screen.getByRole("button", { name: "Loss of Yards" }));
+    chooseOutcome("Loss of Yards");
     const results = screen.getByRole("group", { name: "Save play result" });
     expect(within(results).getAllByRole("button").map((button) => button.textContent)).toEqual(["LOSS OF YARDS", "SAFETY (+2 DEF)"]);
   });
@@ -167,7 +212,7 @@ describe("async copied workflows", () => {
   it("keeps the original offense on a pick-six record while crediting the defending team's score", async () => {
     await start("async");
     fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
-    fireEvent.click(screen.getByRole("button", { name: "Interception" }));
+    chooseOutcome("Interception");
     fireEvent.click(screen.getByRole("button", { name: "INT Leader" }));
     fireEvent.click(screen.getByRole("button", { name: "PICK 6 (+6)" }));
     fireEvent.click(screen.getByRole("button", { name: /^1 POINT /i }));
@@ -196,11 +241,13 @@ describe("async copied workflows", () => {
   it("records interception return flaggers and only one interceptor, without a clock", async () => {
     await start("async");
     fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
-    fireEvent.click(screen.getByRole("button", { name: /^Interception$/i }));
+    chooseOutcome(/^Interception$/i);
     const defenders = screen.getByRole("group", { name: "Interceptor(s)" });
     fireEvent.click(within(defenders).getByRole("button", { name: "PBU Leader" }));
+    expect(within(defenders).queryByRole("button", { name: "INT Leader" })).not.toBeInTheDocument();
+    fireEvent.click(within(defenders).getByRole("button", { name: /Click to change/ }));
     fireEvent.click(within(defenders).getByRole("button", { name: "INT Leader" }));
-    expect(within(defenders).getByRole("button", { name: "PBU Leader" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(defenders).getByRole("button", { name: /Click to change/ })).toHaveTextContent("INT Leader");
     const flaggers = screen.getByRole("group", { name: "Flagger(s) on Interception Return" });
     fireEvent.click(within(flaggers).getByRole("button", { name: "Catch Leader" }));
     expect(screen.queryByRole("button", { name: /PICK 6/ })).not.toBeInTheDocument();
@@ -221,12 +268,34 @@ describe("async copied workflows", () => {
     const passerButtons = within(passers).getAllByRole("button");
     expect(passerButtons[0]).toHaveAccessibleName("Pass Leader");
     fireEvent.click(passerButtons[0]);
+    expect(within(passers).queryByRole("button", { name: "Pass Leader" })).not.toBeInTheDocument();
+    expect(within(passers).getByRole("button", { name: /Click to change/ })).toHaveTextContent("Pass Leader");
     const receivers = screen.getByRole("group", { name: "Conversion Receiver" });
     expect(within(receivers).queryByRole("button", { name: "Pass Leader" })).not.toBeInTheDocument();
     fireEvent.click(within(receivers).getByRole("button", { name: "Catch Leader" }));
+    expect(within(receivers).getByRole("button", { name: /Click to change/ })).toHaveTextContent("Catch Leader");
     fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
     expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       conversionPasser: "Pass Leader", conversionReceiver: "Catch Leader", gameClock: null,
+    }));
+  });
+
+  it("preserves conversion selections while reopening and changing the attempt value", async () => {
+    await start("async");
+    fireEvent.click(screen.getByRole("button", { name: "Pass Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: "Catch Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: /Touchdown/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^1 POINT /i }));
+    expect(screen.queryByRole("button", { name: /^2 POINTS /i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^✓ GOOD/i }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Conversion Passer / Runner" })).getByRole("button", { name: "Pass Leader" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Conversion Receiver" })).getByRole("button", { name: "Catch Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Conversion attempt:.*Click to change/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^2 POINTS /i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
+    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+      conversionAttempt: 2, conversionSuccess: true, conversionPasser: "Pass Leader",
+      conversionReceiver: "Catch Leader", pointsScored: 8,
     }));
   });
 
@@ -239,6 +308,7 @@ describe("async copied workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: /^✓ GOOD/i }));
     fireEvent.click(within(screen.getByRole("group", { name: "Conversion Passer / Runner" })).getByRole("button", { name: "Pass Leader" }));
     fireEvent.click(within(screen.getByRole("group", { name: "Conversion Receiver" })).getByRole("button", { name: "Catch Leader" }));
+    fireEvent.click(screen.getByRole("button", { name: /Conversion result: Good.*Click to change/ }));
     fireEvent.click(screen.getByRole("button", { name: /NO GOOD/i }));
     fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
     expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({

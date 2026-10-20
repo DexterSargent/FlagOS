@@ -160,6 +160,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [isQbOpen, setIsQbOpen] = useState<boolean>(true);
   const [isReceiverOpen, setIsReceiverOpen] = useState<boolean>(false);
   const [isDefendersOpen, setIsDefendersOpen] = useState<boolean>(false);
+  const [isOutcomeOpen, setIsOutcomeOpen] = useState(true);
   const [isConvPasserOpen, setIsConvPasserOpen] = useState<boolean>(true);
   const [isConvReceiverOpen, setIsConvReceiverOpen] = useState<boolean>(false);
 
@@ -847,6 +848,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   };
 
   const handlePlayTypeSelect = (type: "Pass" | "Run") => {
+    setIsOutcomeOpen(true);
     // IFAF Rule: Ball has been snapped, stop play clock immediately
     setIsPlayClockRunning(false);
     // If game clock was stopped (e.g. inside 2 minutes or start of half), start game clock on the snap
@@ -879,6 +881,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   };
 
   const handleSelectQbRunner = (player: string) => {
+    setIsOutcomeOpen(false);
     setQbRunner(player);
     if (playType === "Pass") {
       if (possession === homeTeamName) setLastHomeQB(player);
@@ -897,6 +900,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   };
 
   const handleSelectReceiver = (player: string) => {
+    setIsOutcomeOpen(false);
     setReceiver(player);
     setIsReceiverOpen(false);
     setIsDefendersOpen(false);
@@ -1303,7 +1307,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] w-full min-h-0 max-w-full bg-black text-white font-sans overflow-hidden flex flex-col relative">
+    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] w-full min-h-0 max-w-full bg-black text-white font-sans overflow-hidden flex flex-col relative pb-[env(safe-area-inset-bottom)]">
 
       {/* RESET GAME TO PRE-GAME MODAL */}
       {isResetModalOpen && (
@@ -1967,12 +1971,19 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   </span>
                 </div>
                 <div className="flex flex-col flex-1 min-h-0 gap-2.5 w-full">
-                  <div className={`grid ${playType === 'Pass' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'} gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl shrink-0 relative z-10 w-full max-w-3xl mx-auto`}>
+                  {!isOutcomeOpen && outcome && (
+                    <button type="button" aria-label={`Play Outcome: ${outcome}. Click to change`} onClick={() => setIsOutcomeOpen(true)}
+                      className="min-h-10 shrink-0 rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-left text-xs font-bold text-white">
+                      Play Outcome: {outcome === "Missed" ? "Incomplete" : outcome} · Change
+                    </button>
+                  )}
+                  {isOutcomeOpen && <div className={`grid ${playType === 'Pass' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'} gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl shrink-0 relative z-10 w-full max-w-3xl mx-auto`}>
                   {playType === 'Pass' && ['Complete', 'Incomplete', 'Interception', 'Sack'].map((res) => {
                     const isActive = (res === 'Incomplete' && (outcome === 'Incomplete_Menu' || outcome === 'PBU' || outcome === 'Missed')) || outcome === res;
                     return (
                       <button
                         key={res} onClick={() => {
+                          setIsOutcomeOpen(false);
                           setOutcome(res === 'Incomplete' ? 'Incomplete_Menu' : res as any);
                           setDefenders([]);
                           setFlaggers([]);
@@ -2001,13 +2012,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   })}
                   {playType === 'Run' && ['Gain', 'FFL'].map((res) => (
                     <button
-                      key={res} onClick={() => { setOutcome(res as any); setDefenders([]); setFlaggers([]); setIsDefendersOpen(res === 'FFL'); setIsOobPrompt(false); }}
+                      key={res} onClick={() => { setIsOutcomeOpen(false); setOutcome(res as any); setDefenders([]); setFlaggers([]); setIsDefendersOpen(res === 'FFL'); setIsOobPrompt(false); }}
                       className={`w-full min-h-10 px-2 py-2 text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider rounded-xl transition-all ${outcome === res ? 'bg-[#3CA505] text-black shadow-md' : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'}`}
                     >
                       {res === 'FFL' ? 'Flag For Loss (FFL)' : 'Positive / No Gain'}
                     </button>
                   ))}
-                  </div>
+                  </div>}
                   <div className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:450px)]:gap-1 overflow-y-auto pr-1 w-full max-w-3xl mx-auto">
                     <div className={`flex flex-col gap-2.5 min-w-0 ${playType === 'Pass' && outcome === 'Complete' && qbRunner && receiver && !isQbOpen && !isReceiverOpen ? '[@media(max-height:450px)]:grid [@media(max-height:450px)]:grid-cols-2 [@media(max-height:450px)]:gap-1.5' : ''}`}>
                     {/* SECTION 1: QUARTERBACK / RUNNER */}
@@ -2406,6 +2417,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             )}
                           </div>
                           <StatPlayerPicker
+                            key={defenders.join(",")}
+                            collapsible
                             label="Flagger(s) on Interception Return"
                             roster={getOffensiveRoster()}
                             playerNumbers={playerNumberMap}
@@ -2419,16 +2432,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
                       {/* SECTION 7: DEFENSE FLAGGERS (COMPLETE, GAIN, SACK, FFL) */}
                       {hasOffenseSelected() && (outcome === 'Complete' || outcome === 'Gain' || outcome === 'Sack' || outcome === 'FFL') && (
-                        (outcome === 'Complete' || outcome === 'Gain') && !isDefendersOpen ? (
+                        !isDefendersOpen ? (
                           defenders.length > 0 ? (
                             <button
                               type="button"
                               onClick={() => setIsDefendersOpen(true)}
-                              aria-label={`Flagger(s): ${defenders.join(', ')}. Click to change`}
+                              aria-label={`${outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}: ${defenders.join(', ')}. Click to change`}
                               className="w-full flex items-center justify-between gap-2 p-2 sm:p-3 bg-neutral-900 border border-white/10 hover:border-amber-500/40 rounded-xl sm:rounded-2xl transition-all text-left"
                             >
                               <span className="min-w-0 truncate text-xs sm:text-sm font-bold text-white">
-                                Flagger(s): {defenders.map((p) => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}
+                                {outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}: {defenders.map((p) => playerNumberMap[p] ? `#${playerNumberMap[p]} ${p}` : p).join(" & ")}
                               </span>
                               <span className="flex items-center gap-1 text-xs font-bold text-neutral-400 shrink-0">
                                 Change <ChevronDown className="w-4 h-4 text-amber-400" />
@@ -2487,7 +2500,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                       aria-label={p}
                                       onClick={() => {
                                         handleDefenders(p, 2);
-                                        if (outcome === 'Complete' || outcome === 'Gain') setIsDefendersOpen(false);
+                                        setIsDefendersOpen(false);
                                       }}
                                       className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
                                         ? 'bg-amber-500 text-black font-black shadow-md'
@@ -2517,12 +2530,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                           </div>
                         )
                       )}
+                  </div>
                     {/* SECTION 8: RESULTS & OUTCOMES ROW */}
                     {outcome !== 'Incomplete_Menu' &&
                       (isOobPrompt || (hasOffenseSelected() && (
                         outcome === 'Complete' || outcome === 'Gain' || isPlayReadyToSave()
                       ))) && (
-                      <div className="shrink-0 pt-2 pb-4 [@media(max-height:450px)]:py-0 [@media(max-height:450px)]:!min-h-0 w-full min-h-[60px] md:min-h-[75px]">
+                      <div role="group" aria-label="Save play result" className="shrink-0 pt-2 pb-1 w-full">
                         {/* OOB Prompt Logic */}
                         {isOobPrompt && (
                           <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 animate-in slide-in-from-bottom-2">
@@ -2580,7 +2594,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         )}
                       </div>
                     )}
-                  </div>
                 </div>
               </>
             )}
@@ -2601,37 +2614,43 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             }}
             showResultButtons={convIsGood === null}
             accentColor={possessionTeamColors.tertiary}
+            footer={convPts && convIsGood && (
+              <button onClick={() => finalizeConversion()} disabled={!convPasser}
+                className="w-full min-h-11 py-3 px-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black text-sm disabled:opacity-40">
+                SAVE CONVERSION STATS
+              </button>
+            )}
           >
 
             {convPts && convIsGood && (
-              <div className="flex-1 min-h-0 flex flex-col gap-2 animate-in slide-in-from-right-4">
-                <div className="flex justify-between items-center bg-neutral-900 border border-white/10 px-4 py-2 rounded-xl shrink-0">
+              <div className="shrink-0 flex flex-col gap-2 animate-in slide-in-from-right-4">
+                <div className="hidden sm:flex justify-between items-center bg-neutral-900 border border-white/10 px-4 py-2 rounded-xl shrink-0">
                   <span className="text-sm font-bold uppercase">Success: {convPts} Point(s)</span>
                   <span className="text-xs text-neutral-400">Select players to award stats</span>
                 </div>
 
-                <div className="flex-1 min-h-0 flex flex-col gap-3 max-w-3xl mx-auto w-full">
+                <div className="flex flex-col gap-2 max-w-3xl mx-auto w-full">
                   {/* PASSER / RUNNER */}
                   {convPasser && !isConvPasserOpen ? (
                     <button
                       type="button"
-                      onClick={() => setIsConvPasserOpen(true)}
-                      className="w-full flex items-center justify-between p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/40 rounded-2xl transition-all shadow-md group text-left"
+                      onClick={() => { setIsConvPasserOpen(true); setIsConvReceiverOpen(false); }}
+                      className="w-full min-w-0 flex items-center justify-between gap-2 p-2 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/40 rounded-2xl transition-all shadow-md group text-left"
                       aria-label={`Passer / Runner: ${convPasser}. Click to change`}
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center min-w-0 gap-1 sm:gap-2.5">
                         <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">Passer / Runner:</span>
-                        <span className="text-base font-black text-white flex items-center gap-2">
+                        <span className="text-sm font-black text-white flex items-center gap-2 min-w-0">
                           {playerNumberMap[convPasser] && (
                             <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
                               #{playerNumberMap[convPasser]}
                             </span>
                           )}
-                          <span>{convPasser}</span>
+                          <span className="truncate">{convPasser}</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
-                        <span>Change</span>
+                        <span className="hidden sm:inline">Change</span>
                         <ChevronDown className="w-5 h-5 text-cyan-400 transition-transform group-hover:translate-y-0.5" />
                       </div>
                     </button>
@@ -2696,26 +2715,26 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   )}
 
                   {/* RECEIVER (OPTIONAL) */}
-                  {convReceiver && !isConvReceiverOpen ? (
+                  {!isConvReceiverOpen ? (
                     <button
                       type="button"
-                      onClick={() => setIsConvReceiverOpen(true)}
-                      className="w-full flex items-center justify-between p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/40 rounded-2xl transition-all shadow-md group text-left"
+                      onClick={() => { setIsConvReceiverOpen(true); setIsConvPasserOpen(false); }}
+                      className="w-full min-w-0 flex items-center justify-between gap-2 p-2 sm:p-3.5 bg-neutral-900 border border-white/10 hover:border-cyan-500/40 rounded-2xl transition-all shadow-md group text-left"
                       aria-label={`Receiver: ${convReceiver}. Click to change`}
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center min-w-0 gap-1 sm:gap-2.5">
                         <span className="text-xs uppercase tracking-widest font-bold text-neutral-400">Receiver:</span>
-                        <span className="text-base font-black text-white flex items-center gap-2">
+                        <span className="text-sm font-black text-white flex items-center gap-2 min-w-0">
                           {playerNumberMap[convReceiver] && (
                             <span className="px-2 py-0.5 rounded-lg text-xs font-mono font-black bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
                               #{playerNumberMap[convReceiver]}
                             </span>
                           )}
-                          <span>{convReceiver}</span>
+                          <span className="truncate">{convReceiver || "Optional - tap to add"}</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
-                        <span>Change</span>
+                        <span className="hidden sm:inline">Change</span>
                         <ChevronDown className="w-5 h-5 text-cyan-400 transition-transform group-hover:translate-y-0.5" />
                       </div>
                     </button>
@@ -2781,11 +2800,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   )}
                 </div>
 
-                <div className={`transition-all duration-300 ${convPasser ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-                  <button onClick={() => finalizeConversion()} className="w-full py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base transition-all shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.3)]">
-                    SAVE CONVERSION STATS
-                  </button>
-                </div>
               </div>
             )}
           </PlayEntryWizard>

@@ -46,6 +46,7 @@ type PlayEntryWizardProps =
       showResultButtons?: boolean;
       accentColor?: string;
       children: ReactNode;
+      footer?: ReactNode;
     };
 
 export default function PlayEntryWizard(props: PlayEntryWizardProps) {
@@ -132,7 +133,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
     );
 
     return props.variant === "async" ? (
-      <div className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-amber-500/30 rounded-2xl p-2 md:p-3 md:overflow-y-auto shadow-2xl">
+      <div className="flex-1 min-h-0 bg-neutral-900 border border-amber-500/30 rounded-2xl p-2 md:p-3 overflow-hidden shadow-2xl">
         {penaltyWizard}
       </div>
     ) : (
@@ -148,6 +149,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
       >
         <Flag className="w-5 h-5" /> POINT AFTER ATTEMPT
       </h3>
+      <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
       <ConversionAttemptSelector
         points={props.points}
         isGood={props.isGood}
@@ -158,19 +160,18 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
         variant="sync"
       />
       {props.children}
+      </div>
+      {props.footer && <div className="shrink-0 border-t border-white/10 pt-2">{props.footer}</div>}
     </div>
   ) : (
     <div
-      className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-3 md:p-4 flex flex-col gap-3 md:gap-4 shadow-2xl md:overflow-y-auto"
+      className="flex-1 min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-2 md:p-4 flex flex-col gap-2 shadow-2xl overflow-hidden"
       style={props.accentColor ? { borderColor: `${props.accentColor}80` } : undefined}
     >
-      <div className="space-y-1 text-center">
-        <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
-          Touchdown Scored!
-        </span>
-        <h3 className="text-lg sm:text-2xl font-black uppercase text-white">Point After Conversion (PAT)</h3>
-        <p className="text-xs text-neutral-400">Select attempt value and result</p>
+      <div className="shrink-0 text-center">
+        <h3 className="text-sm sm:text-xl font-black uppercase text-white">Point After Conversion (PAT)</h3>
       </div>
+      <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
       <ConversionAttemptSelector
         points={props.points}
         isGood={props.isGood}
@@ -181,6 +182,8 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
         variant="async"
       />
       {props.children}
+      </div>
+      {props.footer && <div className="shrink-0 border-t border-white/10 pt-2">{props.footer}</div>}
     </div>
   );
 }

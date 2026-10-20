@@ -152,8 +152,14 @@ The clockless play log and box score each have their own focusable scroll area.
 In one-sided clockless tracking, team defense is implied: there is no generic
 Team Defense choice or empty opponent-defense selector. Individual defensive
 player credit remains available for the rostered team.
-The async play-entry panel scrolls within the mobile viewport, respects the bottom
-safe area, and places Start Next Play before the previous play's description.
+The async play-entry panel respects the bottom safe area and places Start Next Play
+before the previous play's description. During entry, only the selection area scrolls;
+play-result and conversion-save actions stay outside it and remain visible.
+Both trackers collapse chosen outcomes, defenders, return flaggers and conversion
+categories to editable summaries. Reopen a defensive summary to add shared credit,
+change a player, or remove a selection. Conversion attempt value and result can
+also be reopened without clearing player credit. Game setup controls stay on
+the async idle screen so they do not displace active play-entry actions on mobile.
 Result choices follow the live tracker: incomplete/PBU advances the down;
 sacks, flag-for-loss and rushing losses allow loss of yards or safety;
 completed passes/gains offer touchdown, out-of-bounds or first-down/short results
