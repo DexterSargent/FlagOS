@@ -454,7 +454,7 @@ export default function AutomatedScheduleBuilderModal({
             </div>
             <div>
               <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
-                FlagOS Scheduling Matrix Engine
+                <span className="normal-case">FlagOS</span> Scheduling Matrix Engine
               </span>
               <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">
                 Automated Schedule Builder

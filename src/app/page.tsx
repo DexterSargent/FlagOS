@@ -690,7 +690,7 @@ export default function FlagOSPlatformLandingPage() {
               Interactive Capabilities
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
-              <span className="text-white">FLAG</span><span style={{ color: "#3CA505" }}>OS</span> Powerhouse Features
+              <FlagOSText /> Powerhouse Features
             </h2>
             <p className="text-neutral-400 text-xs sm:text-sm max-w-2xl mx-auto">
               Test drive the actual system features directly in the sandboxed interactive frame below. Zero database writes.
@@ -1059,7 +1059,7 @@ export default function FlagOSPlatformLandingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="space-y-3">
             <span className="text-lg font-black uppercase tracking-wider text-white">
-              FLAG<span style={{ color: "#3CA505" }}>OS</span>
+              <FlagOSText />
             </span>
             <p className="leading-relaxed text-neutral-500">The Flag Football Operating System</p>
           </div>

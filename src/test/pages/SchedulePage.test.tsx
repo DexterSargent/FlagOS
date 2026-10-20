@@ -194,7 +194,8 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     await waitFor(() => {
       // Modal is visible
       expect(screen.getByText(/Automated Schedule Builder/i)).toBeInTheDocument();
-      expect(screen.getByText(/FlagOS Scheduling Matrix Engine/i)).toBeInTheDocument();
+      expect(screen.getByText(/Scheduling Matrix Engine/i)).toHaveTextContent("FlagOS Scheduling Matrix Engine");
+      expect(screen.getByText("FlagOS")).toHaveClass("normal-case");
     });
   });
 
@@ -226,7 +227,8 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     fireEvent.click(autoGenBtn);
     await waitFor(() => {
       expect(screen.getByText(/Automated Schedule Builder/i)).toBeInTheDocument();
-      expect(screen.getByText(/FlagOS Scheduling Matrix Engine/i)).toBeInTheDocument();
+      expect(screen.getByText(/Scheduling Matrix Engine/i)).toHaveTextContent("FlagOS Scheduling Matrix Engine");
+      expect(screen.getByText("FlagOS")).toHaveClass("normal-case");
     });
   });
 
