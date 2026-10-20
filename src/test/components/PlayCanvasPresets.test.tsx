@@ -49,19 +49,63 @@ const mockDefensePlay: PlayDiagram = {
   zones: [],
 };
 
+function applyCatalogRoute(shortName: string) {
+  if (!screen.queryByTestId("route-presets-catalog")) {
+    fireEvent.click(screen.getByTestId("route-presets-toggle"));
+  }
+  fireEvent.click(screen.getByTestId(`catalog-route-${shortName}`));
+}
+
+function applyMotion(shortName: string) {
+  if (!screen.queryByTestId("motion-menu")) {
+    fireEvent.click(screen.getByTestId("toggle-motion-btn"));
+  }
+  fireEvent.click(screen.getByTestId(`quick-route-${shortName}-motion`));
+}
+
 describe("PlayCanvas Route Presets Suite", () => {
-  it("renders the 1-click quick-route ribbon for offensive receivers", () => {
+  it("keeps routes and motion behind two menu buttons instead of a sliding ribbon", () => {
+    render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+    expect(screen.queryByTestId("quick-route-slant")).toBeNull();
+    expect(screen.queryByTestId("quick-route-jet-motion")).toBeNull();
+    expect(screen.queryByText("Pre-snap motion")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("toggle-motion-btn"));
+    expect(screen.getByTestId("motion-menu")).toBeDefined();
+    expect(screen.getByTestId("quick-route-jet-motion")).toBeDefined();
+    expect(screen.getByTestId("quick-route-orbit-motion")).toBeDefined();
+
+    fireEvent.click(screen.getByTestId("route-presets-toggle"));
+    expect(screen.queryByTestId("motion-menu")).toBeNull();
+    expect(screen.getByTestId("catalog-route-slant")).toBeDefined();
+    expect(screen.getByTestId("catalog-route-out")).toBeDefined();
+  });
+
+  it("does not auto-select a receiver after clicking empty field space", () => {
+    render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+    expect(screen.getByText("Route Assignment (X):")).toBeInTheDocument();
+    const svg = screen.getByTestId("designer-field").querySelector("svg") as SVGSVGElement;
+    fireEvent.pointerDown(svg, { clientX: 500, clientY: 350 });
+
+    expect(screen.queryByText(/Route Assignment/)).not.toBeInTheDocument();
+  });
+
+  it("applies a route at a custom depth", () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
-    // Quick route buttons should be immediately accessible
-    expect(screen.getByTestId("quick-route-slant")).toBeDefined();
-    expect(screen.getByTestId("quick-route-out")).toBeDefined();
-    expect(screen.getByTestId("quick-route-post")).toBeDefined();
-    expect(screen.getByTestId("quick-route-corner")).toBeDefined();
-    expect(screen.getByTestId("quick-route-go")).toBeDefined();
-    expect(screen.getByTestId("quick-route-jet-motion")).toBeDefined();
-    expect(screen.getByText("Pre-snap motion")).toBeDefined();
+    fireEvent.click(screen.getByTestId("route-presets-toggle"));
+    fireEvent.click(screen.getByLabelText("Increase route depth"));
+    fireEvent.click(screen.getByLabelText("Increase route depth"));
+    fireEvent.click(screen.getByTestId("catalog-route-out"));
+
+    const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const outPlayer = updatedPlay.players.find((p) => p.quickRouteName === "Out");
+    // Default Out depth is 5 yds, +2 = 7 yds
+    expect(outPlayer?.routeDepthYards).toBe(7);
+    expect(outPlayer?.route?.[0].y).toBeCloseTo(70 - 7 * 1.75, 1);
   });
 
   it("keeps the field and assignment controls in one workspace", () => {
@@ -89,8 +133,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
-    const slantBtn = screen.getByTestId("quick-route-slant");
-    fireEvent.click(slantBtn);
+    applyCatalogRoute("slant");
 
     expect(handleChange).toHaveBeenCalled();
     const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
@@ -103,10 +146,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
-    // Click the dedicated Pre-Snap Motion toggle button
-    const motionToggleBtn = screen.getByTestId("toggle-motion-btn");
-    expect(motionToggleBtn).toBeDefined();
-    fireEvent.click(motionToggleBtn);
+    applyMotion("jet");
 
     expect(handleChange).toHaveBeenCalled();
     const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
@@ -116,12 +156,11 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(motionPlayer?.route && motionPlayer.route.length > 0).toBe(true);
   });
 
-  it("applies a pre-snap motion preset directly from the ribbon", () => {
+  it("applies a pre-snap motion preset from the motion menu", () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
-    const jetBtn = screen.getByTestId("quick-route-jet-motion");
-    fireEvent.click(jetBtn);
+    applyMotion("jet");
 
     expect(handleChange).toHaveBeenCalled();
     const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
@@ -188,8 +227,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
     // 1. Put receiver in motion
-    const jetBtn = screen.getByTestId("quick-route-jet-motion");
-    fireEvent.click(jetBtn);
+    applyMotion("jet");
 
     expect(handleChange).toHaveBeenCalled();
     const motionPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
@@ -202,8 +240,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     rerender(<PlayCanvas play={motionPlay} onChange={handleChange} />);
 
     // 2. Now apply a route preset (Slant) to the motion receiver
-    const slantBtn = screen.getByTestId("quick-route-slant");
-    fireEvent.click(slantBtn);
+    applyCatalogRoute("slant");
 
     expect(handleChange).toHaveBeenCalled();
     const routedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
@@ -227,8 +264,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
     // 1. Give player a route preset first (e.g. Slant)
-    const slantBtn = screen.getByTestId("quick-route-slant");
-    fireEvent.click(slantBtn);
+    applyCatalogRoute("slant");
 
     const playWithSlant = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
     const slantedPlayer = playWithSlant.players.find((p) => p.quickRouteName === "Slant");
@@ -239,8 +275,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     rerender(<PlayCanvas play={playWithSlant} onChange={handleChange} />);
 
     // 2. Now toggle motion ON for that receiver
-    const motionToggleBtn = screen.getByTestId("toggle-motion-btn");
-    fireEvent.click(motionToggleBtn);
+    applyMotion("jet");
 
     const finalPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
     const finalPlayer = finalPlay.players.find((p) => p.id === slantedPlayer!.id);

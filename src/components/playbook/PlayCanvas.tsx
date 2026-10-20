@@ -12,6 +12,7 @@ import {
   DEFAULT_LOS_Y,
   YARD_HEIGHT_PCT,
   getYardsFromLos,
+  snapYToYard,
   getYFromYards,
   FieldPositionPreset,
   FIELD_POSITION_PRESETS,
@@ -79,26 +80,12 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-const PRIMARY_FLAG_ROUTES = [
-  { name: "Slant", short: "Slant" },
-  { name: "Out", short: "Out" },
-  { name: "Dig / In", short: "Dig" },
-  { name: "Post", short: "Post" },
-  { name: "Corner", short: "Corner" },
-  { name: "Go / Streak", short: "Go" },
-  { name: "Curl / Hook", short: "Curl" },
-  { name: "Hitch", short: "Hitch" },
-  { name: "Flat", short: "Flat" },
-  { name: "Wheel", short: "Wheel" },
-  { name: "Drag / Cross", short: "Drag" },
-  { name: "Fade", short: "Fade" },
-  { name: "Whip / Pivot", short: "Whip" },
-  { name: "Screen", short: "Screen" },
-];
+const MIN_ROUTE_DEPTH_YARDS = 1;
+const MAX_ROUTE_DEPTH_YARDS = 25;
 
 const PRE_SNAP_MOTION_PRESETS = [
-  { name: "Jet Motion", short: "Jet" },
-  { name: "Orbit Motion", short: "Orbit" },
+  { name: "Jet Motion", short: "Jet", description: "Fast sweep across the formation toward the snap" },
+  { name: "Orbit Motion", short: "Orbit", description: "Loops behind the QB before the snap" },
 ];
 
 const DEFENSIVE_ZONE_CATEGORIES = [
@@ -229,6 +216,7 @@ export default function PlayCanvas({
   const [customPresets, setCustomPresets] = useState<CustomRoutePreset[]>([]);
   const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState(false);
   const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
+  const [isMotionMenuOpen, setIsMotionMenuOpen] = useState(false);
   const presetMenuRef = useRef<HTMLDivElement>(null);
   const [newPresetName, setNewPresetName] = useState("");
   const [isPositionNotesModalOpen, setIsPositionNotesModalOpen] = useState(false);
@@ -240,13 +228,14 @@ export default function PlayCanvas({
     const handleOutsideClick = (e: MouseEvent) => {
       if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
         setIsPresetMenuOpen(false);
+        setIsMotionMenuOpen(false);
       }
     };
-    if (isPresetMenuOpen) {
+    if (isPresetMenuOpen || isMotionMenuOpen) {
       document.addEventListener("mousedown", handleOutsideClick);
     }
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [isPresetMenuOpen]);
+  }, [isPresetMenuOpen, isMotionMenuOpen]);
 
   useEffect(() => {
     const updateCompactLandscape = () => {
@@ -279,6 +268,32 @@ export default function PlayCanvas({
     );
     if (assignedZone) setDefensiveZoneCategory(assignedZone.category);
   }, [selectedPlayer?.id, selectedPlayer?.quickRouteName]);
+
+  // Route depth control for preset routes (null = use each route's default depth)
+  const [routeDepth, setRouteDepth] = useState<number | null>(null);
+  useEffect(() => {
+    setRouteDepth(null);
+  }, [selectedPlayerId]);
+
+  const currentCatalogRoute =
+    selectedPlayer?.quickRouteName && selectedPlayer.routeType !== "motion"
+      ? ROUTE_PRESETS_CATALOG.find(
+          (r) =>
+            r.name === selectedPlayer.quickRouteName || r.shortName === selectedPlayer.quickRouteName
+        )
+      : undefined;
+  const maxRouteDepthYards = Math.max(
+    MIN_ROUTE_DEPTH_YARDS,
+    Math.min(MAX_ROUTE_DEPTH_YARDS, Math.floor(((selectedPlayer?.y ?? 70) - 4) / YARD_HEIGHT_PCT))
+  );
+  const effectiveRouteDepth =
+    routeDepth ?? selectedPlayer?.routeDepthYards ?? currentCatalogRoute?.defaultBreakYards ?? 5;
+
+  const handleDepthChange = (next: number) => {
+    const depth = Math.max(MIN_ROUTE_DEPTH_YARDS, Math.min(maxRouteDepthYards, Math.round(next)));
+    setRouteDepth(depth);
+    if (currentCatalogRoute) handleApplyPreset(currentCatalogRoute.name, depth);
+  };
 
   const handleSaveCurrentRouteAsPreset = () => {
     if (!selectedPlayer?.route || selectedPlayer.route.length === 0) return;
@@ -456,7 +471,11 @@ export default function PlayCanvas({
     selectedPlayContextRef.current = selectionContext;
 
     const playerExists = play.players.some((player) => player.id === selectedPlayerId);
-    if (!contextChanged && selectedPlayerId && playerExists) return;
+    if (!contextChanged) {
+      // Deselecting (null) is a valid state; only clear a selection whose player disappeared
+      if (selectedPlayerId && !playerExists) setSelectedPlayerId(null);
+      return;
+    }
 
     const activeSide = play.type === "defense" ? "defense" : "offense";
     const preferred =
@@ -785,10 +804,15 @@ export default function PlayCanvas({
       const { startX, startY, cursorStartX, cursorStartY, isMotionWp } = dragWaypointRef.current;
       const rawX = startX + (coords.x - cursorStartX);
       const rawY = startY + (coords.y - cursorStartY);
+      const shouldSnap = snapToYardLines && !isMotionWp;
       const clampedPt = {
         x: Math.max(4, Math.min(96, Math.round(rawX * 10) / 10)),
-        y: Math.max(4, Math.min(96, Math.round(rawY * 10) / 10)),
+        y: Math.max(
+          4,
+          Math.min(96, shouldSnap ? snapYToYard(rawY, losY) : Math.round(rawY * 10) / 10)
+        ),
       };
+      setDraggedWaypointYards(getYardsFromLos(clampedPt.y, losY));
 
       const updatedPlayers = play.players.map((p) => {
         if (p.id === draggedPlayerId) {
@@ -833,6 +857,7 @@ export default function PlayCanvas({
     setDraggedPlayerId(null);
     setDraggedWaypointIndex(null);
     setDraggedZoneId(null);
+    setDraggedWaypointYards(null);
     dragStartRef.current = null;
     dragWaypointRef.current = null;
     dragZoneRef.current = null;
@@ -846,12 +871,35 @@ export default function PlayCanvas({
   // Canvas Click (Drawing Mode: Add Waypoint)
   const handleCanvasClick = (e: React.PointerEvent) => {
     if (readOnly) return;
+    if (mode === "select") {
+      // Click on blank turf deselects
+      setSelectedPlayerId(null);
+      setSelectedZoneId(null);
+      return;
+    }
     const coords = getSvgCoordinates(e);
     if (!coords) return;
 
     if (mode === "draw" && selectedPlayer) {
       const currentRoute = selectedPlayer.route ? [...selectedPlayer.route] : [];
-      currentRoute.push(coords);
+      // Vertical position snaps to whole yards; horizontal stays free
+      const newPoint = snapToYardLines ? { x: coords.x, y: snapYToYard(coords.y, losY) } : coords;
+      currentRoute.push(newPoint);
+
+      // Holding and dragging after the tap keeps adjusting the new point and shows its depth
+      setDraggedPlayerId(selectedPlayer.id);
+      setDraggedWaypointIndex(currentRoute.length - 1);
+      setDraggedWaypointYards(getYardsFromLos(newPoint.y, losY));
+      dragWaypointRef.current = {
+        startX: newPoint.x,
+        startY: newPoint.y,
+        cursorStartX: coords.x,
+        cursorStartY: coords.y,
+        isMotionWp: false,
+      };
+      try {
+        svgRef.current?.setPointerCapture(e.pointerId);
+      } catch (err) {}
 
       const hasMotion = playerHasMotion(selectedPlayer);
       const motionPts = hasMotion ? getPlayerMotionPath(selectedPlayer) : null;
@@ -865,21 +913,18 @@ export default function PlayCanvas({
             motionName: selectedPlayer.motionName || (hasMotion ? "Jet Motion" : undefined),
             route: currentRoute,
             quickRouteName: "Custom Route",
+            routeDepthYards: undefined,
             routeType: "pass" as const,
           };
         }
         return p;
       });
       onChange({ ...play, players: updatedPlayers });
-    } else if (mode === "select") {
-      // Click on blank turf deselects
-      setSelectedPlayerId(null);
-      setSelectedZoneId(null);
     }
   };
 
   // Apply Quick Route Preset to currently selected receiver
-  const handleApplyPreset = (presetName: string) => {
+  const handleApplyPreset = (presetName: string, depthYards?: number) => {
     if (readOnly) return;
     const targetPlayer =
       selectedPlayer ||
@@ -911,7 +956,7 @@ export default function PlayCanvas({
       let updatedPostSnapRoute = targetPlayer.route;
       if (hadPostSnapRoute && targetPlayer.quickRouteName) {
         // Re-anchor existing post-snap route preset from the new motion finish point
-        updatedPostSnapRoute = generateRoutePreset(targetPlayer.quickRouteName, motionEnd.x, motionEnd.y, currentLosY);
+        updatedPostSnapRoute = generateRoutePreset(targetPlayer.quickRouteName, motionEnd.x, motionEnd.y, currentLosY, targetPlayer.routeDepthYards);
       }
 
       const updatedPlayers = play.players.map((p) => {
@@ -964,12 +1009,16 @@ export default function PlayCanvas({
     const motionPts = hasMotion ? getPlayerMotionPath(targetPlayer) : null;
     const origin = motionPts && motionPts.length > 0 ? motionPts[motionPts.length - 1] : { x: targetPlayer.x, y: targetPlayer.y };
 
-    const pts = generateRoutePreset(presetName, origin.x, origin.y, currentLosY);
+    const pts = generateRoutePreset(presetName, origin.x, origin.y, currentLosY, depthYards).map((pt) => ({
+      x: pt.x,
+      y: Math.max(4, pt.y),
+    }));
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === targetPlayer.id) {
         return {
           ...p,
+          routeDepthYards: depthYards,
           hasMotion: hasMotion,
           motionPath: motionPts || undefined,
           motionName: targetPlayer.motionName || (hasMotion ? (targetPlayer.quickRouteName?.includes("Motion") ? targetPlayer.quickRouteName : "Jet Motion") : undefined),
@@ -1021,7 +1070,7 @@ export default function PlayCanvas({
         nextRouteType = "pass";
         nextQuickName = targetPlayer.quickRouteName || "Custom Route";
         if (targetPlayer.quickRouteName && targetPlayer.quickRouteName !== "Custom Route") {
-          updatedRoute = generateRoutePreset(targetPlayer.quickRouteName, motionEnd.x, motionEnd.y, currentLosY);
+          updatedRoute = generateRoutePreset(targetPlayer.quickRouteName, motionEnd.x, motionEnd.y, currentLosY, targetPlayer.routeDepthYards);
         } else if (targetPlayer.route) {
           const deltaX = motionEnd.x - targetPlayer.x;
           const deltaY = motionEnd.y - targetPlayer.y;
@@ -1076,7 +1125,7 @@ export default function PlayCanvas({
 
       if (hadPostSnapRoute) {
         if (targetPlayer.quickRouteName && targetPlayer.quickRouteName !== "Custom Route") {
-          updatedRoute = generateRoutePreset(targetPlayer.quickRouteName, targetPlayer.x, targetPlayer.y, currentLosY);
+          updatedRoute = generateRoutePreset(targetPlayer.quickRouteName, targetPlayer.x, targetPlayer.y, currentLosY, targetPlayer.routeDepthYards);
           updatedQuickName = targetPlayer.quickRouteName;
         } else if (targetPlayer.route) {
           const deltaX = targetPlayer.x - motionEnd.x;
@@ -2012,17 +2061,21 @@ export default function PlayCanvas({
                       />
                       {/* Interactive Handles for motion path */}
                       {!readOnly && isSelected && motionPts?.map((pt, wpIdx) => (
-                        <circle
+                        <g
                           key={`motion-wp-${wpIdx}`}
-                          cx={(pt.x / 100) * 1000}
-                          cy={(pt.y / 100) * 700}
-                          r="6"
-                          fill="#0B0F19"
-                          stroke="#F59E0B"
-                          strokeWidth="2"
                           className="cursor-pointer"
                           onPointerDown={(e) => handlePointerDownWaypoint(e, player.id, wpIdx, true)}
-                        />
+                        >
+                          <circle cx={(pt.x / 100) * 1000} cy={(pt.y / 100) * 700} r="44" fill="transparent" />
+                          <circle
+                            cx={(pt.x / 100) * 1000}
+                            cy={(pt.y / 100) * 700}
+                            r="11"
+                            fill="#0B0F19"
+                            stroke="#F59E0B"
+                            strokeWidth="3"
+                          />
+                        </g>
                       ))}
                       {/* Snap Junction Indicator if both motion and route exist */}
                       {hasPostSnapRoute && (
@@ -2079,6 +2132,12 @@ export default function PlayCanvas({
                           <circle
                             cx={(bendWp.x / 100) * 1000}
                             cy={(bendWp.y / 100) * 700}
+                            r="44"
+                            fill="transparent"
+                          />
+                          <circle
+                            cx={(bendWp.x / 100) * 1000}
+                            cy={(bendWp.y / 100) * 700}
                             r="16"
                             fill="#F59E0B"
                             fillOpacity="0.25"
@@ -2132,17 +2191,21 @@ export default function PlayCanvas({
                         isSelected &&
                         !isRush &&
                         player.route?.map((pt, wpIdx) => (
-                          <circle
+                          <g
                             key={`route-wp-${wpIdx}`}
-                            cx={(pt.x / 100) * 1000}
-                            cy={(pt.y / 100) * 700}
-                            r="7"
-                            fill="#0B0F19"
-                            stroke={strokeColor}
-                            strokeWidth="2.5"
                             className="cursor-pointer"
                             onPointerDown={(e) => handlePointerDownWaypoint(e, player.id, wpIdx, false)}
-                          />
+                          >
+                            <circle cx={(pt.x / 100) * 1000} cy={(pt.y / 100) * 700} r="44" fill="transparent" />
+                            <circle
+                              cx={(pt.x / 100) * 1000}
+                              cy={(pt.y / 100) * 700}
+                              r="12"
+                              fill="#0B0F19"
+                              stroke={strokeColor}
+                              strokeWidth="3.5"
+                            />
+                          </g>
                         ))}
                     </g>
                   )}
@@ -2354,6 +2417,28 @@ export default function PlayCanvas({
                 </g>
               );
             })}
+
+            {/* Live depth readout while holding a route point */}
+            {draggedWaypointYards !== null &&
+              draggedPlayerId &&
+              draggedWaypointIndex !== null &&
+              (() => {
+                const dragged = play.players.find((p) => p.id === draggedPlayerId);
+                const pt = (dragWaypointRef.current?.isMotionWp ? dragged?.motionPath : dragged?.route)?.[
+                  draggedWaypointIndex
+                ];
+                if (!pt) return null;
+                const bx = Math.max(60, Math.min(940, (pt.x / 100) * 1000));
+                const by = Math.max(40, (pt.y / 100) * 700 - 52);
+                return (
+                  <g transform={`translate(${bx}, ${by})`} className="pointer-events-none" data-testid="route-depth-badge">
+                    <rect x="-52" y="-16" width="104" height="32" rx="16" fill="#0B0F19" stroke="#22D3EE" strokeWidth="2.5" />
+                    <text x="0" y="6" fill="#67E8F9" fontSize="18" fontWeight="900" textAnchor="middle" className="select-none">
+                      {draggedWaypointYards >= 0 ? `${draggedWaypointYards} yd deep` : `${Math.abs(draggedWaypointYards)} yd back`}
+                    </text>
+                  </g>
+                );
+              })()}
           </svg>
 
           {isCompactLandscape && (
@@ -2611,43 +2696,48 @@ export default function PlayCanvas({
                 </div>
 
                 <div className="flex items-center gap-2 [@media(max-width:639px)]:gap-1 ml-auto">
-                  {/* Pre-Snap Motion Toggle Button */}
+                  {/* Pre-Snap Motion Menu Button */}
                   <button
                     type="button"
                     disabled={readOnly}
-                    onClick={handleToggleMotion}
+                    onClick={() => {
+                      setIsMotionMenuOpen((prev) => !prev);
+                      setIsPresetMenuOpen(false);
+                    }}
                     data-testid="toggle-motion-btn"
-                    aria-label={playerHasMotion(selectedPlayer) ? "Remove pre-snap motion" : "Add pre-snap motion"}
-                    className={`px-2 py-1.5 [@media(max-width:639px)]:p-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-                      playerHasMotion(selectedPlayer)
-                        ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30 font-black"
+                    aria-label={isMotionMenuOpen ? "Hide motion menu" : "Show motion menu"}
+                    aria-expanded={isMotionMenuOpen}
+                    className={`px-3 py-2 min-h-10 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                      isMotionMenuOpen || playerHasMotion(selectedPlayer)
+                        ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30"
                         : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30 hover:border-amber-500/50"
                     }`}
-                    title={
-                      playerHasMotion(selectedPlayer)
-                        ? "Pre-snap motion active (click to remove pre-snap motion)"
-                        : "Set this player to Pre-Snap Motion (dashed amber route, moves pre-snap)"
-                    }
+                    title="Pre-snap motion options"
                   >
-                    <Activity className="w-3.5 h-3.5" />
-                    <span className="[@media(max-width:639px)]:hidden">{playerHasMotion(selectedPlayer) ? "Motion Active ⚡" : "Pre-Snap Motion"}</span>
+                    <Activity className="w-4 h-4" />
+                    <span>Motion</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMotionMenuOpen ? "rotate-180" : ""}`} />
                   </button>
 
                   {/* Preset Routes Menu Toggle Button */}
                   <button
                     type="button"
                     disabled={readOnly}
-                    onClick={() => setIsPresetMenuOpen((prev) => !prev)}
+                    onClick={() => {
+                      setIsPresetMenuOpen((prev) => !prev);
+                      setIsMotionMenuOpen(false);
+                    }}
                     data-testid="route-presets-toggle"
                     aria-label={isPresetMenuOpen ? "Hide route catalog" : "Show route catalog"}
-                    className={`px-2 py-1.5 [@media(max-width:639px)]:p-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                    aria-expanded={isPresetMenuOpen}
+                    className={`px-3 py-2 min-h-10 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                       isPresetMenuOpen
                         ? "bg-cyan-500 text-black border-cyan-400 shadow-cyan-500/30"
                         : "bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40"
                     }`}
                   >
-                    <Zap className="w-3.5 h-3.5" />
-                    <span className="[@media(max-width:639px)]:hidden">{isPresetMenuOpen ? "Hide Catalog" : "Preset Routes"}</span>
+                    <Zap className="w-4 h-4" />
+                    <span>Routes</span>
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isPresetMenuOpen ? "rotate-180" : ""}`} />
                   </button>
 
@@ -2674,87 +2764,83 @@ export default function PlayCanvas({
                 </div>
               </div>
 
-              {/* Instant 1-Click Horizontal Route Ribbon */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-                {PRIMARY_FLAG_ROUTES.map((route) => {
-                  const isCurrent =
-                    selectedPlayer.quickRouteName?.toLowerCase() === route.name.toLowerCase() ||
-                    selectedPlayer.quickRouteName?.toLowerCase() === route.short.toLowerCase();
-                  return (
-                    <button
-                      key={route.name}
-                      type="button"
-                      disabled={readOnly}
-                      onClick={() => handleApplyPreset(route.name)}
-                      data-testid={`quick-route-${route.short.toLowerCase().replace(/\s+/g, "-")}`}
-                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
-                        isCurrent
-                          ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/25 font-black"
-                          : "bg-black/50 text-neutral-300 hover:bg-neutral-800 hover:text-white border-white/10"
-                      }`}
-                      title={`Apply ${route.name} route to ${selectedPlayer.label}`}
-                    >
-                      <span>{route.short}</span>
-                      {isCurrent && <Check className="w-3 h-3 text-black stroke-[3]" />}
-                    </button>
-                  );
-                })}
-
-                <div className="w-[1px] h-6 bg-white/10 mx-1 shrink-0" />
-
-                {/* Quick toggle for all presets */}
-                <button
-                  type="button"
-                  disabled={readOnly}
-                  onClick={() => setIsPresetMenuOpen((prev) => !prev)}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 border flex items-center gap-1.5 cursor-pointer ${
-                    isPresetMenuOpen
-                      ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/30"
-                      : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
-                  }`}
-                  title="Browse full route catalog and custom team routes"
+              {/* Pre-Snap Motion Menu (larger panel) */}
+              {isMotionMenuOpen && (
+                <div
+                  data-testid="motion-menu"
+                  className="mt-2 bg-[#0A0E17] border border-amber-500/40 rounded-2xl p-3 shadow-2xl space-y-3 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
                 >
-                  <Zap className="w-3 h-3" />
-                  <span>All Routes ({ROUTE_PRESETS_CATALOG.length + customPresets.length})</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isPresetMenuOpen ? "rotate-180" : ""}`} />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 shrink-0">
-                  Pre-snap motion
-                </span>
-                {PRE_SNAP_MOTION_PRESETS.map((motion) => {
-                  const isCurrent =
-                    selectedPlayer.motionName === motion.name ||
-                    selectedPlayer.quickRouteName === motion.name;
-                  return (
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-black uppercase tracking-wider text-white">
+                        Pre-Snap Motion ({selectedPlayer.label})
+                      </span>
+                    </div>
                     <button
-                      key={motion.name}
+                      type="button"
+                      onClick={() => setIsMotionMenuOpen(false)}
+                      className="p-2 -m-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
+                      aria-label="Close motion menu"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PRE_SNAP_MOTION_PRESETS.map((motion) => {
+                      const isCurrent =
+                        selectedPlayer.motionName === motion.name ||
+                        selectedPlayer.quickRouteName === motion.name;
+                      return (
+                        <button
+                          key={motion.name}
+                          type="button"
+                          disabled={readOnly}
+                          onClick={() => {
+                            handleApplyPreset(motion.name);
+                            setIsMotionMenuOpen(false);
+                          }}
+                          data-testid={`quick-route-${motion.short.toLowerCase()}-motion`}
+                          className={`min-h-12 p-3 rounded-xl text-left transition-all border cursor-pointer ${
+                            isCurrent
+                              ? "bg-amber-500 text-black border-amber-400 shadow-md"
+                              : "bg-black/60 text-amber-200 hover:bg-amber-500/15 border-amber-500/30"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 text-sm font-black">
+                            <span>{motion.name}</span>
+                            {isCurrent && <Check className="w-4 h-4 stroke-[3]" />}
+                          </div>
+                          <div className={`text-[11px] mt-0.5 ${isCurrent ? "text-black/75" : "text-neutral-400"}`}>
+                            {motion.description}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {playerHasMotion(selectedPlayer) && (
+                    <button
                       type="button"
                       disabled={readOnly}
-                      onClick={() => handleApplyPreset(motion.name)}
-                      data-testid={`quick-route-${motion.short.toLowerCase()}-motion`}
-                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
-                        isCurrent
-                          ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30 font-black"
-                          : "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-white border-amber-500/30"
-                      }`}
-                      title={`Apply ${motion.name} before the snap to ${selectedPlayer.label}`}
+                      onClick={() => {
+                        handleToggleMotion();
+                        setIsMotionMenuOpen(false);
+                      }}
+                      data-testid="remove-motion-btn"
+                      className="w-full min-h-11 rounded-xl text-xs font-black text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <Activity className="w-3 h-3" />
-                      <span>{motion.short}</span>
-                      {isCurrent && <Check className="w-3 h-3 text-black stroke-[3]" />}
+                      <Trash2 className="w-4 h-4" />
+                      <span>Remove Motion</span>
                     </button>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Inline Collapsible Catalog Drawer (rendered in-flow so overflow-hidden never clips it) */}
               {isPresetMenuOpen && (
                 <div
                   data-testid="route-presets-catalog"
-                  className="mt-2.5 bg-[#080D1A] border border-cyan-500/40 rounded-2xl p-4 shadow-2xl space-y-3.5 transition-all animate-in fade-in zoom-in-95"
+                  className="mt-2.5 bg-[#0A0E17] border border-cyan-500/40 rounded-2xl p-4 shadow-2xl space-y-3.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[65dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <div className="flex items-center gap-2">
@@ -2769,6 +2855,56 @@ export default function PlayCanvas({
                     >
                       <X className="w-4 h-4" />
                     </button>
+                  </div>
+
+                  {/* Adjustable route depth */}
+                  <div data-testid="route-depth-control" className="rounded-xl bg-black/50 border border-white/10 p-2.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-neutral-300">
+                        Route depth
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={readOnly}
+                          onClick={() => handleDepthChange(effectiveRouteDepth - 1)}
+                          aria-label="Decrease route depth"
+                          className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white text-lg font-black cursor-pointer"
+                        >
+                          −
+                        </button>
+                        <span
+                          data-testid="route-depth-value"
+                          className="min-w-16 text-center text-sm font-mono font-black text-cyan-300 tabular-nums"
+                        >
+                          {effectiveRouteDepth} yd
+                        </span>
+                        <button
+                          type="button"
+                          disabled={readOnly}
+                          onClick={() => handleDepthChange(effectiveRouteDepth + 1)}
+                          aria-label="Increase route depth"
+                          className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white text-lg font-black cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min={MIN_ROUTE_DEPTH_YARDS}
+                      max={maxRouteDepthYards}
+                      step={1}
+                      value={effectiveRouteDepth}
+                      disabled={readOnly}
+                      onChange={(e) => handleDepthChange(parseInt(e.target.value, 10))}
+                      aria-label="Route depth in yards"
+                      className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                    />
+                    <div className="text-[10px] text-neutral-400 font-mono">
+                      How far downfield the route breaks. Pick a route below to use this depth
+                      {routeDepth === null && currentCatalogRoute ? " (currently the route default)" : ""}.
+                    </div>
                   </div>
 
                   {/* Custom Team Presets Section */}
@@ -2821,7 +2957,7 @@ export default function PlayCanvas({
                       <span>Standard Route Tree Catalog ({ROUTE_PRESETS_CATALOG.length})</span>
                       <span className="text-[10px] text-cyan-400/80 font-mono">Click to preview route on {selectedPlayer.label}</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-1 scrollbar-thin">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 max-sm:max-h-none overflow-y-auto pr-1 scrollbar-thin">
                       {ROUTE_PRESETS_CATALOG.map((rp) => {
                         const isCurrent =
                           selectedPlayer.quickRouteName === rp.name ||
@@ -2832,7 +2968,7 @@ export default function PlayCanvas({
                             type="button"
                             disabled={readOnly}
                             onClick={() => {
-                              handleApplyPreset(rp.name);
+                              handleApplyPreset(rp.name, routeDepth ?? undefined);
                             }}
                             data-testid={`catalog-route-${rp.shortName.toLowerCase()}`}
                             className={`p-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-start justify-between gap-2 cursor-pointer ${

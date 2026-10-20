@@ -184,6 +184,7 @@ export interface PlayerNode {
   breakYards?: number; // amount of yards before first break
   routeDepth?: number; // total route depth in yards
   // Pre-snap motion support
+  routeDepthYards?: number; // custom break depth (yards past the start) for the preset route
   hasMotion?: boolean; // indicates pre-snap motion is active on this offensive player
   motionPath?: RoutePoint[]; // pre-snap motion waypoints from alignment (x, y) to motion endpoint
   motionName?: string; // e.g. "Jet Motion", "Orbit Motion", "Shift", "Return Motion"

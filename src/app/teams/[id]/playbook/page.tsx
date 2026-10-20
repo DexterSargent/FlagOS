@@ -1383,24 +1383,44 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         {viewLevel === "plays" && activePlaybook && (
           <div className="flex flex-col gap-2 flex-1 min-h-0 h-full overflow-hidden">
             {/* Unified Studio Top Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0B0F19] px-3 py-2 rounded-2xl border border-white/10 shrink-0 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 bg-[#0B0F19] px-2 sm:px-3 py-1.5 sm:py-2 rounded-2xl border border-white/10 shrink-0 shadow-lg">
               {/* Left: Navigation & Formation */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-none sm:flex-wrap">
                 <button
                   onClick={() => setViewLevel("formations")}
-                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
+                  className="p-2 sm:p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
                   title="Back to Formations"
+                  aria-label="Back to formations"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span className="hidden sm:inline">Formations</span>
                 </button>
-                <span className="text-xs text-neutral-500">•</span>
-                <span className="text-xs font-mono text-cyan-400 font-black">
+                <span className="hidden sm:inline text-xs text-neutral-500">•</span>
+                <span className="hidden sm:inline text-xs font-mono text-cyan-400 font-black">
                   {selectedFormationName}
                 </span>
 
+                {/* Mobile formation switcher */}
+                <select
+                  value={selectedFormationName}
+                  aria-label="Formation"
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setSelectedFormationName(name);
+                    const firstPlay = activePlaybook.plays.find((p) => p.formation === name);
+                    if (firstPlay) setActivePlayId(firstPlay.id);
+                  }}
+                  className="sm:hidden min-w-0 flex-1 h-10 px-2 rounded-xl bg-black/50 border border-white/10 text-xs font-mono font-black text-cyan-400"
+                >
+                  {activePlaybook.formations.map((f) => (
+                    <option key={f.id} value={f.name}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+
                 {/* Quick formation switcher within this playbook */}
-                <div className="flex items-center gap-1 overflow-x-auto max-w-[180px] sm:max-w-none">
+                <div className="hidden sm:flex items-center gap-1 overflow-x-auto sm:max-w-none">
                   {activePlaybook.formations.map((f) => (
                     <button
                       key={f.id}
@@ -1422,7 +1442,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Center: Play Selector Tape */}
-              <div className="flex items-center gap-1 overflow-x-auto max-w-full scrollbar-thin">
+              <div className="order-last sm:order-none flex items-center gap-1 overflow-x-auto w-full sm:w-auto max-w-full scrollbar-thin">
                 {playsInActiveFormation.map((p) => {
                   const isSelected = activePlayId === p.id;
                   return (
@@ -1480,7 +1500,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 {activePlay && (
                   <button
                     onClick={() => setIsQuestionsModalOpen(true)}
-                    className={`px-2.5 py-1 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border flex items-center gap-1.5 cursor-pointer relative ${
+                    className={`px-2.5 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl font-bold text-xs uppercase tracking-wider transition-all border flex items-center gap-1.5 cursor-pointer relative ${
                       activePlay.questions && activePlay.questions.some((q) => !q.answered)
                         ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/10"
                         : activePlay.questions && activePlay.questions.length > 0
@@ -1491,7 +1511,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
                     <span className="hidden sm:inline">Coach Q&A</span>
-                    <span className="sm:hidden">Q&A</span>
                     {activePlay.questions && activePlay.questions.length > 0 && (
                       <span
                         className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
@@ -1508,7 +1527,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 {canViewPlaybook && (
                   <button
                     onClick={() => setIsPrintModalOpen(true)}
-                    className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-1.5 cursor-pointer"
+                    className="px-2.5 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-1.5 cursor-pointer"
                     title="Print wristband playbook sheets"
                   >
                     <Printer className="w-3.5 h-3.5 text-cyan-400" />
@@ -1519,7 +1538,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   <button
                     onClick={handleSavePlaybooks}
                     disabled={saving}
-                    className={`px-3 py-1 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-3 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
                       saveSuccess
                         ? "bg-emerald-500 text-black shadow-emerald-500/25"
                         : "bg-white/10 hover:bg-white/20 text-white border border-white/15"
@@ -1528,12 +1547,12 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     {saveSuccess ? (
                       <>
                         <Check className="w-3.5 h-3.5" />
-                        <span>Saved!</span>
+                        <span className="hidden sm:inline">Saved!</span>
                       </>
                     ) : (
                       <>
                         <Save className="w-3.5 h-3.5" />
-                        <span>{saving ? "Saving..." : "Save"}</span>
+                        <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>
                       </>
                     )}
                   </button>
