@@ -8,7 +8,6 @@ import {
   YORK_LIONS_PLAYERS,
   YORK_LIONS_MATCHES,
   YORK_LIONS_PLAYS,
-  getYorkLionsPlaybooks,
 } from "@/lib/yorkTeamData";
 import TeamPortalHome from "@/app/teams/[id]/page";
 
@@ -131,20 +130,7 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       expect(YORK_LIONS_PLAYS.length).toBeGreaterThanOrEqual(200);
     });
 
-    it("pre-seeds custom 5v5 playbook with pre-snap motion for York", () => {
-      const playbooks = getYorkLionsPlaybooks();
-      expect(playbooks.length).toBe(2);
-      const [offense, defense] = playbooks;
-      expect(offense.type).toBe("offense");
-      expect(defense.type).toBe("defense");
-
-      const jetMotionPlay = offense.plays.find((p) => p.name === "Lion Jet Sweep Motion");
-      expect(jetMotionPlay).toBeDefined();
-      const motionPlayer = jetMotionPlay?.players.find((p) => p.routeType === "motion");
-      expect(motionPlayer).toBeDefined();
-      expect(motionPlayer?.label).toBe("Z");
     });
-  });
 
   describe("TeamPortalHome Page Component for York Lions", () => {
     it("renders York Lions varsity club branding and complimentary active subscription badge", async () => {

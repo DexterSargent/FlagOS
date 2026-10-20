@@ -1,5 +1,5 @@
 import { DemoTeam, DemoPlayer, DemoMatch, DemoPlay } from "./demoSeedData";
-import { Playbook, DEFAULT_LOS_Y, createDefaultPlaybooks, applyFormationToSquad, ensureSquadMatchup } from "./playbookTypes";
+import { applyFormationToSquad, ensureSquadMatchup } from "./playbookTypes";
 
 export const YORK_TEAM_ID = "york_lions";
 export const YORK_TEAM_ALIASES = [
@@ -7844,55 +7844,6 @@ export const YORK_LIONS_PLAYS: DemoPlay[] = [
   }
 ];
 
-
-export function getYorkLionsPlaybooks(): Playbook[] {
-  const baseBooks = createDefaultPlaybooks(YORK_TEAM_ID);
-
-  const offenseBook: Playbook = {
-    ...baseBooks[0],
-    id: `pb-off-${YORK_TEAM_ID}`,
-    teamId: YORK_TEAM_ID,
-    title: "Lions Red & White Spread Offense",
-    description: "Official York Lions 5v5 playbook designed for rapid rhythm passing, pre-snap jet motions, and red-zone option packages.",
-    plays: [
-      {
-        id: "play-york-jet-motion-1",
-        teamId: YORK_TEAM_ID,
-        name: "Lion Jet Sweep Motion",
-        formation: "Spread 2x2",
-        type: "offense",
-        situation: "Standard",
-        losY: DEFAULT_LOS_Y,
-        notes: "Z goes in pre-snap motion across formation. Quick flip or deep post read.",
-        players: [
-          { id: "qb", label: "QB", role: "Quarterback", x: 50, y: DEFAULT_LOS_Y + 7, side: "offense", notes: "Catch snap, read flat to post" },
-          { id: "c", label: "C", role: "Center", x: 50, y: DEFAULT_LOS_Y, side: "offense", quickRouteName: "Block", route: [{ x: 50, y: DEFAULT_LOS_Y - 4 }], notes: "Snap & short release" },
-          { id: "x", label: "X", role: "Receiver Left", x: 20, y: DEFAULT_LOS_Y, side: "offense", quickRouteName: "Post", route: [{ x: 20, y: DEFAULT_LOS_Y - 14 }, { x: 45, y: DEFAULT_LOS_Y - 26 }], notes: "Deep Post (Primary Target)" },
-          { id: "z", label: "Z", role: "Receiver Right (Slot)", x: 80, y: DEFAULT_LOS_Y, side: "offense", routeType: "motion", quickRouteName: "Jet Motion", route: [{ x: 52, y: DEFAULT_LOS_Y + 6 }, { x: 15, y: DEFAULT_LOS_Y + 2 }], notes: "Jet Motion Cross" },
-          { id: "y", label: "Y", role: "Receiver Slot", x: 68, y: DEFAULT_LOS_Y, side: "offense", quickRouteName: "Dig", route: [{ x: 68, y: DEFAULT_LOS_Y - 10 }, { x: 42, y: DEFAULT_LOS_Y - 10 }], notes: "10-Yd Dig" },
-          { id: "rush", label: "RUSH", role: "Pass Rusher (7 yds back)", x: 50, y: DEFAULT_LOS_Y - 12.25, side: "defense", coverageType: "rush", routeType: "rush", notes: "Rush QB" },
-          { id: "cb1", label: "CB1", role: "Cornerback Left", x: 20, y: DEFAULT_LOS_Y - 7, side: "defense", coverageType: "zone", notes: "Deep 1/3" },
-          { id: "cb2", label: "CB2", role: "Cornerback Right", x: 80, y: DEFAULT_LOS_Y - 7, side: "defense", coverageType: "zone", notes: "Deep 1/3" },
-          { id: "fs", label: "FS", role: "Free Safety", x: 50, y: DEFAULT_LOS_Y - 18, side: "defense", coverageType: "zone", notes: "Middle 1/3" },
-          { id: "lb", label: "LB", role: "Linebacker", x: 50, y: DEFAULT_LOS_Y - 5, side: "defense", coverageType: "zone", notes: "Under Hook" },
-        ],
-        createdAt: "2026-08-01T00:00:00Z",
-        updatedAt: "2026-08-01T00:00:00Z",
-      },
-      ...baseBooks[0].plays,
-    ],
-  };
-
-  const defenseBook: Playbook = {
-    ...baseBooks[1],
-    id: `pb-def-${YORK_TEAM_ID}`,
-    teamId: YORK_TEAM_ID,
-    title: "Lions Red & White Lockdown Defense",
-    description: "Official York Lions 5v5 defensive playbook. Coached by DC Dexter Sargent, featuring aggressive 1-man press, 2-deep match zone, and timed rusher blitzes.",
-  };
-
-  return [offenseBook, defenseBook];
-}
 
 export function getYorkTeamData(): DemoTeam & Record<string, any> {
   return YORK_LIONS_TEAM;
