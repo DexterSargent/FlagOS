@@ -2,10 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import PlatformAdminPage from "@/app/admin/page";
 
-const { mockGetDocs, mockUpdateDoc, mockDeleteDoc, mockReplace, mockUseAuth } = vi.hoisted(() => ({
+const {
+  mockGetDocs,
+  mockUpdateDoc,
+  mockDeleteDoc,
+  mockCreateSecureRecord,
+  mockReplace,
+  mockUseAuth,
+} = vi.hoisted(() => ({
   mockGetDocs: vi.fn(),
   mockUpdateDoc: vi.fn(),
   mockDeleteDoc: vi.fn(),
+  mockCreateSecureRecord: vi.fn().mockResolvedValue("created-id"),
   mockReplace: vi.fn(),
   mockUseAuth: vi.fn(),
 }));
@@ -22,8 +30,18 @@ vi.mock("@/lib/firebase", () => ({
   db: {},
 }));
 
+vi.mock("@/lib/secureWrites", () => ({
+  createSecureRecord: mockCreateSecureRecord,
+  requestPrivateData: vi.fn().mockResolvedValue({
+    leagues: { league_customer_1: { adminEmails: ["existing@league.com"] } },
+    teams: {},
+  }),
+}));
+
 vi.mock("firebase/firestore", () => ({
   collection: vi.fn((_database, collectionName) => ({ collectionName })),
+  query: vi.fn((reference) => reference),
+  limit: vi.fn(),
   doc: vi.fn(),
   getDocs: mockGetDocs,
   updateDoc: mockUpdateDoc,
@@ -117,9 +135,7 @@ describe("Platform management page", () => {
     // Submit form
     fireEvent.click(screen.getByRole("button", { name: /Save Changes/i }));
 
-    await waitFor(() => {
-      expect(mockUpdateDoc).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(mockUpdateDoc).toHaveBeenCalled());
 
     // League should update in UI
     expect(await screen.findByText("Updated League Title")).toBeInTheDocument();
@@ -143,17 +159,24 @@ describe("Platform management page", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Add$/i }));
 
     await waitFor(() => {
-      expect(mockUpdateDoc).toHaveBeenCalled();
+      expect(mockCreateSecureRecord).toHaveBeenCalledWith(
+        "league_private_update",
+        expect.objectContaining({
+          leagueId: "league_customer_1",
+          adminEmails: expect.arrayContaining(["newcommish@league.com"]),
+        }),
+      );
     });
 
     expect(screen.getByText("newcommish@league.com")).toBeInTheDocument();
 
     // Remove the new admin
     const removeButtons = screen.getAllByRole("button", { name: /Remove/i });
+    const callCount = mockCreateSecureRecord.mock.calls.length;
     fireEvent.click(removeButtons[0]);
 
     await waitFor(() => {
-      expect(mockUpdateDoc).toHaveBeenCalled();
+      expect(mockCreateSecureRecord).toHaveBeenCalledTimes(callCount + 1);
     });
   });
 
@@ -172,7 +195,10 @@ describe("Platform management page", () => {
     fireEvent.click(screen.getByRole("button", { name: /Confirm Delete/i }));
 
     await waitFor(() => {
-      expect(mockDeleteDoc).toHaveBeenCalled();
+      expect(mockCreateSecureRecord).toHaveBeenCalledWith(
+        "delete_league",
+        { leagueId: "league_customer_1" },
+      );
     });
 
     // League is removed from list
@@ -217,4 +243,3 @@ describe("Platform management page", () => {
     expect(yorkLink).toHaveAttribute("href", "/teams/york_lions");
   });
 });
-

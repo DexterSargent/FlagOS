@@ -9,6 +9,8 @@ const {
   getDocMock,
   authStateCallback,
   setDocMock,
+  sendEmailVerificationMock,
+  signOutMock,
   updateProfileMock,
 } = vi.hoisted(() => ({
   createUserWithEmailAndPasswordMock: vi.fn(),
@@ -16,6 +18,8 @@ const {
   getDocMock: vi.fn(),
   authStateCallback: { current: null as null | ((user: unknown) => Promise<void>) },
   setDocMock: vi.fn(),
+  sendEmailVerificationMock: vi.fn(),
+  signOutMock: vi.fn(),
   updateProfileMock: vi.fn(),
 }));
 
@@ -28,13 +32,14 @@ vi.mock("firebase/auth", () => ({
     return vi.fn();
   }),
   createUserWithEmailAndPassword: createUserWithEmailAndPasswordMock,
+  sendEmailVerification: sendEmailVerificationMock,
   updateProfile: updateProfileMock,
   signInWithEmailAndPassword: vi.fn(),
   signInWithPopup: vi.fn(),
   signInWithRedirect: vi.fn(),
   getRedirectResult: vi.fn(async () => null),
   GoogleAuthProvider: vi.fn(() => ({ setCustomParameters: vi.fn() })),
-  signOut: vi.fn(),
+  signOut: signOutMock,
 }));
 
 vi.mock("firebase/firestore", () => ({
@@ -79,6 +84,9 @@ describe("AuthProvider account creation", () => {
     getDocMock.mockResolvedValue({ exists: () => false });
     setDocMock.mockReset();
     setDocMock.mockResolvedValue(undefined);
+    sendEmailVerificationMock.mockReset();
+    sendEmailVerificationMock.mockResolvedValue(undefined);
+    signOutMock.mockReset();
     createUserWithEmailAndPasswordMock.mockImplementation(async () => {
       const user = { uid: "new-account", email: "taylor@example.com", displayName: null };
       if (authStateCallback.current) {
@@ -88,7 +96,7 @@ describe("AuthProvider account creation", () => {
     });
   });
 
-  it("creates an authenticated profile without assigning a global role", async () => {
+  it("requires email verification before enabling the account", async () => {
     render(
       <AuthProvider>
         <AccountCreationHarness />
@@ -97,10 +105,7 @@ describe("AuthProvider account creation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
-    await waitFor(() => {
-      expect(setDocMock).toHaveBeenCalled();
-      expect(screen.getByText("no account role")).toBeInTheDocument();
-    });
+    await waitFor(() => expect(sendEmailVerificationMock).toHaveBeenCalled());
 
     expect(createUserWithEmailAndPasswordMock).toHaveBeenCalledWith(
       {},
@@ -111,23 +116,8 @@ describe("AuthProvider account creation", () => {
       { uid: "new-account", email: "taylor@example.com", displayName: null },
       { displayName: "Taylor Player" }
     );
-    const savedProfiles = setDocMock.mock.calls.map((call) => call[1]);
-    expect(savedProfiles.length).toBeGreaterThan(0);
-    for (const savedProfile of savedProfiles) {
-      expect(savedProfile).toMatchObject({
-        uid: "new-account",
-        email: "taylor@example.com",
-      });
-      expect(savedProfile).not.toHaveProperty("role");
-    }
-    expect(savedProfiles).toContainEqual(
-      expect.objectContaining({
-        uid: "new-account",
-        email: "taylor@example.com",
-        displayName: "Taylor Player",
-        createdAt: "server-time",
-      })
-    );
+    expect(signOutMock).toHaveBeenCalled();
+    expect(setDocMock).not.toHaveBeenCalled();
   });
 
   it("restores persisted developer roles after the hydration-safe initial render", async () => {

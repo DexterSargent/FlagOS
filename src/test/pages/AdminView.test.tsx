@@ -289,5 +289,50 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     fireEvent.click(passButton);
     expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
   });
+
+  it("persists quarterback selection play-to-play while allowing reopening to change", async () => {
+    await renderAdmin();
+
+    // Snap and start first PASS play
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+
+    // Select Marcus Vance on Play 1
+    expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+
+    // Select Receiver Leo Sterling
+    expect(screen.getByText("Select Receiver")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Leo Sterling" }));
+
+    // Add flagger David Kim and save First Down
+    fireEvent.click(screen.getByRole("button", { name: /Add flagger/i }));
+    fireEvent.click(screen.getByRole("button", { name: "David Kim" }));
+    fireEvent.click(screen.getByRole("button", { name: /FIRST DOWN/i }));
+
+    // Now on Play 2: Spot the ball then select PASS
+    await waitFor(() => {
+      const spotButton = screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i });
+      fireEvent.click(spotButton);
+    });
+
+    // Select PASS for Play 2
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+
+    // VERIFICATION: QB Marcus Vance STAYS selected play-to-play!
+    // The QB section is auto-collapsed with "Quarterback: Marcus Vance"
+    const qbCollapsed = screen.getByRole("button", { name: /Quarterback: Marcus Vance/i });
+    expect(qbCollapsed).toBeInTheDocument();
+
+    // Receiver section is immediately open for fast entry
+    expect(screen.getByText("Select Receiver")).toBeInTheDocument();
+
+    // VERIFICATION: Operator can still click the collapsed QB button to reopen and change QB
+    fireEvent.click(qbCollapsed);
+    expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
+  });
 });
 

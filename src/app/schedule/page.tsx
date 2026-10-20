@@ -23,7 +23,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where, limit } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
 import { useAuth } from "@/lib/authContext";
 import { useLeague, PlayoffFormat, resolveLeaguePlayoffFormat } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
@@ -236,7 +237,11 @@ export default function Calendar() {
     }
 
     // Fetch teams once
-    getDocs(collection(db, "teams")).then((teamsSnap) => {
+    getDocs(query(
+      collection(db, "teams"),
+      where("leagueId", "==", activeLeagueId),
+      limit(64),
+    )).then((teamsSnap) => {
       setTeams(
         teamsSnap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
@@ -248,7 +253,12 @@ export default function Calendar() {
 
     // Listen to matches in real-time
     const unsub = onSnapshot(
-      collection(db, "matches"),
+      query(
+        collection(db, "matches"),
+        where("leagueId", "==", activeLeagueId),
+        where("isHidden", "!=", true),
+        limit(512),
+      ),
       (snap) => {
         const mData = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as Match))
@@ -390,7 +400,7 @@ export default function Calendar() {
           leagueId: activeLeagueId,
         });
       } else {
-        await addDoc(collection(db, "matches"), {
+        await createSecureRecord("match", {
           ...matchDataToSave,
           leagueId: activeLeagueId,
         });
@@ -441,7 +451,11 @@ export default function Calendar() {
     }
 
     try {
-      const snap = await getDocs(collection(db, "matches"));
+      const snap = await getDocs(query(
+        collection(db, "matches"),
+        where("leagueId", "==", activeLeagueId),
+        limit(512),
+      ));
       for (const d of snap.docs) {
         await deleteDoc(d.ref);
       }
@@ -487,13 +501,17 @@ export default function Calendar() {
 
     try {
       if (clearExisting) {
-        const existingSnap = await getDocs(collection(db, "matches"));
+        const existingSnap = await getDocs(query(
+          collection(db, "matches"),
+          where("leagueId", "==", activeLeagueId),
+          limit(512),
+        ));
         for (const d of existingSnap.docs) {
           await deleteDoc(d.ref);
         }
       }
       for (const m of generatedMatches) {
-        await addDoc(collection(db, "matches"), m);
+        await createSecureRecord("match", { ...m, leagueId: activeLeagueId });
       }
       if (targetView) setActiveView(targetView);
     } catch (err) {
@@ -511,13 +529,17 @@ export default function Calendar() {
     }
 
     try {
-      const existingSnap = await getDocs(collection(db, "matches"));
+      const existingSnap = await getDocs(query(
+        collection(db, "matches"),
+        where("leagueId", "==", activeLeagueId),
+        limit(512),
+      ));
       for (const d of existingSnap.docs) {
         await deleteDoc(d.ref);
       }
       for (const m of scheduleBackup.matches) {
         const { id, ...data } = m as any;
-        await addDoc(collection(db, "matches"), data);
+        await createSecureRecord("match", { ...data, leagueId: activeLeagueId });
       }
       clearSandboxScheduleBackup();
       setScheduleBackup(null);

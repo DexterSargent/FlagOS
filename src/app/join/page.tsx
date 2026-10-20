@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, limit } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
 import { Check, Search, Shield, UserPlus, ArrowRight, Mail, Lock } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -48,7 +49,11 @@ export default function JoinLeague() {
         return;
       }
       try {
-        const snap = await getDocs(collection(db, "players"));
+        const snap = await getDocs(query(
+          collection(db, "players"),
+          where("leagueId", "==", activeLeagueId),
+          limit(1920),
+        ));
         const pData = snap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
         // Sort alphabetically and exclude current free agents from the search list
         const filtered = pData.filter(p => p.teamId !== "Free Agent");
@@ -60,7 +65,7 @@ export default function JoinLeague() {
       setLoading(false);
     };
     fetchPlayers();
-  }, [isDemoLeague]);
+  }, [isDemoLeague, activeLeagueId]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -115,9 +120,10 @@ export default function JoinLeague() {
       const finalPositions = selectedPositions.length > 0 ? selectedPositions : ["ATH"];
 
       // Add the athlete to the unassigned Free Agent player pool (no team)
-      await addDoc(collection(db, "players"), {
+      await createSecureRecord("player", {
         playerName: name.trim(),
         teamId: "",
+        leagueId: activeLeagueId,
         email: email.trim(),
         emails: email.trim() ? [email.trim().toLowerCase()] : [],
         experience,
@@ -132,7 +138,7 @@ export default function JoinLeague() {
       router.push("/teams");
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Please try again.");
+      alert(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setSubmitting(false);
     }
   };

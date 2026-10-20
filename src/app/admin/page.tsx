@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, deleteDoc, doc, getDocs, updateDoc } from "firebase/firestore";
+import { collection, doc, getDocs, updateDoc, query, limit } from "firebase/firestore";
 import {
   AlertCircle,
   ArrowLeft,
@@ -31,6 +31,7 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { db } from "@/lib/firebase";
 import { isYorkTeam, YORK_TEAM_ID, getYorkTeamData } from "@/lib/yorkTeamData";
+import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 
 export interface ManagedRecord {
   id: string;
@@ -100,19 +101,24 @@ export default function PlatformAdminPage() {
     setLoadingRecords(true);
     setError("");
     try {
-      const [leagueSnapshot, teamSnapshot] = await Promise.all([
-        getDocs(collection(db, "leagues")),
-        getDocs(collection(db, "teams")),
+      const [leagueSnapshot, teamSnapshot, privateData] = await Promise.all([
+        getDocs(query(collection(db, "leagues"), limit(100))),
+        getDocs(query(collection(db, "teams"), limit(300))),
+        requestPrivateData<{
+          leagues: Record<string, { adminEmails?: string[]; subscriptionAdminEmails?: string[]; contactEmail?: string }>;
+          teams: Record<string, { adminEmails?: string[]; coachEmail?: string; adminEmail?: string; email?: string }>;
+        }>("admin_overview"),
       ]);
       setLeagues(
         leagueSnapshot.docs.map((record) => {
           const data = record.data();
-          const rawAdmins = Array.isArray(data.adminEmails)
-            ? data.adminEmails
+          const privateLeague = privateData.leagues[record.id];
+          const rawAdmins = Array.isArray(privateLeague?.adminEmails)
+            ? privateLeague.adminEmails
             : Array.isArray(data.admins)
             ? data.admins
-            : Array.isArray(data.subscription?.adminEmails)
-            ? data.subscription.adminEmails
+            : Array.isArray(privateLeague?.subscriptionAdminEmails)
+            ? privateLeague.subscriptionAdminEmails
             : [];
           const adminEmails = rawAdmins
             .map((e: unknown) => String(e).trim().toLowerCase())
@@ -131,6 +137,7 @@ export default function PlatformAdminPage() {
               ? (data.subscription as Record<string, unknown>)
               : { status: getText(data.subscription?.status, "Not set") },
             adminEmails,
+            contactEmail: privateLeague?.contactEmail || "",
             primaryColor: getText(data.primaryColor, "#3ca505"),
             accentColor: getText(data.accentColor, "#3b82f6"),
           };
@@ -138,9 +145,10 @@ export default function PlatformAdminPage() {
       );
       const loadedTeams: ManagedRecord[] = teamSnapshot.docs.map((record) => {
         const data = record.data();
-        const rawAdmins = Array.isArray(data.adminEmails)
-          ? data.adminEmails
-          : [data.coachEmail, data.adminEmail, data.email].filter(Boolean);
+        const privateTeam = privateData.teams[record.id];
+        const rawAdmins = Array.isArray(privateTeam?.adminEmails)
+          ? privateTeam.adminEmails
+          : [privateTeam?.coachEmail, privateTeam?.adminEmail, privateTeam?.email].filter(Boolean);
         const adminEmails = rawAdmins
           .map((e: unknown) => String(e).trim().toLowerCase())
           .filter(Boolean);
@@ -427,19 +435,11 @@ export default function PlatformAdminPage() {
     setError("");
 
     try {
-      await deleteDoc(doc(db, "leagues", deletingLeague.id));
+      await createSecureRecord("delete_league", { leagueId: deletingLeague.id });
 
       // Dissociate member teams
       const memberTeams = teams.filter((t) => t.leagueId === deletingLeague.id);
       if (memberTeams.length > 0) {
-        await Promise.all(
-          memberTeams.map((team) =>
-            updateDoc(doc(db, "teams", team.id), {
-              leagueId: "",
-            })
-          )
-        );
-
         setTeams((prev) =>
           prev.map((t) =>
             t.leagueId === deletingLeague.id ? { ...t, leagueId: "" } : t
@@ -486,7 +486,8 @@ export default function PlatformAdminPage() {
 
     try {
       const nextAdmins = [...adminManagingLeague.adminEmails, cleanEmail];
-      await updateDoc(doc(db, "leagues", adminManagingLeague.id), {
+      await createSecureRecord("league_private_update", {
+        leagueId: adminManagingLeague.id,
         adminEmails: nextAdmins,
       });
 
@@ -515,7 +516,8 @@ export default function PlatformAdminPage() {
 
     try {
       const nextAdmins = adminManagingLeague.adminEmails.filter((e) => e !== emailToRemove);
-      await updateDoc(doc(db, "leagues", adminManagingLeague.id), {
+      await createSecureRecord("league_private_update", {
+        leagueId: adminManagingLeague.id,
         adminEmails: nextAdmins,
       });
 

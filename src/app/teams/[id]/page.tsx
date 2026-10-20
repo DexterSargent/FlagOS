@@ -32,7 +32,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, collection, getDocs, setDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, limit } from "firebase/firestore";
 import { isPrimaryTeamAdmin, getTeamAdminEmails, isDexterUser } from "@/lib/teamAdminRbac";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
@@ -47,6 +47,7 @@ import {
 } from "@/lib/demoSandbox";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette } from "@/lib/teamColors";
+import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import {
   isYorkTeam,
   getYorkTeamData,
@@ -161,14 +162,20 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         }
         YORK_LIONS_TEAM.adminEmails = nextList;
         try {
-          await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+          await createSecureRecord("team_private_update", {
+            teamId,
+            adminEmails: nextList,
+          });
         } catch (e) {
           console.warn("Could not sync York admin emails to remote Firestore:", e);
         }
       } else if (isDemoLeague) {
         updateSandboxTeam(teamId, { adminEmails: nextList });
       } else {
-        await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+        await createSecureRecord("team_private_update", {
+          teamId,
+          adminEmails: nextList,
+        });
       }
 
       setTeam((prev: any) => ({ ...prev, adminEmails: nextList }));
@@ -207,14 +214,20 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         }
         YORK_LIONS_TEAM.adminEmails = nextList;
         try {
-          await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+          await createSecureRecord("team_private_update", {
+            teamId,
+            adminEmails: nextList,
+          });
         } catch (e) {
           console.warn("Could not sync York admin emails to remote Firestore:", e);
         }
       } else if (isDemoLeague) {
         updateSandboxTeam(teamId, { adminEmails: nextList });
       } else {
-        await setDoc(doc(db, "teams", teamId), { adminEmails: nextList }, { merge: true });
+        await createSecureRecord("team_private_update", {
+          teamId,
+          adminEmails: nextList,
+        });
       }
 
       setTeam((prev: any) => ({ ...prev, adminEmails: nextList }));
@@ -256,6 +269,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           const snap = await getDoc(doc(db, "teams", teamId));
           if (snap.exists()) {
             yData = { ...yData, ...(snap.data() as any) };
+            if (hasEditAccess) {
+              const privateData = await requestPrivateData<{
+                team: Record<string, unknown>;
+              }>("team", { teamId });
+              yData = { ...yData, ...privateData.team };
+            }
           }
         } catch (e) {
           console.warn("Using offline/seed York Lions team profile:", e);
@@ -327,20 +346,38 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         return;
       }
       try {
-        const [snap, matchesSnap, playsSnap] = await Promise.all([
-          getDoc(doc(db, "teams", teamId)),
-          getDocs(collection(db, "matches")),
-          getDocs(collection(db, "plays")),
+        const snap = await getDoc(doc(db, "teams", teamId));
+        const tData = snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null;
+        const leagueId = typeof tData?.leagueId === "string" ? tData.leagueId : "";
+        const [matchesSnap, playsSnap] = await Promise.all([
+          getDocs(query(
+            collection(db, "matches"),
+            where("leagueId", "==", leagueId),
+            where("isHidden", "!=", true),
+            limit(512),
+          )),
+          getDocs(query(
+            collection(db, "plays"),
+            where("leagueId", "==", leagueId),
+            where("isHidden", "!=", true),
+            limit(10_000),
+          )),
         ]);
         if (snap.exists()) {
-          const tData: any = { id: snap.id, ...(snap.data() as any) };
-          if (isRealTeam(tData)) {
-            setTeam(tData);
-            setEditName(tData.name || "");
-            setEditShortcode(tData.shortcode || getTeamShortcode(tData));
-            setEditLogoUrl(tData.logoUrl || "");
-            setEditIcon(tData.icon || "shield");
-            const palette = resolveTeamColorPalette(tData);
+          const teamData: any = tData;
+          if (hasEditAccess) {
+            const privateData = await requestPrivateData<{
+              team: Record<string, unknown>;
+            }>("team", { teamId });
+            Object.assign(teamData, privateData.team);
+          }
+          if (isRealTeam(teamData)) {
+            setTeam(teamData);
+            setEditName(teamData.name || "");
+            setEditShortcode(teamData.shortcode || getTeamShortcode(teamData));
+            setEditLogoUrl(teamData.logoUrl || "");
+            setEditIcon(teamData.icon || "shield");
+            const palette = resolveTeamColorPalette(teamData);
             setEditPrimaryColor(palette.primary);
             setEditSecondaryColor(palette.secondary);
             setEditTertiaryColor(palette.tertiary);
@@ -354,8 +391,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 } catch {}
               }
             }
-            if (!customStats && tData.visibleTeamStats) {
-              customStats = tData.visibleTeamStats;
+            if (!customStats && teamData.visibleTeamStats) {
+              customStats = teamData.visibleTeamStats;
             }
             setVisibleStatIds(customStats && Array.isArray(customStats) ? customStats : DEFAULT_VISIBLE_TEAM_STATS);
           }

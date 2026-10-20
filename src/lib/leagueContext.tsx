@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import {
   getSandboxSettings,
@@ -11,6 +11,8 @@ import {
   isDemoLeague as checkIsDemoLeague,
 } from "./demoSandbox";
 import { FLAGOS_LOGO } from "./brandTokens";
+import { auth } from "./firebase";
+import { createSecureRecord } from "./secureWrites";
 
 export interface LeagueRules {
   playersOnField: number;          // e.g. 4, 5, 6, 7, 8 (default: 5)
@@ -600,7 +602,10 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     rulePreset?: string;
     visibility?: "public" | "private";
   }): Promise<string> => {
-    const newLeagueId = `league_${Date.now()}`;
+    const owner = auth.currentUser;
+    if (!owner?.email || !owner.emailVerified) {
+      throw new Error("Sign in with a verified email before creating a league.");
+    }
     const pColor = data.primaryColor || "#3ca505";
     const aColor = data.accentColor || "#3b82f6";
     const teams = data.teamCount || 8;
@@ -618,11 +623,15 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
-    const newLeagueSettings: LeagueSettings & { subscription: LeagueSubscriptionInfo } = {
+    const newLeagueSettings = {
       ...DEFAULT_LEAGUE_SETTINGS,
       leagueName: data.name,
       shortcode: data.shortcode.toUpperCase(),
       seasonTitle: data.seasonTitle || `${new Date().getFullYear()} Season`,
+      visibility: data.visibility || "public",
+      ownerUid: owner.uid,
+      adminEmails: [owner.email.trim().toLowerCase()],
+      createdAt: new Date().toISOString(),
       primaryColor: pColor,
       accentColor: aColor,
       rules: DEFAULT_LEAGUE_RULES,
@@ -631,10 +640,12 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     // Save to Firestore
+    let newLeagueId: string;
     try {
-      await setDoc(doc(db, "leagues", newLeagueId), newLeagueSettings);
+      newLeagueId = await createSecureRecord("league", newLeagueSettings);
     } catch (e) {
-      console.warn("Could not save new league to Firestore immediately (using local store):", e);
+      console.error("Could not save new league to Firestore:", e);
+      throw new Error("Could not create the league. Check your permissions and try again.");
     }
 
     const newSummary: UserLeagueSummary = {

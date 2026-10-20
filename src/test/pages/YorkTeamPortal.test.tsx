@@ -60,6 +60,9 @@ vi.mock("firebase/firestore", () => ({
   getDoc: vi.fn().mockResolvedValue({ exists: () => false }),
   updateDoc: vi.fn().mockResolvedValue(undefined),
   collection: vi.fn(),
+  query: vi.fn((reference) => reference),
+  where: vi.fn(),
+  limit: vi.fn(),
   getDocs: vi.fn().mockResolvedValue({ docs: [] }),
 }));
 

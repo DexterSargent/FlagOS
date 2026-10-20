@@ -120,6 +120,28 @@ describe("LoginPage email/password sign-in", () => {
     expect(routerPushMock).not.toHaveBeenCalled();
   });
 
+  it("shows the email-verification instructions after account creation", async () => {
+    createAccountMock.mockResolvedValue({
+      success: true,
+      message: "Verify your email using the link we sent, then sign in.",
+    });
+    render(<LoginPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create an account" }));
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "taylor@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password (at least 6 characters)"), {
+      target: { value: "a-secure-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Verify your email using the link we sent, then sign in."
+    );
+    expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
   it("explains that a signed-in account can have league-specific roles", () => {
     useAuthMock.mockReturnValue({
       user: { email: "taylor@example.com" },

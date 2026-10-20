@@ -4,7 +4,8 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Calendar, Clock, MapPin, Trophy, History, PlayCircle, Shield, Plus, X, Sparkles, Timer, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where, deleteDoc, limit } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -23,7 +24,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
   const isYork = isYorkTeam(teamId);
-  const { settings, isDemoLeague } = useLeague();
+  const { settings, activeLeagueId, isDemoLeague } = useLeague();
 
   const { canManageTeam, isLeagueAdmin, user } = useAuth();
   const [team, setTeam] = useState<any>(null);
@@ -109,9 +110,12 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       }
 
       try {
-        const docRef = await addDoc(collection(db, "matches"), newMatchDoc);
+        const matchId = await createSecureRecord("match", {
+          ...newMatchDoc,
+          leagueId: activeLeagueId,
+        });
         if (isYork) {
-          setMatches((prev) => [...prev, { id: docRef.id, ...newMatchDoc }]);
+          setMatches((prev) => [...prev, { id: matchId, ...newMatchDoc }]);
         }
       } catch (err) {
         if (!isYork) throw err;
@@ -166,13 +170,19 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       }
 
       try {
-        const [teamSnap, allTeamsSnap] = await Promise.all([
-          getDoc(doc(db, "teams", teamId)),
-          getDocs(collection(db, "teams")),
-        ]);
+        const teamSnap = await getDoc(doc(db, "teams", teamId));
+        const teamData = teamSnap.exists()
+          ? { id: teamSnap.id, ...teamSnap.data() } as { id: string; name?: string; leagueId?: unknown }
+          : null;
+        const leagueId = typeof teamData?.leagueId === "string" ? teamData.leagueId : "";
+        const allTeamsSnap = await getDocs(query(
+          collection(db, "teams"),
+          where("leagueId", "==", leagueId),
+          limit(64),
+        ));
 
         if (teamSnap.exists()) {
-          const tData = { id: teamSnap.id, ...teamSnap.data() };
+          const tData = teamData;
           if (isRealTeam(tData)) setTeam(tData);
           else setTeam(null);
         }
@@ -187,7 +197,12 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         setAllTeams(teamsMap);
 
         // Fetch matches involving this team
-        const unsub = onSnapshot(collection(db, "matches"), (snap) => {
+        const unsub = onSnapshot(query(
+          collection(db, "matches"),
+          where("leagueId", "==", leagueId),
+          where("isHidden", "!=", true),
+          limit(512),
+        ), (snap) => {
           const mList = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as any) }))
             .filter((m) => !m.isHidden && (m.homeTeamId === teamId || m.awayTeamId === teamId));

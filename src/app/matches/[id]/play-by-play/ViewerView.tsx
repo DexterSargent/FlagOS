@@ -77,14 +77,25 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       const unsub = subscribeDemoSandbox(() => setPlayers(getSandboxPlayers()));
       return () => unsub();
     }
-    const unsub = onSnapshot(collection(db, "players"), (snap) => {
-      setPlayers(snap.docs.map(d => d.data()));
+    if (!matchData) return;
+    const teamIds = [matchData.homeTeamId, matchData.awayTeamId].filter(Boolean);
+    if (!teamIds.length) {
+      setPlayers([]);
+      return;
+    }
+    const q = query(
+      collection(db, "players"),
+      where("teamId", "in", teamIds),
+      limit(60),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setPlayers(snap.docs.map((d) => d.data()));
     }, (err) => {
       console.warn("ViewerView players snapshot warning:", err);
-      setPlayers(getSandboxPlayers());
+      setPlayers([]);
     });
     return () => unsub();
-  }, [isDemoMatch]);
+  }, [isDemoMatch, matchData]);
 
   const calculateBoxScore = () => {
     const statsMap: Record<string, any> = {};
@@ -273,8 +284,6 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       }
     }, (err) => {
       console.warn("ViewerView match snapshot warning:", err);
-      const m = getSandboxMatch(matchId);
-      if (m) setMatchData(m);
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
@@ -296,7 +305,8 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     }
     const q = query(
       collection(db, "plays"),
-      where("matchId", "==", matchId)
+      where("matchId", "==", matchId),
+      limit(500),
     );
     const unsub = onSnapshot(q, (snap) => {
       const p = snap.docs.map(d => d.data());

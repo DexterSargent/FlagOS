@@ -22,7 +22,7 @@ import {
   Table as TableIcon
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -78,10 +78,20 @@ export default function StatsAndStandings() {
         } else {
           try {
             const [teamsSnap, playersSnap, matchesSnap, playsSnap] = await Promise.all([
-              getDocs(collection(db, "teams")),
-              getDocs(collection(db, "players")),
-              getDocs(collection(db, "matches")),
-              getDocs(collection(db, "plays")),
+              getDocs(query(collection(db, "teams"), where("leagueId", "==", activeLeagueId), limit(64))),
+              getDocs(query(collection(db, "players"), where("leagueId", "==", activeLeagueId), limit(1920))),
+              getDocs(query(
+                collection(db, "matches"),
+                where("leagueId", "==", activeLeagueId),
+                where("isHidden", "!=", true),
+                limit(512),
+              )),
+              getDocs(query(
+                collection(db, "plays"),
+                where("leagueId", "==", activeLeagueId),
+                where("isHidden", "!=", true),
+                limit(10_000),
+              )),
             ]);
 
             teams = teamsSnap.docs

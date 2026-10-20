@@ -4,17 +4,20 @@ import { useState } from "react";
 import Link from "next/link";
 import { Database, Trash2, ChevronLeft } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, updateDoc, query, where, limit } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
+import { useAuth } from "@/lib/authContext";
 
 export default function Sandbox() {
+  const { isPlatformAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const generateFakeData = async () => {
     if (!confirm("Are you sure? This will find the first 2 matches, set them as completed, and generate random fake plays for them.")) return;
     setLoading(true);
     try {
-      const matchesSnap = await getDocs(collection(db, "matches"));
-      const matches = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).slice(0, 2);
+      const matchesSnap = await getDocs(query(collection(db, "matches"), limit(2)));
+      const matches = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
 
       if (matches.length === 0) {
         alert("No matches found in DB.");
@@ -22,8 +25,16 @@ export default function Sandbox() {
         return;
       }
 
-      const playersSnap = await getDocs(collection(db, "players"));
-      const players = playersSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      const teamIds = [...new Set(matches.flatMap((match) => [match.homeTeamId, match.awayTeamId])
+        .filter((teamId): teamId is string => typeof teamId === "string" && teamId.length > 0))];
+      const playersSnap = teamIds.length
+        ? await getDocs(query(
+          collection(db, "players"),
+          where("teamId", "in", teamIds),
+          limit(60),
+        ))
+        : null;
+      const players = playersSnap?.docs.map(d => ({ id: d.id, ...d.data() as any })) || [];
 
       for (const match of matches) {
         const homeRoster = players.filter(p => p.teamId === match.homeTeamId);
@@ -54,7 +65,7 @@ export default function Sandbox() {
             if (isHomePos) homeScore += 6; else awayScore += 6;
           }
 
-          await addDoc(collection(db, "plays"), {
+          await createSecureRecord("play", {
             isFake: true,
             matchId: match.id,
             possessionTeamId: isHomePos ? match.homeTeamId : match.awayTeamId,
@@ -96,14 +107,22 @@ export default function Sandbox() {
     if (!confirm("Are you sure? This will delete all fake plays and reset matches.")) return;
     setLoading(true);
     try {
-      const playsSnap = await getDocs(collection(db, "plays"));
+      const playsSnap = await getDocs(query(
+        collection(db, "plays"),
+        where("isFake", "==", true),
+        limit(500),
+      ));
       const fakePlays = playsSnap.docs.filter(d => d.data().isFake === true);
       
       for (const playDoc of fakePlays) {
         await deleteDoc(doc(db, "plays", playDoc.id));
       }
 
-      const matchesSnap = await getDocs(collection(db, "matches"));
+      const matchesSnap = await getDocs(query(
+        collection(db, "matches"),
+        where("hasFakeData", "==", true),
+        limit(512),
+      ));
       const fakeMatches = matchesSnap.docs.filter(d => d.data().hasFakeData === true);
 
       for (const m of fakeMatches) {
@@ -122,6 +141,15 @@ export default function Sandbox() {
     }
     setLoading(false);
   };
+
+  if (!isPlatformAdmin) {
+    return (
+      <main className="min-h-screen bg-black text-white p-12">
+        <h1 className="text-2xl font-bold">Access denied</h1>
+        <p className="mt-2 text-neutral-400">This tool is available to the platform administrator only.</p>
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white p-12">

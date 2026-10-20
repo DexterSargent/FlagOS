@@ -1,5 +1,6 @@
 import { db } from "./firebase";
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, updateDoc, query, where, limit } from "firebase/firestore";
+import { createSecureRecord } from "./secureWrites";
 import {
   getSandboxMatch,
   getSandboxPlayers,
@@ -54,7 +55,7 @@ async function resolveTeamRoster(
     }
   } else {
     try {
-      const q = query(collection(db, "players"), where("teamId", "==", teamId));
+      const q = query(collection(db, "players"), where("teamId", "==", teamId), limit(30));
       const snap = await getDocs(q);
       if (!snap.empty) {
         playerNames = snap.docs.map((d) => d.data().playerName || d.data().name).filter(Boolean);
@@ -490,15 +491,11 @@ export async function simulateFullGame(
   } else {
     // Save to real Firestore
     try {
-      await Promise.all(plays.map((p) => addDoc(collection(db, "plays"), p)));
+      await createSecureRecord("play_batch", { matchId, plays });
       await updateDoc(doc(db, "matches", matchId), updatedMatchState);
     } catch (err) {
       console.error("Error saving simulated game to Firestore:", err);
-      // Fallback save to sandbox
-      for (const p of plays) {
-        addSandboxPlay(p);
-      }
-      updateSandboxMatch(matchId, updatedMatchState);
+      throw err;
     }
   }
 

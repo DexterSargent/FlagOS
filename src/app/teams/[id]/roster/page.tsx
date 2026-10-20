@@ -19,16 +19,15 @@ import {
   Mail,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import {
   collection,
   doc,
   getDoc,
   getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
   query,
-  where
+  where,
+  limit
 } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
@@ -101,10 +100,21 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         try {
           const [teamSnap, playersSnap] = await Promise.all([
             getDoc(doc(db, "teams", teamId)),
-            getDocs(query(collection(db, "players"), where("teamId", "==", teamId))),
+            getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
           ]);
           if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
           pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          if (isTeamOrLeagueAdmin) {
+            const privateData = await requestPrivateData<{
+              team: Record<string, unknown>;
+              players: Record<string, { email?: string; emails?: string[] }>;
+            }>("team", { teamId });
+            tObj = { ...tObj, ...privateData.team };
+            pList = pList.map((player) => ({
+              ...player,
+              ...(privateData.players[player.id] || {}),
+            }));
+          }
         } catch (e) {
           console.warn("Using offline/seed York Lions roster data:", e);
         }
@@ -120,14 +130,36 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         mList = getSandboxMatches();
         playList = getSandboxPlays();
       } else {
-        const [teamSnap, playersSnap, matchesSnap, playsSnap] = await Promise.all([
-          getDoc(doc(db, "teams", teamId)),
-          getDocs(query(collection(db, "players"), where("teamId", "==", teamId))),
-          getDocs(collection(db, "matches")),
-          getDocs(collection(db, "plays")),
-        ]);
+        const teamSnap = await getDoc(doc(db, "teams", teamId));
         if (teamSnap.exists()) tObj = { id: teamSnap.id, ...teamSnap.data() };
+        const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
+        const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
+          getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
+          getDocs(query(
+            collection(db, "matches"),
+            where("leagueId", "==", leagueId),
+            where("isHidden", "!=", true),
+            limit(512),
+          )),
+          getDocs(query(
+            collection(db, "plays"),
+            where("leagueId", "==", leagueId),
+            where("isHidden", "!=", true),
+            limit(10_000),
+          )),
+        ]);
         pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (isTeamOrLeagueAdmin) {
+          const privateData = await requestPrivateData<{
+            team: Record<string, unknown>;
+            players: Record<string, { email?: string; emails?: string[] }>;
+          }>("team", { teamId });
+          tObj = { ...tObj, ...privateData.team };
+          pList = pList.map((player) => ({
+            ...player,
+            ...(privateData.players[player.id] || {}),
+          }));
+        }
         mList = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         playList = playsSnap.docs.map((d) => d.data() as any);
       }
@@ -311,7 +343,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       let docId = `player_${Date.now()}`;
       try {
-        const docRef = await addDoc(collection(db, "players"), {
+        docId = await createSecureRecord("player", {
           playerName: newPlayerName.trim(),
           teamId: teamId,
           number: newPlayerNumber.trim(),
@@ -322,7 +354,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           email: parsedEmails[0] || "",
           createdAt: new Date().toISOString(),
         });
-        docId = docRef.id;
       } catch (err) {
         if (!isYorkTeam(teamId)) throw err;
         console.warn("Saving York player locally (offline):", err);
@@ -400,7 +431,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       }
 
       try {
-        await updateDoc(doc(db, "players", editingPlayer.id), updatedFields);
+        await createSecureRecord("player_update", {
+          playerId: editingPlayer.id,
+          ...updatedFields,
+        });
       } catch (err) {
         if (!isYorkTeam(teamId)) throw err;
         console.warn("Updating York player locally (offline):", err);
@@ -438,7 +472,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         return;
       }
       try {
-        await deleteDoc(doc(db, "players", playerId));
+        await createSecureRecord("delete_player", { playerId });
       } catch (err) {
         if (!isYorkTeam(teamId)) throw err;
         console.warn("Deleting York player locally (offline):", err);

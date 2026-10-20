@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Shield, Crown, User, ChevronLeft, ArrowRight, CheckCircle2, ShieldAlert, Lock, LogIn } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
 import { isRealTeam } from "@/components/TeamAssets";
+import { getSandboxTeams, getSandboxPlayers } from "@/lib/demoSandbox";
 import { useTheme } from "@/lib/themeContext";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 
@@ -45,6 +44,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [emailPasswordError, setEmailPasswordError] = useState("");
+  const [emailPasswordSuccess, setEmailPasswordSuccess] = useState("");
   const [emailPasswordLoggingIn, setEmailPasswordLoggingIn] = useState(false);
   const [googleLoggingIn, setGoogleLoggingIn] = useState(false);
   const [googleLoginError, setGoogleLoginError] = useState("");
@@ -61,32 +61,15 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [teamsSnap, playersSnap] = await Promise.all([
-          getDocs(collection(db, "teams")),
-          getDocs(collection(db, "players")),
-        ]);
-        const tList = teamsSnap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as any) }))
-          .filter(isRealTeam);
-        tList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-        setTeams(tList);
-        if (tList.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(tList[0].id);
-        }
+    const tList = getSandboxTeams().filter(isRealTeam);
+    tList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    setTeams(tList);
+    if (tList.length > 0) setSelectedTeamId(tList[0].id);
 
-        const pList = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-        pList.sort((a, b) => (a.playerName || "").localeCompare(b.playerName || ""));
-        setPlayers(pList);
-        if (pList.length > 0 && !selectedPlayerId) {
-          setSelectedPlayerId(pList[0].id);
-        }
-      } catch (e) {
-        console.error("Error loading teams/players:", e);
-      }
-    };
-    fetchData();
+    const pList = getSandboxPlayers();
+    pList.sort((a, b) => (a.playerName || "").localeCompare(b.playerName || ""));
+    setPlayers(pList);
+    if (pList.length > 0) setSelectedPlayerId(pList[0].id);
   }, []);
 
   if (loading) {
@@ -115,13 +98,16 @@ export default function LoginPage() {
   const handleEmailPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailPasswordError("");
+    setEmailPasswordSuccess("");
     setEmailPasswordLoggingIn(true);
     try {
       const result = isCreatingAccount
         ? await createAccount(displayName, email, password)
         : await loginWithEmailAndPassword(email, password);
       if (result.success) {
-        if (!isCreatingAccount) {
+        if (isCreatingAccount) {
+          setEmailPasswordSuccess(result.message || "Account created. Verify your email, then sign in.");
+        } else {
           router.push(redirectUrl || "/league/default");
         }
       } else {
@@ -298,6 +284,11 @@ export default function LoginPage() {
             {emailPasswordError && (
               <p role="alert" className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 p-3 rounded-lg font-medium">
                 {emailPasswordError}
+              </p>
+            )}
+            {emailPasswordSuccess && (
+              <p role="status" className="text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg font-medium">
+                {emailPasswordSuccess}
               </p>
             )}
             <button

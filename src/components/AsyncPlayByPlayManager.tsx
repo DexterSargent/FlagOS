@@ -24,9 +24,9 @@ import {
   Flag,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
+import { createSecureRecord } from "@/lib/secureWrites";
 import {
   collection,
-  addDoc,
   getDoc,
   getDocs,
   doc,
@@ -161,7 +161,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           const matchDoc = await getDoc(doc(db, "matches", matchId));
           if (!matchDoc.exists()) return;
           mData = matchDoc.data() as any;
-          const playersSnap = await getDocs(collection(db, "players"));
+          const rosterTeamId = mData.managingTeamId || mData.homeTeamId || mData.awayTeamId;
+          const teamIds = rosterTeamId ? [rosterTeamId] : [];
+          const playersSnap = teamIds.length
+            ? await getDocs(query(
+                collection(db, "players"),
+                where("teamId", "in", teamIds),
+                limit(60),
+              ))
+            : { docs: [] };
           allP = playersSnap.docs.map((d) => d.data());
         }
         setMatchData(mData);
@@ -239,22 +247,18 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           setHistoricalPlays(getSandboxPlays().filter((p: any) => p.matchId !== matchId));
         } else {
           try {
-            const teamIds = [mData.homeTeamId, mData.awayTeamId].filter(Boolean);
-            if (teamIds.length > 0) {
+            if (mData.leagueId) {
               const q = query(
                 collection(db, "plays"),
-                where("possessionTeamId", "in", teamIds),
-                limit(300)
+                where("leagueId", "==", mData.leagueId),
+                where("isHidden", "!=", true),
+                limit(300),
               );
               const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)).filter((p: any) => p.matchId !== matchId));
             }
-          } catch {
-            try {
-              const q = query(collection(db, "plays"), limit(200));
-              const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
-            } catch {}
+          } catch (error) {
+            console.error("Unable to load historical plays:", error);
           }
         }
       } catch (e) {
@@ -273,7 +277,12 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       if (isDemo) {
         pList = getSandboxPlays(matchId);
       } else {
-        const q = query(collection(db, "plays"), where("matchId", "==", matchId), orderBy("timestamp", "asc"));
+        const q = query(
+          collection(db, "plays"),
+          where("matchId", "==", matchId),
+          orderBy("timestamp", "asc"),
+          limit(500),
+        );
         const snap = await getDocs(q);
         pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       }
@@ -538,9 +547,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       return;
     }
     try {
-      await addDoc(collection(db, "plays"), {
+      await createSecureRecord("play", {
         ...playData,
-        timestamp: serverTimestamp(),
+        matchId,
       });
       loadPlays();
     } catch (e) {
@@ -1314,15 +1323,26 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     )}
                   </div>
                   <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
-                    {sortRosterWithNumbers(offensePlayers, playerNumberMap).map((p) => {
+                    {sortRosterByStatLeader(
+                      offensePlayers,
+                      playerNumberMap,
+                      playType === "Run" ? playerStatCounts.rushing : playerStatCounts.passing
+                    ).map((p) => {
                       const pNum = playerNumberMap[p];
                       const isSelected = qbRunner === p;
+                      const statCount = playType === "Run" ? playerStatCounts.rushing[p] : playerStatCounts.passing[p];
                       return (
                         <button
                           key={p}
                           type="button"
                           aria-label={p}
-                          onClick={() => setQbRunner(p)}
+                          onClick={() => {
+                            setQbRunner(p);
+                            if (playType === "Pass") {
+                              if (possession === homeTeamName) setLastHomeQB(p);
+                              else setLastAwayQB(p);
+                            }
+                          }}
                           className={`px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all border flex items-center justify-between gap-1.5 ${
                             isSelected
                               ? "bg-white text-black font-black border-white shadow-sm"
@@ -1338,6 +1358,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                               </span>
                             )}
                             <span className="truncate">{p}</span>
+                            {statCount !== undefined && statCount > 0 && (
+                              <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? "text-black/80" : "text-cyan-400/80"}`}>
+                                ({statCount} {playType === "Run" ? "rush" : "att"})
+                              </span>
+                            )}
                           </div>
                           {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                         </button>
@@ -1360,9 +1385,14 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       )}
                     </div>
                     <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
-                      {sortRosterWithNumbers(offensePlayers, playerNumberMap).map((p) => {
+                      {sortRosterByStatLeader(
+                        offensePlayers,
+                        playerNumberMap,
+                        playerStatCounts.receiving
+                      ).map((p) => {
                         const pNum = playerNumberMap[p];
                         const isSelected = receiver === p;
+                        const recCount = playerStatCounts.receiving[p];
                         return (
                           <button
                             key={p}
@@ -1384,6 +1414,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                                 </span>
                               )}
                               <span className="truncate">{p}</span>
+                              {recCount !== undefined && recCount > 0 && (
+                                <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? "text-black/80" : "text-emerald-400/80"}`}>
+                                  ({recCount} rec)
+                                </span>
+                              )}
                             </div>
                             {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
                           </button>
@@ -1417,35 +1452,45 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     >
                       Team Defense
                     </button>
-                    {sortRosterWithNumbers(defensePlayers, playerNumberMap).map((p) => {
-                      const pNum = playerNumberMap[p];
-                      const isSelected = defenders.includes(p);
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          aria-label={p}
-                          onClick={() => handleDefenders(p)}
-                          className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-between gap-1.5 ${
-                            isSelected
-                              ? "bg-red-500 text-white font-black border-red-500 shadow-sm"
-                              : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {pNum && (
-                              <span className={`px-1 py-0.2 rounded font-mono font-bold text-[10px] shrink-0 ${
-                                isSelected ? "bg-white/20 text-white" : "bg-red-500/20 text-red-300 border border-red-500/30"
-                              }`}>
-                                #{pNum}
-                              </span>
-                            )}
-                            <span className="truncate">{p}</span>
-                          </div>
-                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                        </button>
-                      );
-                    })}
+                    {(() => {
+                      const isSack = outcome === "Sack" || outcome === "FFL";
+                      const defCounts = isSack ? playerStatCounts.sacks : playerStatCounts.flags;
+                      return sortRosterByStatLeader(defensePlayers, playerNumberMap, defCounts).map((p) => {
+                        const pNum = playerNumberMap[p];
+                        const isSelected = defenders.includes(p);
+                        const countVal = defCounts[p];
+                        return (
+                          <button
+                            key={p}
+                            type="button"
+                            aria-label={p}
+                            onClick={() => handleDefenders(p)}
+                            className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-between gap-1.5 ${
+                              isSelected
+                                ? "bg-red-500 text-white font-black border-red-500 shadow-sm"
+                                : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {pNum && (
+                                <span className={`px-1 py-0.2 rounded font-mono font-bold text-[10px] shrink-0 ${
+                                  isSelected ? "bg-white/20 text-white" : "bg-red-500/20 text-red-300 border border-red-500/30"
+                                }`}>
+                                  #{pNum}
+                                </span>
+                              )}
+                              <span className="truncate">{p}</span>
+                              {countVal !== undefined && countVal > 0 && (
+                                <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? "text-white/80" : "text-red-300/80"}`}>
+                                  ({countVal} {isSack ? "sack" : "flags"})
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
 

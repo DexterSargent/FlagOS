@@ -11,17 +11,19 @@ import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   updateProfile,
   signOut,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { getSandboxPlayers, subscribeDemoSandbox, notifySandboxChange } from "./demoSandbox";
 import { isYorkTeam, YORK_TEAM_ID, YORK_ADMIN_EMAILS, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS } from "./yorkTeamData";
+import { requestPrivateData } from "./secureWrites";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
-type LoginResult = { success: true } | { success: false; message: string };
+type LoginResult = { success: true; message?: string } | { success: false; message: string };
 
 const getAuthErrorMessage = (error: unknown): string => {
   if (!(error instanceof FirebaseError)) {
@@ -166,19 +168,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!email) return null;
     const cleanEmail = email.trim().toLowerCase();
     try {
-      const playersSnap = await getDocs(collection(db, "players"));
-      for (const docSnap of playersSnap.docs) {
-        const data = docSnap.data();
-        const pEmails: string[] = Array.isArray(data.emails)
-          ? data.emails.map((e: any) => String(e).trim().toLowerCase())
-          : data.email
-          ? [String(data.email).trim().toLowerCase()]
-          : [];
-
-        if (pEmails.includes(cleanEmail)) {
-          return { id: docSnap.id, ...data };
-        }
-      }
+      const results = await requestPrivateData<{
+        players: Array<{ id: string; email?: string; emails?: string[]; [key: string]: any }>;
+      }>("lookup");
+      const match = results.players.find((player) => {
+        const playerEmails = [
+          ...(Array.isArray(player.emails) ? player.emails : []),
+          ...(player.email ? [player.email] : []),
+        ].map((value) => value.trim().toLowerCase());
+        return playerEmails.includes(cleanEmail);
+      });
+      if (match) return match;
     } catch (e) {
       console.error("Error looking up player by email:", e);
     }
@@ -217,19 +217,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!email) return null;
     const cleanEmail = email.trim().toLowerCase();
     try {
-      const teamsSnap = await getDocs(collection(db, "teams"));
-      for (const docSnap of teamsSnap.docs) {
-        const data = docSnap.data();
-        if (docSnap.id === "team_free_agents" || data.name?.trim().toLowerCase() === "free agent" || data.name?.trim().toLowerCase() === "free agents") {
-          continue;
-        }
-        const tEmails: string[] = Array.isArray(data.adminEmails)
-          ? data.adminEmails.map((e: any) => String(e).trim().toLowerCase())
-          : [data.coachEmail, data.adminEmail, data.email].filter(Boolean).map((e: any) => String(e).trim().toLowerCase());
-        if (tEmails.includes(cleanEmail)) {
-          return { id: docSnap.id, name: data.name };
-        }
-      }
+      const results = await requestPrivateData<{
+        teams: Array<{ id: string; name: string }>;
+      }>("lookup");
+      const matchingTeam = results.teams.find((team) =>
+        team.id !== "team_free_agents" &&
+        team.name.trim().toLowerCase() !== "free agent" &&
+        team.name.trim().toLowerCase() !== "free agents"
+      );
+      if (matchingTeam) return matchingTeam;
     } catch (e) {
       console.error("Error looking up team by email:", e);
     }
@@ -272,12 +268,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const accountProfile: UserProfile = {
               uid: u.uid,
               email: u.email || "",
-              ...(u.displayName ? { displayName: u.displayName } : {}),
+              displayName: u.displayName || "",
+              role: "user",
             };
-            await setDoc(userDocRef, {
-              ...accountProfile,
-              createdAt: serverTimestamp(),
-            }, { merge: true });
             setUserProfile(accountProfile);
             setLoading(false);
             return;
@@ -286,25 +279,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Look up if this email is attached to any player or team
           let matchingPlayer: any = null;
           let matchingTeam: any = null;
-          if (u.email) {
+          if (u.email && u.emailVerified) {
             matchingPlayer = await findPlayerByEmail(u.email);
             matchingTeam = await findTeamByEmail(u.email);
           }
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
-            if (data.role) {
-              if (isEmailLeagueAdmin) {
-                data.role = "league_admin";
-              } else if (matchingPlayer) {
-                data.role = "player";
-                data.playerId = matchingPlayer.id;
-                data.playerTeamId = matchingPlayer.teamId;
-                data.playerData = matchingPlayer;
-              } else if (matchingTeam) {
-                data.role = "team_admin";
-                data.managedTeamId = matchingTeam.id;
-              }
+            data.role = isEmailLeagueAdmin
+              ? "league_admin"
+              : matchingTeam
+              ? "team_admin"
+              : matchingPlayer
+              ? "player"
+              : "user";
+            if (matchingPlayer) {
+              data.playerId = matchingPlayer.id;
+              data.playerTeamId = matchingPlayer.teamId;
+              data.playerData = matchingPlayer;
+            }
+            if (matchingTeam) {
+              data.managedTeamId = matchingTeam.id;
             }
             setUserProfile(data);
           } else {
@@ -321,21 +316,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               uid: u.uid,
               email: u.email || "",
               displayName: u.displayName || matchingPlayer?.playerName || "",
-              role: newRole,
+              role: "user",
             };
-
-            if (matchingPlayer?.id) {
-              profileDataToSave.playerId = matchingPlayer.id;
-            }
-            if (matchingPlayer?.teamId) {
-              profileDataToSave.playerTeamId = matchingPlayer.teamId;
-            }
-            if (matchingPlayer) {
-              profileDataToSave.playerData = matchingPlayer;
-            }
-            if (matchingTeam?.id) {
-              profileDataToSave.managedTeamId = matchingTeam.id;
-            }
 
             await setDoc(userDocRef, profileDataToSave);
             setUserProfile({
@@ -564,18 +546,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await updateProfile(credential.user, { displayName: name });
       }
 
-      const accountProfile: UserProfile = {
-        uid: credential.user.uid,
-        email: credential.user.email || normalizedEmail,
-        ...(name ? { displayName: name } : {}),
+      await sendEmailVerification(credential.user);
+      await signOut(auth);
+      setUser(null);
+      setUserProfile(null);
+      return {
+        success: true,
+        message: "Account created. Verify your email using the link we sent, then sign in.",
       };
-      await setDoc(doc(db, "users", credential.user.uid), {
-        ...accountProfile,
-        createdAt: serverTimestamp(),
-      }, { merge: true });
-      setUser(credential.user);
-      setUserProfile(accountProfile);
-      return { success: true };
     } catch (error: unknown) {
       console.error("Account creation error:", error);
       return { success: false, message: getAuthErrorMessage(error) };

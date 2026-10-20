@@ -23,7 +23,7 @@ import {
   Settings
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { getTeamShortcode } from "@/components/TeamAssets";
@@ -62,6 +62,7 @@ export default function PlayerProfilePage() {
   const {
     settings,
     openCustomizer,
+    activeLeagueId,
   } = useLeague();
 
   const [activeTab, setActiveTab] = useState<"stats" | "settings" | "rules" | "account">("stats");
@@ -107,9 +108,19 @@ export default function PlayerProfilePage() {
       setLoading(true);
       try {
         const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
-          getDocs(collection(db, "players")),
-          getDocs(collection(db, "matches")),
-          getDocs(collection(db, "plays")),
+          getDocs(query(collection(db, "players"), where("leagueId", "==", activeLeagueId), limit(1920))),
+          getDocs(query(
+            collection(db, "matches"),
+            where("leagueId", "==", activeLeagueId),
+            where("isHidden", "!=", true),
+            limit(512),
+          )),
+          getDocs(query(
+            collection(db, "plays"),
+            where("leagueId", "==", activeLeagueId),
+            where("isHidden", "!=", true),
+            limit(10_000),
+          )),
         ]);
 
         const playersList = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
@@ -260,7 +271,7 @@ export default function PlayerProfilePage() {
     };
 
     fetchProfileAndStats();
-  }, [selectedPlayerId, authPlayerId]);
+  }, [selectedPlayerId, authPlayerId, activeLeagueId]);
 
   // Handle switching player (for admins / preview)
   const handleSelectAnotherPlayer = (pId: string) => {

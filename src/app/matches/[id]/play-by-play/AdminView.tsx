@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Zap, RotateCcw, Flag, Maximize, Minimize, Play, Pause, AlertCircle, Timer, Save, Plus, Minus, X, ChevronRight, ChevronDown, ChevronUp, Undo, AlertTriangle, Shield, Check } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
+import { collection, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { simulateFullGame } from "@/lib/gameSimulator";
@@ -195,7 +196,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         const q = query(
           collection(db, "plays"),
           where("matchId", "==", matchId),
-          orderBy("timestamp", "asc")
+          orderBy("timestamp", "asc"),
+          limit(500),
         );
         const snap = await getDocs(q);
         pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -329,7 +331,14 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               allP = getSandboxPlayers();
             } else {
               mData = matchDoc.data() as any;
-              const playersSnap = await getDocs(collection(db, "players"));
+              const rosterTeamId = mData.managingTeamId || mData.homeTeamId || mData.awayTeamId;
+              const playersSnap = rosterTeamId
+                ? await getDocs(query(
+                    collection(db, "players"),
+                    where("teamId", "==", rosterTeamId),
+                    limit(30),
+                  ))
+                : { docs: [] };
               allP = playersSnap.docs.map(d => d.data());
             }
           } catch (err) {
@@ -419,22 +428,18 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           setHistoricalPlays(getSandboxPlays().filter((p) => p.matchId !== matchId));
         } else {
           try {
-            const teamIds = [mData.homeTeamId, mData.awayTeamId].filter(Boolean);
-            if (teamIds.length > 0) {
+            if (mData.leagueId) {
               const q = query(
                 collection(db, "plays"),
-                where("possessionTeamId", "in", teamIds),
-                limit(300)
+                where("leagueId", "==", mData.leagueId),
+                where("isHidden", "!=", true),
+                limit(300),
               );
               const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
+              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)).filter((p: any) => p.matchId !== matchId));
             }
-          } catch {
-            try {
-              const q = query(collection(db, "plays"), limit(200));
-              const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((p) => p.matchId !== matchId));
-            } catch {}
+          } catch (error) {
+            console.error("Unable to load historical plays:", error);
           }
         }
 
@@ -605,7 +610,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       }
 
       // 1. Purge all plays logged for this match from Firestore
-      const playsQuery = query(collection(db, "plays"), where("matchId", "==", matchId));
+      const playsQuery = query(
+        collection(db, "plays"),
+        where("matchId", "==", matchId),
+        limit(500),
+      );
       const playsSnap = await getDocs(playsQuery);
       const deletePromises = playsSnap.docs.map((d) => deleteDoc(d.ref));
       await Promise.all(deletePromises);
@@ -998,9 +1007,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       return;
     }
     try {
-      await addDoc(collection(db, "plays"), {
+      await createSecureRecord("play", {
         ...playData,
-        timestamp: serverTimestamp()
+        matchId,
       });
       refreshPlays();
       console.log("Play saved to Firestore!");

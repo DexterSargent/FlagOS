@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronLeft, Users, Shield, Plus, Check, X, ArrowRightLeft, Calendar, Trophy, Activity, History, Trash2, UserPlus, Search, CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, query, where, limit } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
@@ -113,20 +114,33 @@ export default function TeamsPage() {
       return;
     }
     try {
-      const teamsSnap = await getDocs(collection(db, "teams"));
+      const teamsSnap = await getDocs(query(
+        collection(db, "teams"),
+        where("leagueId", "==", activeLeagueId),
+        limit(64),
+      ));
       const tData = teamsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as Team))
         .filter(t => isRealTeam(t) && !isYorkTeam(t.id) && (!((t as any).leagueId) || (t as any).leagueId === activeLeagueId));
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
 
-      const playersSnap = await getDocs(collection(db, "players"));
+      const playersSnap = await getDocs(query(
+        collection(db, "players"),
+        where("leagueId", "==", activeLeagueId),
+        limit(1920),
+      ));
       const pData = playersSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as Player))
         .filter((player) => !isYorkTeam(player.teamId));
       setPlayers(pData);
 
-      const matchesSnap = await getDocs(collection(db, "matches"));
+      const matchesSnap = await getDocs(query(
+        collection(db, "matches"),
+        where("leagueId", "==", activeLeagueId),
+        where("isHidden", "!=", true),
+        limit(512),
+      ));
       const mData = matchesSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as any))
         .filter(m =>
@@ -138,7 +152,12 @@ export default function TeamsPage() {
         );
       setMatches(mData);
 
-      const playsSnap = await getDocs(collection(db, "plays"));
+      const playsSnap = await getDocs(query(
+        collection(db, "plays"),
+        where("leagueId", "==", activeLeagueId),
+        where("isHidden", "!=", true),
+        limit(10_000),
+      ));
       const playData = playsSnap.docs
         .map(d => ({ id: d.id, ...d.data() }))
         .filter((play: any) => !String(play.matchId).startsWith("match_york_"));
@@ -196,15 +215,16 @@ export default function TeamsPage() {
       return;
     }
     try {
-      const docRef = await addDoc(collection(db, "players"), {
+      const playerId = await createSecureRecord("player", {
         playerName: newPlayerName.trim(),
         teamId: activeTeamId,
+        leagueId: activeLeagueId,
         position: newPlayerPosition,
         positions: [newPlayerPosition],
         status: "Active"
       });
       setPlayers([...players, {
-        id: docRef.id,
+        id: playerId,
         playerName: newPlayerName.trim(),
         teamId: activeTeamId,
         position: newPlayerPosition,
@@ -216,6 +236,7 @@ export default function TeamsPage() {
       setIsAddingPlayer(false);
     } catch (e) {
       console.error(e);
+      alert(e instanceof Error ? e.message : "Could not add the player.");
     }
   };
 
@@ -228,14 +249,15 @@ export default function TeamsPage() {
       return;
     }
     try {
-      await updateDoc(doc(db, "players", playerId), {
+      await createSecureRecord("assign_player", {
+        playerId,
         teamId: editTeamId,
-        status: "Active"
       });
       setPlayers(players.map(p => p.id === playerId ? { ...p, teamId: editTeamId, status: "Active" } : p));
       setEditingPlayerId(null);
     } catch (e) {
       console.error(e);
+      alert(e instanceof Error ? e.message : "Could not assign the player.");
     }
   };
 
@@ -273,9 +295,9 @@ export default function TeamsPage() {
     }
 
     try {
-      await updateDoc(doc(db, "players", playerId), {
+      await createSecureRecord("assign_player", {
+        playerId,
         teamId: targetTeamId,
-        status: "Active",
       });
       setPlayers((prev) =>
         prev.map((p) => (p.id === playerId ? { ...p, teamId: targetTeamId, status: "Active" } : p))
@@ -305,11 +327,12 @@ export default function TeamsPage() {
       return;
     }
     try {
-      await deleteDoc(doc(db, "players", playerId));
+      await createSecureRecord("delete_player", { playerId });
       setPlayers(players.filter(p => p.id !== playerId));
       setSelectedPlayerForStats(null);
     } catch (e) {
       console.error(e);
+      alert(e instanceof Error ? e.message : "Could not add the team.");
     }
   };
 
@@ -323,16 +346,17 @@ export default function TeamsPage() {
       return;
     }
     try {
-      const docRef = await addDoc(collection(db, "teams"), {
+      const teamId = await createSecureRecord("team", {
         name: newTeamName.trim(),
         leagueId: activeLeagueId,
         createdAt: new Date().toISOString()
       });
-      setTeams([...teams, { id: docRef.id, name: newTeamName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
+      setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
       setNewTeamName("");
       setIsAddingTeam(false);
     } catch (e) {
       console.error(e);
+      alert(e instanceof Error ? e.message : "Could not add the team.");
     }
   };
 
@@ -366,7 +390,7 @@ export default function TeamsPage() {
       return;
     }
     try {
-      await deleteDoc(doc(db, "teams", activeTeamId));
+      await createSecureRecord("delete_team", { teamId: activeTeamId });
       setTeams(teams.filter(t => t.id !== activeTeamId));
       setActiveTeamId(null);
     } catch (e) {

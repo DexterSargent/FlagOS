@@ -26,7 +26,8 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
+import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
@@ -336,7 +337,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       if (typeof window !== "undefined") {
         localStorage.setItem(`flagos_playbooks_${teamId}`, JSON.stringify(playbooks));
       }
-      await setDoc(doc(db, "teams", teamId, "meta", "playbook"), {
+      await createSecureRecord("playbook", {
+        teamId,
         playbooks,
         updatedAt: new Date().toISOString(),
       });
@@ -550,19 +552,11 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         } catch (e) {}
       }
 
-      // Persist questions update to Firestore meta doc
-      try {
-        setDoc(
-          doc(db, "teams", teamId, "meta", "playbook"),
-          {
-            playbooks: next,
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true }
-        ).catch((err) => console.warn("Could not save questions to Firestore:", err));
-      } catch (e) {
-        console.warn("Firestore error saving questions:", e);
-      }
+      void createSecureRecord("playbook", {
+        teamId,
+        playbooks: next,
+        updatedAt: new Date().toISOString(),
+      }).catch((error) => console.error("Could not save questions to Firestore:", error));
 
       return next;
     });

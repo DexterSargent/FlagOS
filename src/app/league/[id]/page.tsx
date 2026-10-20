@@ -38,7 +38,8 @@ import {
   Copy,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, onSnapshot, addDoc } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query, where, limit } from "firebase/firestore";
+import { createSecureRecord } from "@/lib/secureWrites";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
@@ -141,13 +142,18 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       }
 
       try {
+        const targetLeagueId = leagueIdParam || activeLeagueId;
         const [teamsSnap, playersSnap, playsSnap] = await Promise.all([
-          getDocs(collection(db, "teams")),
-          getDocs(collection(db, "players")),
-          getDocs(collection(db, "plays")),
+          getDocs(query(collection(db, "teams"), where("leagueId", "==", targetLeagueId), limit(64))),
+          getDocs(query(collection(db, "players"), where("leagueId", "==", targetLeagueId), limit(1920))),
+          getDocs(query(
+            collection(db, "plays"),
+            where("leagueId", "==", targetLeagueId),
+            where("isHidden", "!=", true),
+            limit(10_000),
+          )),
         ]);
 
-        const targetLeagueId = leagueIdParam || activeLeagueId;
         const tList = teamsSnap.docs
           .map((d) => ({ id: d.id, ...(d.data() as any) }))
           .filter((t) => isRealTeam(t) && (!t.leagueId || t.leagueId === targetLeagueId));
@@ -159,7 +165,12 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         setPlayers(pList);
         setPlays(plList);
 
-        const unsub = onSnapshot(collection(db, "matches"), (snap) => {
+        const unsub = onSnapshot(query(
+          collection(db, "matches"),
+          where("leagueId", "==", targetLeagueId),
+          where("isHidden", "!=", true),
+          limit(512),
+        ), (snap) => {
           const mList = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as any) }))
             .filter((m) => !m.isHidden && (!m.leagueId || m.leagueId === targetLeagueId));
@@ -652,10 +663,11 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         return;
       }
 
-      const docRef = await addDoc(collection(db, "players"), {
+      const playerId = await createSecureRecord("player", {
         playerName: newPlayerName.trim(),
         playerNumber: num.toString(),
         teamId: managedTeam.id,
+        leagueId: activeLeagueId,
         positions: newPlayerPositions.length > 0 ? newPlayerPositions : ["ATH"],
         isQB: newPlayerPositions.includes("QB"),
         experience: newPlayerExperience || "Rookie",
@@ -665,7 +677,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
       setPlayers((prev) => [
         ...prev,
         {
-          id: docRef.id,
+          id: playerId,
           playerName: newPlayerName.trim(),
           playerNumber: num.toString(),
           teamId: managedTeam.id,

@@ -4,7 +4,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Activity, Trophy, Crosshair, Shield, Flame } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import {
   getSandboxTeams,
@@ -44,7 +44,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           try {
             const [teamSnap, playersSnap] = await Promise.all([
               getDoc(doc(db, "teams", teamId)),
-              getDocs(query(collection(db, "players"), where("teamId", "==", teamId))),
+              getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
             ]);
             if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
             if (!playersSnap.empty) {
@@ -63,13 +63,24 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           matches = getSandboxMatches();
           plays = getSandboxPlays();
         } else {
-          const [teamSnap, playersSnap, matchesSnap, playsSnap] = await Promise.all([
-            getDoc(doc(db, "teams", teamId)),
-            getDocs(query(collection(db, "players"), where("teamId", "==", teamId))),
-            getDocs(collection(db, "matches")),
-            getDocs(collection(db, "plays")),
-          ]);
+          const teamSnap = await getDoc(doc(db, "teams", teamId));
           if (teamSnap.exists()) tObj = { id: teamSnap.id, ...teamSnap.data() };
+          const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
+          const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
+            getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
+            getDocs(query(
+              collection(db, "matches"),
+              where("leagueId", "==", leagueId),
+              where("isHidden", "!=", true),
+              limit(512),
+            )),
+            getDocs(query(
+              collection(db, "plays"),
+              where("leagueId", "==", leagueId),
+              where("isHidden", "!=", true),
+              limit(10_000),
+            )),
+          ]);
           players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
           matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
           plays = playsSnap.docs.map((d) => d.data() as any);
