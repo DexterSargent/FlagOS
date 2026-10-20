@@ -26,6 +26,11 @@ import {
 } from "@/lib/yorkTeamData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
+// Date-only strings parse as UTC and display a day early in western time zones.
+function localMatchDate(value: string): Date {
+  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value);
+}
+
 export default function TeamSchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
@@ -451,7 +456,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                         <div className="space-y-1.5 pt-3 border-t border-white/5 text-xs text-neutral-400">
                           <div className="flex items-center gap-2">
                             <Calendar className="w-3.5 h-3.5 text-neutral-500" />
-                            <span>{new Date(m.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
+                            <span>{localMatchDate(m.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</span>
                           </div>
                           {m.time && (
                             <div className="flex items-center gap-2">
@@ -521,7 +526,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] uppercase font-bold tracking-widest text-neutral-500 font-mono">
-                            {new Date(m.date).toLocaleDateString()}
+                            {localMatchDate(m.date).toLocaleDateString()}
                           </span>
                           {isAsyncMatch && (
                             <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">

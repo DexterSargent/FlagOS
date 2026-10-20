@@ -370,13 +370,13 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  const s = matchData.matchState || {
-    homeScore: matchData.homeScore || 0,
-    awayScore: matchData.awayScore || 0,
+  const s = effectiveMatchData.matchState || {
+    homeScore: effectiveMatchData.homeScore || 0,
+    awayScore: effectiveMatchData.awayScore || 0,
     half: 1,
     gameClock: 1200,
     currentDown: 1,
-    possession: matchData.homeTeamName || "HOME",
+    possession: effectiveMatchData.homeTeamName || "HOME",
     homeTimeouts: 1,
     awayTimeouts: 1,
   };
@@ -426,7 +426,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               </div>
               <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-mono">
                 <span>{settings.seasonTitle || "2026 Season"}</span>
-                {matchData?.week && <span>• {matchData.week}</span>}
+                {effectiveMatchData?.week && <span>• {effectiveMatchData.week}</span>}
               </div>
             </div>
           </div>
@@ -473,7 +473,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           </span>
           <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-neutral-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
             <MapPin className="w-3 h-3 text-cyan-400" />
-            <span>{matchData.location || settings.defaultLocation}</span>
+            <span>{effectiveMatchData.location || settings.defaultLocation}</span>
           </span>
         </div>
       </header>
@@ -482,11 +482,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         <div className="max-w-4xl mx-auto flex flex-row items-center justify-between gap-1 sm:gap-2 md:gap-0">
           <div className="flex flex-col items-center gap-1 md:gap-4 w-1/3">
             <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center">
-              <FootballIcon active={s.possession === (matchData.homeTeamName || "HOME")} className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 ${s.possession === (matchData.homeTeamName || "HOME") ? 'text-cyan-400' : 'text-neutral-500'}`} />
-              <span className="text-[11px] sm:text-sm md:text-lg font-black text-white uppercase leading-tight line-clamp-2">{matchData.homeTeamName || "HOME"}</span>
+              <FootballIcon active={s.possession === (effectiveMatchData.homeTeamName || "HOME")} className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 ${s.possession === (effectiveMatchData.homeTeamName || "HOME") ? 'text-cyan-400' : 'text-neutral-500'}`} />
+              <span className="text-[11px] sm:text-sm md:text-lg font-black text-white uppercase leading-tight line-clamp-2">{effectiveMatchData.homeTeamName || "HOME"}</span>
             </div>
             <span className="text-2xl sm:text-3xl md:text-5xl font-black text-cyan-400 leading-none">{s.homeScore}</span>
-            {!matchData.isAsyncStatKeeping && !matchData.isIndependent && (
+            {!effectiveMatchData.isAsyncStatKeeping && !effectiveMatchData.isIndependent && (
               <div className="flex gap-1 md:gap-2">
                 {Array.from({ length: settings.rules?.timeoutsPerTeam ?? 2 }).map((_, i) => (
                   <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full ${i < (s.homeTimeouts ?? 0) ? 'bg-cyan-400' : 'bg-neutral-800'}`}></div>
@@ -499,7 +499,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
             <span className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-widest text-cyan-400 whitespace-nowrap">
               {getOrdinal(s.half)} {settings.rules?.periodType === 'quarters' ? 'Quarter' : 'Half'}
             </span>
-            {s.gameClock != null && !matchData.isAsyncStatKeeping && !matchData.isIndependent ? (
+            {s.gameClock != null && !effectiveMatchData.isAsyncStatKeeping && !effectiveMatchData.isIndependent ? (
               <span className="text-xl sm:text-2xl md:text-4xl font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(s.gameClock)}</span>
             ) : (
               <span className="text-base sm:text-xl md:text-3xl font-black leading-none text-emerald-400 uppercase tracking-widest">
@@ -513,11 +513,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
 
           <div className="flex flex-col items-center gap-1 md:gap-4 w-1/3">
             <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center">
-              <span className="text-[11px] sm:text-sm md:text-lg font-black text-white uppercase leading-tight line-clamp-2 order-2 md:order-1">{matchData.awayTeamName || "AWAY"}</span>
-              <FootballIcon active={s.possession === (matchData.awayTeamName || "AWAY")} className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 order-1 md:order-2 ${s.possession === (matchData.awayTeamName || "AWAY") ? 'text-blue-500' : 'text-neutral-500'}`} />
+              <span className="text-[11px] sm:text-sm md:text-lg font-black text-white uppercase leading-tight line-clamp-2 order-2 md:order-1">{effectiveMatchData.awayTeamName || "AWAY"}</span>
+              <FootballIcon active={s.possession === (effectiveMatchData.awayTeamName || "AWAY")} className={`w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 order-1 md:order-2 ${s.possession === (effectiveMatchData.awayTeamName || "AWAY") ? 'text-blue-500' : 'text-neutral-500'}`} />
             </div>
             <span className="text-2xl sm:text-3xl md:text-5xl font-black text-blue-500 leading-none">{s.awayScore}</span>
-            {!matchData.isAsyncStatKeeping && !matchData.isIndependent && (
+            {!effectiveMatchData.isAsyncStatKeeping && !effectiveMatchData.isIndependent && (
               <div className="flex gap-1 md:gap-2">
                 {Array.from({ length: settings.rules?.timeoutsPerTeam ?? 2 }).map((_, i) => (
                   <div key={i} className={`w-1.5 h-1.5 sm:w-2 sm:h-2 md:w-2.5 md:h-2.5 rounded-full ${i < (s.awayTimeouts ?? 0) ? 'bg-blue-500' : 'bg-neutral-800'}`}></div>
@@ -565,7 +565,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                             : "1st Half"
                           : null,
                         !play.isAsyncStatKeeping && play.gameClock != null ? formatTime(play.gameClock) : null,
-                        `${play.possessionTeamId === matchData.homeTeamId ? matchData.homeTeamName : matchData.awayTeamName}${
+                        `${play.possessionTeamId === effectiveMatchData.homeTeamId ? effectiveMatchData.homeTeamName : effectiveMatchData.awayTeamName}${
                           play.down ? ` - ${getOrdinal(play.down)} Down` : ""
                         }`,
                       ]
@@ -594,7 +594,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                       : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
                   }`}
                 >
-                  {matchData.homeTeamName || "Home Team"}
+                  {effectiveMatchData.homeTeamName || "Home Team"}
                 </button>
                 <button
                   onClick={() => setBoxScoreTab('away')}
@@ -604,7 +604,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                       : 'bg-white/5 border-white/10 text-neutral-400 hover:text-white'
                   }`}
                 >
-                  {matchData.awayTeamName || "Away Team"}
+                  {effectiveMatchData.awayTeamName || "Away Team"}
                 </button>
               </div>
 

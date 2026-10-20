@@ -124,10 +124,10 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
     });
 
     it("provides exhibition schedule and completed game logs", () => {
-      expect(YORK_LIONS_MATCHES.length).toBe(4);
+      expect(YORK_LIONS_MATCHES.length).toBe(8);
       const completed = YORK_LIONS_MATCHES.filter((m) => m.status === "completed");
-      expect(completed.length).toBe(4);
-      expect(YORK_LIONS_PLAYS.length).toBeGreaterThanOrEqual(200);
+      expect(completed.length).toBe(7);
+      expect(YORK_LIONS_PLAYS.length).toBe(450);
     });
 
     });
