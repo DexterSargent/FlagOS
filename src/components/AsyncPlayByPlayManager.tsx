@@ -981,20 +981,24 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           const receiver = play.conversionReceiver || play.receiverPlayerId;
           if (passer) {
             initPlayer(passer);
+            statsMap[passer].inferredTeam = offTeam;
             statsMap[passer].convPass += 1;
           }
           if (receiver) {
             initPlayer(receiver);
+            statsMap[receiver].inferredTeam = offTeam;
             statsMap[receiver].convRec += 1;
           }
         }
       } else if (play.conversionSuccess) {
         if (play.conversionPasser) {
           initPlayer(play.conversionPasser);
+          statsMap[play.conversionPasser].inferredTeam = offTeam;
           statsMap[play.conversionPasser].convPass += 1;
         }
         if (play.conversionReceiver) {
           initPlayer(play.conversionReceiver);
+          statsMap[play.conversionReceiver].inferredTeam = offTeam;
           statsMap[play.conversionReceiver].convRec += 1;
         }
       }
@@ -1018,7 +1022,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       }
     });
 
-    return Object.values(statsMap);
+    const targetTeamId = boxScoreTab === "home" ? homeTeamId : awayTeamId;
+    const ownRoster = new Set(boxScoreTab === "home" ? homePlayers : awayPlayers);
+    const otherRoster = new Set(boxScoreTab === "home" ? awayPlayers : homePlayers);
+    return Object.values(statsMap).filter((stat: any) => {
+      // Roster membership wins over play-inferred team (guards against mis-tagged plays).
+      if (ownRoster.has(stat.name) && !otherRoster.has(stat.name)) return true;
+      if (otherRoster.has(stat.name) && !ownRoster.has(stat.name)) return false;
+      return stat.inferredTeam === targetTeamId;
+    });
   };
 
   const offensePlayers = possession === homeTeamName ? homePlayers : awayPlayers;

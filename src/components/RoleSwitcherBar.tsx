@@ -8,7 +8,7 @@ import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye, Ar
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
 import { SEED_DEMO_TEAMS } from "@/lib/demoSeedData";
-import { isYorkTeam } from "@/lib/yorkTeamData";
+import { isYorkMatch, isYorkTeam } from "@/lib/yorkTeamData";
 import { isDexterUser } from "@/lib/teamAdminRbac";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -58,8 +58,12 @@ export default function RoleSwitcherBar() {
 
   const isNonDemoTeamPage = isTeamPage && Boolean(teamIdFromPath) && !isDemoTeam;
 
-  // Non-demo team pages (like york_lions or customer teams) MUST NOT have a role switcher unless signed in as Dexter
-  const isPageRoleSwitcherAllowed = !isNonDemoTeamPage || isPlatformOwner;
+  // York Lions is a production customer team: never show demo chrome on its team or game pages.
+  const matchIdFromPath = pathname?.startsWith("/matches/") ? pathname.split("/matches/")[1]?.split("/")[0] : null;
+  const isYorkPage = isYorkTeam(teamIdFromPath) || isYorkMatch(matchIdFromPath);
+
+  // Non-demo team pages (customer teams) MUST NOT have a role switcher unless signed in as Dexter
+  const isPageRoleSwitcherAllowed = !isYorkPage && (!isNonDemoTeamPage || isPlatformOwner);
 
   const isEligibleHost = !isEmbed && (isLocalOrEmbed || isPlatformOwner || isDemoLeague);
   const isChromeLessPage =

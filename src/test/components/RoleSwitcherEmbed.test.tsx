@@ -144,7 +144,7 @@ describe("RoleSwitcherBar & Auth Lock in Embed Mode", () => {
     expect(screen.queryByText(/ROLE SWITCHER/i)).toBeNull();
   });
 
-  it("renders RoleSwitcherBar on /teams/york_lions when signed in as Dexter", async () => {
+  it("hides RoleSwitcherBar on /teams/york_lions even when signed in as Dexter", async () => {
     mockPathname = "/teams/york_lions";
     Object.defineProperty(window, "location", {
       writable: true,
@@ -165,8 +165,9 @@ describe("RoleSwitcherBar & Auth Lock in Embed Mode", () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector("aside")).not.toBeNull();
+      expect(onAuthStateChanged).toHaveBeenCalled();
     });
+    expect(container.querySelector("aside")).toBeNull();
   });
 
   it("strictly hides RoleSwitcherBar on customer non-demo team pages", () => {

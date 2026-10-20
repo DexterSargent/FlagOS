@@ -133,6 +133,9 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         plays.forEach((play) => {
           if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
           const isEligible = (name: string) => name && statsMap[name];
+          // Offensive stats only count on our possessions, defensive stats only on theirs.
+          const possTeam = play.possessionTeamId;
+          const weHaveBall = !possTeam || possTeam === targetTeamId || (isYork && isYorkTeam(possTeam));
 
           const isConversionPlay = Boolean(
             play.isConversion === true ||
@@ -144,7 +147,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           );
 
           // Passing
-          if (play.playType === "Pass" && isEligible(play.qbPlayerId) && !isConversionPlay) {
+          if (weHaveBall && play.playType === "Pass" && isEligible(play.qbPlayerId) && !isConversionPlay) {
             statsMap[play.qbPlayerId].passAtt += 1;
             if (play.passOutcome === "Complete") {
               statsMap[play.qbPlayerId].passComp += 1;
@@ -156,7 +159,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
 
           // Receiving
-          if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId) && !isConversionPlay) {
+          if (weHaveBall && play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId) && !isConversionPlay) {
             statsMap[play.receiverPlayerId].receptions += 1;
             if (play.isTouchdown) {
               statsMap[play.receiverPlayerId].recTD += 1;
@@ -165,7 +168,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
 
           // Rushing
-          if (play.playType === "Run" && isEligible(play.runnerPlayerId) && !isConversionPlay) {
+          if (weHaveBall && play.playType === "Run" && isEligible(play.runnerPlayerId) && !isConversionPlay) {
             statsMap[play.runnerPlayerId].rushAtt += 1;
             if (play.isTouchdown) {
               statsMap[play.runnerPlayerId].rushTD += 1;
@@ -174,7 +177,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
 
           // Defense
-          if (play.defenders && Array.isArray(play.defenders)) {
+          if ((!possTeam || !weHaveBall) && play.defenders && Array.isArray(play.defenders)) {
             play.defenders.forEach((defenderName: string) => {
               if (!isEligible(defenderName)) return;
 
@@ -195,7 +198,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
 
           // Flaggers
-          if (play.passOutcome === "Interception" && play.flaggers && Array.isArray(play.flaggers)) {
+          if ((!possTeam || !weHaveBall) && play.passOutcome === "Interception" && play.flaggers && Array.isArray(play.flaggers)) {
             play.flaggers.forEach((flaggerName: string) => {
               if (isEligible(flaggerName)) {
                 statsMap[flaggerName].flagPulls += 1;
