@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ChevronLeft,
-  RotateCcw,
+  ChevronDown,  RotateCcw,
   Maximize,
   Minimize,
   Play,
@@ -136,6 +136,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const [qbRunner, setQbRunner] = useState<string>("");
   const [receiver, setReceiver] = useState<string>("");
+  const [openSection, setOpenSection] = useState<"qb" | "receiver" | "defenders" | null>("qb");
   const [defenders, setDefenders] = useState<string[]>([]);
   const [flaggers, setFlaggers] = useState<string[]>([]);
 
@@ -561,6 +562,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setOutcome(null);
     setQbRunner("");
     setReceiver("");
+    setOpenSection("qb");
     setDefenders([]);
     setFlaggers([]);
     setConvPts(null);
@@ -573,15 +575,24 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const handlePlayTypeSelect = (type: "Pass" | "Run" | "Penalty") => {
     setPlayType(type);
     if (type === "Pass") {
+      const lastQb = possession === homeTeamName ? lastHomeQB : lastAwayQB;
       setOutcome("Complete");
-      setQbRunner(possession === homeTeamName ? lastHomeQB : lastAwayQB);
+      setQbRunner(lastQb);
+      setOpenSection(lastQb ? "receiver" : "qb");
     } else if (type === "Run") {
       setOutcome("Gain");
       setQbRunner("");
+      setOpenSection("qb");
     } else {
       setOutcome(null);
     }
     setStep("DETAILS");
+  };
+
+  const selectOutcome = (id: string) => {
+    setOutcome(id as any);
+    if (!qbRunner) setOpenSection("qb");
+    else setOpenSection(playType === "Pass" && id === "Complete" ? "receiver" : "defenders");
   };
 
   const handleDefenders = (player: string) => {
@@ -1374,7 +1385,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           <button
                             key={opt.id}
                             type="button"
-                            onClick={() => setOutcome(opt.id as any)}
+                            onClick={() => selectOutcome(opt.id)}
                             className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
                               outcome === opt.id
                                 ? "bg-emerald-500 text-black border-emerald-500 font-black"
@@ -1395,7 +1406,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           <button
                             key={opt.id}
                             type="button"
-                            onClick={() => setOutcome(opt.id as any)}
+                            onClick={() => selectOutcome(opt.id)}
                             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
                               outcome === opt.id
                                 ? "bg-cyan-500 text-black border-cyan-500 font-black"
@@ -1411,7 +1422,15 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {/* Quarterback / Runner Selection */}
-                <div className="min-w-0">
+                {openSection !== "qb" && (
+                  <SectionSummary
+                    label={playType === "Pass" ? "Quarterback" : "Ball Carrier"}
+                    value={qbRunner ? `${playerNumberMap[qbRunner] ? `#${playerNumberMap[qbRunner]} ` : ""}${qbRunner}` : "Select player"}
+                    filled={!!qbRunner}
+                    onOpen={() => setOpenSection("qb")}
+                  />
+                )}
+                <div className={`min-w-0 ${openSection === "qb" ? "" : "hidden"}`}>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
                       {playType === "Pass" ? "Quarterback" : "Ball Carrier"}
@@ -1422,7 +1441,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
+                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-36 md:max-h-40 [@media(max-height:450px)]:max-h-24 overflow-y-auto">
                     {sortRosterByStatLeader(
                       offensePlayers,
                       playerNumberMap,
@@ -1438,6 +1457,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           aria-label={p}
                           onClick={() => {
                             setQbRunner(p);
+                            setOpenSection(playType === "Pass" && outcome === "Complete" ? "receiver" : "defenders");
                             if (playType === "Pass") {
                               if (possession === homeTeamName) setLastHomeQB(p);
                               else setLastAwayQB(p);
@@ -1472,8 +1492,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {/* Receiver Selection (for Complete pass) */}
+                {playType === "Pass" && outcome === "Complete" && openSection !== "receiver" && (
+                  <SectionSummary
+                    label="Receiver"
+                    value={receiver ? `${playerNumberMap[receiver] ? `#${playerNumberMap[receiver]} ` : ""}${receiver}` : "Select receiver"}
+                    filled={!!receiver}
+                    onOpen={() => setOpenSection("receiver")}
+                  />
+                )}
                 {playType === "Pass" && outcome === "Complete" && (
-                  <div className="min-w-0">
+                  <div className={`min-w-0 ${openSection === "receiver" ? "" : "hidden"}`}>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
                         Target Receiver
@@ -1484,7 +1512,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                         </span>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
+                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-36 md:max-h-40 [@media(max-height:450px)]:max-h-24 overflow-y-auto">
                       {sortRosterByStatLeader(
                         offensePlayers,
                         playerNumberMap,
@@ -1498,7 +1526,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                             key={p}
                             type="button"
                             aria-label={p}
-                            onClick={() => setReceiver(p)}
+                            onClick={() => {
+                              setReceiver(p);
+                              setOpenSection("defenders");
+                            }}
                             className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-between gap-1.5 ${
                               isSelected
                                 ? "bg-emerald-400 text-black font-black border-emerald-400 shadow-sm"
@@ -1529,18 +1560,29 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 )}
 
                 {/* Defenders / Flags */}
-                <div className="md:col-span-2">
+                {openSection !== "defenders" && (
+                  <SectionSummary
+                    className="md:col-span-2"
+                    label="Flagger(s)"
+                    value={defenders.length > 0 ? defenders.map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(" & ") : "Optional – tap to add"}
+                    filled={defenders.length > 0}
+                    onOpen={() => setOpenSection("defenders")}
+                  />
+                )}
+                <div className={`md:col-span-2 ${openSection === "defenders" ? "" : "hidden"}`}>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
                       Defenders Involved / Flag
                     </label>
-                    {defenders.length > 0 && (
-                      <span className="text-[10px] font-bold text-amber-400">
-                        Selected: {defenders.map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(" & ")}
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(null)}
+                      className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider"
+                    >
+                      Done
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1 max-h-24 md:max-h-28 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1 max-h-36 md:max-h-40 [@media(max-height:450px)]:max-h-24 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => handleDefenders("TEAM")}
@@ -1902,5 +1944,37 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         </div>
       )}
     </div>
+  );
+}
+
+function SectionSummary({
+  label,
+  value,
+  filled,
+  onOpen,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  filled: boolean;
+  onOpen: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${label}: ${value}. Click to change`}
+      className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-white/10 bg-neutral-800 hover:border-cyan-500/50 text-left transition-all cursor-pointer ${className}`}
+    >
+      <span className="flex items-center gap-2 min-w-0">
+        <span className="text-[10px] uppercase tracking-widest font-bold text-neutral-400 shrink-0">{label}:</span>
+        <span className={`text-xs font-black truncate ${filled ? "text-white" : "text-neutral-400 font-semibold"}`}>{value}</span>
+      </span>
+      <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 shrink-0">
+        Change
+        <ChevronDown className="w-3.5 h-3.5" />
+      </span>
+    </button>
   );
 }

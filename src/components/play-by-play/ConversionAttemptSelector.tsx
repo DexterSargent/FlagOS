@@ -30,7 +30,7 @@ export default function ConversionAttemptSelector({
                 style={accentColor ? { borderColor: `${accentColor}80` } : undefined}
                 className="w-36 h-36 md:w-52 md:h-52 max-h-full bg-neutral-900 border border-white/10 hover:border-emerald-500 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center gap-2 group"
               >
-                <span style={accentColor ? { color: accentColor } : undefined} className="text-5xl md:text-7xl font-black text-white group-hover:text-emerald-400">{value}</span>
+                <span className="text-5xl md:text-7xl font-black text-white group-hover:text-emerald-400">{value}</span>
                 <span className="text-sm md:text-lg font-bold uppercase tracking-widest text-neutral-500">
                   From {value === 1 ? 5 : 10} Yd
                 </span>

@@ -144,7 +144,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
     <div className="flex flex-col flex-1 min-h-0 gap-2 md:gap-3 max-w-7xl mx-auto w-full animate-in zoom-in-95 duration-200">
       <h3
         className="text-base md:text-xl font-black text-emerald-400 flex items-center justify-center gap-2 bg-emerald-950/30 py-2 md:py-3 rounded-2xl border border-emerald-500/30 shrink-0"
-        style={props.accentColor ? { color: props.accentColor, borderColor: `${props.accentColor}80` } : undefined}
+        style={props.accentColor ? { borderColor: `${props.accentColor}80` } : undefined}
       >
         <Flag className="w-5 h-5" /> POINT AFTER ATTEMPT
       </h3>
@@ -165,7 +165,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
       style={props.accentColor ? { borderColor: `${props.accentColor}80` } : undefined}
     >
       <div className="space-y-1 text-center">
-        <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400" style={props.accentColor ? { color: props.accentColor } : undefined}>
+        <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
           Touchdown Scored!
         </span>
         <h3 className="text-2xl font-black uppercase text-white">Point After Conversion (PAT)</h3>

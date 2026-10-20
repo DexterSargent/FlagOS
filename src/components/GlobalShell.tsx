@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from "react";
 import LeagueHeader from "@/components/LeagueHeader";
 import LeagueFooter from "@/components/LeagueFooter";
 import InteractiveDemoGuard from "@/components/InteractiveDemoGuard";
+import HelpGuide from "@/components/HelpGuide";
 
 import { useAuth } from "@/lib/authContext";
 
@@ -78,6 +79,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
       </main>
       {showLeagueNav && <LeagueFooter />}
       <InteractiveDemoGuard />
+      {!isEmbedded && !isLogin && !isAdminSandbox && !isLandingPage && <HelpGuide />}
     </div>
   );
 }
