@@ -267,6 +267,10 @@ async function getAdminOverview(token: DecodedIdToken) {
   return {
     leagues: Object.fromEntries(leagueData),
     teams: Object.fromEntries(teamData),
+    records: {
+      leagues: publicLeagues.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id })),
+      teams: publicTeams.docs.map((snapshot) => ({ ...snapshot.data(), id: snapshot.id })),
+    },
   };
 }
 

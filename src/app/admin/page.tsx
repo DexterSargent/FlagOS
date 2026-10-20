@@ -102,14 +102,26 @@ export default function PlatformAdminPage() {
     setLoadingRecords(true);
     setError("");
     try {
-      const [leagueSnapshot, teamSnapshot, privateData] = await Promise.all([
-        getDocs(query(collection(db, "leagues"), limit(100))),
-        getDocs(query(collection(db, "teams"), limit(300))),
-        requestPrivateData<{
-          leagues: Record<string, { adminEmails?: string[]; subscriptionAdminEmails?: string[]; contactEmail?: string }>;
-          teams: Record<string, { adminEmails?: string[]; coachEmail?: string; adminEmail?: string; email?: string }>;
-        }>("admin_overview"),
-      ]);
+      type RawRecord = { id: string; data: () => Record<string, any> };
+      const toDocs = (rows: Array<Record<string, any>>): RawRecord[] =>
+        rows.map((row) => ({ id: String(row.id), data: () => row }));
+      // The server overview uses the Admin SDK, so private or PII-bearing records
+      // that Firestore list rules would reject no longer break the whole page.
+      const privateData = await requestPrivateData<{
+        leagues: Record<string, { adminEmails?: string[]; subscriptionAdminEmails?: string[]; contactEmail?: string }>;
+        teams: Record<string, { adminEmails?: string[]; coachEmail?: string; adminEmail?: string; email?: string }>;
+        records?: { leagues: Array<Record<string, any>>; teams: Array<Record<string, any>> };
+      }>("admin_overview");
+      const leagueSnapshot = {
+        docs: privateData.records
+          ? toDocs(privateData.records.leagues)
+          : (await getDocs(query(collection(db, "leagues"), limit(100)))).docs,
+      };
+      const teamSnapshot = {
+        docs: privateData.records
+          ? toDocs(privateData.records.teams)
+          : (await getDocs(query(collection(db, "teams"), limit(300)))).docs,
+      };
       setLeagues(
         leagueSnapshot.docs.map((record) => {
           const data = record.data();
