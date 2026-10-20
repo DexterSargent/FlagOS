@@ -65,6 +65,31 @@ export interface ManagedRecord {
 const getText = (value: unknown, fallback: string) =>
   typeof value === "string" && value.trim() ? value : fallback;
 
+function buildYorkRecord(): ManagedRecord {
+    const yorkData = getYorkTeamData();
+    const rawAdmins = Array.isArray(yorkData.adminEmails)
+      ? yorkData.adminEmails
+      : [yorkData.coachEmail, yorkData.adminEmail, yorkData.email].filter(Boolean);
+    const adminEmails = (rawAdmins.length ? rawAdmins : ["dextersargent@gmail.com"])
+      .map((e: unknown) => String(e).trim().toLowerCase())
+      .filter(Boolean);
+
+    return ({
+      ...yorkData,
+      id: YORK_TEAM_ID,
+      name: getText(yorkData.name ?? yorkData.teamName, "York Lions Women's Flag Football"),
+      shortcode: getText(yorkData.shortcode, "YORK"),
+      leagueId: getText(yorkData.leagueId, ""),
+      subscriptionStatus: getText(yorkData.subscription?.status, "active"),
+      subscription: typeof yorkData.subscription === "object" && yorkData.subscription !== null
+        ? (yorkData.subscription as Record<string, unknown>)
+        : { status: "active", plan: "team_pro" },
+      adminEmails,
+      primaryColor: getText(yorkData.primaryColor, "#E31837"),
+      accentColor: getText(yorkData.secondaryColor, "#FFFFFF"),
+    } as ManagedRecord);
+}
+
 export default function PlatformAdminPage() {
   const router = useRouter();
   const { user, isPlatformAdmin, loading: authLoading, logout } = useAuth();
@@ -187,33 +212,13 @@ export default function PlatformAdminPage() {
       // Ensure York Lions is treated like a normal team in platform admin
       const hasYork = loadedTeams.some((t) => t.id === YORK_TEAM_ID || isYorkTeam(t.id));
       if (!hasYork) {
-        const yorkData = getYorkTeamData();
-        const rawAdmins = Array.isArray(yorkData.adminEmails)
-          ? yorkData.adminEmails
-          : [yorkData.coachEmail, yorkData.adminEmail, yorkData.email].filter(Boolean);
-        const adminEmails = (rawAdmins.length ? rawAdmins : ["dextersargent@gmail.com"])
-          .map((e: unknown) => String(e).trim().toLowerCase())
-          .filter(Boolean);
-
-        loadedTeams.push({
-          ...yorkData,
-          id: YORK_TEAM_ID,
-          name: getText(yorkData.name ?? yorkData.teamName, "York Lions Women's Flag Football"),
-          shortcode: getText(yorkData.shortcode, "YORK"),
-          leagueId: getText(yorkData.leagueId, ""),
-          subscriptionStatus: getText(yorkData.subscription?.status, "active"),
-          subscription: typeof yorkData.subscription === "object" && yorkData.subscription !== null
-            ? (yorkData.subscription as Record<string, unknown>)
-            : { status: "active", plan: "team_pro" },
-          adminEmails,
-          primaryColor: getText(yorkData.primaryColor, "#E31837"),
-          accentColor: getText(yorkData.secondaryColor, "#FFFFFF"),
-        });
+        loadedTeams.push(buildYorkRecord());
       }
 
       setTeams(loadedTeams);
     } catch (loadError) {
       console.error("Failed to load platform records:", loadError);
+      setTeams((current) => (current.length ? current : [buildYorkRecord()]));
       setError(
         loadError instanceof Error && loadError.message
           ? `Could not load leagues and teams. ${loadError.message}`
