@@ -767,7 +767,7 @@ export default function PricingPage() {
                 </div>
                 <div>
                   <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">Single Team</span>
-                  <h3 className="text-base font-black text-white uppercase">FlagOS Team Plan</h3>
+                  <h3 className="text-base font-black text-white uppercase"><span className="normal-case">FlagOS</span> Team Plan</h3>
                 </div>
               </div>
 
@@ -804,7 +804,7 @@ export default function PricingPage() {
                 </div>
                 <div>
                   <span className="text-[10px] font-mono text-[#93c5fd] uppercase tracking-wider block">Ultimate Value</span>
-                  <h3 className="text-base font-black text-white uppercase">FlagOS League Plan</h3>
+                  <h3 className="text-base font-black text-white uppercase"><span className="normal-case">FlagOS</span> League Plan</h3>
                 </div>
               </div>
 
@@ -1019,7 +1019,7 @@ export default function PricingPage() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="space-y-3">
             <span className="text-lg font-black uppercase tracking-wider text-white">
-              FLAG<span style={{ color: "#3CA505" }}>OS</span>
+              <FlagOSText />
             </span>
             <p className="leading-relaxed text-neutral-500">The Flag Football Operating System</p>
           </div>

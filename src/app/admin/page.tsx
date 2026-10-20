@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { collection, doc, getDocs, updateDoc, query, limit } from "firebase/firestore";
@@ -71,6 +71,7 @@ export default function PlatformAdminPage() {
   const [leagues, setLeagues] = useState<ManagedRecord[]>([]);
   const [teams, setTeams] = useState<ManagedRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
+  const recordsRequestPending = useRef(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -99,6 +100,9 @@ export default function PlatformAdminPage() {
   const [actionInProgress, setActionInProgress] = useState(false);
 
   const loadRecords = useCallback(async () => {
+    // Effect replay must not spend the overview's read budget twice.
+    if (recordsRequestPending.current) return;
+    recordsRequestPending.current = true;
     setLoadingRecords(true);
     setError("");
     try {
@@ -210,8 +214,13 @@ export default function PlatformAdminPage() {
       setTeams(loadedTeams);
     } catch (loadError) {
       console.error("Failed to load platform records:", loadError);
-      setError("Could not load leagues and teams. Check the Firebase connection and try again.");
+      setError(
+        loadError instanceof Error && loadError.message
+          ? `Could not load leagues and teams. ${loadError.message}`
+          : "Could not load leagues and teams. Check the Firebase connection and try again.",
+      );
     } finally {
+      recordsRequestPending.current = false;
       setLoadingRecords(false);
     }
   }, []);

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import PlatformAdminPage from "@/app/admin/page";
 
 const {
@@ -9,6 +10,7 @@ const {
   mockCreateSecureRecord,
   mockReplace,
   mockUseAuth,
+  mockRequestPrivateData,
 } = vi.hoisted(() => ({
   mockGetDocs: vi.fn(),
   mockUpdateDoc: vi.fn(),
@@ -16,6 +18,7 @@ const {
   mockCreateSecureRecord: vi.fn().mockResolvedValue("created-id"),
   mockReplace: vi.fn(),
   mockUseAuth: vi.fn(),
+  mockRequestPrivateData: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -32,10 +35,7 @@ vi.mock("@/lib/firebase", () => ({
 
 vi.mock("@/lib/secureWrites", () => ({
   createSecureRecord: mockCreateSecureRecord,
-  requestPrivateData: vi.fn().mockResolvedValue({
-    leagues: { league_customer_1: { adminEmails: ["existing@league.com"] } },
-    teams: {},
-  }),
+  requestPrivateData: mockRequestPrivateData,
 }));
 
 vi.mock("firebase/firestore", () => ({
@@ -51,6 +51,10 @@ vi.mock("firebase/firestore", () => ({
 describe("Platform management page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequestPrivateData.mockResolvedValue({
+      leagues: { league_customer_1: { adminEmails: ["existing@league.com"] } },
+      teams: {},
+    });
     mockGetDocs.mockImplementation(async (reference: { collectionName?: string }) => ({
       docs: reference.collectionName === "leagues"
         ? [
@@ -94,6 +98,45 @@ describe("Platform management page", () => {
 
     expect(screen.getByText("Restricted platform area")).toBeInTheDocument();
     expect(mockGetDocs).not.toHaveBeenCalled();
+    expect(mockRequestPrivateData).not.toHaveBeenCalled();
+  });
+
+  it("loads server-provided records only once during Strict Mode effect replay", async () => {
+    mockRequestPrivateData.mockResolvedValue({
+      leagues: { league_customer_1: { adminEmails: ["existing@league.com"] } },
+      teams: {},
+      records: {
+        leagues: [{ id: "league_customer_1", leagueName: "Private League" }],
+        teams: [{ id: "team_customer_1", name: "Private Team", leagueId: "league_customer_1" }],
+      },
+    });
+    mockGetDocs.mockRejectedValue(new Error("Client list access denied."));
+
+    render(<StrictMode><PlatformAdminPage /></StrictMode>);
+
+    expect(await screen.findByText("Private League")).toBeInTheDocument();
+    expect(screen.getByText("Private Team")).toBeInTheDocument();
+    expect(mockRequestPrivateData).toHaveBeenCalledExactlyOnceWith("admin_overview");
+    expect(mockGetDocs).not.toHaveBeenCalled();
+  });
+
+  it("shows the API error and allows retrying after a failed request", async () => {
+    mockRequestPrivateData.mockRejectedValueOnce(
+      new Error("Private-data request limit reached. Please wait."),
+    );
+
+    render(<PlatformAdminPage />);
+
+    expect(await screen.findByText(
+      "Could not load leagues and teams. Private-data request limit reached. Please wait.",
+    )).toBeInTheDocument();
+    expect(mockGetDocs).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
+
+    expect(await screen.findByText("Customer League")).toBeInTheDocument();
+    expect(mockRequestPrivateData).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/Could not load leagues and teams/)).not.toBeInTheDocument();
   });
 
   it("lists customer leagues and teams and supports managing their visibility", async () => {

@@ -276,7 +276,7 @@ export default function LeagueDirectoryPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
                 <Globe className="w-3.5 h-3.5" />
-                <span>FlagOS League Finder</span>
+                <span><span className="normal-case">FlagOS</span> League Finder</span>
               </span>
               <span className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs font-mono text-cyan-300">
                 {processedLeagues.length} Available Circuits Near You
@@ -890,7 +890,7 @@ export default function LeagueDirectoryPage() {
               <span>Are You a League Commissioner or Organizer?</span>
             </span>
             <h2 className="text-2xl sm:text-3xl font-black uppercase text-white">
-              List Your Circuit on the FlagOS National Directory
+              List Your Circuit on the <span className="normal-case">FlagOS</span> National Directory
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               Equip your league with automated schedule generators, real-time live game official clocks, digital playbooks, and player stats tracking.

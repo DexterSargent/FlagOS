@@ -39,7 +39,7 @@ const SIZE_MAP = {
  * 
  * Uses the single unified high-res background-removed logo (`/flagos-emblem.png`).
  * Works uniformly across both light and dark themes without separate variants.
- * Typography text ("FLAG" + "OS") is kept strictly separate in `<FlagOSText />`.
+ * Typography text ("Flag" + "OS") is kept strictly separate in `<FlagOSText />`.
  */
 export function FlagOSLogo({
   variant,
