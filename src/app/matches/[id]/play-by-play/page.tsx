@@ -2,9 +2,11 @@
 
 import { useAuth } from "@/lib/authContext";
 import { use, useEffect, useState } from "react";
-import AdminView from "./AdminView";
-import ViewerView from "./ViewerView";
-import AsyncPlayByPlayManager from "@/components/AsyncPlayByPlayManager";
+import dynamic from "next/dynamic";
+
+const AdminView = dynamic(() => import("./AdminView"));
+const ViewerView = dynamic(() => import("./ViewerView"));
+const AsyncPlayByPlayManager = dynamic(() => import("@/components/AsyncPlayByPlayManager"));
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";

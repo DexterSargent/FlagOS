@@ -92,7 +92,16 @@ export function TeamLogo({
   };
 
   if (hasValidLogo) {
-    return <img src={logoUrl} alt={teamName} className={className} style={{ objectFit: "contain" }} />;
+    return (
+      <img
+        src={logoUrl}
+        alt={teamName}
+        className={className}
+        loading="lazy"
+        decoding="async"
+        style={{ objectFit: "contain" }}
+      />
+    );
   }
 
   const iconKey = (isDemoFootballFallback ? "football" : icon || "").toLowerCase();

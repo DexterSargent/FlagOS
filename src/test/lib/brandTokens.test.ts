@@ -10,7 +10,7 @@ import {
 
 describe("FlagOS Brand Tokens & Logo Architecture", () => {
   it("exports a single unified logo token used across all themes", () => {
-    expect(FLAGOS_LOGO).toBe("/flagos-emblem.png");
+    expect(FLAGOS_LOGO).toBe("/flagos-emblem-512.png");
     expect(FLAGOS_LOGO_LIGHT).toBe(FLAGOS_LOGO);
     expect(FLAGOS_LOGO_DARK).toBe(FLAGOS_LOGO);
   });

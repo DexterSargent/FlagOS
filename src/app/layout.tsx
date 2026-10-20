@@ -23,9 +23,9 @@ export const metadata: Metadata = {
   title: "FlagOS | Operating System for Flag Football Leagues",
   description: "The complete operating system for flag football leagues: schedules, live play-by-play scorekeeper, team portals, and automated stat leaderboards.",
   icons: {
-    icon: "/flagos-emblem.png",
+    icon: "/flagos-emblem-512.png",
     shortcut: "/favicon.ico",
-    apple: "/flagos-emblem.png",
+    apple: "/flagos-emblem-512.png",
   },
 };
 

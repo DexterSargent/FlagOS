@@ -775,6 +775,7 @@ export default function FlagOSPlatformLandingPage() {
                 key={`${activeFeatureTab}-${wizardMode}-${frameKey}`}
                 src={getFeatureUrl()}
                 title="FlagOS Real Feature Live Sandbox"
+                loading="lazy"
                 className="w-full h-full border-0 bg-black block"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
               />
