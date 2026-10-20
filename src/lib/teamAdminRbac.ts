@@ -1,4 +1,5 @@
 import { isYorkTeam } from "./yorkTeamData";
+import { YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS } from "./yorkStaff";
 
 export const DEXTER_EMAILS = [
   "dextersargent@gmail.com",
@@ -37,6 +38,7 @@ export function isPrimaryTeamAdmin(
   if (isDexterUser(userEmail)) return true;
   if (!userEmail) return false;
   const cleanEmail = userEmail.trim().toLowerCase();
+  if (isYorkTeam(team?.id) && YORK_HEAD_COACH_EMAILS.includes(cleanEmail)) return true;
 
   const adminEmails = Array.isArray(team?.adminEmails)
     ? team.adminEmails.map((e) => String(e).trim().toLowerCase()).filter(Boolean)
@@ -69,9 +71,7 @@ export function getTeamAdminEmails(team: { id?: string; adminEmails?: string[]; 
     : [];
 
   if (team?.id && isYorkTeam(team.id)) {
-    if (!existing.includes("dextersargent@gmail.com")) {
-      return ["dextersargent@gmail.com", ...existing];
-    }
+    return [...new Set([...YORK_ADMIN_EMAILS, ...existing])];
   }
 
   if (existing.length === 0 && team?.coachEmail) {

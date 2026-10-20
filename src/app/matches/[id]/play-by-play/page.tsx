@@ -14,7 +14,7 @@ import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox, isDemoMatch }
 import { getYorkMatch, isYorkMatch, isYorkTeam } from "@/lib/yorkTeamData";
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
-  const { isLeagueAdmin, loading } = useAuth();
+  const { isLeagueAdmin, canManageTeam, loading } = useAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
@@ -97,9 +97,11 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
 
   // Embedded demos change presentation/data sources, not the role required to manage a game.
   const isYorkGame = isYorkMatch(matchId) || isYorkTeam(matchData?.managingTeamId);
-  const canAdministerMatch = isLeagueAdmin || isYorkGame;
+  const canAdministerMatch = isYorkGame
+    ? !!canManageTeam?.(matchData?.managingTeamId || "york_lions")
+    : isLeagueAdmin || (!!matchData?.isIndependent && !!canManageTeam?.(matchData.managingTeamId));
 
-  if (canAdministerMatch && matchData?.status !== "completed") {
+  if (canAdministerMatch && modeInitialized && matchData?.status !== "completed") {
     return (
       <div className="relative">
         {activeMode === "async" ? (

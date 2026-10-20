@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/lib/authContext";
+import { YORK_ADMIN_EMAILS } from "@/lib/yorkStaff";
 
 const {
   createUserWithEmailAndPasswordMock,
@@ -56,6 +57,9 @@ vi.mock("@/lib/demoSandbox", () => ({
   subscribeDemoSandbox: vi.fn(() => vi.fn()),
   notifySandboxChange: vi.fn(),
 }));
+vi.mock("@/lib/secureWrites", () => ({
+  requestPrivateData: vi.fn(async () => ({ players: [], teams: [] })),
+}));
 
 function AccountCreationHarness() {
   const { createAccount, userProfile } = useAuth();
@@ -73,6 +77,16 @@ function AccountCreationHarness() {
 function RoleHarness() {
   const { role } = useAuth();
   return <output>{role}</output>;
+}
+
+function CoachHarness() {
+  const { role, isPlatformAdmin, managedTeamId, canManageTeam } = useAuth();
+  return <output>{JSON.stringify({
+    role, isPlatformAdmin, managedTeamId,
+    york: canManageTeam("york_lions"),
+    alias: canManageTeam("team_york"),
+    other: canManageTeam("team_other"),
+  })}</output>;
 }
 
 describe("AuthProvider account creation", () => {
@@ -139,5 +153,32 @@ describe("AuthProvider account creation", () => {
     await waitFor(() => {
       expect(screen.getByText("league_admin")).toBeInTheDocument();
     });
+  });
+
+  it.each(YORK_ADMIN_EMAILS.filter((email) => email !== "dextersargent@gmail.com"))(
+    "grants verified %s York-only coach access without platform privileges",
+    async (email) => {
+      render(<AuthProvider><CoachHarness /></AuthProvider>);
+      await act(async () => {
+        await authStateCallback.current?.({ uid: "coach", email, emailVerified: true });
+      });
+      const state = JSON.parse(screen.getByRole("status").textContent || "{}");
+      expect(state).toEqual({
+        role: "team_admin", isPlatformAdmin: false, managedTeamId: "york_lions",
+        york: true, alias: true, other: false,
+      });
+    },
+  );
+
+  it("does not grant team access to an unverified coach address", async () => {
+    render(<AuthProvider><CoachHarness /></AuthProvider>);
+    await act(async () => {
+      await authStateCallback.current?.({
+        uid: "unverified-coach", email: "tbrown99@my.yorku.ca", emailVerified: false,
+      });
+    });
+    const state = JSON.parse(screen.getByRole("status").textContent || "{}");
+    expect(state.york).toBe(false);
+    expect(state.isPlatformAdmin).toBe(false);
   });
 });

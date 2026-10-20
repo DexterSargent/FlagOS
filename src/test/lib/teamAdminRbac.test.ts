@@ -67,4 +67,13 @@ describe("Team Admin RBAC & Primary Admin Deletion Rights", () => {
     const adminList = getTeamAdminEmails(standardTeam);
     expect(adminList).toEqual(["coach1@hawks.com", "coach2@hawks.com"]);
   });
+
+  it("grants Dexter's York address head-coach rights without platform-owner rights", () => {
+    const team = { id: "york_lions", adminEmails: ["dextersargent@gmail.com"] };
+    expect(isPrimaryTeamAdmin("DEXTERS4@MY.YORKU.CA", team)).toBe(true);
+    expect(isDexterUser("dexters4@my.yorku.ca")).toBe(false);
+    expect(isPrimaryTeamAdmin("tbrown99@my.yorku.ca", team)).toBe(false);
+    expect(isPrimaryTeamAdmin("fawcett1@my.yorku.ca", team)).toBe(false);
+    expect(isPrimaryTeamAdmin("dexters4@my.yorku.ca", { id: "team_other" })).toBe(false);
+  });
 });

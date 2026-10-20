@@ -108,7 +108,7 @@ export default function LoginPage() {
         if (isCreatingAccount) {
           setEmailPasswordSuccess(result.message || "Account created. Verify your email, then sign in.");
         } else {
-          router.push(redirectUrl || "/league/default");
+          router.push(redirectUrl || result.defaultPath || "/league/default");
         }
       } else {
         setEmailPasswordError(result.message);
@@ -127,7 +127,7 @@ export default function LoginPage() {
     try {
       const result = await login();
       if (result.success) {
-        router.push(redirectUrl || "/league/default");
+        router.push(redirectUrl || result.defaultPath || "/league/default");
       } else {
         setGoogleLoginError(result.message);
       }

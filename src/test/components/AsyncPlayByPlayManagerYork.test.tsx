@@ -1,11 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import AsyncPlayByPlayManager from "@/components/AsyncPlayByPlayManager";
+import { setDoc } from "firebase/firestore";
+
+const { authState } = vi.hoisted(() => ({
+  authState: { canManageTeam: true },
+}));
+vi.mock("@/lib/authContext", () => ({
+  useAuth: () => ({
+    loading: false,
+    isLeagueAdmin: false,
+    canManageTeam: () => authState.canManageTeam,
+  }),
+}));
 
 vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(),
   getDoc: vi.fn().mockResolvedValue({ exists: () => false, data: () => null }),
+  onSnapshot: vi.fn(() => vi.fn()),
   getDocs: vi.fn().mockResolvedValue({ docs: [], empty: true }),
   collection: vi.fn(),
   query: vi.fn(),
@@ -37,6 +50,7 @@ vi.mock("@/lib/leagueContext", () => ({
 describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
   beforeEach(() => {
     localStorage.clear();
+    authState.canManageTeam = true;
   });
 
   it("loads a York seed match directly without infinite pinwheel spinner", async () => {
@@ -69,5 +83,14 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
       expect(screen.getByText(/Game Not Found/i)).toBeInTheDocument();
       expect(screen.getByText(/Return to Schedule/i)).toBeInTheDocument();
     });
+  });
+
+  it("shows public box scores without management controls or autosaves", async () => {
+    authState.canManageTeam = false;
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    expect(await screen.findByText("Sonia Cabral")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /START (NEXT )?PLAY/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Stat Keeper$/ })).not.toBeInTheDocument();
+    expect(setDoc).not.toHaveBeenCalled();
   });
 });

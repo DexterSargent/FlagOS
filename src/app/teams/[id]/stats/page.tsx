@@ -19,11 +19,13 @@ import {
   getYorkTeamPlayers,
   getYorkTeamMatches,
   getYorkTeamPlays,
+  YORK_TEAM_ID,
 } from "@/lib/yorkTeamData";
+import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
-  const teamId = unwrappedParams.id;
+  const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
   const isYork = isYorkTeam(teamId);
   const { settings, isDemoLeague } = useLeague();
 
@@ -43,21 +45,24 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
         if (isYork) {
           tObj = { ...getYorkTeamData() };
+          let hasSharedRoster = false;
           try {
             const [teamSnap, playersSnap] = await Promise.all([
               getDoc(doc(db, "teams", teamId)),
               getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
             ]);
             if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
+            hasSharedRoster = teamSnap.exists();
             if (!playersSnap.empty) {
               players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
             }
           } catch {}
-          if (players.length === 0) {
+          if (players.length === 0 && !hasSharedRoster) {
             players = getYorkTeamPlayers();
           }
-          matches = getYorkTeamMatches();
-          plays = getYorkTeamPlays();
+          const season = await loadYorkSeasonData();
+          matches = season.matches;
+          plays = season.plays;
         } else if (isDemoLeague) {
           tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
           const effectiveTeamId = tObj?.id || teamId;

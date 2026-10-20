@@ -54,14 +54,14 @@ import {
   ensure5v5Matchup
 } from "@/lib/playbookTypes";
 import { getSandboxTeams } from "@/lib/demoSandbox";
-import { isYorkTeam, getYorkTeamData } from "@/lib/yorkTeamData";
+import { isYorkTeam, getYorkTeamData, YORK_TEAM_ID } from "@/lib/yorkTeamData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
 type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
 
 export default function TeamPlaybookPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
-  const teamId = unwrappedParams.id;
+  const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
 
   const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, playerData } = useAuth();
   const { settings, isDemoLeague } = useLeague();
@@ -150,7 +150,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Note: isEmbedded allows the interactive showcase on the marketing landing page (/page.tsx) to demo the studio
   const isYork = isYorkTeam(teamId);
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
-  const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
+  const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
   const isOpponentCoach = isTeamAdmin() && !isTeamAdminForThisTeam;
   const isOpponentPlayer = isPlayer && !isRosteredPlayerOnTeam;
 

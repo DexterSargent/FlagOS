@@ -94,10 +94,15 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       expect(sub.playbookLimit).toBe(5);
     });
 
-    it("authorizes Dexter and Theo as coaching staff and admins", () => {
+    it("configures all three coaches and seven authorized sign-in addresses", () => {
       expect(YORK_LIONS_TEAM.coachName).toBe("Dexter Sargent");
-      expect(YORK_LIONS_TEAM.assistantCoach).toBe("Theo");
-      expect(YORK_LIONS_TEAM.adminEmails).toContain("dextersargent@gmail.com");
+      expect(YORK_LIONS_TEAM.assistantCoach).toBe("Theo Brown");
+      expect(YORK_LIONS_TEAM.offensiveCoordinator).toBe("Justin Fawcett");
+      expect(YORK_LIONS_TEAM.adminEmails).toEqual([
+        "dextersargent@gmail.com", "dexters4@my.yorku.ca",
+        "tbrown99@my.yorku.ca", "theobrown24@icloud.com", "theoren911@gmail.com",
+        "fawcett1@my.yorku.ca", "justinfawcett93@gmail.com",
+      ]);
     });
 
     it("pre-seeds official varsity roster with 15 active players and 5 tournament reserves", () => {
@@ -133,6 +138,21 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
     });
 
   describe("TeamPortalHome Page Component for York Lions", () => {
+    it("keeps team edits open and does not cache unsaved colors when a shared save fails", async () => {
+      const { updateDoc } = await import("firebase/firestore");
+      vi.mocked(updateDoc).mockRejectedValueOnce(new Error("Network unavailable"));
+      const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+      await act(async () => {
+        render(<Suspense fallback="loading"><TeamPortalHome params={Promise.resolve({ id: "york_lions" })} /></Suspense>);
+      });
+      fireEvent.click(await screen.findByText("Edit Team Info"));
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: /Save Changes/ })));
+      expect(alert).toHaveBeenCalledWith("Failed to update team details.");
+      expect(screen.getByText("Edit Team Details")).toBeInTheDocument();
+      expect(localStorage.getItem("flagos_york_team_custom")).toBeNull();
+      alert.mockRestore();
+    });
+
     it("renders York Lions varsity club branding and complimentary active subscription badge", async () => {
       const paramsPromise = Promise.resolve({ id: "york_lions" });
       await act(async () => {
@@ -159,6 +179,8 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       expect(screen.getAllByText(/Dexter Sargent/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/Theo/i).length).toBeGreaterThan(0);
       expect(screen.getByText("Coaching Staff:")).toBeInTheDocument();
+      expect(screen.getByText("Theo Brown (Defensive Coordinator)")).toBeInTheDocument();
+      expect(screen.getByText("Justin Fawcett (Offensive Coordinator)")).toBeInTheDocument();
 
       // Check bento navigation links
       expect(screen.getByText("Schedule")).toBeInTheDocument();

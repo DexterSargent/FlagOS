@@ -40,6 +40,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
+import { useAuth } from "@/lib/authContext";
 import { TeamLogo } from "@/components/TeamAssets";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
 import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts } from "@/lib/playerNumberHelper";
@@ -55,11 +56,11 @@ import {
   getSandboxPlays,
   addSandboxPlay,
   updateSandboxMatch,
-  getSandboxTeams,
   deleteSandboxPlay,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette, TeamColorSource } from "@/lib/teamColors";
+import { getReadableTextColor } from "@/lib/teamColors";
+import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import {
   getYorkMatch,
   getYorkTeamPlayers,
@@ -86,6 +87,7 @@ interface AsyncPlayByPlayManagerProps {
 export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayByPlayManagerProps) {
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
+  const { canManageTeam, isLeagueAdmin, loading: authLoading } = useAuth();
   // York games are real team data and must never route through the demo sandbox.
   const isDemo = !isYorkMatch(matchId) && (isDemoLeague || matchId?.startsWith("match_demo_"));
   const [isEmbedded, setIsEmbedded] = useState(false);
@@ -102,14 +104,18 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [loadingData, setLoadingData] = useState(true);
   const [matchStatus, setMatchStatus] = useState<string>("scheduled");
   const [matchData, setMatchData] = useState<any>(null);
+  const managingTeamId = matchData?.managingTeamId ||
+    (isYorkMatch(matchId) ? YORK_TEAM_ID : matchData?.homeTeamId);
+  const canEdit = !authLoading && (
+    !!canManageTeam?.(managingTeamId) || (!isYorkMatch(matchId) && isLeagueAdmin)
+  );
 
   // Match Information
   const [homeTeamName, setHomeTeamName] = useState("HOME");
   const [awayTeamName, setAwayTeamName] = useState("AWAY");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
-  const [homeTeamColors, setHomeTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
-  const [awayTeamColors, setAwayTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
+  const { home: homeTeamColors, away: awayTeamColors } = useMatchTeamColors(matchData, isDemo);
 
   // Players & Subs
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
@@ -161,6 +167,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   // View tabs
   const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score">("tracker");
+  useEffect(() => {
+    if (!canEdit) setActiveTab("box-score");
+  }, [canEdit]);
   const [boxScoreTab, setBoxScoreTab] = useState<"home" | "away">("home");
   const [plays, setPlays] = useState<any[]>([]);
   const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
@@ -268,36 +277,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         setHomeTeamId(mData.homeTeamId || "home_id");
         setAwayTeamId(mData.awayTeamId || "away_id");
         setMatchStatus(mData.status || "scheduled");
-        let homeTeamData: TeamColorSource | undefined;
-        let awayTeamData: TeamColorSource | undefined;
-        if (isDemo) {
-          const teams = getSandboxTeams();
-          homeTeamData = teams.find((team) => team.id === mData.homeTeamId);
-          awayTeamData = teams.find((team) => team.id === mData.awayTeamId);
-        } else {
-          try {
-            const [homeTeamSnap, awayTeamSnap] = await Promise.all([
-              mData.homeTeamId ? getDoc(doc(db, "teams", mData.homeTeamId)) : Promise.resolve(null),
-              mData.awayTeamId ? getDoc(doc(db, "teams", mData.awayTeamId)) : Promise.resolve(null),
-            ]);
-            homeTeamData = homeTeamSnap?.exists() ? homeTeamSnap.data() as Record<string, string> : undefined;
-            awayTeamData = awayTeamSnap?.exists() ? awayTeamSnap.data() as Record<string, string> : undefined;
-          } catch (error) {
-            console.error("Failed to load team colors for async play-by-play:", error);
-          }
-        }
-        setHomeTeamColors(resolveTeamColorPalette(homeTeamData || {
-          primaryColor: mData.homeTeamPrimaryColor,
-          secondaryColor: mData.homeTeamSecondaryColor,
-          tertiaryColor: mData.homeTeamTertiaryColor,
-          color: mData.homeTeamColor,
-        }));
-        setAwayTeamColors(resolveTeamColorPalette(awayTeamData || {
-          primaryColor: mData.awayTeamPrimaryColor,
-          secondaryColor: mData.awayTeamSecondaryColor,
-          tertiaryColor: mData.awayTeamTertiaryColor,
-          color: mData.awayTeamColor,
-        }));
 
         if (mData.status === "in_progress" && mData.matchState) {
           const s = mData.matchState;
@@ -379,7 +358,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         pList = getSandboxPlays(matchId);
       } else {
         try {
-          const q = query(collection(db, "plays"), where("matchId", "==", matchId), orderBy("timestamp", "asc"), limit(500));
+          const q = query(collection(db, "plays"), where("matchId", "==", matchId), where("isHidden", "==", false), orderBy("timestamp", "asc"), limit(500));
           const snap = await getDocs(q);
           pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         } catch (e) {
@@ -387,7 +366,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           firestoreFailed = true;
         }
 
-        if (pList.length === 0) {
+        if (isYorkMatch(matchId)) {
+          const merged = new Map(getYorkTeamPlaysForMatch(matchId).map((play) => [play.id, play]));
+          for (const play of pList) {
+            if (play.isHidden) merged.delete(play.id);
+            else merged.set(play.id, play);
+          }
+          pList = Array.from(merged.values()).sort((a, b) =>
+            String(a.timestamp || "").localeCompare(String(b.timestamp || "")),
+          );
+        } else if (pList.length === 0) {
           const yorkPlays = getYorkTeamPlaysForMatch(matchId);
           if (yorkPlays && yorkPlays.length > 0) {
             pList = yorkPlays;
@@ -449,7 +437,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   // Autosave game state
   useEffect(() => {
-    if (loadingData || matchStatus === "scheduled" && step === "IDLE" && homeScore === 0 && awayScore === 0 && half === 1 && currentDown === 1) return;
+    if (!canEdit || loadingData || matchStatus === "completed" || matchStatus === "scheduled" && step === "IDLE" && homeScore === 0 && awayScore === 0 && half === 1 && currentDown === 1) return;
     const saveState = setTimeout(() => {
       const updatedMatchState = {
         status: (matchStatus === "completed" ? "completed" : "in_progress") as "completed" | "in_progress",
@@ -471,8 +459,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         return;
       }
 
-      Promise.resolve(setDoc(doc(db, "matches", matchId), updatedMatchState, { merge: true })).catch((err) => {
+      const { id: _matchId, ...matchFields } = matchData || {};
+      Promise.resolve(setDoc(doc(db, "matches", matchId), { ...matchFields, isHidden: false, ...updatedMatchState }, { merge: true })).catch((err) => {
         console.warn("Could not save match state to Firestore, saving locally:", err);
+        setSaveNotice({ kind: "warning", message: "Game state could not be synced. Changes are on this device only." });
       });
       if (matchData) {
         saveYorkCustomMatch({
@@ -482,7 +472,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       }
     }, 800);
     return () => clearTimeout(saveState);
-  }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus, isDemo, matchData]);
+  }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus, isDemo, matchData, canEdit]);
 
   const handleAddSub = async (subName: string, teamToAdd: "HOME" | "AWAY") => {
     if (!subName.trim()) return;
@@ -542,6 +532,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   };
 
   const finalizeGame = async () => {
+    if (!canEdit) return;
     const finalUpdate = {
       status: "completed" as const,
       homeScore,
@@ -562,14 +553,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         alert("Game finalized successfully!");
         return;
       }
-      try {
-        await setDoc(doc(db, "matches", matchId), {
-          ...finalUpdate,
-          completedAt: serverTimestamp(),
-        }, { merge: true });
-      } catch (err) {
-        console.warn("Could not finalize in Firestore, saving locally:", err);
-      }
+      const { id: _matchId, ...matchFields } = matchData || {};
+      await setDoc(doc(db, "matches", matchId), {
+        ...matchFields,
+        isHidden: false,
+        ...finalUpdate,
+        completedAt: serverTimestamp(),
+      }, { merge: true });
       if (matchData) {
         saveYorkCustomMatch({
           ...matchData,
@@ -679,6 +669,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   };
 
   const logPlayToFirestore = async (playData: any) => {
+    if (!canEdit) return;
     if (isDemo) {
       addSandboxPlay({
         ...playData,
@@ -1078,6 +1069,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const defensePlayers = possession === homeTeamName ? awayPlayers : homePlayers;
   const homeTeamPalette = homeTeamColors;
   const awayTeamPalette = awayTeamColors;
+  const homeTeamText = getReadableTextColor(homeTeamPalette.secondary, homeTeamPalette.primary);
+  const awayTeamText = getReadableTextColor(awayTeamPalette.secondary, awayTeamPalette.primary);
   const possessionTeamPalette = possession === homeTeamName ? homeTeamPalette : awayTeamPalette;
 
   if (loadingData) {
@@ -1161,14 +1154,14 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         {/* View mode tabs */}
         <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-bold">
-          <button
+          {canEdit && <button
             onClick={() => setActiveTab("tracker")}
             className={`px-3 py-1 rounded-lg transition-all ${
               activeTab === "tracker" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
             }`}
           >
             Stat Keeper
-          </button>
+          </button>}
           <button
             onClick={() => setActiveTab("play-by-play")}
             className={`px-3 py-1 rounded-lg transition-all ${
@@ -1192,7 +1185,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       <div className="bg-gradient-to-b from-neutral-950 to-neutral-900 border-b border-white/10 p-2.5 md:p-3 relative shrink-0">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* HOME TEAM */}
-          <div 
+          <div data-testid="home-scoreboard"
             className="flex flex-col items-center gap-1 flex-1 min-w-0 px-2 md:px-3 py-1.5 rounded-2xl border shadow-sm"
             style={{
               backgroundColor: homeTeamPalette.secondary,
@@ -1204,16 +1197,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 teamName={homeTeamName}
                 className="w-5 h-5 md:w-6 md:h-6"
                 isDemo={isDemo}
-                primaryColor={homeTeamPalette.primary}
+                primaryColor={homeTeamText}
               />
-              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: homeTeamPalette.primary }}>
+              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: homeTeamText }}>
                 {homeTeamName}
               </span>
               {possession === homeTeamName && (
                 <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: homeTeamPalette.primary }} title="Possession" />
               )}
             </div>
-            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: homeTeamPalette.primary }}>
+            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: homeTeamText }}>
               {homeScore}
             </span>
           </div>
@@ -1221,18 +1214,20 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           {/* PERIOD BADGE (FIRST HALF / SECOND HALF ONLY - NO TIMERS) */}
           <div className="flex flex-col items-center justify-center gap-0.5 px-2 md:px-5 py-1.5 rounded-xl bg-black/60 border border-white/10 shadow-inner shrink-0">
             <span className="text-[8px] md:text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">
-              Current Period
+              {matchStatus === "completed" ? "Game Complete" : "Current Period"}
             </span>
             <span className="text-sm md:text-lg font-black tracking-wider uppercase text-white">
-              {half === 1 ? "First Half" : "Second Half"}
+              {matchStatus === "completed" ? "Final" : half === 1 ? "First Half" : "Second Half"}
             </span>
-            <span className="text-xs md:text-sm font-black tracking-wider uppercase text-emerald-300 mt-0.5">
-              {getOrdinal(currentDown)} Down
-            </span>
+            {matchStatus !== "completed" && (
+              <span className="text-xs md:text-sm font-black tracking-wider uppercase text-emerald-300 mt-0.5">
+                {getOrdinal(currentDown)} Down
+              </span>
+            )}
           </div>
 
           {/* AWAY TEAM */}
-          <div 
+          <div data-testid="away-scoreboard"
             className="flex flex-col items-center gap-1 flex-1 min-w-0 px-2 md:px-3 py-1.5 rounded-2xl border shadow-sm"
             style={{
               backgroundColor: awayTeamPalette.secondary,
@@ -1243,17 +1238,17 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               {possession === awayTeamName && (
                 <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: awayTeamPalette.primary }} title="Possession" />
               )}
-              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: awayTeamPalette.primary }}>
+              <span className="text-xs md:text-base font-black uppercase tracking-wide truncate max-w-[140px] md:max-w-none" style={{ color: awayTeamText }}>
                 {awayTeamName}
               </span>
               <TeamLogo
                 teamName={awayTeamName}
                 className="w-5 h-5 md:w-6 md:h-6"
                 isDemo={isDemo}
-                primaryColor={awayTeamPalette.primary}
+                primaryColor={awayTeamText}
               />
             </div>
-            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: awayTeamPalette.primary }}>
+            <span className="text-3xl md:text-5xl font-black tabular-nums tracking-tighter" style={{ color: awayTeamText }}>
               {awayScore}
             </span>
           </div>
@@ -1290,7 +1285,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </div>
         )}
         {/* TAB 1: INTERACTIVE STAT KEEPER */}
-        {activeTab === "tracker" && (
+        {canEdit && activeTab === "tracker" && (
           <div className="flex flex-col flex-1 min-h-0 space-y-2">
             {/* MASTER PERIOD & ACTION CONTROLS */}
             <div className="flex flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0">
@@ -1754,7 +1749,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 {/* ACTION RESULTS BUTTONS (STICKY IN-FRAME) */}
-                <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1 sticky bottom-0 bg-neutral-900/95 backdrop-blur-md pb-1 z-10">
+                <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1 bg-neutral-900/95 backdrop-blur-md pb-1">
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
                     Save Play Result
                   </span>

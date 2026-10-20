@@ -11,12 +11,24 @@ import {
   saveYorkPlay,
   deleteYorkPlay,
   getYorkTeamPlaysForMatch,
+  getYorkTeamPlays,
   YORK_LIONS_MATCHES,
 } from "@/lib/yorkTeamData";
 
 describe("York Custom Match & Play Persistence Engine", () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  it("includes device-local plays in season statistics and deduplicates seed overrides", () => {
+    const matchId = YORK_LIONS_MATCHES[0].id;
+    const seed = getYorkTeamPlaysForMatch(matchId)[0];
+    const local = { ...seed, id: "new-local-play", passer: "Sonia Cabral", isTouchdown: true };
+    expect(saveYorkPlay(matchId, local)).toBe(true);
+    expect(saveYorkPlay(matchId, { ...seed, isTouchdown: true })).toBe(true);
+    const season = getYorkTeamPlays();
+    expect(season.find((play) => play.id === local.id)).toEqual(local);
+    expect(season.filter((play) => play.id === seed.id)).toHaveLength(1);
   });
 
   it("returns base York matches when no custom matches exist", () => {

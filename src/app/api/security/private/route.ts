@@ -2,6 +2,7 @@ import { DecodedIdToken } from "firebase-admin/auth";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
+import { isYorkTeam, YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_TEAM_ALIASES, YORK_TEAM_ID } from "@/lib/yorkStaff";
 
 export const runtime = "nodejs";
 
@@ -57,11 +58,14 @@ function parsePayload(value: unknown): { action: PrivateAction; data: Record<str
     fail("Invalid request.");
   }
   const payload = value as Record<string, unknown>;
-  const data = payload.data;
+  const action = payload.action;
+  // Filterless actions accept an omitted data object for client compatibility.
+  const data = payload.data === undefined && (action === "lookup" || action === "admin_overview")
+    ? {}
+    : payload.data;
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     fail("Request data is required.");
   }
-  const action = payload.action;
   if (!["lookup", "team", "league", "admin_overview"].includes(String(action))) {
     fail("Unsupported private-data request.");
   }
@@ -130,6 +134,11 @@ async function lookupByEmail(token: DecodedIdToken) {
   for (const [id, data] of legacyTeams) {
     if (!teamPrivate.has(id)) teamPrivate.set(id, data);
   }
+  if (YORK_ADMIN_EMAILS.includes(email)) {
+    for (const id of YORK_TEAM_ALIASES) {
+      if (!teamPrivate.has(id)) teamPrivate.set(id, {});
+    }
+  }
   for (const [id, data] of legacyPlayers) {
     if (!playerPrivate.has(id)) playerPrivate.set(id, data);
   }
@@ -142,10 +151,14 @@ async function lookupByEmail(token: DecodedIdToken) {
       : [],
   ]);
 
-  return {
-    teams: teamDocs
+  const teams = teamDocs
       .filter((snapshot) => snapshot.exists)
-      .map((snapshot) => ({ id: snapshot.id, name: snapshot.get("name") || snapshot.get("teamName") || "" })),
+      .map((snapshot) => ({ id: snapshot.id, name: snapshot.get("name") || snapshot.get("teamName") || "" }));
+  if (YORK_ADMIN_EMAILS.includes(email) && !teams.some((team) => isYorkTeam(team.id))) {
+    teams.push({ id: YORK_TEAM_ID, name: "York Lions Women's Flag Football" });
+  }
+  return {
+    teams,
     players: playerDocs
       .filter((snapshot) => snapshot.exists)
       .map((snapshot) => {
@@ -165,13 +178,15 @@ async function getTeamPrivate(teamId: string, token: DecodedIdToken) {
   const teamRef = adminDb.doc(`teams/${teamId}`);
   const teamPrivateRef = adminDb.doc(`team_private/${teamId}`);
   const [team, privateTeam] = await Promise.all([teamRef.get(), teamPrivateRef.get()]);
-  if (!team.exists) fail("The team was not found.", 404);
+  const yorkStaff = isYorkTeam(teamId) && YORK_ADMIN_EMAILS.includes(normalizedEmail(token));
+  if (!team.exists && !yorkStaff) fail("The team was not found.", 404);
   const publicData = team.data() || {};
   const privateData = privateTeam.data() || {};
   const leagueId = typeof publicData.leagueId === "string" ? publicData.leagueId : "";
   const leaguePrivate = leagueId ? await adminDb.doc(`league_private/${leagueId}`).get() : null;
   const leaguePublic = leagueId ? await adminDb.doc(`leagues/${leagueId}`).get() : null;
   if (!isPlatformAdmin(token) &&
+    !yorkStaff &&
     !isTeamAdmin(privateData, token) &&
     !isTeamAdmin(publicData, token) &&
     !(leaguePrivate?.exists && isLeagueAdmin(leaguePrivate.data() || {}, token)) &&
@@ -195,8 +210,8 @@ async function getTeamPrivate(teamId: string, token: DecodedIdToken) {
   if (playerPrivate.size > 30) fail("The team roster exceeds the supported limit.", 409);
   return {
     team: {
-      adminEmails: privateData.adminEmails || publicData.adminEmails || [],
-      coachEmail: privateData.coachEmail || publicData.coachEmail || "",
+      adminEmails: isYorkTeam(teamId) ? YORK_ADMIN_EMAILS : privateData.adminEmails || publicData.adminEmails || [],
+      coachEmail: isYorkTeam(teamId) ? YORK_HEAD_COACH_EMAILS[0] : privateData.coachEmail || publicData.coachEmail || "",
       adminEmail: privateData.adminEmail || publicData.adminEmail || "",
       email: privateData.email || publicData.email || "",
     },

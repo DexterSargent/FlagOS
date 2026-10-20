@@ -85,7 +85,7 @@ export function TeamLogo({
     (logoUrl.startsWith("http") || logoUrl.startsWith("/") || logoUrl.startsWith("data:"));
   const isDemoFootballFallback =
     isDemo && !hasValidLogo && (!icon || icon.toLowerCase() === "shield");
-  const effectiveIconColor = iconColor || (isDemoFootballFallback ? primaryColor : undefined);
+  const effectiveIconColor = iconColor || primaryColor;
   const iconProps = {
     className: `${className} ${effectiveIconColor ? "" : color}`.trim(),
     style: effectiveIconColor ? { color: effectiveIconColor } : undefined,

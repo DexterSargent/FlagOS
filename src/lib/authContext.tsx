@@ -22,7 +22,12 @@ import { isYorkTeam, YORK_TEAM_ID, YORK_ADMIN_EMAILS, YORK_LIONS_TEAM, YORK_LION
 import { requestPrivateData } from "./secureWrites";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
-type LoginResult = { success: true; message?: string } | { success: false; message: string };
+type LoginResult = { success: true; message?: string; defaultPath?: string } | { success: false; message: string };
+
+function getSuccessfulLoginResult(user: User): LoginResult {
+  const isYorkCoach = user.emailVerified && YORK_ADMIN_EMAILS.includes(user.email?.toLowerCase() || "");
+  return { success: true, defaultPath: isYorkCoach ? `/teams/${YORK_TEAM_ID}` : undefined };
+}
 
 const getAuthErrorMessage = (error: unknown): string => {
   if (!(error instanceof FirebaseError)) {
@@ -467,8 +472,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Redirect sign-in can lose its result when mobile browsers block cross-site storage.
       // Open the popup directly from the click handler to preserve user activation.
-      await signInWithPopup(auth, provider);
-      return { success: true };
+      const credential = await signInWithPopup(auth, provider);
+      return getSuccessfulLoginResult(credential.user);
     } catch (error: unknown) {
       console.error("Login Error:", error);
       if (typeof window !== "undefined" && window.location.hostname === "localhost") {
@@ -492,8 +497,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     password: string
   ): Promise<LoginResult> => {
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      return { success: true };
+      const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      return getSuccessfulLoginResult(credential.user);
     } catch (error: unknown) {
       console.error("Email/password login error:", error);
       return { success: false, message: getAuthErrorMessage(error) };
@@ -570,17 +575,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const lockedEmbedRole: UserRole | null = isEmbed ? (isEmbedPlaybook ? "team_admin" : "league_admin") : null;
 
   // Determine effective role & player properties
-  const isDexter = !!user?.email && ["dextersargent@gmail.com", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
+  const isDexter = !!user?.emailVerified && !!user.email && ["dextersargent@gmail.com", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
+  const isYorkCoach = !!user?.emailVerified && !!user.email &&
+    YORK_ADMIN_EMAILS.includes(user.email.trim().toLowerCase());
   // Explicitly chosen role in dev Role Switcher takes precedence so admins/devs can simulate any persona
   const effectiveRole: UserRole =
-    lockedEmbedRole || devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));
+    lockedEmbedRole || devRole || (isDexter ? "league_admin" : isYorkCoach ? "team_admin" : (userProfile?.role || "user"));
   const isPlatformAdmin = isDexter || (!!user?.email && adminEmails.includes(user.email.trim().toLowerCase()));
   const effectiveTeamId: string | null =
     lockedEmbedRole === "team_admin"
       ? (typeof window !== "undefined" && window.location.pathname.split("/teams/")[1]?.split("/")[0]) || "team_kc"
       : (effectiveRole === "player"
           ? devTeamId || userProfile?.playerTeamId || null
-          : devTeamId || userProfile?.managedTeamId || null);
+          : devTeamId || (isYorkCoach ? YORK_TEAM_ID : userProfile?.managedTeamId) || null);
 
   const effectivePlayerId: string | null =
     effectiveRole === "player" ? devPlayerId || userProfile?.playerId || null : null;
@@ -596,15 +603,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isTeamAdmin = (teamId?: string) => {
     if (lockedEmbedRole === "team_admin") return true;
     if (isDexter) return true;
-    if (teamId && isYorkTeam(teamId)) {
-      const yorkAdmins = [
-        ...YORK_ADMIN_EMAILS,
-        ...(Array.isArray(YORK_LIONS_TEAM.adminEmails) ? YORK_LIONS_TEAM.adminEmails : []),
-      ].map((e) => String(e).trim().toLowerCase());
-      if (isDexter || (!!user?.email && yorkAdmins.includes(user.email.trim().toLowerCase()))) {
-        return true;
-      }
-    }
+    if (isYorkCoach && (!teamId || isYorkTeam(teamId))) return true;
     if (effectiveRole === "team_admin") {
       if (!teamId) return true;
       if (effectiveTeamId && (effectiveTeamId === teamId || (isYorkTeam(effectiveTeamId) && isYorkTeam(teamId)))) return true;
@@ -618,13 +617,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (isDexter) return true;
     if (isLeagueAdmin) return true;
     if (isTeamAdmin(teamId)) return true;
-    if (isYorkTeam(teamId)) {
-      const yorkAdmins = [
-        ...YORK_ADMIN_EMAILS,
-        ...(Array.isArray(YORK_LIONS_TEAM.adminEmails) ? YORK_LIONS_TEAM.adminEmails : []),
-      ].map((e) => String(e).trim().toLowerCase());
-      if (isDexter || (!!user?.email && yorkAdmins.includes(user.email.trim().toLowerCase()))) return true;
-    }
     return false;
   };
 

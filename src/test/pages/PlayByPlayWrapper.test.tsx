@@ -4,11 +4,11 @@ import { Suspense } from "react";
 import PlayByPlayWrapper from "@/app/matches/[id]/play-by-play/page";
 
 const { authState } = vi.hoisted(() => ({
-  authState: { isLeagueAdmin: false, loading: false },
+  authState: { isLeagueAdmin: false, loading: false, managesYork: false },
 }));
 
 vi.mock("@/lib/authContext", () => ({
-  useAuth: () => ({ ...authState }),
+  useAuth: () => ({ ...authState, canManageTeam: (teamId: string) => authState.managesYork && teamId === "york_lions" }),
 }));
 
 vi.mock("@/lib/leagueContext", () => ({
@@ -18,7 +18,7 @@ vi.mock("@/lib/leagueContext", () => ({
 vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(),
-  getDoc: vi.fn(),
+  getDoc: vi.fn().mockResolvedValue({ exists: () => false }),
 }));
 
 vi.mock("@/lib/demoSandbox", () => ({
@@ -91,6 +91,27 @@ describe("PlayByPlayWrapper role access", () => {
       );
     });
 
+    expect(await screen.findByText("async manager")).toBeInTheDocument();
+  });
+
+  it("keeps York's watch link read-only for spectators, even with demo=true", async () => {
+    window.history.replaceState({}, "", "/matches/match_york_laurier/play-by-play?demo=true");
+    authState.isLeagueAdmin = false;
+    authState.managesYork = false;
+    await act(async () => {
+      render(<Suspense fallback="loading"><PlayByPlayWrapper params={Promise.resolve({ id: "match_york_laurier" })} /></Suspense>);
+    });
+    expect(await screen.findByText("viewer")).toBeInTheDocument();
+    expect(screen.queryByText("async manager")).not.toBeInTheDocument();
+  });
+
+  it("opens York's async keeper for authorized York coaches", async () => {
+    window.history.replaceState({}, "", "/matches/match_york_laurier/play-by-play");
+    authState.isLeagueAdmin = false;
+    authState.managesYork = true;
+    await act(async () => {
+      render(<Suspense fallback="loading"><PlayByPlayWrapper params={Promise.resolve({ id: "match_york_laurier" })} /></Suspense>);
+    });
     expect(await screen.findByText("async manager")).toBeInTheDocument();
   });
 });

@@ -117,6 +117,10 @@ vi.mock("@/lib/demoSandbox", () => ({
     { id: "p4", playerName: "David Kim", teamId: "team_cyber" },
     { id: "p5", playerName: "Cole Hayes", teamId: "team_cyber" },
   ],
+  getSandboxTeams: () => [
+    { id: "team_apex", primaryColor: "#A10A39", secondaryColor: "#FFFFFF", tertiaryColor: "#FFCC00" },
+    { id: "team_cyber", primaryColor: "#123456", secondaryColor: "#EEEEEE", tertiaryColor: "#ABCDEF" },
+  ],
   updateSandboxMatch: vi.fn(),
   deleteSandboxPlaysForMatch: vi.fn(),
   subscribeDemoSandbox: (cb: any) => () => {},
@@ -154,6 +158,16 @@ describe("Live Game Spectator & Box Score Suite (ViewerView)", () => {
       // Field and status
       expect(screen.getByText(/Field 1/i)).toBeInTheDocument();
     });
+  });
+
+  it("uses saved team palettes in the spectator scoreboard and team selector", async () => {
+    await renderViewer();
+    expect(screen.getByTestId("home-scoreboard")).toHaveStyle({ backgroundColor: "#FFFFFF", color: "#A10A39" });
+    expect(screen.getByTestId("away-scoreboard")).toHaveStyle({ backgroundColor: "#EEEEEE", color: "#123456" });
+    fireEvent.click(screen.getByRole("button", { name: "Live Box Score" }));
+    expect(screen.getByRole("button", { name: "Apex Predators" })).toHaveStyle({ backgroundColor: "#FFFFFF", color: "#A10A39" });
+    fireEvent.click(screen.getByRole("button", { name: "Cyber Knights" }));
+    expect(screen.getByRole("button", { name: "Cyber Knights" })).toHaveStyle({ backgroundColor: "#EEEEEE", color: "#123456" });
   });
 
   it("renders chronological play-by-play sentences formatted by engine", async () => {

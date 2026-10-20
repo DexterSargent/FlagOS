@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/security/write/route";
+import { YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_TEAM_ALIASES } from "@/lib/yorkStaff";
 
 const { verifyIdTokenMock, runTransactionMock, transaction } = vi.hoisted(() => {
   const transaction = {
@@ -7,6 +8,8 @@ const { verifyIdTokenMock, runTransactionMock, transaction } = vi.hoisted(() => 
     getAll: vi.fn(),
     set: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   };
   return {
     verifyIdTokenMock: vi.fn(),
@@ -68,10 +71,9 @@ describe("secure data write API", () => {
     verifyIdTokenMock.mockResolvedValue(validToken);
     runTransactionMock.mockImplementation(async (callback) => callback(transaction));
     transaction.get.mockResolvedValue({ exists: false });
-    transaction.getAll.mockResolvedValue([
-      { exists: false, data: () => undefined },
-      { exists: false, get: () => undefined },
-    ]);
+    transaction.getAll.mockImplementation(async (...refs) => refs.map(() => ({
+      exists: false, data: () => undefined, get: () => undefined,
+    })));
     transaction.get.mockImplementation(async (queryOrRef) => {
       if (queryOrRef && typeof queryOrRef === "object" && "collection" in queryOrRef) {
         return { size: 0 };
@@ -190,5 +192,165 @@ describe("secure data write API", () => {
     expect(response.status).toBe(413);
     expect(verifyIdTokenMock).not.toHaveBeenCalled();
     expect(transaction.create).not.toHaveBeenCalled();
+  });
+
+  describe("independent team matches", () => {
+    const exhibition = {
+      managingTeamId: "york_lions", homeTeamId: "york_lions",
+      awayTeamId: "opponent_waterloo", awayTeamName: "Waterloo",
+      isStandalone: true, leagueId: "caller-supplied-league",
+    };
+
+    beforeEach(() => {
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 0 }
+        : { exists: false, data: () => undefined });
+    });
+
+    it.each(YORK_ADMIN_EMAILS)("allows verified York staff %s without a remote team", async (email) => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email });
+      const response = await POST(request({ entity: "match", data: exhibition }));
+
+      expect(response.status).toBe(201);
+      expect(await response.json()).toEqual({ id: "match_york_created-record-id" });
+      expect(transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "matches/match_york_created-record-id" }),
+        expect.objectContaining({ ...exhibition, leagueId: "", isHidden: false, isPublicYork: true }),
+      );
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: expect.stringMatching(/^write_counters\/match-team_/) }),
+        expect.objectContaining({ createdCount: 1, limit: 512 }),
+      );
+    });
+
+    it.each(YORK_TEAM_ALIASES)("recognizes York alias %s", async (teamId) => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "tbrown99@my.yorku.ca" });
+      const response = await POST(request({
+        entity: "match", data: { ...exhibition, managingTeamId: teamId, homeTeamId: teamId },
+      }));
+      expect(response.status).toBe(201);
+    });
+
+    it("uses the stored manager league instead of the requested league", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "coach@example.com" });
+      transaction.get.mockImplementation(async (ref) => {
+        if ("collection" in ref) return { size: 0 };
+        return {
+          exists: ref.path === "teams/independent",
+          data: () => ref.path === "teams/independent"
+            ? { leagueId: "real-league", adminEmails: ["coach@example.com"], isStandalone: true }
+            : undefined,
+        };
+      });
+      const response = await POST(request({
+        entity: "match",
+        data: { ...exhibition, managingTeamId: "independent", homeTeamId: "independent" },
+      }));
+      expect(response.status).toBe(201);
+      expect(await response.json()).toEqual({ id: "created-record-id" });
+      expect(transaction.create).toHaveBeenCalledWith(expect.objectContaining({ id: "created-record-id" }),
+        expect.objectContaining({ leagueId: "real-league", isPublicYork: false }));
+    });
+
+    it.each([
+      { awayTeamName: "" },
+      { awayTeamId: "unregistered-team" },
+      { homeTeamId: "opponent_other", homeTeamName: "Other" },
+    ])("rejects invalid independent participants %j", async (change) => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "tbrown99@my.yorku.ca" });
+      const response = await POST(request({ entity: "match", data: { ...exhibition, ...change } }));
+      expect(response.status).toBe(400);
+      expect(transaction.create).not.toHaveBeenCalled();
+    });
+
+    it("does not grant York staff access to other managing teams", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "tbrown99@my.yorku.ca" });
+      transaction.get.mockImplementation(async (ref) => ({
+        exists: ref.path === "teams/another",
+        data: () => ref.path === "teams/another" ? { leagueId: "" } : undefined,
+      }));
+      const response = await POST(request({
+        entity: "match", data: { ...exhibition, managingTeamId: "another", homeTeamId: "another" },
+      }));
+      expect(response.status).toBe(403);
+      expect(transaction.create).not.toHaveBeenCalled();
+    });
+
+    it("does not allow an unverified requested coach", async () => {
+      verifyIdTokenMock.mockResolvedValue({
+        ...validToken, email: "theobrown24@icloud.com", email_verified: false,
+      });
+      const response = await POST(request({ entity: "match", data: exhibition }));
+      expect(response.status).toBe(403);
+      expect(runTransactionMock).not.toHaveBeenCalled();
+    });
+
+    it("does not mark hidden matches public", async () => {
+      const response = await POST(request({
+        entity: "match", data: { ...exhibition, isHidden: true, isPublicYork: true },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.create).toHaveBeenCalledWith(expect.anything(),
+        expect.objectContaining({ isHidden: true, isPublicYork: false }));
+    });
+
+    it.each(["play", "play_batch"])("derives %s visibility and league from the stored match", async (entity) => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "justinfawcett93@gmail.com" });
+      transaction.get.mockImplementation(async (ref) => {
+        if ("collection" in ref) return { size: 0 };
+        return {
+          exists: ref.path === "matches/exhibition",
+          data: () => ref.path === "matches/exhibition"
+            ? { ...exhibition, leagueId: "", isHidden: false } : undefined,
+        };
+      });
+      const response = await POST(request({
+        entity,
+        data: {
+          matchId: "exhibition", leagueId: "spoofed", isHidden: true, isPublicYork: false,
+          ...(entity === "play_batch" ? { plays: [{ type: "Run", isHidden: true, leagueId: "spoofed" }] } : { type: "Run" }),
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.create).toHaveBeenCalledWith(expect.anything(),
+        expect.objectContaining({ matchId: "exhibition", leagueId: "", isHidden: false, isPublicYork: true }));
+    });
+
+    it.each(YORK_ADMIN_EMAILS)("restricts roster deletion to the York head coach: %s", async (email) => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email });
+      transaction.get.mockImplementation(async (ref) => ({
+        exists: ref.path === "players/player-1",
+        data: () => ref.path === "players/player-1" ? { teamId: "york_lions", leagueId: "" } : undefined,
+      }));
+      const response = await POST(request({ entity: "delete_player", data: { playerId: "player-1" } }));
+      expect(response.status).toBe(YORK_HEAD_COACH_EMAILS.includes(email) ? 201 : 403);
+      expect(transaction.delete).toHaveBeenCalledTimes(YORK_HEAD_COACH_EMAILS.includes(email) ? 2 : 0);
+    });
+
+    it("allows a requested coach to add a league-less York roster player", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "fawcett1@my.yorku.ca" });
+      const response = await POST(request({
+        entity: "player", data: { teamId: "york_lions", playerName: "New Player" },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.create).toHaveBeenCalledWith(
+        expect.anything(), expect.objectContaining({ teamId: "york_lions", leagueId: "" }),
+      );
+    });
+
+    it.each(["dexters4@my.yorku.ca", "tbrown99@my.yorku.ca"])(
+      "restricts removal of persisted York playbooks: %s", async (email) => {
+        verifyIdTokenMock.mockResolvedValue({ ...validToken, email });
+        transaction.get.mockImplementation(async (ref) => ({
+          exists: ref.path === "teams/york_lions/meta/playbook",
+          data: () => ref.path === "teams/york_lions/meta/playbook"
+            ? { playbooks: [{ id: "book-1", formations: [], plays: [] }] } : undefined,
+        }));
+        const response = await POST(request({
+          entity: "playbook", data: { teamId: "york_lions", playbooks: [] },
+        }));
+        expect(response.status).toBe(YORK_HEAD_COACH_EMAILS.includes(email) ? 201 : 403);
+      },
+    );
   });
 });

@@ -21,6 +21,8 @@ if (useFirebaseEmulators) {
   if (projectId !== "demo-flagos-local") {
     throw new Error("Firebase emulator mode requires NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-flagos-local.");
   }
+  process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
+  process.env.FIREBASE_AUTH_EMULATOR_HOST ??= "127.0.0.1:9099";
   if (process.env.FIRESTORE_EMULATOR_HOST !== "127.0.0.1:8080") {
     throw new Error("Firebase emulator mode requires FIRESTORE_EMULATOR_HOST=127.0.0.1:8080.");
   }

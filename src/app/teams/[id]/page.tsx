@@ -63,6 +63,7 @@ import {
   calculateTeamComprehensiveStats,
 } from "@/lib/teamStatsCalculator";
 import TeamStatsCustomizerModal from "@/components/team/TeamStatsCustomizerModal";
+import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
 
 const COLOR_PRESETS = [
   { name: "York Lions (Varsity)", primary: "#E31837", secondary: "#FFFFFF", tertiary: "#000000" },
@@ -75,7 +76,7 @@ const COLOR_PRESETS = [
 
 export default function TeamPortalHome({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
-  const teamId = unwrappedParams.id;
+  const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
   const isYork = isYorkTeam(teamId);
 
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
@@ -87,7 +88,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   // - York Lions Varsity Portal: Fully unlocked for Dexter, team coaches, and rostered players
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
   const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
-  const canAccessPlaybook = !isLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
+  const canAccessPlaybook = (!isLeagueAdmin || isYork) && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
   const hasEditAccess = canManageTeam(teamId) || isLeagueAdmin;
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [team, setTeam] = useState<any>(null);
@@ -155,22 +156,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     const nextList = [...currentList, cleanEmail];
 
     try {
-      if (isYork) {
-        if (typeof window !== "undefined") {
-          const cached = localStorage.getItem("flagos_york_team_custom");
-          const parsed = cached ? JSON.parse(cached) : {};
-          localStorage.setItem("flagos_york_team_custom", JSON.stringify({ ...parsed, adminEmails: nextList }));
-        }
-        YORK_LIONS_TEAM.adminEmails = nextList;
-        try {
-          await createSecureRecord("team_private_update", {
-            teamId,
-            adminEmails: nextList,
-          });
-        } catch (e) {
-          console.warn("Could not sync York admin emails to remote Firestore:", e);
-        }
-      } else if (isDemoLeague) {
+      if (!isYork && isDemoLeague) {
         updateSandboxTeam(teamId, { adminEmails: nextList });
       } else {
         await createSecureRecord("team_private_update", {
@@ -207,22 +193,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     const nextList = currentList.filter((e) => e.toLowerCase() !== cleanEmail);
 
     try {
-      if (isYork) {
-        if (typeof window !== "undefined") {
-          const cached = localStorage.getItem("flagos_york_team_custom");
-          const parsed = cached ? JSON.parse(cached) : {};
-          localStorage.setItem("flagos_york_team_custom", JSON.stringify({ ...parsed, adminEmails: nextList }));
-        }
-        YORK_LIONS_TEAM.adminEmails = nextList;
-        try {
-          await createSecureRecord("team_private_update", {
-            teamId,
-            adminEmails: nextList,
-          });
-        } catch (e) {
-          console.warn("Could not sync York admin emails to remote Firestore:", e);
-        }
-      } else if (isDemoLeague) {
+      if (!isYork && isDemoLeague) {
         updateSandboxTeam(teamId, { adminEmails: nextList });
       } else {
         await createSecureRecord("team_private_update", {
@@ -291,28 +262,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         setEditTertiaryColor(palette.tertiary);
 
         // Load York Matches & Plays
-        let yMatches = getYorkTeamMatches();
-        try {
-          const snap = await getDocs(collection(db, "matches"));
-          const remoteMatches = snap.docs
-            .map((d) => ({ id: d.id, ...(d.data() as any) }))
-            .filter((m) =>
-              !m.isHidden && (
-                m.homeTeamId === teamId ||
-                m.awayTeamId === teamId ||
-                m.managingTeamId === teamId ||
-                isYorkTeam(m.homeTeamId) ||
-                isYorkTeam(m.awayTeamId) ||
-                isYorkTeam(m.managingTeamId)
-              )
-            );
-          const mMap = new Map<string, any>();
-          yMatches.forEach((m) => mMap.set(m.id, m));
-          remoteMatches.forEach((m) => mMap.set(m.id, { ...mMap.get(m.id), ...m }));
-          yMatches = Array.from(mMap.values());
-        } catch {}
-        setMatches(yMatches);
-        setPlays(getYorkTeamPlays());
+        const season = await loadYorkSeasonData();
+        setMatches(season.matches);
+        setPlays(season.plays);
 
         // Check custom stats display preference (defaulting to DEFAULT_VISIBLE_TEAM_STATS)
         let customStats: string[] | null = null;
@@ -434,39 +386,21 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   }, [teamId, isDemoLeague, isYork]);
 
   const handleSaveVisibleStats = async (newStatIds: string[]) => {
-    setVisibleStatIds(newStatIds);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(`flagos_team_stats_display_${teamId}`, JSON.stringify(newStatIds));
-    }
     const updatePayload = {
       visibleTeamStats: newStatIds,
       updatedAt: new Date().toISOString(),
     };
-    if (isYork) {
-      if (typeof window !== "undefined") {
-        const cached = localStorage.getItem("flagos_york_team_custom");
-        const parsed = cached ? JSON.parse(cached) : {};
-        localStorage.setItem("flagos_york_team_custom", JSON.stringify({ ...parsed, ...updatePayload }));
-      }
-      Object.assign(YORK_LIONS_TEAM, updatePayload);
-      try {
-        await updateDoc(doc(db, "teams", teamId), updatePayload);
-      } catch (e) {
-        console.warn("Could not save stats display to remote Firestore:", e);
-      }
-      setTeam((prev: any) => ({ ...prev, ...updatePayload }));
-      return;
-    }
-    if (isDemoLeague) {
-      updateSandboxTeam(teamId, updatePayload);
-      setTeam((prev: any) => ({ ...prev, ...updatePayload }));
-      return;
-    }
     try {
-      await updateDoc(doc(db, "teams", teamId), updatePayload);
+      if (isDemoLeague && !isYork) updateSandboxTeam(teamId, updatePayload);
+      else await updateDoc(doc(db, "teams", teamId), updatePayload);
+      setVisibleStatIds(newStatIds);
+      localStorage.setItem(`flagos_team_stats_display_${teamId}`, JSON.stringify(newStatIds));
+      if (isYork) Object.assign(YORK_LIONS_TEAM, updatePayload);
       setTeam((prev: any) => ({ ...prev, ...updatePayload }));
     } catch (e) {
       console.error("Error updating team stats display:", e);
+      alert("The stats display could not be saved to the server. Please retry.");
+      throw e;
     }
   };
 
@@ -493,15 +427,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       };
 
       if (isYork) {
+        await updateDoc(doc(db, "teams", teamId), updatedData);
         if (typeof window !== "undefined") {
           localStorage.setItem("flagos_york_team_custom", JSON.stringify(updatedData));
         }
         Object.assign(YORK_LIONS_TEAM, updatedData);
-        try {
-          await updateDoc(doc(db, "teams", teamId), updatedData);
-        } catch (e) {
-          console.warn("Could not save to remote Firestore, updating local state:", e);
-        }
         setTeam((prev: any) => ({ ...prev, ...updatedData }));
         setIsEditModalOpen(false);
         setSaving(false);
@@ -704,13 +634,19 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
           {/* Coaching Staff Banner */}
           {(isYork || team.coachName) && (
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300 font-medium">
+            <div className="inline-flex flex-wrap justify-center items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-neutral-300 font-medium">
               <span className="text-white font-bold">Coaching Staff:</span>
               <span>{team.coachName || "Dexter Sargent"} ({team.coachRole || "Head Coach & Defensive Coordinator"})</span>
               {team.assistantCoach && (
                 <>
                   <span className="text-neutral-500">•</span>
                   <span>{team.assistantCoach} ({team.assistantCoachRole || "Offensive Coordinator"})</span>
+                </>
+              )}
+              {team.offensiveCoordinator && team.offensiveCoordinator !== team.assistantCoach && (
+                <>
+                  <span className="text-neutral-500">•</span>
+                  <span>{team.offensiveCoordinator} ({team.offensiveCoordinatorRole || "Offensive Coordinator"})</span>
                 </>
               )}
             </div>

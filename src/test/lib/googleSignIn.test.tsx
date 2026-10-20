@@ -45,7 +45,7 @@ function GoogleSignInHarness() {
   const [result, setResult] = useState("");
   return (
     <>
-      <button onClick={() => void login().then((res) => setResult(res.success ? "success" : res.message))}>
+      <button onClick={() => void login().then((res) => setResult(res.success ? res.defaultPath || "success" : res.message))}>
         Google sign-in
       </button>
       <output aria-label="result">{result}</output>
@@ -75,7 +75,9 @@ describe("Google sign-in", () => {
   ])("uses popup sign-in on %s and waits for completion", async (_browser, userAgent) => {
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
     let finishSignIn!: () => void;
-    popupMock.mockImplementation(() => new Promise<void>((resolve) => { finishSignIn = resolve; }));
+    popupMock.mockImplementation(() => new Promise((resolve) => {
+      finishSignIn = () => resolve({ user: { uid: "google-user", email: null, emailVerified: false } });
+    }));
     render(<AuthProvider><GoogleSignInHarness /></AuthProvider>);
 
     fireEvent.click(screen.getByRole("button", { name: "Google sign-in" }));
@@ -92,6 +94,13 @@ describe("Google sign-in", () => {
 
     expect(screen.getByLabelText("result")).toHaveTextContent("success");
     expect(screen.getByLabelText("user")).toHaveTextContent("google-user");
+  });
+
+  it.each([true, false])("only returns the York destination for verified staff (verified=%s)", async (emailVerified) => {
+    popupMock.mockResolvedValue({ user: { uid: "york-coach", email: "tbrown99@my.yorku.ca", emailVerified } });
+    render(<AuthProvider><GoogleSignInHarness /></AuthProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Google sign-in" }));
+    await waitFor(() => expect(screen.getByLabelText("result")).toHaveTextContent(emailVerified ? "/teams/york_lions" : "success"));
   });
 
   it("shows recovery instructions rather than falling back to a broken redirect", async () => {

@@ -22,7 +22,6 @@ import {
 import {
   getSandboxMatches,
   getSandboxMatch,
-  getSandboxTeams,
   getSandboxPlayers,
   getSandboxPlays,
   addSandboxPlay,
@@ -32,7 +31,7 @@ import {
   subscribeDemoSandbox,
   isDemoMatch,
 } from "@/lib/demoSandbox";
-import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette, TeamColorSource } from "@/lib/teamColors";
+import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getYorkMatch, getYorkTeamPlaysForMatch, getYorkTeamPlayers, isYorkMatch } from "@/lib/yorkTeamData";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
@@ -85,8 +84,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [awayTeamName, setAwayTeamName] = useState("AWAY");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
-  const [homeTeamColors, setHomeTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
-  const [awayTeamColors, setAwayTeamColors] = useState<TeamColorPalette>(DEFAULT_TEAM_COLOR_PALETTE);
+  const { home: homeTeamColors, away: awayTeamColors } = useMatchTeamColors(matchData, isDemo);
 
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [subs, setSubs] = useState<string[]>([]);
@@ -385,36 +383,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         setAwayTeamId(mData.awayTeamId);
         setMatchStatus(mData.status || "scheduled");
 
-        let homeTeamData: TeamColorSource | undefined;
-        let awayTeamData: TeamColorSource | undefined;
-        if (isDemo) {
-          const teams = getSandboxTeams();
-          homeTeamData = teams.find((team) => team.id === mData.homeTeamId);
-          awayTeamData = teams.find((team) => team.id === mData.awayTeamId);
-        } else {
-          try {
-            const [homeTeamSnap, awayTeamSnap] = await Promise.all([
-              mData.homeTeamId ? getDoc(doc(db, "teams", mData.homeTeamId)) : Promise.resolve(null),
-              mData.awayTeamId ? getDoc(doc(db, "teams", mData.awayTeamId)) : Promise.resolve(null),
-            ]);
-            homeTeamData = homeTeamSnap?.exists() ? homeTeamSnap.data() as TeamColorSource : undefined;
-            awayTeamData = awayTeamSnap?.exists() ? awayTeamSnap.data() as TeamColorSource : undefined;
-          } catch (error) {
-            console.error("Failed to load team colors for play-by-play:", error);
-          }
-        }
-        setHomeTeamColors(resolveTeamColorPalette(homeTeamData || {
-          primaryColor: mData.homeTeamPrimaryColor,
-          secondaryColor: mData.homeTeamSecondaryColor,
-          tertiaryColor: mData.homeTeamTertiaryColor,
-          color: mData.homeTeamColor,
-        }));
-        setAwayTeamColors(resolveTeamColorPalette(awayTeamData || {
-          primaryColor: mData.awayTeamPrimaryColor,
-          secondaryColor: mData.awayTeamSecondaryColor,
-          tertiaryColor: mData.awayTeamTertiaryColor,
-          color: mData.awayTeamColor,
-        }));
 
         // Automatically resume game if in progress without prompting
         if (mData.status === 'in_progress' && mData.matchState) {

@@ -28,6 +28,7 @@ vi.mock("@/components/TeamAssets", () => ({
 
 describe("LoginPage email/password sign-in", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/login");
     useAuthMock.mockReturnValue({
       user: null,
       userProfile: null,
@@ -78,6 +79,7 @@ describe("LoginPage email/password sign-in", () => {
       success: false,
       message: "Email/password sign-in is disabled.",
     });
+
     render(<LoginPage />);
 
     fireEvent.change(screen.getByLabelText("Email and password"), {
@@ -92,6 +94,25 @@ describe("LoginPage email/password sign-in", () => {
       "Email/password sign-in is disabled."
     );
     expect(routerPushMock).not.toHaveBeenCalled();
+  });
+
+  it("opens the independent team returned by a verified coach login", async () => {
+    loginWithEmailAndPasswordMock.mockResolvedValue({ success: true, defaultPath: "/teams/york_lions" });
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email and password"), { target: { value: "tbrown99@my.yorku.ca" } });
+    fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "example-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with email" }));
+    await waitFor(() => expect(routerPushMock).toHaveBeenCalledWith("/teams/york_lions"));
+  });
+
+  it("preserves an explicit destination instead of replacing it with the coach home", async () => {
+    window.history.replaceState(null, "", "/login?redirect=%2Fteams%2Fyork_lions%2Fplaybook");
+    loginWithEmailAndPasswordMock.mockResolvedValue({ success: true, defaultPath: "/teams/york_lions" });
+    render(<LoginPage />);
+    fireEvent.change(screen.getByLabelText("Email and password"), { target: { value: "tbrown99@my.yorku.ca" } });
+    fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "example-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with email" }));
+    await waitFor(() => expect(routerPushMock).toHaveBeenCalledWith("/teams/york_lions/playbook"));
   });
 
   it("creates an account without selecting a league role", async () => {

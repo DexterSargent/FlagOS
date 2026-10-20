@@ -12,13 +12,16 @@ import { renderFlagOS } from "@/components/FlagOSText";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
-import { getYorkMatch } from "@/lib/yorkTeamData";
+import { getYorkMatch, isYorkMatch } from "@/lib/yorkTeamData";
+import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
+import { getTeamBadgeStyle } from "@/lib/teamColors";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const isDemo = isDemoLeague && !isYorkMatch(matchId);
   const { user, isLeagueAdmin, canManageTeam, isPlatformAdmin } = useAuth();
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess({
@@ -28,6 +31,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
 
   const [matchData, setMatchData] = useState<any>(null);
+  const { home: homeColors, away: awayColors } = useMatchTeamColors(matchData, isDemo);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<any>(null);
@@ -47,7 +51,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
     try {
       const res = await simulateFullGame(matchId, {
         leagueId: activeLeagueId,
-        isDemo: isDemoLeague,
+        isDemo,
       });
       if (res.success) {
         setMatchData((prev: any) => ({
@@ -93,7 +97,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       matchdayIndex: parseInt(editForm.week?.replace(/\D/g, "") || "0", 10) || matchData.matchdayIndex || 1,
     };
 
-    if (isDemoLeague) {
+    if (isDemo) {
       updateSandboxMatch(matchId, updatedData);
       setMatchData(updatedData);
       setIsEditModalOpen(false);
@@ -118,7 +122,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
     setIsDeleting(true);
     try {
-      if (isDemoLeague) {
+      if (isDemo) {
         deleteSandboxPlaysForMatch(matchId);
         deleteSandboxMatch(matchId);
         router.push("/schedule");
@@ -136,7 +140,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
   useEffect(() => {
     const fetchMatch = async () => {
-      if (isDemoLeague) {
+      if (isDemo) {
         const m = getSandboxMatch(matchId) || getYorkMatch(matchId);
         if (m) setMatchData(m);
         setLoading(false);
@@ -158,11 +162,11 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       setLoading(false);
     };
     fetchMatch();
-    if (isDemoLeague) {
+    if (isDemo) {
       const unsub = subscribeDemoSandbox(() => fetchMatch());
       return () => unsub();
     }
-  }, [matchId, isDemoLeague]);
+  }, [matchId, isDemo]);
 
   if (isDenied) {
     return deniedElement;
@@ -203,7 +207,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
           <div
             className="absolute top-0 left-0 w-full h-1"
             style={{
-              background: `linear-gradient(90deg, var(--league-primary), var(--league-accent))`,
+              background: `linear-gradient(90deg, ${homeColors.primary}, ${awayColors.primary})`,
             }}
           ></div>
 
@@ -232,13 +236,13 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
             </div>
 
             <div className="flex items-center gap-8 bg-black/50 px-8 py-4 rounded-2xl border border-white/5">
-              <div className="text-center w-24">
-                <span className="text-sm text-neutral-400 block mb-1 truncate">{matchData.homeTeamName}</span>
+              <div className="text-center w-24 rounded-xl border p-2" style={getTeamBadgeStyle({ primaryColor: homeColors.primary, secondaryColor: homeColors.secondary })}>
+                <span className="text-sm block mb-1 truncate">{matchData.homeTeamName}</span>
                 <span className="text-4xl font-bold">{matchData.homeScore || 0}</span>
               </div>
               <span className="text-neutral-600 font-light text-2xl">-</span>
-              <div className="text-center w-24">
-                <span className="text-sm text-neutral-400 block mb-1 truncate">{matchData.awayTeamName}</span>
+              <div className="text-center w-24 rounded-xl border p-2" style={getTeamBadgeStyle({ primaryColor: awayColors.primary, secondaryColor: awayColors.secondary })}>
+                <span className="text-sm block mb-1 truncate">{matchData.awayTeamName}</span>
                 <span className="text-4xl font-bold">{matchData.awayScore || 0}</span>
               </div>
             </div>

@@ -1,24 +1,7 @@
 import { DemoTeam, DemoPlayer, DemoMatch, DemoPlay } from "./demoSeedData";
 import { applyFormationToSquad, ensureSquadMatchup } from "./playbookTypes";
-
-export const YORK_TEAM_ID = "york_lions";
-export const YORK_TEAM_ALIASES = [
-  "york_lions",
-  "team_york",
-  "york",
-  "yuwffl_lions",
-  "york_wffl",
-];
-
-export function isYorkTeam(teamId?: string | null): boolean {
-  if (!teamId) return false;
-  const clean = teamId.toLowerCase().trim();
-  return YORK_TEAM_ALIASES.includes(clean);
-}
-
-export const YORK_ADMIN_EMAILS = [
-  "dextersargent@gmail.com"
-];
+import { YORK_TEAM_ID, YORK_ADMIN_EMAILS } from "./yorkStaff";
+export { YORK_TEAM_ID, YORK_TEAM_ALIASES, YORK_ADMIN_EMAILS, isYorkTeam } from "./yorkStaff";
 
 export const YORK_LIONS_TEAM: DemoTeam & Record<string, any> = {
   id: YORK_TEAM_ID,
@@ -32,9 +15,9 @@ export const YORK_LIONS_TEAM: DemoTeam & Record<string, any> = {
   logoUrl: "",
   coachName: "Dexter Sargent",
   coachRole: "Head Coach",
-  assistantCoach: "Theo",
+  assistantCoach: "Theo Brown",
   assistantCoachRole: "Defensive Coordinator",
-  defensiveCoordinator: "Theo",
+  defensiveCoordinator: "Theo Brown",
   defensiveCoordinatorRole: "Defensive Coordinator",
   offensiveCoordinator: "Justin Fawcett",
   offensiveCoordinatorRole: "Offensive Coordinator",
@@ -7541,6 +7524,23 @@ export const YORK_LIONS_PLAYS: DemoPlay[] = [
 
 
 export function getYorkTeamData(): DemoTeam & Record<string, any> {
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("flagos_york_team_custom");
+      if (raw) {
+        const cached = JSON.parse(raw);
+        if (cached && typeof cached === "object" && !Array.isArray(cached)) {
+          const custom: Record<string, string> = {};
+          for (const key of ["name", "shortcode", "logoUrl", "icon", "color", "primaryColor", "secondaryColor", "tertiaryColor"]) {
+            if (typeof cached[key] === "string") custom[key] = cached[key];
+          }
+          return { ...YORK_LIONS_TEAM, ...custom };
+        }
+      }
+    } catch (error) {
+      console.warn("Unable to load York team preferences from this device:", error);
+    }
+  }
   return YORK_LIONS_TEAM;
 }
 
@@ -7677,6 +7677,11 @@ export function getYorkTeamPlaysForMatch(matchId: string): DemoPlay[] {
 }
 
 export function getYorkTeamPlays(): DemoPlay[] {
-  return YORK_LIONS_PLAYS;
+  const plays = new Map(YORK_LIONS_PLAYS.map((play) => [play.id, play]));
+  for (const match of getYorkTeamMatches()) {
+    for (const play of getYorkCustomPlays(match.id)) {
+      plays.set(play.id, play);
+    }
+  }
+  return Array.from(plays.values());
 }
-

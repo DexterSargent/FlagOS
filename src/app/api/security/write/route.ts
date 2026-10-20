@@ -3,6 +3,7 @@ import { FieldValue, Query, Transaction } from "firebase-admin/firestore";
 import { DecodedIdToken } from "firebase-admin/auth";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
+import { isYorkTeam, YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS } from "@/lib/yorkStaff";
 
 export const runtime = "nodejs";
 
@@ -193,14 +194,17 @@ async function isTeamAdmin(
   transaction: Transaction,
   teamId: string,
   token: DecodedIdToken,
-): Promise<{ allowed: boolean; leagueId: string }> {
+): Promise<{ allowed: boolean; leagueId: string; exists: boolean; standalone: boolean }> {
   const team = await transaction.get(adminDb.doc(`teams/${teamId}`));
   const data = team.data();
   const privateTeam = await transaction.get(adminDb.doc(`team_private/${teamId}`));
   const privateData = privateTeam.data() || {};
   return {
-    allowed: (!!data && isTeamAdminData(data, token)) || isTeamAdminData(privateData, token),
+    allowed: (!!data && isTeamAdminData(data, token)) || isTeamAdminData(privateData, token) ||
+      (isYorkTeam(teamId) && token.email_verified === true && YORK_ADMIN_EMAILS.includes(normalizeEmail(token.email))),
     leagueId: typeof data?.leagueId === "string" ? data.leagueId : "",
+    exists: team.exists || isYorkTeam(teamId),
+    standalone: isYorkTeam(teamId) || data?.isStandalone === true,
   };
 }
 
@@ -221,6 +225,39 @@ async function authorizeWrite(
   }
 
   if (entity === "team" || entity === "match") {
+    if (entity === "match" && isDocumentId(data.managingTeamId)) {
+      const manager = await isTeamAdmin(transaction, data.managingTeamId, token);
+      if (data.isStandalone === true || data.isIndependent === true || manager.standalone) {
+        if (!manager.exists) fail("The managing team was not found.", 404);
+        if (!manager.allowed &&
+          !(manager.leagueId && await isLeagueAdmin(transaction, manager.leagueId, token))) {
+          fail("You do not have permission to create this team's independent match.", 403);
+        }
+        if (!isDocumentId(data.homeTeamId) || !isDocumentId(data.awayTeamId) ||
+          data.homeTeamId === data.awayTeamId ||
+          ![data.homeTeamId, data.awayTeamId].includes(data.managingTeamId)) {
+          fail("The managing team must participate in the independent match.");
+        }
+        for (const side of ["home", "away"]) {
+          const teamId = String(data[`${side}TeamId`]);
+          if (teamId === data.managingTeamId) continue;
+          if (teamId.startsWith("opponent_")) {
+            const name = data[`${side}TeamName`];
+            if (typeof name !== "string" || !name.trim() || name.length > 100) {
+              fail("An external opponent name is required.");
+            }
+          } else {
+            const opponent = await isTeamAdmin(transaction, teamId, token);
+            if (!opponent.exists || opponent.leagueId !== manager.leagueId) {
+              fail("Registered opponents must belong to the managing team's league.");
+            }
+          }
+        }
+        data.leagueId = manager.leagueId;
+        data.isStandalone = true;
+        return;
+      }
+    }
     const leagueId = data.leagueId;
     if (!isDocumentId(leagueId)) fail("A valid league ID is required.");
     if (entity === "match") {
@@ -236,7 +273,7 @@ async function authorizeWrite(
       let teamAdmin = false;
       for (const teamId of new Set(teamIds)) {
         const team = await isTeamAdmin(transaction, teamId, token);
-        if (team.leagueId !== leagueId) {
+        if (!team.exists || team.leagueId !== leagueId) {
           fail("Every match team must belong to the selected league.", 400);
         }
         teamAdmin = teamAdmin || team.allowed;
@@ -270,7 +307,7 @@ async function authorizeWrite(
     if (!team.allowed && !(team.leagueId && await isLeagueAdmin(transaction, team.leagueId, token))) {
       fail("You do not have permission to add players to this team.", 403);
     }
-    if (!team.leagueId || (typeof data.leagueId === "string" && data.leagueId !== team.leagueId)) {
+    if (!team.exists || (typeof data.leagueId === "string" && data.leagueId !== team.leagueId)) {
       fail("The player team does not belong to the selected league.", 400);
     }
     data.leagueId = team.leagueId;
@@ -347,7 +384,9 @@ async function authorizeWrite(
         ? normalizeEmail(String(teamData.adminEmails[0] || ""))
         : "";
       const coachEmail = normalizeEmail(typeof teamData.coachEmail === "string" ? teamData.coachEmail : "");
-      isPrimaryTeamAdmin = primaryEmail
+      isPrimaryTeamAdmin = isYorkTeam(teamId)
+        ? YORK_HEAD_COACH_EMAILS.includes(normalizeEmail(token.email))
+        : primaryEmail
         ? primaryEmail === normalizeEmail(token.email)
         : !!coachEmail && coachEmail === normalizeEmail(token.email);
     }
@@ -393,9 +432,15 @@ async function authorizeWrite(
     const match = await transaction.get(adminDb.doc(`matches/${matchId}`));
     const matchData = match.data();
     if (!matchData) fail("The match was not found.", 404);
-    if (typeof matchData.leagueId === "string") data.leagueId = matchData.leagueId;
+    data.leagueId = typeof matchData.leagueId === "string" ? matchData.leagueId : "";
+    data.managingTeamId = typeof matchData.managingTeamId === "string"
+      ? matchData.managingTeamId
+      : typeof matchData.homeTeamId === "string" ? matchData.homeTeamId : "";
     data.isHidden = matchData.isHidden === true;
-    if (typeof matchData.leagueId === "string" &&
+    data.isPublicYork = !data.isHidden &&
+      [matchData.homeTeamId, matchData.awayTeamId, matchData.managingTeamId]
+        .some((id) => typeof id === "string" && isYorkTeam(id));
+    if (typeof matchData.leagueId === "string" && matchData.leagueId &&
       await isLeagueAdmin(transaction, matchData.leagueId, token)) return;
     const teamIds = [matchData.homeTeamId, matchData.awayTeamId, matchData.managingTeamId]
       .filter((value): value is string => typeof value === "string" && value.length > 0);
@@ -411,6 +456,15 @@ async function authorizeWrite(
     const team = await isTeamAdmin(transaction, teamId, token);
     if (!team.allowed && !(team.leagueId && await isLeagueAdmin(transaction, team.leagueId, token))) {
       fail("You do not have permission to update this playbook.", 403);
+    }
+    if (isYorkTeam(teamId) && !YORK_HEAD_COACH_EMAILS.includes(normalizeEmail(token.email))) {
+      const current = await transaction.get(adminDb.doc(`teams/${teamId}/meta/playbook`));
+      const books = current.data()?.playbooks;
+      const nextBooks = data.playbooks as Record<string, unknown>[];
+      if (Array.isArray(books) && books.some((book) =>
+        !nextBooks.some((next) => next.id === book.id))) {
+        fail("Only the head coach can delete a York playbook.", 403);
+      }
     }
     return;
   }
@@ -458,6 +512,12 @@ function resolveScopes(entity: Entity, data: Record<string, unknown>, token: Dec
     }];
   }
   if (entity === "match") {
+    if (data.isStandalone === true) {
+      return [{
+        kind: "match-team", id: String(data.managingTeamId),
+        collection: "matches", field: "managingTeamId", limit: ENTITY_LIMITS.match.limit,
+      }];
+    }
     return [{
       kind: entity,
       id: String(data.leagueId),
@@ -474,13 +534,17 @@ function resolveScopes(entity: Entity, data: Record<string, unknown>, token: Dec
   if (entity === "play") {
     return [
       { kind: entity, id: String(data.matchId), ...ENTITY_LIMITS.play },
-      { kind: "play-league", id: String(data.leagueId), ...ENTITY_LIMITS.playLeague },
+      data.leagueId
+        ? { kind: "play-league", id: String(data.leagueId), ...ENTITY_LIMITS.playLeague }
+        : { kind: "play-team", id: String(data.managingTeamId), ...ENTITY_LIMITS.playLeague, field: "managingTeamId" },
     ];
   }
   if (entity === "red_play") {
     return [
       { kind: entity, id: String(data.matchId), ...ENTITY_LIMITS.red_play },
-      { kind: "red-play-league", id: String(data.leagueId), ...ENTITY_LIMITS.redPlayLeague },
+      data.leagueId
+        ? { kind: "red-play-league", id: String(data.leagueId), ...ENTITY_LIMITS.redPlayLeague }
+        : { kind: "red-play-team", id: String(data.managingTeamId), ...ENTITY_LIMITS.redPlayLeague, field: "managingTeamId" },
     ];
   }
   return [];
@@ -545,6 +609,11 @@ function buildRecord(entity: Entity, data: Record<string, unknown>): Record<stri
   }
   if (entity === "play") record.timestamp = FieldValue.serverTimestamp();
   if (entity === "match" && typeof record.isHidden !== "boolean") record.isHidden = false;
+  if (entity === "match") {
+    record.isPublicYork = record.isHidden === false &&
+      [record.homeTeamId, record.awayTeamId, record.managingTeamId]
+        .some((id) => typeof id === "string" && isYorkTeam(id));
+  }
   if (entity !== "playbook") record.createdAt = FieldValue.serverTimestamp();
   return record;
 }
@@ -698,7 +767,9 @@ export async function POST(request: Request) {
       (typeof data.playerId !== "string" || typeof data.teamId !== "string" || !data.teamId)) {
       fail("A player ID and destination team are required.");
     }
-    if (requestedEntity === "match" && typeof data.leagueId !== "string") fail("A league ID is required.");
+    if (requestedEntity === "match" && data.leagueId !== undefined && typeof data.leagueId !== "string") {
+      fail("A league ID must be a string.");
+    }
     if (requestedEntity === "match" &&
       ((typeof data.homeTeamName === "string" && data.homeTeamName.length > 100) ||
         (typeof data.awayTeamName === "string" && data.awayTeamName.length > 100) ||
@@ -827,6 +898,8 @@ export async function POST(request: Request) {
             matchId: data.matchId,
             leagueId: data.leagueId,
             isHidden: data.isHidden === true,
+            isPublicYork: data.isPublicYork === true,
+            managingTeamId: data.managingTeamId,
             timestamp: FieldValue.serverTimestamp(),
             createdAt: FieldValue.serverTimestamp(),
           });
@@ -909,7 +982,12 @@ export async function POST(request: Request) {
         createdId = leagueId;
       } else {
         const recordCollection = getRecordCollection(requestedEntity);
-        const recordRef = adminDb.collection(recordCollection).doc();
+        const generatedRef = adminDb.collection(recordCollection).doc();
+        // York clients identify persisted games by ID before team data is cached.
+        const recordRef = requestedEntity === "match" && data.isStandalone === true &&
+          isYorkTeam(String(data.managingTeamId || ""))
+          ? adminDb.doc(`matches/match_york_${generatedRef.id}`)
+          : generatedRef;
         const record = buildRecord(requestedEntity, data);
         transaction.create(recordRef, record);
         if (requestedEntity === "league") {
