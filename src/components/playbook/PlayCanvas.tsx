@@ -848,7 +848,11 @@ export default function PlayCanvas({
         }
         return z;
       });
-      onChange({ ...play, zones: updatedZones });
+      // Keep the player-to-zone line attached to the moved zone.
+      const attachedPlayers = play.players.map((p) =>
+        p.zoneId === draggedZoneId ? { ...p, route: [{ x: clampedZone.x, y: clampedZone.y }] } : p
+      );
+      onChange({ ...play, zones: updatedZones, players: attachedPlayers });
       return;
     }
   };
@@ -1496,11 +1500,11 @@ export default function PlayCanvas({
   };
 
   return (
-    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col gap-1.5 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0">
+    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-1.5 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0">
       {/* ============================================================== */}
       {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
       {/* ============================================================== */}
-      <div data-testid="designer-field-pane" className="flex flex-[0_0_42%] md:flex-1 [@media(max-width:639px)_and_(min-height:451px)_and_(max-height:750px)]:flex-[0_0_34%] [@media(max-height:450px)]:flex-[0_0_42%] min-w-0 min-h-0 flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
+      <div data-testid="designer-field-pane" className="flex flex-1 md:flex-1 [@media(max-width:599px)_and_(max-height:450px)]:flex-[0_0_42%] [@media(min-width:600px)_and_(max-height:450px)]:flex-1 min-w-0 min-h-0 flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
         {/* ============================================================== */}
         {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
         {/* ============================================================== */}
@@ -2519,7 +2523,7 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
       {/* ============================================================== */}
-      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[42%] lg:w-[390px] xl:w-[440px] 2xl:w-[480px] [@media(max-height:450px)]:w-full flex-1 md:flex-none md:shrink-0 [@media(max-height:450px)]:flex-1 flex-col bg-[#0A0E17] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl min-h-0">
+      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[42%] lg:w-[390px] xl:w-[440px] 2xl:w-[480px] [@media(max-height:450px)]:w-full [@media(min-width:600px)_and_(max-height:450px)]:w-[46%] [@media(min-width:600px)_and_(max-height:450px)]:flex-none flex-none max-h-[46%] md:max-h-none md:flex-none md:shrink-0 [@media(max-width:599px)_and_(max-height:450px)]:flex-1 [@media(max-height:450px)]:max-h-none flex-col bg-[#0A0E17] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl min-h-0">
         <div className="p-2 sm:p-3.5 [@media(min-width:600px)_and_(max-height:450px)]:p-2 [@media(max-width:639px)]:p-2 flex-1 min-h-0 overflow-y-auto space-y-2.5 [@media(min-width:600px)_and_(max-height:450px)]:space-y-1 [@media(max-width:639px)]:space-y-1.5 scrollbar-thin">
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
           <div className="flex flex-wrap [@media(min-width:600px)_and_(max-height:450px)]:flex-nowrap [@media(max-width:639px)]:flex-nowrap items-center justify-between gap-2.5 [@media(min-width:600px)_and_(max-height:450px)]:gap-1.5 [@media(max-width:639px)]:gap-1">
@@ -2663,9 +2667,9 @@ export default function PlayCanvas({
           {selectedPlayer?.side === "offense" ? (
             <div className="space-y-2 [@media(max-width:639px)]:space-y-1 relative" ref={presetMenuRef}>
               {/* Header row: Route assignment info & Action Buttons */}
-              <div className="flex items-center justify-between flex-wrap gap-2 [@media(max-width:639px)]:gap-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1 [@media(max-width:639px)]:text-[9px]">
+              <div className="flex items-center justify-between flex-wrap max-sm:flex-nowrap gap-2 [@media(max-width:639px)]:gap-1">
+                <div className="flex items-center gap-2 flex-wrap max-sm:flex-nowrap max-sm:min-w-0 max-sm:overflow-hidden">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1 max-sm:hidden">
                     <Zap className="w-3 h-3" />
                     <span>Route Assignment ({selectedPlayer.label}):</span>
                   </span>
@@ -2695,7 +2699,7 @@ export default function PlayCanvas({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 [@media(max-width:639px)]:gap-1 ml-auto">
+                <div className="flex items-center gap-2 [@media(max-width:639px)]:gap-1 ml-auto shrink-0">
                   {/* Pre-Snap Motion Menu Button */}
                   <button
                     type="button"
@@ -2768,7 +2772,7 @@ export default function PlayCanvas({
               {isMotionMenuOpen && (
                 <div
                   data-testid="motion-menu"
-                  className="mt-2 bg-[#0A0E17] border border-amber-500/40 rounded-2xl p-3 shadow-2xl space-y-3 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+                  className="mt-2 bg-[#0A0E17] border border-amber-500/40 rounded-2xl p-3 shadow-2xl space-y-2.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[42dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:450px)]:fixed [@media(max-height:450px)]:inset-y-0 [@media(max-height:450px)]:right-0 [@media(max-height:450px)]:left-auto [@media(max-height:450px)]:z-[70] [@media(max-height:450px)]:mt-0 [@media(max-height:450px)]:w-[42%] [@media(max-height:450px)]:overflow-y-auto [@media(max-height:450px)]:rounded-none [@media(max-height:450px)]:border-y-0 [@media(max-height:450px)]:border-r-0"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <div className="flex items-center gap-2">
@@ -2840,7 +2844,7 @@ export default function PlayCanvas({
               {isPresetMenuOpen && (
                 <div
                   data-testid="route-presets-catalog"
-                  className="mt-2.5 bg-[#0A0E17] border border-cyan-500/40 rounded-2xl p-4 shadow-2xl space-y-3.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[65dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]"
+                  className="mt-2.5 bg-[#0A0E17] border border-cyan-500/40 rounded-2xl p-3 shadow-2xl space-y-2.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[42dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:450px)]:fixed [@media(max-height:450px)]:inset-y-0 [@media(max-height:450px)]:right-0 [@media(max-height:450px)]:left-auto [@media(max-height:450px)]:bottom-auto [@media(max-height:450px)]:z-[70] [@media(max-height:450px)]:mt-0 [@media(max-height:450px)]:w-[42%] [@media(max-height:450px)]:max-h-none [@media(max-height:450px)]:overflow-y-auto [@media(max-height:450px)]:rounded-none [@media(max-height:450px)]:border-y-0 [@media(max-height:450px)]:border-r-0"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <div className="flex items-center gap-2">
@@ -2901,7 +2905,7 @@ export default function PlayCanvas({
                       aria-label="Route depth in yards"
                       className="w-full h-6 cursor-pointer accent-cyan-400"
                     />
-                    <div className="text-[10px] text-neutral-400 font-mono">
+                    <div className="hidden sm:block text-[10px] text-neutral-400 font-mono">
                       How far downfield the route breaks. Pick a route below to use this depth
                       {routeDepth === null && currentCatalogRoute ? " (currently the route default)" : ""}.
                     </div>
@@ -2957,7 +2961,7 @@ export default function PlayCanvas({
                       <span>Standard Route Tree Catalog ({ROUTE_PRESETS_CATALOG.length})</span>
                       <span className="text-[10px] text-cyan-400/80 font-mono">Click to preview route on {selectedPlayer.label}</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 max-sm:max-h-none overflow-y-auto pr-1 scrollbar-thin">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-64 max-sm:max-h-none overflow-y-auto pr-1 scrollbar-thin">
                       {ROUTE_PRESETS_CATALOG.map((rp) => {
                         const isCurrent =
                           selectedPlayer.quickRouteName === rp.name ||
@@ -2971,7 +2975,7 @@ export default function PlayCanvas({
                               handleApplyPreset(rp.name, routeDepth ?? undefined);
                             }}
                             data-testid={`catalog-route-${rp.shortName.toLowerCase()}`}
-                            className={`p-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-start justify-between gap-2 cursor-pointer ${
+                            className={`p-2 sm:p-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-start justify-between gap-2 cursor-pointer ${
                               isCurrent
                                 ? "bg-cyan-500 text-black border-cyan-400 shadow-md font-extrabold"
                                 : "bg-black/60 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/10"
@@ -2989,7 +2993,7 @@ export default function PlayCanvas({
                                 </span>
                               </div>
                               <div
-                                className={`text-[10px] mt-0.5 line-clamp-2 ${
+                                className={`hidden sm:block text-[10px] mt-0.5 line-clamp-2 ${
                                   isCurrent ? "text-black/80 font-medium" : "text-neutral-400 font-normal"
                                 }`}
                               >

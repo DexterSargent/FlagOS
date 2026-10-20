@@ -899,7 +899,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className={`${viewLevel === "plays" ? "h-screen overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
+    <div className={`${viewLevel === "plays" ? "h-dvh overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">

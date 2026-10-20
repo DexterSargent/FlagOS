@@ -1104,3 +1104,17 @@ canvas {
 iframe {
   max-width: 100%;
 }
+
+/* Landscape phones: sticky headers would eat a quarter of the screen, so let
+   them scroll away and respect the notch safe areas. */
+@media (orientation: landscape) and (max-height: 450px) {
+  header.sticky,
+  nav.sticky {
+    position: static !important;
+  }
+
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
