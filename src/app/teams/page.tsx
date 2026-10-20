@@ -74,7 +74,7 @@ export default function TeamsPage() {
   // Admin States
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
-  const [newPlayerPosition, setNewPlayerPosition] = useState("ATH");
+  const [newPlayerPositions, setNewPlayerPositions] = useState<string[]>(["ATH"]);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editTeamId, setEditTeamId] = useState("");
 
@@ -204,13 +204,13 @@ export default function TeamsPage() {
       const created = addSandboxPlayer({
         playerName: newPlayerName.trim(),
         teamId: activeTeamId,
-        position: newPlayerPosition,
-        positions: [newPlayerPosition],
+        position: newPlayerPositions[0],
+        positions: newPlayerPositions,
         status: "Active",
       });
       setPlayers([...players, created as unknown as Player]);
       setNewPlayerName("");
-      setNewPlayerPosition("ATH");
+      setNewPlayerPositions(["ATH"]);
       setIsAddingPlayer(false);
       return;
     }
@@ -219,20 +219,20 @@ export default function TeamsPage() {
         playerName: newPlayerName.trim(),
         teamId: activeTeamId,
         leagueId: activeLeagueId,
-        position: newPlayerPosition,
-        positions: [newPlayerPosition],
+        position: newPlayerPositions[0],
+        positions: newPlayerPositions,
         status: "Active"
       });
       setPlayers([...players, {
         id: playerId,
         playerName: newPlayerName.trim(),
         teamId: activeTeamId,
-        position: newPlayerPosition,
-        positions: [newPlayerPosition],
+        position: newPlayerPositions[0],
+        positions: newPlayerPositions,
         status: "Active"
       }]);
       setNewPlayerName("");
-      setNewPlayerPosition("ATH");
+      setNewPlayerPositions(["ATH"]);
       setIsAddingPlayer(false);
     } catch (e) {
       console.error(e);
@@ -1085,19 +1085,16 @@ export default function TeamsPage() {
                       className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-400"
                       autoFocus
                     />
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        value={newPlayerPosition}
-                        onChange={(e) => setNewPlayerPosition(e.target.value)}
-                        className="bg-black border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400"
-                      >
+                    <fieldset className="flex flex-wrap gap-2">
+                      <legend className="mb-2 text-xs text-neutral-400">Positions (select all that apply)</legend>
                         {["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"].map((pos) => (
-                          <option key={pos} value={pos}>
-                            Position: {pos}
-                          </option>
+                          <button type="button" key={pos} aria-pressed={newPlayerPositions.includes(pos)}
+                            onClick={() => setNewPlayerPositions((current) => current.includes(pos) ? (current.length > 1 ? current.filter((item) => item !== pos) : current) : [...current, pos])}
+                            className={`rounded-lg border px-3 py-2 text-xs font-bold ${newPlayerPositions.includes(pos) ? "bg-cyan-500 text-black border-cyan-400" : "border-white/10 text-neutral-400"}`}>
+                            {pos}
+                          </button>
                         ))}
-                      </select>
-                    </div>
+                    </fieldset>
                     <button onClick={handleAddPlayer} className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]">
                       Save Player
                     </button>

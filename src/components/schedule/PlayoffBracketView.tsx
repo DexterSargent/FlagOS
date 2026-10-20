@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { PlayoffFormat, getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 import { TeamStanding, BracketRound, BracketMatchNode } from "@/lib/standingsEngine";
+import BracketConnections from "./BracketConnections";
 
 interface PlayoffBracketViewProps {
   standings: TeamStanding[];
@@ -237,7 +238,7 @@ export default function PlayoffBracketView({
           {/* SINGLE ELIMINATION BRACKET VIEW */}
           {!isDoubleElim && (
             <div className="overflow-x-auto pb-8 pt-2">
-              <div className="min-w-[840px] flex items-stretch gap-8 lg:gap-12 px-2">
+              <BracketConnections rounds={bracketRounds} className="min-w-[840px] flex items-stretch gap-8 lg:gap-12 px-4">
                 {bracketRounds.map((round, rIdx) => (
                   <div key={round.name} className="flex-1 flex flex-col">
                     {/* Round Header */}
@@ -259,7 +260,7 @@ export default function PlayoffBracketView({
                     </div>
                   </div>
                 ))}
-              </div>
+              </BracketConnections>
             </div>
           )}
 
@@ -295,7 +296,7 @@ export default function PlayoffBracketView({
 
                   {/* Horizontal Upper Bracket Grid */}
                   <div className="overflow-x-auto pb-4 pt-2">
-                    <div className="min-w-[840px] flex items-stretch gap-8 lg:gap-12 px-2">
+                    <BracketConnections rounds={winnersRounds} className="min-w-[840px] flex items-stretch gap-8 lg:gap-12 px-4">
                       {winnersRounds.map((round, rIdx) => (
                         <div key={round.name} className="flex-1 flex flex-col">
                           <div className="mb-6 text-center border-b border-cyan-500/20 pb-3">
@@ -322,7 +323,7 @@ export default function PlayoffBracketView({
                           </div>
                         </div>
                       ))}
-                    </div>
+                    </BracketConnections>
                   </div>
                 </div>
               )}
@@ -356,7 +357,7 @@ export default function PlayoffBracketView({
 
                   {/* Horizontal Lower Bracket Grid */}
                   <div className="overflow-x-auto pb-4 pt-2">
-                    <div className="min-w-[900px] flex items-stretch gap-6 lg:gap-8 px-2">
+                    <BracketConnections rounds={losersRounds} className="min-w-[900px] flex items-stretch gap-6 lg:gap-8 px-4">
                       {losersRounds.map((round, rIdx) => (
                         <div key={round.name} className="flex-1 flex flex-col">
                           <div className="mb-6 text-center border-b border-amber-500/20 pb-3">
@@ -383,7 +384,7 @@ export default function PlayoffBracketView({
                           </div>
                         </div>
                       ))}
-                    </div>
+                    </BracketConnections>
                   </div>
                 </div>
               )}
@@ -416,7 +417,8 @@ export default function PlayoffBracketView({
                   </div>
 
                   {/* Finals Matches Container */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto pt-2">
+                  <div className="overflow-x-auto">
+                  <BracketConnections rounds={finalsRounds} className="grid grid-cols-2 gap-10 min-w-[720px] max-w-4xl mx-auto px-4 pt-2">
                     {finalsRounds[0]?.matches.map((node, mIdx) => (
                       <div key={node.id} className="space-y-2">
                         <div className="flex items-center justify-between text-xs font-mono px-1">
@@ -437,6 +439,7 @@ export default function PlayoffBracketView({
                         />
                       </div>
                     ))}
+                  </BracketConnections>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-black/40 border border-yellow-500/20 flex items-center gap-3 max-w-3xl mx-auto text-xs text-neutral-300">
@@ -712,7 +715,7 @@ function BracketMatchCard({
             : "border-white/10 bg-neutral-900/70 hover:border-cyan-500/30";
 
   const cardContent = (
-    <div className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${borderColor}`}>
+    <div data-bracket-match={node.id} className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ${borderColor}`}>
       {/* Match Top Bar */}
       <div className="flex items-center justify-between px-3.5 py-2 border-b border-white/5 bg-white/[0.02] text-[10px] font-mono text-neutral-400">
         <span className="font-bold text-neutral-300 truncate max-w-[160px]">

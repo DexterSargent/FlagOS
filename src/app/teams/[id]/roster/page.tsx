@@ -52,8 +52,8 @@ import {
 } from "@/lib/yorkTeamData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
-
-const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
+import TeamDepthCharts from "@/components/TeamDepthCharts";
+import { getFormationPositions, getPlayerPositions, type DepthFormation } from "@/lib/depthChart";
 
 export default function TeamRosterPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -69,6 +69,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"roster" | "depth_chart">("roster");
   const [showStats, setShowStats] = useState(false);
+  const [depthFormations, setDepthFormations] = useState<DepthFormation[]>([]);
+  const positionOptions = getFormationPositions(depthFormations);
 
   // Player Detail Modal
   const [selectedPlayerForStats, setSelectedPlayerForStats] = useState<any | null>(null);
@@ -78,7 +80,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerNumber, setNewPlayerNumber] = useState("");
   const [newPlayerEmails, setNewPlayerEmails] = useState("");
-  const [newPlayerPosition, setNewPlayerPosition] = useState("ATH");
+  const [newPlayerPositions, setNewPlayerPositions] = useState<string[]>(["ATH"]);
   const [newPlayerExperience, setNewPlayerExperience] = useState("");
   const [addingPlayer, setAddingPlayer] = useState(false);
 
@@ -87,7 +89,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [editPlayerName, setEditPlayerName] = useState("");
   const [editPlayerNumber, setEditPlayerNumber] = useState("");
   const [editPlayerEmails, setEditPlayerEmails] = useState("");
-  const [editPlayerPosition, setEditPlayerPosition] = useState("ATH");
+  const [editPlayerPositions, setEditPlayerPositions] = useState<string[]>(["ATH"]);
   const [savingPlayer, setSavingPlayer] = useState(false);
 
   const fetchData = async () => {
@@ -325,13 +327,13 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
 
-      if (isDemoLeague) {
+      if (isDemoLeague && !isYorkTeam(teamId)) {
         const newPlayerObj = addSandboxPlayer({
           playerName: newPlayerName.trim(),
           teamId: teamId,
           number: newPlayerNumber.trim(),
-          position: newPlayerPosition,
-          positions: [newPlayerPosition],
+          position: newPlayerPositions[0],
+          positions: newPlayerPositions,
           experience: newPlayerExperience.trim(),
           email: parsedEmails[0] || "",
         });
@@ -339,7 +341,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         setNewPlayerName("");
         setNewPlayerNumber("");
         setNewPlayerEmails("");
-        setNewPlayerPosition("ATH");
+        setNewPlayerPositions(["ATH"]);
         setNewPlayerExperience("");
         setIsAddModalOpen(false);
         setAddingPlayer(false);
@@ -350,8 +352,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           playerName: newPlayerName.trim(),
           teamId: teamId,
           number: newPlayerNumber.trim(),
-          position: newPlayerPosition,
-          positions: [newPlayerPosition],
+          position: newPlayerPositions[0],
+          positions: newPlayerPositions,
           experience: newPlayerExperience.trim(),
           emails: parsedEmails,
           email: parsedEmails[0] || "",
@@ -363,8 +365,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         playerName: newPlayerName.trim(),
         teamId: teamId,
         number: newPlayerNumber.trim(),
-        position: newPlayerPosition,
-        positions: [newPlayerPosition],
+        position: newPlayerPositions[0],
+        positions: newPlayerPositions,
         experience: newPlayerExperience.trim(),
         emails: parsedEmails,
         email: parsedEmails[0] || "",
@@ -374,7 +376,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       setNewPlayerName("");
       setNewPlayerNumber("");
       setNewPlayerEmails("");
-      setNewPlayerPosition("ATH");
+      setNewPlayerPositions(["ATH"]);
       setNewPlayerExperience("");
       setIsAddModalOpen(false);
     } catch (e) {
@@ -395,7 +397,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       ? String(p.email)
       : "";
     setEditPlayerEmails(existingEmails);
-    setEditPlayerPosition(p.position || (p.positions && p.positions[0]) || "ATH");
+    setEditPlayerPositions(getPlayerPositions(p));
   };
 
   // Handler: Save Edit Player
@@ -413,8 +415,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       const updatedFields = {
         playerName: editPlayerName.trim(),
         number: editPlayerNumber.trim(),
-        position: editPlayerPosition,
-        positions: [editPlayerPosition],
+        position: editPlayerPositions[0],
+        positions: editPlayerPositions,
         emails: parsedEmails,
         email: parsedEmails[0] || "",
       };
@@ -828,190 +830,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </tbody>
             </table>
           </div>
-        ) : (
-          /* DEPTH CHART VIEW */
-          <div className="p-6 space-y-8">
-            {/* Offense Depth Chart */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
-                  Offense Depth Chart
-                </h4>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { pos: "QB", title: "Quarterback" },
-                  { pos: "WR", title: "Wide Receiver" },
-                  { pos: "RB", title: "Running Back" },
-                  { pos: "C", title: "Center" },
-                ].map(({ pos, title }) => {
-                  const matchedPlayers = players.filter((p) => {
-                    const positions = Array.isArray(p.positions) ? p.positions : [p.position];
-                    return positions.includes(pos) || (pos === "WR" && positions.includes("ATH"));
-                  });
-
-                  return (
-                    <div
-                      key={pos}
-                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-start"
-                    >
-                      <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
-                        <span className="text-xs font-mono font-black text-cyan-300 px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
-                          {pos}
-                        </span>
-                        <span className="text-[11px] text-neutral-500 font-bold uppercase">{title}</span>
-                      </div>
-
-                      <div className="space-y-2">
-                        {matchedPlayers.length > 0 ? (
-                          matchedPlayers.map((p, idx) => {
-                            const s = playerStats[p.playerName] || { gamesPlayed: 0, passTD: 0, recTD: 0, flagPulls: 0, int: 0 };
-                            return (
-                              <button
-                                key={p.id}
-                                onClick={() => setSelectedPlayerForStats(p)}
-                                className={`w-full flex flex-col p-2.5 rounded-xl text-left transition-all ${
-                                  idx === 0
-                                    ? "bg-cyan-500/10 border border-cyan-500/30 text-white font-bold hover:bg-cyan-500/20"
-                                    : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
-                                }`}
-                              >
-                                <div className="w-full flex items-center justify-between">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span
-                                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                                        idx === 0
-                                          ? "bg-cyan-400 text-black font-black"
-                                          : "bg-white/10 text-neutral-400"
-                                      }`}
-                                    >
-                                      {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
-                                    </span>
-                                    <span className="text-xs truncate font-bold">{p.playerName}</span>
-                                  </div>
-                                  <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
-                                    #{p.number || p.jerseyNumber || "0"}
-                                  </span>
-                                </div>
-                                {showStats && (
-                                  <div className="flex items-center gap-2 text-[10px] font-mono text-neutral-400 mt-1 pl-7">
-                                    <span>{s.gamesPlayed || 0} GP</span>
-                                    <span>•</span>
-                                    {pos === "QB" ? (
-                                      <span className="text-cyan-300 font-semibold">{s.passTD || 0} Pass TD</span>
-                                    ) : (
-                                      <span className="text-cyan-300 font-semibold">{s.recTD || 0} Rec TD</span>
-                                    )}
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })
-                        ) : (
-                          <div className="text-xs text-neutral-600 italic py-3 text-center">
-                            No {pos} assigned
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Defense Depth Chart */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
-                  Defense &amp; Special Depth Chart
-                </h4>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { pos: "DB", title: "Defensive Back" },
-                  { pos: "RUSH", title: "Pass Rusher" },
-                  { pos: "LB", title: "Linebacker" },
-                  { pos: "ATH", title: "Athlete / Flex" },
-                ].map(({ pos, title }) => {
-                  const matchedPlayers = players.filter((p) => {
-                    const positions = Array.isArray(p.positions) ? p.positions : [p.position];
-                    return positions.includes(pos) || (pos === "ATH" && positions.length > 1);
-                  });
-
-                  return (
-                    <div
-                      key={pos}
-                      className="bg-neutral-950/80 border border-white/5 rounded-2xl p-4 flex flex-col justify-start"
-                    >
-                      <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-3">
-                        <span className="text-xs font-mono font-black text-emerald-300 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                          {pos}
-                        </span>
-                        <span className="text-[11px] text-neutral-500 font-bold uppercase">{title}</span>
-                      </div>
-
-                      <div className="space-y-2">
-                        {matchedPlayers.length > 0 ? (
-                          matchedPlayers.map((p, idx) => {
-                            const s = playerStats[p.playerName] || { gamesPlayed: 0, passTD: 0, recTD: 0, flagPulls: 0, int: 0 };
-                            return (
-                              <button
-                                key={p.id}
-                                onClick={() => setSelectedPlayerForStats(p)}
-                                className={`w-full flex flex-col p-2.5 rounded-xl text-left transition-all ${
-                                  idx === 0
-                                    ? "bg-emerald-500/10 border border-emerald-500/30 text-white font-bold hover:bg-emerald-500/20"
-                                    : "bg-white/[0.02] border border-white/5 text-neutral-300 hover:bg-white/[0.06]"
-                                }`}
-                              >
-                                <div className="w-full flex items-center justify-between">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span
-                                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                                        idx === 0
-                                          ? "bg-emerald-400 text-black font-black"
-                                          : "bg-white/10 text-neutral-400"
-                                      }`}
-                                    >
-                                      {idx === 0 ? "1st" : idx === 1 ? "2nd" : `${idx + 1}th`}
-                                    </span>
-                                    <span className="text-xs truncate font-bold">{p.playerName}</span>
-                                  </div>
-                                  <span className="text-[11px] font-mono font-bold text-neutral-400 shrink-0">
-                                    #{p.number || p.jerseyNumber || "0"}
-                                  </span>
-                                </div>
-                                {showStats && (
-                                  <div className="flex items-center gap-2 text-[10px] font-mono text-neutral-400 mt-1 pl-7">
-                                    <span>{s.gamesPlayed || 0} GP</span>
-                                    <span>•</span>
-                                    {pos === "RUSH" ? (
-                                      <span className="text-emerald-300 font-semibold">{s.flagPulls || 0} Flags</span>
-                                    ) : pos === "DB" ? (
-                                      <span className="text-emerald-300 font-semibold">{s.int || 0} INT • {s.flagPulls || 0} Flags</span>
-                                    ) : (
-                                      <span className="text-emerald-300 font-semibold">{s.flagPulls || 0} Flags</span>
-                                    )}
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })
-                        ) : (
-                          <div className="text-xs text-neutral-600 italic py-3 text-center">
-                            No {pos} assigned
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+        ) : null}
+        <div hidden={activeTab !== "depth_chart"}>
+          <TeamDepthCharts teamId={teamId} players={players} canManage={!!canManageTeam(teamId)} signedIn={!!user}
+            isDemo={isDemoLeague && !isYorkTeam(teamId)} showStats={showStats} playerStats={playerStats} onFormations={setDepthFormations} />
+        </div>
       </div>
       </div>
 
@@ -1084,16 +907,18 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
-                  Primary Position
+                  Positions (select all that apply)
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {POSITIONS.map((pos) => (
+                  {positionOptions.map((pos) => (
                     <button
                       key={pos}
                       type="button"
-                      onClick={() => setNewPlayerPosition(pos)}
+                      aria-pressed={newPlayerPositions.includes(pos)}
+                      disabled={!newPlayerPositions.includes(pos) && newPlayerPositions.length >= 10}
+                      onClick={() => setNewPlayerPositions((current) => current.includes(pos) ? (current.length > 1 ? current.filter((item) => item !== pos) : current) : current.length < 10 ? [...current, pos] : current)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                        newPlayerPosition === pos
+                        newPlayerPositions.includes(pos)
                           ? "bg-cyan-500 text-black border-cyan-400 font-black"
                           : "bg-black/60 text-neutral-400 border-white/10 hover:text-white"
                       }`}
@@ -1191,16 +1016,18 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
-                  Primary Position
+                  Positions (select all that apply)
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {POSITIONS.map((pos) => (
+                  {[...new Set([...positionOptions, ...editPlayerPositions])].map((pos) => (
                     <button
                       key={pos}
                       type="button"
-                      onClick={() => setEditPlayerPosition(pos)}
+                      aria-pressed={editPlayerPositions.includes(pos)}
+                      disabled={!editPlayerPositions.includes(pos) && editPlayerPositions.length >= 10}
+                      onClick={() => setEditPlayerPositions((current) => current.includes(pos) ? (current.length > 1 ? current.filter((item) => item !== pos) : current) : current.length < 10 ? [...current, pos] : current)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                        editPlayerPosition === pos
+                        editPlayerPositions.includes(pos)
                           ? "bg-blue-600 text-white border-blue-500 font-black"
                           : "bg-black/60 text-neutral-400 border-white/10 hover:text-white"
                       }`}

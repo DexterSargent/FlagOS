@@ -40,6 +40,17 @@ export interface TeamStanding {
   clinchLabel?: string;
 }
 
+export interface BracketSource {
+  matchId: string;
+  result: "winner" | "loser";
+}
+
+interface BracketSlot {
+  team: TeamStanding | null;
+  label: string;
+  source?: BracketSource;
+}
+
 export interface BracketMatchNode {
   id: string;
   roundName: string;
@@ -58,6 +69,8 @@ export interface BracketMatchNode {
   awayScore?: number;
   winnerTeamId?: string;
   bracketType?: "winners" | "losers" | "finals";
+  homeSource?: BracketSource;
+  awaySource?: BracketSource;
 }
 
 export interface BracketRound {
@@ -455,6 +468,7 @@ export function generatePlayoffBracket(
     label: string;
     isBye?: boolean;
     winnerTeamId?: string;
+    source?: BracketSource;
   }
 
   let previousRoundSlots: RoundSlotInfo[] = [];
@@ -522,6 +536,7 @@ export function generatePlayoffBracket(
         // NO PREDICTIONS: if game not played yet, team is strictly null!
         team: winningTeamObj,
         label: winningTeamObj ? winningTeamObj.teamName : `Winner Match ${matchIdx + 1}`,
+        source: { matchId: node.id, result: "winner" },
         winnerTeamId: winnerId,
       });
     }
@@ -569,6 +584,8 @@ export function generatePlayoffBracket(
         // STRICTLY NO PREDICTIONS: only filled if team had a BYE or finished match!
         homeTeam: slotHome.team,
         awayTeam: slotAway.team,
+        homeSource: slotHome.source,
+        awaySource: slotAway.source,
         homeSeedLabel: slotHome.team
           ? `#${slotHome.team.rank} Seed${slotHome.isBye ? " (Bye)" : ""}`
           : slotHome.label,
@@ -591,6 +608,7 @@ export function generatePlayoffBracket(
       nextSlots.push({
         team: winningTeamObj,
         label: winningTeamObj ? winningTeamObj.teamName : `Winner ${roundName} ${m + 1}`,
+        source: { matchId: node.id, result: "winner" },
         winnerTeamId: winnerId,
       });
     }
@@ -658,7 +676,7 @@ export function generateDoubleEliminationBracket(
   };
 
   const rounds: BracketRound[] = [];
-  const droppedLosersPerRound: Array<Array<{ team: TeamStanding | null; label: string }>> = [];
+  const droppedLosersPerRound: BracketSlot[][] = [];
 
   // ==========================================
   // 1. WINNERS BRACKET (UPPER BRACKET)
@@ -670,6 +688,7 @@ export function generateDoubleEliminationBracket(
     winnerTeamId?: string;
     loserTeam?: TeamStanding | null;
     loserLabel?: string;
+    source?: BracketSource;
   }
 
   let previousUpperSlots: RoundSlotInfo[] = [];
@@ -677,7 +696,7 @@ export function generateDoubleEliminationBracket(
   // Round 0 of Upper
   const round0Name = getUpperRoundName(0, W);
   const round0Matches: BracketMatchNode[] = [];
-  const round0DroppedLosers: Array<{ team: TeamStanding | null; label: string }> = [];
+  const round0DroppedLosers: BracketSlot[] = [];
   const numPairs = P / 2;
 
   for (let i = 0; i < numPairs; i++) {
@@ -743,12 +762,14 @@ export function generateDoubleEliminationBracket(
       previousUpperSlots.push({
         team: winningTeamObj,
         label: winningTeamObj ? winningTeamObj.teamName : `Winner ${round0Name} M${mIdx + 1}`,
+        source: { matchId: node.id, result: "winner" },
         winnerTeamId: winnerId,
         loserTeam: losingTeamObj,
         loserLabel: losingTeamObj ? losingTeamObj.teamName : `Loser ${round0Name} M${mIdx + 1}`,
       });
 
       round0DroppedLosers.push({
+        source: { matchId: node.id, result: "loser" },
         team: losingTeamObj,
         label: losingTeamObj ? losingTeamObj.teamName : `Loser ${round0Name} M${mIdx + 1}`,
       });
@@ -770,7 +791,7 @@ export function generateDoubleEliminationBracket(
     const roundName = getUpperRoundName(r, W);
     const roundMatches: BracketMatchNode[] = [];
     const nextSlots: RoundSlotInfo[] = [];
-    const currentDropped: Array<{ team: TeamStanding | null; label: string }> = [];
+    const currentDropped: BracketSlot[] = [];
     const matchesInRound = previousUpperSlots.length / 2;
 
     for (let m = 0; m < matchesInRound; m++) {
@@ -799,6 +820,8 @@ export function generateDoubleEliminationBracket(
 
       const node: BracketMatchNode = {
         id: `bracket_ub_r${r}_${m}`,
+        homeSource: slotHome.source,
+        awaySource: slotAway.source,
         roundName,
         roundIndex: r,
         matchIndex: m,
@@ -828,12 +851,14 @@ export function generateDoubleEliminationBracket(
       nextSlots.push({
         team: winningTeamObj,
         label: winningTeamObj ? winningTeamObj.teamName : `Winner ${roundName} M${m + 1}`,
+        source: { matchId: node.id, result: "winner" },
         winnerTeamId: winnerId,
         loserTeam: losingTeamObj,
         loserLabel: losingTeamObj ? losingTeamObj.teamName : `Loser ${roundName} M${m + 1}`,
       });
 
       currentDropped.push({
+        source: { matchId: node.id, result: "loser" },
         team: losingTeamObj,
         label: losingTeamObj ? losingTeamObj.teamName : `Loser ${roundName} M${m + 1}`,
       });
@@ -856,7 +881,7 @@ export function generateDoubleEliminationBracket(
   // 2. LOSERS BRACKET (ELIMINATION BRACKET)
   // ==========================================
   const totalLosersRounds = Math.max(1, 2 * (W - 1));
-  let currentLosersPool: Array<{ team: TeamStanding | null; label: string }> = [...droppedLosersPerRound[0]];
+  let currentLosersPool: BracketSlot[] = [...droppedLosersPerRound[0]];
   let losersRoundIdx = 0;
 
   for (let step = 1; step < W; step++) {
@@ -867,7 +892,7 @@ export function generateDoubleEliminationBracket(
           ? "Elimination Final"
           : `Elimination Round ${losersRoundIdx + 1}`;
       const lrMatches: BracketMatchNode[] = [];
-      const nextSurvivorPool: Array<{ team: TeamStanding | null; label: string }> = [];
+      const nextSurvivorPool: BracketSlot[] = [];
       const numMatches = Math.floor(currentLosersPool.length / 2);
 
       for (let m = 0; m < numMatches; m++) {
@@ -876,6 +901,8 @@ export function generateDoubleEliminationBracket(
 
         const node: BracketMatchNode = {
           id: `bracket_lb_r${losersRoundIdx}_${m}`,
+          homeSource: slotA.source,
+          awaySource: slotB.source,
           roundName: lrName,
           roundIndex: losersRoundIdx,
           matchIndex: m,
@@ -888,6 +915,7 @@ export function generateDoubleEliminationBracket(
         };
         lrMatches.push(node);
         nextSurvivorPool.push({
+          source: { matchId: node.id, result: "winner" },
           team: null,
           label: `Winner ${lrName} M${m + 1}`,
         });
@@ -911,7 +939,7 @@ export function generateDoubleEliminationBracket(
           ? "Elimination Final"
           : `Elimination Round ${losersRoundIdx + 1}`;
       const lrMatches: BracketMatchNode[] = [];
-      const nextSurvivorPool: Array<{ team: TeamStanding | null; label: string }> = [];
+      const nextSurvivorPool: BracketSlot[] = [];
       const numPairings = Math.max(currentLosersPool.length, droppingFromUpper.length);
 
       for (let m = 0; m < numPairings; m++) {
@@ -920,6 +948,8 @@ export function generateDoubleEliminationBracket(
 
         const node: BracketMatchNode = {
           id: `bracket_lb_r${losersRoundIdx}_${m}`,
+          homeSource: dropper.source,
+          awaySource: survivor.source,
           roundName: lrName,
           roundIndex: losersRoundIdx,
           matchIndex: m,
@@ -932,6 +962,7 @@ export function generateDoubleEliminationBracket(
         };
         lrMatches.push(node);
         nextSurvivorPool.push({
+          source: { matchId: node.id, result: "winner" },
           team: null,
           label: `Winner ${lrName} M${m + 1}`,
         });
@@ -959,6 +990,8 @@ export function generateDoubleEliminationBracket(
   // ==========================================
   const grandFinalMatch: BracketMatchNode = {
     id: "bracket_gf_1",
+    homeSource: upperChampionSlot.source,
+    awaySource: eliminationChampionSlot.source,
     roundName: "Grand Championship",
     roundIndex: 0,
     matchIndex: 0,
@@ -976,6 +1009,8 @@ export function generateDoubleEliminationBracket(
 
   const grandFinalReset: BracketMatchNode = {
     id: "bracket_gf_reset",
+    homeSource: { matchId: "bracket_gf_1", result: "winner" },
+    awaySource: { matchId: "bracket_gf_1", result: "loser" },
     roundName: "Grand Championship Reset (If Necessary)",
     roundIndex: 0,
     matchIndex: 1,

@@ -298,8 +298,10 @@ export default function PlayerProfilePage() {
   const effectiveTeam = playerTeam;
   const playerName = effectivePlayer?.playerName || "Athlete Profile";
   const jerseyNumber = effectivePlayer?.number || effectivePlayer?.jerseyNumber || "00";
-  const position = effectivePlayer?.position || "Flex / Skill";
-  const secondaryPos = effectivePlayer?.secondaryPosition || "";
+  const position = Array.isArray(effectivePlayer?.positions) && effectivePlayer.positions.length
+    ? effectivePlayer.positions.join(" / ")
+    : effectivePlayer?.position || "Flex / Skill";
+  const secondaryPos = effectivePlayer?.positions?.includes(effectivePlayer?.secondaryPosition) ? "" : effectivePlayer?.secondaryPosition || "";
   const attachedEmails: string[] = effectivePlayer?.emails || (effectivePlayer?.email ? [effectivePlayer.email] : []);
 
   const effectiveTeamId = effectivePlayer?.teamId || authTeamId;
@@ -344,7 +346,7 @@ export default function PlayerProfilePage() {
               >
                 {allRosteredPlayers.map((p) => (
                   <option key={p.id} value={p.id}>
-                    #{p.number || p.jerseyNumber || "0"} {p.playerName} ({p.position || "Athlete"})
+                    #{p.number || p.jerseyNumber || "0"} {p.playerName} ({p.positions?.length ? p.positions.join(" / ") : p.position || "Athlete"})
                   </option>
                 ))}
               </select>

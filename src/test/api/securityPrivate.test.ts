@@ -56,6 +56,47 @@ function request(body: unknown, bearer = "Bearer valid-token") {
 }
 
 describe("private-data API", () => {
+  describe("depth chart publication", () => {
+    const chart = { id: "chart", name: "Private starters", formationKey: "default:offense", assignments: { QB: ["p1"] } };
+    function setupDepth(published: boolean) {
+      documentGetMock.mockImplementation(async (path: string) => ({
+        exists: true,
+        data: () => path === "team_depth_charts/team-1"
+          ? { visibleToPlayers: published, charts: [chart] }
+          : path === "teams/team-1" ? { name: "Team", leagueId: "league" }
+          : path === "team_private/team-1" ? { adminEmails: ["coach@example.com"] } : {},
+      }));
+    }
+    it("returns no assignments or playbook formations when player view is disabled", async () => {
+      setupDepth(false);
+      const response = await POST(request({ action: "depth_chart", data: { teamId: "team-1" } }));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ data: { charts: [], formations: [], visibleToPlayers: false, canEdit: false } });
+    });
+    it("lets coaches see hidden charts and edit them", async () => {
+      setupDepth(false);
+      verifyIdTokenMock.mockResolvedValue({ ...token, email: "coach@example.com" });
+      const response = await POST(request({ action: "depth_chart", data: { teamId: "team-1" } }));
+      expect(response.status).toBe(200);
+      expect((await response.json()).data).toMatchObject({ charts: [chart], canEdit: true, visibleToPlayers: false });
+    });
+    it("does not reveal published charts to outsiders", async () => {
+      setupDepth(true);
+      const response = await POST(request({ action: "depth_chart", data: { teamId: "team-1" } }));
+      expect(response.status).toBe(403);
+    });
+    it.each(["team-1", "another-team"])("checks actual roster membership for %s", async (playerTeamId) => {
+      setupDepth(true);
+      collectionMock.mockImplementation((name: string) => ({
+        where: () => ({ limit: () => ({ get: async () => ({ docs: name === "player_private" ? [{ id: "p1", data: () => ({ email: token.email }) }] : [] }) }) }),
+      }));
+      getAllMock.mockResolvedValue([{ id: "p1", exists: true, data: () => ({ playerName: "Player", teamId: playerTeamId }), get: (field: string) => field === "teamId" ? playerTeamId : undefined }]);
+      const response = await POST(request({ action: "depth_chart", data: { teamId: "team-1" } }));
+      expect(response.status).toBe(playerTeamId === "team-1" ? 200 : 403);
+      if (playerTeamId === "team-1") expect((await response.json()).data).toMatchObject({ charts: [chart], canEdit: false });
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     verifyIdTokenMock.mockResolvedValue(token);

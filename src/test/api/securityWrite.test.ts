@@ -66,6 +66,40 @@ function request(body: unknown, token = "valid-token") {
 }
 
 describe("secure data write API", () => {
+  describe("private depth charts", () => {
+    const payload = { teamId: "york_lions", visibleToPlayers: false, charts: [
+      { id: "chart", name: "Offense", formationKey: "default:offense", assignments: { QB: ["p1", "p2"] } },
+    ] };
+    it("saves coach-authored assignments outside public team documents", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: YORK_ADMIN_EMAILS[2] });
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 2, docs: [{ id: "p1" }, { id: "p2" }] }
+        : { exists: false, data: () => undefined });
+      const response = await POST(request({ entity: "depth_chart", data: payload }));
+      expect(response.status).toBe(201);
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "team_depth_charts/york_lions" }),
+        expect.objectContaining({ charts: payload.charts, visibleToPlayers: false }),
+      );
+    });
+    it("rejects another team's player assignments", async () => {
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 1, docs: [{ id: "p1" }] }
+        : { exists: false, data: () => undefined });
+      expect((await POST(request({ entity: "depth_chart", data: payload }))).status).toBe(400);
+      expect(transaction.set).not.toHaveBeenCalled();
+    });
+    it("rejects writes by ordinary players", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "player@example.com" });
+      transaction.get.mockResolvedValue({ exists: true, data: () => ({ leagueId: "" }) });
+      expect((await POST(request({ entity: "depth_chart", data: payload }))).status).toBe(403);
+    });
+    it("rejects invalid chart structures before transactions", async () => {
+      expect((await POST(request({ entity: "depth_chart", data: { ...payload, visibleToPlayers: "yes" } }))).status).toBe(400);
+      expect(runTransactionMock).not.toHaveBeenCalled();
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     verifyIdTokenMock.mockResolvedValue(validToken);

@@ -3,6 +3,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, waitFor, fireEvent } from "@testing-library/react";
 import TeamRosterPage from "@/app/teams/[id]/roster/page";
 import { YORK_LIONS_PLAYERS } from "@/lib/yorkTeamData";
+import { getDepthFormations } from "@/lib/depthChart";
+import { createSecureRecord } from "@/lib/secureWrites";
+
+vi.mock("@/lib/secureWrites", () => ({
+  createSecureRecord: vi.fn().mockResolvedValue("player-id"),
+  requestPrivateData: vi.fn(async (action: string) => action === "depth_chart"
+    ? { charts: [], formations: getDepthFormations(), visibleToPlayers: false, canEdit: true }
+    : { team: {}, players: {} }),
+}));
 
 // Mock router
 const mockPush = vi.fn();
@@ -36,6 +45,7 @@ vi.mock("firebase/firestore", () => ({
   getDocs: vi.fn().mockResolvedValue({ docs: [] }),
   query: vi.fn(),
   where: vi.fn(),
+  limit: vi.fn(),
   addDoc: vi.fn().mockResolvedValue({ id: "new_player_id" }),
   deleteDoc: vi.fn().mockResolvedValue(undefined),
 }));
@@ -71,7 +81,22 @@ describe("Team Roster & Depth Chart Specification", () => {
     });
   });
 
-  it("switches to Depth Chart view, keeps stats button visible, aligns single player to top, and does NOT denote reserves", async () => {
+  it("saves more than one position without dropping existing selections", async () => {
+    await act(async () => {
+      render(<Suspense><TeamRosterPage params={Promise.resolve({ id: "york_lions" })} /></Suspense>);
+    });
+    fireEvent.click((await screen.findAllByTitle("Edit Player Details"))[0]);
+    for (const position of ["WR", "DB"]) {
+      const button = screen.getByRole("button", { name: position });
+      if (button.getAttribute("aria-pressed") !== "true") fireEvent.click(button);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Save Details" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("player_update", expect.objectContaining({
+      positions: expect.arrayContaining(["WR", "DB"]),
+    })));
+  });
+
+  it("lets coaches create depth charts instead of inferring player order alphabetically", async () => {
     const paramsPromise = Promise.resolve({ id: "york_lions" });
     await act(async () => {
       render(
@@ -89,25 +114,22 @@ describe("Team Roster & Depth Chart Specification", () => {
     // Switch to Depth Chart view
     fireEvent.click(screen.getByText("Depth Chart"));
 
-    // Verify depth chart headings exist
-    expect(screen.getByText("Offense Depth Chart")).toBeInTheDocument();
-    expect(screen.getByText("Defense & Special Depth Chart")).toBeInTheDocument();
-
-    // Verify positions exist
+    expect(await screen.findByRole("button", { name: "Create Depth Chart" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Depth chart name"), { target: { value: "First Team" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create Depth Chart" }));
     expect(screen.getByText("Quarterback")).toBeInTheDocument();
-    expect(screen.getByText("Wide Receiver")).toBeInTheDocument();
 
     // STRICT REQUIREMENT 1: Stats button must NOT disappear when clicking Depth Chart!
     expect(screen.getByText("Show Stats")).toBeInTheDocument();
 
     // STRICT REQUIREMENT 2: Position card frame aligns single player to the top (justify-start, NOT justify-between)
-    const qbBadge = screen.getByText("QB");
+    const qbBadge = screen.getByText("Quarterback");
     const qbFrame = qbBadge.closest(".flex-col");
     expect(qbFrame).toHaveClass("justify-start");
     expect(qbFrame).not.toHaveClass("justify-between");
 
-    // Key players appear in depth chart
-    expect(screen.getByText("Sonia Cabral")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Add player to Quarterback"), { target: { value: YORK_LIONS_PLAYERS.find((player) => player.playerName === "Sonia Cabral")!.id } });
+    expect(screen.getByText(/1\. #.*Sonia Cabral/)).toBeInTheDocument();
 
     // Toggle Show Stats button inside Depth Chart
     fireEvent.click(screen.getByText("Show Stats"));

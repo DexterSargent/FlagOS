@@ -93,4 +93,14 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
     expect(screen.queryByRole("button", { name: /^Stat Keeper$/ })).not.toBeInTheDocument();
     expect(setDoc).not.toHaveBeenCalled();
   });
+
+  it("gives the play log and box score bounded, keyboard-focusable scroll containers", async () => {
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: /Play Log/ }));
+    const log = screen.getByRole("region", { name: "Game play log" });
+    expect(log).toHaveClass("flex-1", "min-h-0", "overflow-y-auto");
+    expect(log).toHaveAttribute("tabindex", "0");
+    fireEvent.click(screen.getByRole("button", { name: "Box Score" }));
+    expect(screen.getByRole("region", { name: "Player box score" })).toHaveClass("overflow-y-auto");
+  });
 });

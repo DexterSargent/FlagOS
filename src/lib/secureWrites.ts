@@ -18,7 +18,8 @@ export type SecureEntity =
   | "play"
   | "play_batch"
   | "red_play"
-  | "playbook";
+  | "playbook"
+  | "depth_chart";
 
 async function authenticatedPost<T>(
   path: string,

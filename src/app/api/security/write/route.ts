@@ -4,6 +4,7 @@ import { DecodedIdToken } from "firebase-admin/auth";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { isYorkTeam, YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS } from "@/lib/yorkStaff";
+import { validateDepthCharts } from "@/lib/depthChart";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,8 @@ type Entity =
   | "play"
   | "play_batch"
   | "red_play"
-  | "playbook";
+  | "playbook"
+  | "depth_chart";
 type Scope = { kind: string; id: string; collection: string; field: string; limit: number };
 
 const ENTITY_LIMITS = {
@@ -450,6 +452,20 @@ async function authorizeWrite(
     fail("You do not have permission to record events for this match.", 403);
   }
 
+  if (entity === "depth_chart") {
+    if (!isDocumentId(data.teamId)) fail("A valid team ID is required.");
+    const team = await isTeamAdmin(transaction, data.teamId, token);
+    if (!team.allowed) fail("Only this team's coaches can manage depth charts.", 403);
+    const roster = await transaction.get(adminDb.collection("players").where("teamId", "==", data.teamId).limit(31));
+    const playerIds = new Set(roster.docs.map((player) => player.id));
+    for (const chart of (data.charts as import("@/lib/depthChart").DepthChart[])) {
+      for (const assigned of Object.values(chart.assignments)) {
+        if (assigned.some((id) => !playerIds.has(id))) fail("Depth charts may only contain current team players.");
+      }
+    }
+    return;
+  }
+
   if (entity === "playbook") {
     const teamId = data.teamId;
     if (!isDocumentId(teamId)) fail("A valid team ID is required.");
@@ -471,7 +487,7 @@ async function authorizeWrite(
 }
 
 function resolveScopes(entity: Entity, data: Record<string, unknown>, token: DecodedIdToken): Scope[] {
-  if (entity === "playbook" || entity.endsWith("_private_update") ||
+  if (entity === "playbook" || entity === "depth_chart" || entity.endsWith("_private_update") ||
     entity === "player_update" || entity.startsWith("delete_")) return [];
   if (entity === "league") {
     return [{
@@ -553,6 +569,7 @@ function resolveScopes(entity: Entity, data: Record<string, unknown>, token: Dec
 function getRecordCollection(entity: Entity): string {
   switch (entity) {
     case "playbook":
+    case "depth_chart":
     case "team_private_update":
     case "player_private_update":
     case "league_private_update":
@@ -640,12 +657,16 @@ export async function POST(request: Request) {
     if (![
       "league", "team", "player", "assign_player", "team_private_update", "player_private_update",
       "league_private_update", "player_update", "match", "play", "play_batch", "red_play", "playbook",
-      "delete_player", "delete_team", "delete_league",
+      "delete_player", "delete_team", "delete_league", "depth_chart",
     ].includes(String(entity))) {
       fail("Unsupported record type.");
     }
     validatePayload(data);
     const requestedEntity = entity as Entity;
+    if (requestedEntity === "depth_chart" &&
+      (Object.keys(data).some((key) => !["teamId", "charts", "visibleToPlayers"].includes(key)) || !validateDepthCharts(data))) {
+      fail("Depth chart data is invalid or exceeds its limits.");
+    }
     if (requestedEntity === "playbook") {
       if (!Array.isArray(data.playbooks)) fail("Playbooks must be a list.");
       validatePlaybooks(data.playbooks);
@@ -756,7 +777,8 @@ export async function POST(request: Request) {
         (data.emails !== undefined &&
           (!Array.isArray(data.emails) || data.emails.length > 10 ||
             !data.emails.every(validEmail))) ||
-        (Array.isArray(data.positions) && data.positions.length > 10) ||
+        (data.positions !== undefined && (!Array.isArray(data.positions) || data.positions.length < 1 ||
+          data.positions.length > 10 || !data.positions.every((position) => typeof position === "string" && position.trim().length > 0 && position.length <= 20))) ||
         (typeof data.number === "string" && data.number.length > 4))) {
       fail("Player data is invalid or exceeds its limits.");
     }
@@ -881,7 +903,11 @@ export async function POST(request: Request) {
       for (const quota of quotaUpdates) transaction.set(quota.ref, quota.data);
       transaction.set(rateRef, updatedRate);
 
-      if (requestedEntity === "playbook") {
+      if (requestedEntity === "depth_chart") {
+        const ref = adminDb.doc(`team_depth_charts/${String(data.teamId)}`);
+        transaction.set(ref, { charts: data.charts, visibleToPlayers: data.visibleToPlayers, updatedAt: FieldValue.serverTimestamp() });
+        createdId = ref.id;
+      } else if (requestedEntity === "playbook") {
         const teamId = String(data.teamId);
         const playbookRef = adminDb.doc(`teams/${teamId}/meta/playbook`);
         transaction.set(playbookRef, {

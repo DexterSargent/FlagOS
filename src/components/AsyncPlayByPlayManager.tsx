@@ -1854,7 +1854,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         {/* TAB 2: PLAY-BY-PLAY FEED (ZERO TIMESTAMPS OTHER THAN FIRST HALF / SECOND HALF) */}
         {activeTab === "play-by-play" && (
-          <div className="space-y-4">
+          <div role="region" aria-label="Game play log" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-black uppercase text-white">Game Play Log</h3>
               <span className="text-xs text-neutral-400 font-mono">
@@ -1916,7 +1916,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         {/* TAB 3: BOX SCORE */}
         {activeTab === "box-score" && (
-          <div className="space-y-4">
+          <div role="region" aria-label="Player box score" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-black uppercase text-white">Player Box Score</h3>
               <div className="flex gap-2">

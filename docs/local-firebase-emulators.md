@@ -136,6 +136,20 @@ use their own categories. Clockless entry also supports interception-return
 flaggers and successful-conversion player credit, while remaining timer-free.
 Receiver choices exclude the selected passer in both modes.
 
+Roster editors preserve up to ten positions per player, including labels from
+saved playbook formations. In the roster's Depth Chart tab, team coaches can
+create named formation-specific charts, assign players to multiple positions,
+order each position's depth, and save the charts. Without a saved playbook,
+standard offense and defense positions are available. Player access defaults
+to off; enable "Allow rostered players to view depth charts" and save to publish
+read-only charts to verified roster members. Charts are stored separately in
+the server-only `team_depth_charts` collection, never in public team documents.
+Turning access off and saving blocks subsequent player reads.
+
+Playoff bracket lines follow explicit winner/loser feeder IDs, including byes
+and double-elimination advancement; dashed lines indicate loser feeds.
+The clockless play log and box score each have their own focusable scroll area.
+
 Game details, synchronous administration, clockless stat keeping, and the live
 spectator scoreboard use the same team-palette subscription. Saved primary and
 secondary colors update without reloading; spectator scorecards, possession

@@ -4,10 +4,11 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { isYorkTeam, YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_TEAM_ALIASES, YORK_TEAM_ID } from "@/lib/yorkStaff";
 import { accountEmailKey } from "@/lib/accountEmailKey";
+import { getDepthFormations } from "@/lib/depthChart";
 
 export const runtime = "nodejs";
 
-type PrivateAction = "lookup" | "team" | "league" | "admin_overview";
+type PrivateAction = "lookup" | "team" | "league" | "admin_overview" | "depth_chart";
 
 const PLATFORM_ADMIN_EMAIL = "dextersargent@gmail.com";
 const MAX_REQUEST_BYTES = 8_000;
@@ -17,6 +18,7 @@ const ACTION_READ_UNITS: Record<PrivateAction, number> = {
   team: 70,
   league: 3,
   admin_overview: 1_200,
+  depth_chart: 350,
 };
 
 class RequestError extends Error {
@@ -67,7 +69,7 @@ function parsePayload(value: unknown): { action: PrivateAction; data: Record<str
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     fail("Request data is required.");
   }
-  if (!["lookup", "team", "league", "admin_overview"].includes(String(action))) {
+  if (!["lookup", "team", "league", "admin_overview", "depth_chart"].includes(String(action))) {
     fail("Unsupported private-data request.");
   }
   return { action: action as PrivateAction, data: data as Record<string, unknown> };
@@ -167,10 +169,38 @@ async function lookupByEmail(token: DecodedIdToken) {
         return {
           id: snapshot.id,
           ...snapshot.data(),
+          teamId: snapshot.get("teamId"),
           email: privateData.email || "",
           emails: Array.isArray(privateData.emails) ? privateData.emails : [],
         };
       }),
+  };
+}
+
+async function getDepthChart(teamId: string, token: DecodedIdToken) {
+  if (!/^[^/]{1,128}$/.test(teamId)) fail("A valid team ID is required.");
+  const [team, privateTeam, depth, playbook] = await Promise.all([
+    adminDb.doc(`teams/${teamId}`).get(),
+    adminDb.doc(`team_private/${teamId}`).get(),
+    adminDb.doc(`team_depth_charts/${teamId}`).get(),
+    adminDb.doc(`teams/${teamId}/meta/playbook`).get(),
+  ]);
+  if (!team.exists && !isYorkTeam(teamId)) fail("The team was not found.", 404);
+  const canEdit = isTeamAdmin(team.data() || {}, token) || isTeamAdmin(privateTeam.data() || {}, token) ||
+    (isYorkTeam(teamId) && YORK_ADMIN_EMAILS.includes(normalizedEmail(token)));
+  const state = depth.data() || { charts: [], visibleToPlayers: false };
+  if (!canEdit) {
+    if (state.visibleToPlayers !== true) return { charts: [], visibleToPlayers: false, formations: [], canEdit: false };
+    const membership = await lookupByEmail(token);
+    if (!membership.players.some((player) => isYorkTeam(teamId)
+      ? typeof player.teamId === "string" && isYorkTeam(player.teamId)
+      : player.teamId === teamId)) fail("Only rostered team players can view published depth charts.", 403);
+  }
+  return {
+    charts: state.charts || [],
+    visibleToPlayers: state.visibleToPlayers === true,
+    formations: getDepthFormations(playbook.data()?.playbooks || []),
+    canEdit,
   };
 }
 
@@ -349,6 +379,8 @@ export async function POST(request: Request) {
       result = await getTeamPrivate(String(data.teamId || ""), token);
     } else if (action === "league") {
       result = await getLeaguePrivate(String(data.leagueId || ""), token);
+    } else if (action === "depth_chart") {
+      result = await getDepthChart(String(data.teamId || ""), token);
     } else {
       if (Object.keys(data).length) fail("The admin overview does not accept caller-supplied filters.");
       result = await getAdminOverview(token);
