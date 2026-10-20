@@ -29,7 +29,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
     return false;
   });
 
-  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId);
+  const isDemo = !isYorkMatch(matchId) && (isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId));
 
   useEffect(() => {
     const loadMatch = async () => {

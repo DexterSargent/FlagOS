@@ -68,6 +68,7 @@ import {
   deleteYorkPlay,
   saveYorkCustomMatch,
   isYorkTeam,
+  isYorkMatch,
   YORK_TEAM_ID,
 } from "@/lib/yorkTeamData";
 
@@ -79,7 +80,8 @@ interface AsyncPlayByPlayManagerProps {
 export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayByPlayManagerProps) {
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
-  const isDemo = isDemoLeague || matchId?.startsWith("match_demo_");
+  // York games are real team data and must never route through the demo sandbox.
+  const isDemo = !isYorkMatch(matchId) && (isDemoLeague || matchId?.startsWith("match_demo_"));
   const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {

@@ -23,6 +23,7 @@ import {
   getYorkTeamMatches,
   saveYorkCustomMatch,
   deleteYorkCustomMatch,
+  REMOVED_YORK_MATCH_IDS,
 } from "@/lib/yorkTeamData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
@@ -190,7 +191,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           const remoteMatches = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as any) }))
             .filter((m) =>
-              !m.isHidden && (
+              !m.isHidden && !REMOVED_YORK_MATCH_IDS.has(m.id) && (
                 m.homeTeamId === teamId ||
                 m.awayTeamId === teamId ||
                 m.managingTeamId === teamId ||

@@ -137,7 +137,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     const fetchMatch = async () => {
       if (isDemoLeague) {
-        const m = getSandboxMatch(matchId);
+        const m = getSandboxMatch(matchId) || getYorkMatch(matchId);
         if (m) setMatchData(m);
         setLoading(false);
         return;

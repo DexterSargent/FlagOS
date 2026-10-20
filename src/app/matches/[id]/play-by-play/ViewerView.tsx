@@ -20,7 +20,7 @@ import {
   subscribeDemoSandbox,
   isDemoMatch as checkIsDemoMatch,
 } from "@/lib/demoSandbox";
-import { getYorkMatch, getYorkTeamPlaysForMatch } from "@/lib/yorkTeamData";
+import { getYorkMatch, getYorkTeamPlaysForMatch, isYorkMatch } from "@/lib/yorkTeamData";
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -36,7 +36,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     return false;
   });
 
-  const isDemoMatch = isDemoLeague || isEmbedded || checkIsDemoMatch(matchId, activeLeagueId);
+  const isDemoMatch = !isYorkMatch(matchId) && (isDemoLeague || isEmbedded || checkIsDemoMatch(matchId, activeLeagueId));
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess({
     isPrivateOverride: matchId.startsWith("match_live_"),

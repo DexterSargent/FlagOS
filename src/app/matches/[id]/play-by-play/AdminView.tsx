@@ -33,7 +33,7 @@ import {
   isDemoMatch,
 } from "@/lib/demoSandbox";
 import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, TeamColorPalette, TeamColorSource } from "@/lib/teamColors";
-import { getYorkMatch, getYorkTeamPlaysForMatch, getYorkTeamPlayers } from "@/lib/yorkTeamData";
+import { getYorkMatch, getYorkTeamPlaysForMatch, getYorkTeamPlayers, isYorkMatch } from "@/lib/yorkTeamData";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -50,7 +50,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return false;
   });
 
-  const isDemo = isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId);
+  const isDemo = !isYorkMatch(matchId) && (isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId));
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess({
     isPrivateOverride: matchId.startsWith("match_live_"),
