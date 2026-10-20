@@ -63,8 +63,8 @@ function fail(message: string, status = 400): never {
   throw new RequestError(message, status);
 }
 
-function validateValue(value: unknown, field: string, depth = 0): void {
-  if (depth > 8) fail("Payload nesting is too deep.");
+function validateValue(value: unknown, field: string, depth = 0, maxDepth = 8): void {
+  if (depth > maxDepth) fail("Payload nesting is too deep.");
   if (typeof value === "string") {
     const maxLength = field === "logoUrl" ? MAX_LOGO_LENGTH : MAX_STRING_LENGTH;
     if (value.length > maxLength) fail(`${field} is too long.`);
@@ -73,23 +73,23 @@ function validateValue(value: unknown, field: string, depth = 0): void {
   if (value === null || typeof value === "boolean" || typeof value === "number") return;
   if (Array.isArray(value)) {
     if (value.length > MAX_ARRAY_ITEMS) fail(`${field} contains too many items.`);
-    value.forEach((item) => validateValue(item, field, depth + 1));
+    value.forEach((item) => validateValue(item, field, depth + 1, maxDepth));
     return;
   }
   if (typeof value === "object") {
     const entries = Object.entries(value);
     if (entries.length > MAX_OBJECT_FIELDS) fail(`${field} contains too many fields.`);
-    for (const [key, nestedValue] of entries) validateValue(nestedValue, key, depth + 1);
+    for (const [key, nestedValue] of entries) validateValue(nestedValue, key, depth + 1, maxDepth);
     return;
   }
   fail(`${field} contains an unsupported value.`);
 }
 
-function validatePayload(data: unknown): asserts data is Record<string, unknown> {
+function validatePayload(data: unknown, maxDepth = 8): asserts data is Record<string, unknown> {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     fail("A record payload is required.");
   }
-  validateValue(data, "record");
+  validateValue(data, "record", 0, maxDepth);
   if (Buffer.byteLength(JSON.stringify(data), "utf8") > MAX_REQUEST_BYTES) {
     fail("Payload exceeds the maximum allowed size.");
   }
@@ -661,7 +661,8 @@ export async function POST(request: Request) {
     ].includes(String(entity))) {
       fail("Unsupported record type.");
     }
-    validatePayload(data);
+    // Playbook route and motion coordinates are nine levels below the record.
+    validatePayload(data, entity === "playbook" ? 9 : 8);
     const requestedEntity = entity as Entity;
     if (requestedEntity === "depth_chart" &&
       (Object.keys(data).some((key) => !["teamId", "charts", "visibleToPlayers"].includes(key)) || !validateDepthCharts(data))) {
