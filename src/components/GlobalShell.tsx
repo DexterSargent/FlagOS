@@ -74,7 +74,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-clip">
       {showLeagueNav && <LeagueHeader />}
-      <main className="flex-1 w-full max-w-full overflow-x-clip">
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-full overflow-x-clip">
         {children}
       </main>
       {showLeagueNav && <LeagueFooter />}
@@ -86,7 +86,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
 
 export default function GlobalShell({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<div className="flex-1 w-full">{children}</div>}>
+    <Suspense fallback={<main id="main-content" tabIndex={-1} className="flex-1 w-full">{children}</main>}>
       <GlobalShellInner>{children}</GlobalShellInner>
     </Suspense>
   );
