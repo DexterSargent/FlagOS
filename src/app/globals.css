@@ -178,6 +178,17 @@ body {
   color: var(--text-primary);
 }
 
+:where(a, button, input, select, textarea, summary, [tabindex], [contenteditable="true"]):focus-visible {
+  outline: 2px solid var(--league-primary);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, summary, [tabindex], [contenteditable="true"]):focus-visible {
+    outline-color: Highlight;
+  }
+}
+
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   transition: background-color 180ms ease, color 180ms ease;
