@@ -161,7 +161,7 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
     </div>
   ) : (
     <div
-      className="flex-1 min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-3 md:p-4 flex flex-col gap-3 md:gap-4 shadow-2xl overflow-y-auto md:overflow-hidden"
+      className="flex-1 min-h-0 bg-neutral-900 border border-emerald-500/40 rounded-2xl p-3 md:p-4 flex flex-col gap-3 md:gap-4 shadow-2xl overflow-y-auto"
       style={props.accentColor ? { borderColor: `${props.accentColor}80` } : undefined}
     >
       <div className="space-y-1 text-center">

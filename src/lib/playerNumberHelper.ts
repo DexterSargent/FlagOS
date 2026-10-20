@@ -80,7 +80,7 @@ export function sortRosterWithNumbers(
   numberMap: Record<string, string> = {},
   statCounts?: Record<string, number>
 ): string[] {
-  const cleanRoster = roster.filter((p) => p !== "TEAM");
+  const cleanRoster = [...new Set(roster.filter((p) => p && p !== "TEAM"))];
   const sorted = [...cleanRoster].sort((a, b) => {
     if (statCounts) {
       const countA = statCounts[a] ?? 0;
@@ -112,6 +112,21 @@ export function sortRosterWithNumbers(
 
 export const sortRosterByStatLeader = sortRosterWithNumbers;
 
+export function getDefensiveStatCategory(outcome?: string | null): "pbus" | "interceptions" | "sacks" | "flags" {
+  if (outcome === "PBU") return "pbus";
+  if (outcome === "Interception") return "interceptions";
+  if (outcome === "Sack" || outcome === "FFL") return "sacks";
+  return "flags";
+}
+
+export function getDefensiveStatLabel(category: ReturnType<typeof getDefensiveStatCategory>): string {
+  return { pbus: "PBU", interceptions: "INT", sacks: "sack", flags: "flags" }[category];
+}
+
+export function getEligibleReceivers(roster: string[], passer: string): string[] {
+  return roster.filter((player) => player !== passer || player === "TEAM");
+}
+
 export interface PlayerCategoryStatCounts {
   passing: Record<string, number>;
   receiving: Record<string, number>;
@@ -126,7 +141,7 @@ export interface PlayerCategoryStatCounts {
  * Aggregates player counts for all play-by-play statistical categories:
  * passing, receiving, rushing, flags, sacks, interceptions, and PBUs.
  */
-export function computePlayerStatCounts(plays: any[] = []): PlayerCategoryStatCounts {
+export function computePlayerStatCounts(plays: any[] = [], players: PlayerNumberItem[] = []): PlayerCategoryStatCounts {
   const counts: PlayerCategoryStatCounts = {
     passing: {},
     receiving: {},
@@ -137,7 +152,9 @@ export function computePlayerStatCounts(plays: any[] = []): PlayerCategoryStatCo
     pbus: {},
   };
 
-  const inc = (map: Record<string, number>, name?: string | null) => {
+  const names = new Map(players.filter((player) => player.id).map((player) => [player.id, player.playerName || player.name]));
+  const inc = (map: Record<string, number>, id?: string | null) => {
+    const name = id ? names.get(id) || id : id;
     if (!name || name === "TEAM" || !isTrackablePlayer(name)) return;
     map[name] = (map[name] || 0) + 1;
   };
@@ -149,8 +166,11 @@ export function computePlayerStatCounts(plays: any[] = []): PlayerCategoryStatCo
     return [];
   };
 
+  const seen = new Set<string>();
   plays.forEach((play) => {
     if (!play) return;
+    if (play.isHidden === true || (play.id && seen.has(play.id))) return;
+    if (play.id) seen.add(play.id);
     const playType = play.playType;
     const outcome = play.passOutcome || play.outcome;
 

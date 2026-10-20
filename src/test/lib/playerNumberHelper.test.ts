@@ -4,9 +4,47 @@ import {
   sortRosterWithNumbers,
   formatPlayerDisplay,
   computePlayerStatCounts,
+  getDefensiveStatCategory,
+  getDefensiveStatLabel,
+  getEligibleReceivers,
 } from "@/lib/playerNumberHelper";
 
 describe("playerNumberHelper", () => {
+  it.each([
+    ["PBU", "pbus", "PBU"],
+    ["Interception", "interceptions", "INT"],
+    ["Sack", "sacks", "sack"],
+    ["FFL", "sacks", "sack"],
+    ["Complete", "flags", "flags"],
+    ["Gain", "flags", "flags"],
+  ])("uses the same defensive category for %s in both keepers", (outcome, category, label) => {
+    expect(getDefensiveStatCategory(outcome)).toBe(category);
+    expect(getDefensiveStatLabel(getDefensiveStatCategory(outcome))).toBe(label);
+  });
+
+  it("excludes the passer from receiving choices but preserves team attribution", () => {
+    expect(getEligibleReceivers(["QB", "Receiver", "TEAM"], "QB")).toEqual(["Receiver", "TEAM"]);
+    expect(getEligibleReceivers(["QB", "TEAM"], "TEAM")).toEqual(["QB", "TEAM"]);
+  });
+
+  it("deduplicates rosters and breaks equal-stat and equal-number ties by name", () => {
+    expect(sortRosterWithNumbers(
+      ["Zoe", "Amy", "Zoe", "TEAM", "Unnumbered", "TEAM"],
+      { Zoe: "12", Amy: "12" },
+      { Zoe: 2, Amy: 2 },
+    )).toEqual(["Amy", "Zoe", "Unnumbered", "TEAM"]);
+  });
+
+  it("resolves record IDs and excludes hidden or duplicate plays from leader counts", () => {
+    const play = { id: "play1", playType: "Pass", qbPlayerId: "p1", passOutcome: "Complete", receiverPlayerId: "p2" };
+    const counts = computePlayerStatCounts(
+      [play, play, { ...play, id: "hidden", isHidden: true }],
+      [{ id: "p1", playerName: "Quarterback" }, { id: "p2", playerName: "Receiver" }],
+    );
+    expect(counts.passing).toEqual({ Quarterback: 1 });
+    expect(counts.receiving).toEqual({ Receiver: 1 });
+  });
+
   it("extracts jersey numbers from explicit player objects", () => {
     const players = [
       { id: "p1", playerName: "Patrick Mahomes", number: "15" },

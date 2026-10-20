@@ -12,7 +12,9 @@ import { useAuth } from "@/lib/authContext";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
-import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts } from "@/lib/playerNumberHelper";
+import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts, getDefensiveStatCategory, getEligibleReceivers } from "@/lib/playerNumberHelper";
+import { loadStatKeeperHistory } from "@/lib/statKeeperHistory";
+import StatPlayerPicker from "@/components/play-by-play/StatPlayerPicker";
 import {
   PENALTY_CATALOG,
   PenaltyDefinition,
@@ -244,8 +246,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   }, [historicalPlays, matchPlaysList]);
 
   const playerStatCounts = useMemo(() => {
-    return computePlayerStatCounts(allPlaysForStats);
-  }, [allPlaysForStats]);
+    return computePlayerStatCounts(allPlaysForStats, allPlayers);
+  }, [allPlaysForStats, allPlayers]);
 
   const isUnstartedGame =
     matchStatus === "scheduled" ||
@@ -422,23 +424,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         setAwayPlayers([...awayP, ...matchSubs].sort());
 
         // Load historical/season plays for stats leader ordering
-        if (isDemo) {
-          setHistoricalPlays(getSandboxPlays().filter((p) => p.matchId !== matchId));
-        } else {
-          try {
-            if (mData.leagueId) {
-              const q = query(
-                collection(db, "plays"),
-                where("leagueId", "==", mData.leagueId),
-                where("isHidden", "!=", true),
-                limit(300),
-              );
-              const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)).filter((p: any) => p.matchId !== matchId));
-            }
-          } catch (error) {
-            console.error("Unable to load historical plays:", error);
-          }
+        try {
+          setHistoricalPlays(await loadStatKeeperHistory({ ...mData, id: matchId }, isDemo));
+        } catch (error) {
+          console.error("Unable to load historical plays:", error);
         }
 
         refreshPlays();
@@ -2164,7 +2153,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                               {sortRosterByStatLeader(
-                                getOffensiveRoster().filter((p) => p !== qbRunner || p === 'TEAM'),
+                                getEligibleReceivers(getOffensiveRoster(), qbRunner),
                                 playerNumberMap,
                                 playerStatCounts.receiving
                               ).map((p) => {
@@ -2416,41 +2405,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               </span>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
-                            {sortRosterByStatLeader(getOffensiveRoster(), playerNumberMap, playerStatCounts.flags).map((p) => {
-                              const isSelected = flaggers.includes(p);
-                              const pNum = playerNumberMap[p];
-                              const flagCount = playerStatCounts.flags[p];
-                              return (
-                                <button
-                                  key={p}
-                                  type="button"
-                                  aria-label={p}
-                                  onClick={() => handleFlaggers(p)}
-                                  className={`p-2 sm:p-2.5 rounded-xl font-bold text-left text-xs sm:text-sm transition-all flex items-center justify-between gap-1.5 cursor-pointer ${isSelected
-                                    ? 'bg-cyan-500 text-white shadow-md'
-                                    : 'bg-black border border-white/5 text-neutral-300 hover:bg-white/10 hover:border-white/20'
-                                    }`}
-                                >
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    {pNum && (
-                                      <span className={`px-1.5 py-0.5 rounded text-[10px] sm:text-xs font-mono font-black shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                                        }`}>
-                                        #{pNum}
-                                      </span>
-                                    )}
-                                    <span className="truncate">{p}</span>
-                                    {flagCount !== undefined && flagCount > 0 && (
-                                      <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
-                                        ({flagCount} flags)
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                                </button>
-                              );
-                            })}
-                          </div>
+                          <StatPlayerPicker
+                            label="Flagger(s) on Interception Return"
+                            roster={getOffensiveRoster()}
+                            playerNumbers={playerNumberMap}
+                            counts={playerStatCounts.flags}
+                            countLabel="flags"
+                            selected={flaggers}
+                            onSelect={handleFlaggers}
+                          />
                         </div>
                       )}
 
@@ -2512,7 +2475,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 [@media(max-height:450px)]:grid-cols-4 gap-1.5 sm:gap-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                               {(() => {
                                 const isSack = outcome === 'Sack' || outcome === 'FFL';
-                                const activeCounts = isSack ? playerStatCounts.sacks : playerStatCounts.flags;
+                                const activeCounts = playerStatCounts[getDefensiveStatCategory(outcome)];
                                 return sortRosterByStatLeader(getDefensiveRoster(), playerNumberMap, activeCounts).map((p) => {
                                   const isSelected = defenders.includes(p);
                                   const pNum = playerNumberMap[p];
@@ -2773,7 +2736,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-52 overflow-y-auto pr-1 hide-scrollbar">
                         {sortRosterByStatLeader(
-                          getOffensiveRoster().filter(p => p !== convPasser || p === 'TEAM'),
+                          getEligibleReceivers(getOffensiveRoster(), convPasser),
                           playerNumberMap,
                           playerStatCounts.receiving
                         ).map(p => {

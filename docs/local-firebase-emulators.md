@@ -128,6 +128,14 @@ save succeeded. Offline play logging explicitly warns when a play exists
 only on the current device; it is not an automatic synchronization queue.
 Season totals merge seed, device-local and shared records by ID.
 
+Both live and clockless stat keepers rank player choices by the relevant
+season/current-game statistic, then numeric jersey number and name; team
+attribution stays last. York uses its team season history even without a
+league ID. Interceptions, PBUs, sacks, flag pulls, passing, rushing and receiving
+use their own categories. Clockless entry also supports interception-return
+flaggers and successful-conversion player credit, while remaining timer-free.
+Receiver choices exclude the selected passer in both modes.
+
 Game details, synchronous administration, clockless stat keeping, and the live
 spectator scoreboard use the same team-palette subscription. Saved primary and
 secondary colors update without reloading; spectator scorecards, possession

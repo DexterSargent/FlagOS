@@ -43,7 +43,9 @@ import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo } from "@/components/TeamAssets";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
-import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts } from "@/lib/playerNumberHelper";
+import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts, getDefensiveStatCategory, getDefensiveStatLabel, getEligibleReceivers } from "@/lib/playerNumberHelper";
+import { loadStatKeeperHistory } from "@/lib/statKeeperHistory";
+import StatPlayerPicker from "@/components/play-by-play/StatPlayerPicker";
 import {
   PENALTY_CATALOG,
   PenaltyDefinition,
@@ -311,23 +313,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         setAwayPlayers(Array.from(new Set([...awayP, ...awayRosterFromDoc, ...matchSubs])).sort());
 
         // Load historical/season plays for stats leader ordering
-        if (isDemo) {
-          setHistoricalPlays(getSandboxPlays().filter((p: any) => p.matchId !== matchId));
-        } else {
-          try {
-            if (mData.leagueId) {
-              const q = query(
-                collection(db, "plays"),
-                where("leagueId", "==", mData.leagueId),
-                where("isHidden", "!=", true),
-                limit(300),
-              );
-              const snap = await getDocs(q);
-              setHistoricalPlays(snap.docs.map((d) => ({ id: d.id, ...d.data() } as any)).filter((p: any) => p.matchId !== matchId));
-            }
-          } catch (error) {
-            console.error("Unable to load historical plays:", error);
-          }
+        try {
+          setHistoricalPlays(await loadStatKeeperHistory({ ...mData, id: matchId }, isDemo));
+        } catch (error) {
+          console.error("Unable to load historical plays:", error);
         }
       } catch (e) {
         console.error("Error loading match data for async stat keeper:", e);
@@ -428,8 +417,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   }, [historicalPlays, plays]);
 
   const playerStatCounts = useMemo(() => {
-    return computePlayerStatCounts(allPlaysForStats);
-  }, [allPlaysForStats]);
+    return computePlayerStatCounts(allPlaysForStats, allPlayers);
+  }, [allPlaysForStats, allPlayers]);
 
   useEffect(() => {
     loadPlays();
@@ -615,12 +604,19 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   };
 
   const selectOutcome = (id: string) => {
+    setDefenders([]);
+    setFlaggers([]);
+    if (id !== "Complete") setReceiver("");
     setOutcome(id as any);
     if (!qbRunner) setOpenSection("qb");
     else setOpenSection(playType === "Pass" && id === "Complete" ? "receiver" : "defenders");
   };
 
   const handleDefenders = (player: string) => {
+    if (outcome === "PBU" || outcome === "Interception") {
+      setDefenders(defenders.includes(player) ? [] : [player]);
+      return;
+    }
     if (player === "TEAM") {
       setDefenders(defenders.includes("TEAM") ? [] : ["TEAM"]);
       return;
@@ -840,8 +836,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       ...buildPlayData(playResult),
       conversionAttempt: convPts,
       conversionSuccess: convIsGood,
-      conversionPasser: convPasser,
-      conversionReceiver: convReceiver,
+      conversionPasser: convIsGood ? convPasser : "",
+      conversionReceiver: convIsGood ? convReceiver : "",
       pointsScored: 6 + (convIsGood ? convPts! : 0),
     };
     const statement = formatPlaySentence(finalPlay, {
@@ -1535,7 +1531,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     onOpen={() => setOpenSection("qb")}
                   />
                 )}
-                <div className={`min-w-0 ${openSection === "qb" ? "" : "hidden"}`}>
+                <div hidden={openSection !== "qb"} className={`min-w-0 ${openSection === "qb" ? "" : "hidden"}`}>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
                       {playType === "Pass" ? "Quarterback" : "Ball Carrier"}
@@ -1567,8 +1563,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           key={p}
                           type="button"
                           aria-label={label}
+                          aria-pressed={isSelected}
                           onClick={() => {
                             setQbRunner(p);
+                            if (receiver === p) setReceiver("");
                             setOpenSection(playType === "Pass" && outcome === "Complete" ? "receiver" : "defenders");
                             if (playType === "Pass") {
                               if (possession === homeTeamName) setLastHomeQB(p);
@@ -1613,7 +1611,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   />
                 )}
                 {playType === "Pass" && outcome === "Complete" && (
-                  <div className={`min-w-0 ${openSection === "receiver" ? "" : "hidden"}`}>
+                  <div hidden={openSection !== "receiver"} className={`min-w-0 ${openSection === "receiver" ? "" : "hidden"}`}>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
                         Target Receiver
@@ -1626,7 +1624,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     </div>
                     <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-36 md:max-h-40 [@media(max-height:450px)]:max-h-24 overflow-y-auto">
                       {sortRosterByStatLeader(
-                        offensePlayers,
+                        getEligibleReceivers(offensePlayers, qbRunner),
                         playerNumberMap,
                         playerStatCounts.receiving
                       ).map((p) => {
@@ -1638,6 +1636,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                             key={p}
                             type="button"
                             aria-label={p}
+                            aria-pressed={isSelected}
                             onClick={() => {
                               setReceiver(p);
                               setOpenSection("defenders");
@@ -1675,13 +1674,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 {openSection !== "defenders" && (
                   <SectionSummary
                     className="md:col-span-2"
-                    label="Flagger(s)"
+                    label={outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
                     value={defenders.length > 0 ? defenders.map(d => playerNumberMap[d] ? `#${playerNumberMap[d]} ${d}` : d).join(" & ") : "Optional – tap to add"}
                     filled={defenders.length > 0}
                     onOpen={() => setOpenSection("defenders")}
                   />
                 )}
-                <div className={`md:col-span-2 ${openSection === "defenders" ? "" : "hidden"}`}>
+                <div hidden={openSection !== "defenders"} className={`md:col-span-2 ${openSection === "defenders" ? "" : "hidden"}`}>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
                       Defenders Involved / Flag
@@ -1694,58 +1693,28 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       Done
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1 max-h-36 md:max-h-40 [@media(max-height:450px)]:max-h-24 overflow-y-auto">
-                    <button
-                      type="button"
-                      onClick={() => handleDefenders("TEAM")}
-                      className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                        defenders.includes("TEAM")
-                          ? "bg-amber-400 text-black font-black border-amber-400"
-                          : "bg-neutral-800 border-white/10 text-neutral-300"
-                      }`}
-                    >
-                      Team Defense
-                    </button>
-                    {(() => {
-                      const isSack = outcome === "Sack" || outcome === "FFL";
-                      const defCounts = isSack ? playerStatCounts.sacks : playerStatCounts.flags;
-                      return sortRosterByStatLeader(defensePlayers, playerNumberMap, defCounts).map((p) => {
-                        const pNum = playerNumberMap[p];
-                        const isSelected = defenders.includes(p);
-                        const countVal = defCounts[p];
-                        return (
-                          <button
-                            key={p}
-                            type="button"
-                            aria-label={p}
-                            onClick={() => handleDefenders(p)}
-                            className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-between gap-1.5 ${
-                              isSelected
-                                ? "bg-red-500 text-white font-black border-red-500 shadow-sm"
-                                : "bg-neutral-800 border-white/10 text-neutral-300 hover:border-white/20"
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              {pNum && (
-                                <span className={`px-1 py-0.2 rounded font-mono font-bold text-[10px] shrink-0 ${
-                                  isSelected ? "bg-white/20 text-white" : "bg-red-500/20 text-red-300 border border-red-500/30"
-                                }`}>
-                                  #{pNum}
-                                </span>
-                              )}
-                              <span className="truncate">{p}</span>
-                              {countVal !== undefined && countVal > 0 && (
-                                <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? "text-white/80" : "text-red-300/80"}`}>
-                                  ({countVal} {isSack ? "sack" : "flags"})
-                                </span>
-                              )}
-                            </div>
-                            {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                          </button>
-                        );
-                      });
-                    })()}
-                  </div>
+                  <StatPlayerPicker
+                    label={outcome === "PBU" ? "Pass Breakup" : outcome === "Interception" ? "Interceptor(s)" : outcome === "Sack" || outcome === "FFL" ? "Sacker(s)" : "Flagger(s)"}
+                    roster={[...defensePlayers, "TEAM"]}
+                    playerNumbers={playerNumberMap}
+                    counts={playerStatCounts[getDefensiveStatCategory(outcome)]}
+                    countLabel={getDefensiveStatLabel(getDefensiveStatCategory(outcome))}
+                    selected={defenders}
+                    onSelect={handleDefenders}
+                  />
+                  {outcome === "Interception" && (
+                    <div className="mt-3">
+                      <StatPlayerPicker
+                        label="Flagger(s) on Interception Return"
+                        roster={offensePlayers}
+                        playerNumbers={playerNumberMap}
+                        counts={playerStatCounts.flags}
+                        countLabel="flags"
+                        selected={flaggers}
+                        onSelect={(player) => setFlaggers((current) => current.includes(player) ? current.filter((name) => name !== player) : [...current, player])}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* ACTION RESULTS BUTTONS (STICKY IN-FRAME) */}
@@ -1808,6 +1777,32 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 onResultChange={setConvIsGood}
                 accentColor={possessionTeamPalette.tertiary}
               >
+                {convPts && convIsGood && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-neutral-400">Select players to award stats (optional)</p>
+                    <StatPlayerPicker
+                      label="Conversion Passer / Runner"
+                      roster={offensePlayers}
+                      playerNumbers={playerNumberMap}
+                      counts={playerStatCounts.passing}
+                      countLabel="att"
+                      selected={convPasser ? [convPasser] : []}
+                      onSelect={(player) => {
+                        setConvPasser(convPasser === player ? "" : player);
+                        if (convReceiver === player) setConvReceiver("");
+                      }}
+                    />
+                    <StatPlayerPicker
+                      label="Conversion Receiver"
+                      roster={getEligibleReceivers(offensePlayers, convPasser)}
+                      playerNumbers={playerNumberMap}
+                      counts={playerStatCounts.receiving}
+                      countLabel="rec"
+                      selected={convReceiver ? [convReceiver] : []}
+                      onSelect={(player) => setConvReceiver(convReceiver === player ? "" : player)}
+                    />
+                  </div>
+                )}
                 {convPts && (
                   <div className="space-y-2 pt-1">
                     <button
