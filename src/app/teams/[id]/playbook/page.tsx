@@ -909,7 +909,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
       <div className={`max-w-7xl mx-auto ${
         viewLevel === "plays"
-          ? "p-2 sm:p-2.5 flex flex-col gap-2 h-full min-h-0 flex-1 overflow-hidden"
+          ? "p-2 sm:p-2.5 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 h-full min-h-0 flex-1 overflow-hidden"
           : isEmbedded
           ? "space-y-3 p-2 sm:p-3 flex-1"
           : "space-y-6 p-4 sm:p-6 md:p-8 flex-1"
@@ -1384,7 +1384,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         {viewLevel === "plays" && activePlaybook && (
           <div className="flex flex-col gap-2 flex-1 min-h-0 h-full overflow-hidden">
             {/* Unified Studio Top Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 bg-[#0B0F19] px-2 sm:px-3 py-1.5 sm:py-2 rounded-2xl border border-white/10 shrink-0 shadow-lg">
+            <div className="flex flex-wrap [@media(max-height:450px)]:flex-nowrap items-center justify-between gap-x-2 gap-y-1.5 bg-[#0B0F19] px-2 sm:px-3 py-1.5 sm:py-2 [@media(max-height:450px)]:py-1 rounded-2xl border border-white/10 shrink-0 shadow-lg">
               {/* Left: Navigation & Formation */}
               <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-none sm:flex-wrap">
                 <button
@@ -1394,10 +1394,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   aria-label="Back to formations"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Formations</span>
+                  <span className="hidden sm:[@media(min-height:451px)]:inline">Formations</span>
                 </button>
-                <span className="hidden sm:inline text-xs text-neutral-500">•</span>
-                <span className="hidden sm:inline text-xs font-mono text-cyan-400 font-black">
+                <span className="hidden sm:[@media(min-height:451px)]:inline text-xs text-neutral-500">•</span>
+                <span className="hidden sm:[@media(min-height:451px)]:inline text-xs font-mono text-cyan-400 font-black">
                   {selectedFormationName}
                 </span>
 
@@ -1411,7 +1411,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     const firstPlay = activePlaybook.plays.find((p) => p.formation === name);
                     if (firstPlay) setActivePlayId(firstPlay.id);
                   }}
-                  className="sm:hidden min-w-0 flex-1 h-10 px-2 rounded-xl bg-black/50 border border-white/10 text-xs font-mono font-black text-cyan-400"
+                  className="sm:[@media(min-height:451px)]:hidden min-w-0 flex-1 h-10 [@media(max-height:450px)]:h-8 [@media(max-height:450px)]:max-w-[40vw] px-2 rounded-xl bg-black/50 border border-white/10 text-xs font-mono font-black text-cyan-400"
                 >
                   {activePlaybook.formations.map((f) => (
                     <option key={f.id} value={f.name}>
@@ -1421,7 +1421,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </select>
 
                 {/* Quick formation switcher within this playbook */}
-                <div className="hidden sm:flex items-center gap-1 overflow-x-auto sm:max-w-none">
+                <div className="hidden sm:[@media(min-height:451px)]:flex items-center gap-1 overflow-x-auto sm:max-w-none [@media(max-height:450px)]:max-w-[30vw]">
                   {activePlaybook.formations.map((f) => (
                     <button
                       key={f.id}
@@ -1443,7 +1443,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </div>
 
               {/* Center: Play Selector Tape */}
-              <div className="order-last sm:order-none flex items-center gap-1 overflow-x-auto w-full sm:w-auto max-w-full scrollbar-thin">
+              <div className="order-last sm:order-none [@media(max-height:450px)]:order-none [@media(max-height:450px)]:flex-1 [@media(max-height:450px)]:min-w-0 flex items-center gap-1 overflow-x-auto w-full sm:w-auto max-w-full scrollbar-thin">
                 {playsInActiveFormation.map((p) => {
                   const isSelected = activePlayId === p.id;
                   return (
@@ -1511,7 +1511,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     title="Ask coach questions or review discussion on this play"
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="hidden sm:inline">Coach Q&A</span>
+                    <span className="hidden sm:[@media(min-height:451px)]:inline">Coach Q&A</span>
                     {activePlay.questions && activePlay.questions.length > 0 && (
                       <span
                         className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
@@ -1563,7 +1563,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
             {/* Informative Player Notice */}
             {isPlayer && (
-              <div className="px-3.5 py-1.5 bg-cyan-950/40 border-b border-cyan-500/20 text-cyan-300 text-xs flex items-center justify-between gap-2 shrink-0">
+              <div className="px-3.5 py-1.5 [@media(max-height:450px)]:hidden bg-cyan-950/40 border-b border-cyan-500/20 text-cyan-300 text-xs flex items-center justify-between gap-2 shrink-0">
                 <div className="flex items-center gap-2 truncate">
                   <Eye className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <span className="truncate">

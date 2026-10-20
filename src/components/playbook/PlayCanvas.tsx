@@ -2446,13 +2446,13 @@ export default function PlayCanvas({
           </svg>
 
           {isCompactLandscape && (
-            <div className="absolute top-3 right-3 rounded-lg border border-white/15 bg-black/75 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white/80 pointer-events-none">
+            <div className="absolute top-1.5 right-1.5 rounded-md border border-white/15 bg-black/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/80 pointer-events-none">
               Zoomed to the line of scrimmage
             </div>
           )}
 
           {/* Quick On-Field Canvas Helper Tooltip */}
-          <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-neutral-400 font-mono hidden sm:flex items-center gap-2 pointer-events-none">
+          <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-neutral-400 font-mono hidden sm:[@media(min-height:451px)]:flex items-center gap-2 pointer-events-none">
             <Move className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span>Drag players to reposition • Drag waypoints to shape cuts</span>
           </div>
@@ -2844,7 +2844,7 @@ export default function PlayCanvas({
               {isPresetMenuOpen && (
                 <div
                   data-testid="route-presets-catalog"
-                  className="mt-2.5 bg-[#0A0E17] border border-cyan-500/40 rounded-2xl p-3 shadow-2xl space-y-2.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[42dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:450px)]:fixed [@media(max-height:450px)]:inset-y-0 [@media(max-height:450px)]:right-0 [@media(max-height:450px)]:left-auto [@media(max-height:450px)]:bottom-auto [@media(max-height:450px)]:z-[70] [@media(max-height:450px)]:mt-0 [@media(max-height:450px)]:w-[42%] [@media(max-height:450px)]:max-h-none [@media(max-height:450px)]:overflow-y-auto [@media(max-height:450px)]:rounded-none [@media(max-height:450px)]:border-y-0 [@media(max-height:450px)]:border-r-0"
+                  className="mt-2.5 bg-[#0A0E17] border border-cyan-500/40 rounded-2xl p-3 shadow-2xl space-y-2.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[42dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:450px)]:fixed [@media(max-height:450px)]:inset-y-0 [@media(max-height:450px)]:right-0 [@media(max-height:450px)]:left-auto [@media(max-height:450px)]:bottom-0 [@media(max-height:450px)]:z-[70] [@media(max-height:450px)]:mt-0 [@media(max-height:450px)]:w-[42%] [@media(max-height:450px)]:max-h-none [@media(max-height:450px)]:overflow-y-auto [@media(max-height:450px)]:rounded-none [@media(max-height:450px)]:border-y-0 [@media(max-height:450px)]:border-r-0"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-white/10">
                     <div className="flex items-center gap-2">
