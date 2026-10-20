@@ -454,7 +454,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
                       <div className="mt-5 pt-4 border-t border-white/5">
                         <Link
-                          href={canScheduleMatches ? statKeeperUrl : `/matches/${m.id}/play-by-play${isDemoLeague ? "?demo=true" : ""}`}
+                          href={canScheduleMatches || isYork ? statKeeperUrl : `/matches/${m.id}/play-by-play${isDemoLeague ? "?demo=true" : ""}`}
                           className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm border ${
                             canScheduleMatches && isAsyncMatch
                               ? "bg-emerald-500/10 hover:bg-emerald-500 text-emerald-300 hover:text-black border-emerald-500/30 hover:border-emerald-500"

@@ -13,6 +13,7 @@ import {
 import { FLAGOS_LOGO } from "./brandTokens";
 import { auth } from "./firebase";
 import { createSecureRecord } from "./secureWrites";
+import { isYorkTeam } from "./yorkStaff";
 
 export interface LeagueRules {
   playersOnField: number;          // e.g. 4, 5, 6, 7, 8 (default: 5)
@@ -837,5 +838,57 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     </LeagueContext.Provider>
   );
 };
+
+const YORK_INDEPENDENT_SETTINGS: LeagueSettings = {
+  ...DEFAULT_LEAGUE_SETTINGS,
+  leagueName: "York Lions Women's Flag Football",
+  shortcode: "YORK",
+  tagline: "Independent Varsity Club",
+  logoUrl: "",
+  icon: "cat",
+  primaryColor: "#E31837",
+  accentColor: "#FFFFFF",
+  themePreset: "custom",
+  defaultLocation: "York Turf Field 1",
+  contactEmail: "",
+  rulebookTitle: "IFAF 5v5 Flag Football Rules",
+  rules: { ...IFAF_5V5_RULES },
+  playoffFormat: undefined,
+};
+
+function rejectIndependentLeagueMutation(): never {
+  throw new Error("York is an independent team. League settings and demo actions do not apply to this team.");
+}
+
+export function TeamLeagueScope({ teamId, children }: { teamId: string; children: React.ReactNode }) {
+  const league = useContext(LeagueContext);
+  if (!isYorkTeam(teamId)) return <>{children}</>;
+
+  return (
+    <LeagueContext.Provider value={{
+      ...league,
+      settings: YORK_INDEPENDENT_SETTINGS,
+      activeLeagueId: "",
+      isDemoLeague: false,
+      loading: false,
+      subscription: null,
+      isLeagueArchived: false,
+      isSubscriptionPastDue: false,
+      isLeagueReadOnly: false,
+      isCustomizerOpen: false,
+      updateSettings: async () => rejectIndependentLeagueMutation(),
+      updateRules: async () => rejectIndependentLeagueMutation(),
+      previewThemeColors: rejectIndependentLeagueMutation,
+      revertThemeColors: rejectIndependentLeagueMutation,
+      openCustomizer: rejectIndependentLeagueMutation,
+      closeCustomizer: rejectIndependentLeagueMutation,
+      resetDemoSession: rejectIndependentLeagueMutation,
+      archiveLeague: async () => rejectIndependentLeagueMutation(),
+      resumeSubscription: async () => rejectIndependentLeagueMutation(),
+    }}>
+      {children}
+    </LeagueContext.Provider>
+  );
+}
 
 export const useLeague = () => useContext(LeagueContext);

@@ -22,6 +22,13 @@ whose parent team document is missing is also outside the migration; preserve
 it until its association and retention needs have been reviewed. Do not infer
 that a missing parent means its subcollection data is safe to delete.
 
+York is a standalone team: `teams/york_lions` has `isStandalone: true` and an
+empty `leagueId`, as do its standalone matches and plays. Do not attach those
+records to the demo league during backfills. The team route layout scopes York
+to its own 5v5 rules and non-demo context without changing the visitor's global
+league selection. York playbooks ignore demo/session flags, and public schedule
+links use the team's real stat keeper rather than a demo viewer.
+
 Before deploying rules or application changes, confirm the rules currently
 deployed to Firestore and verify that legacy paths remain inaccessible to other
 users. The rules in this repository are proposed changes and are not deployed

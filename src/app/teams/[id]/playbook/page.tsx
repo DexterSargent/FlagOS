@@ -63,6 +63,7 @@ type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
 export default function TeamPlaybookPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
+  const isYork = isYorkTeam(teamId);
 
   const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, playerData } = useAuth();
   const { settings, isDemoLeague } = useLeague();
@@ -90,6 +91,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       (teamId.startsWith("team_") && !teamId.startsWith("team_live_")));
 
   const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    if (isYork) return false;
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       return sp.get("demo") === "true" || sp.get("embed") === "true" || isDemoTeam || sessionStorage.getItem("flagos_demo_active") === "true";
@@ -98,6 +100,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   });
 
   const [isEmbedded, setIsEmbedded] = useState<boolean>(() => {
+    if (isYork) return false;
     if (typeof window !== "undefined") {
       return new URLSearchParams(window.location.search).get("embed") === "true";
     }
@@ -129,17 +132,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      if (sp.get("demo") === "true" || isDemoTeam || isDemoLeague) {
+      if (!isYork && (sp.get("demo") === "true" || isDemoTeam || isDemoLeague)) {
         setIsDemoMode(true);
       }
-      if (sp.get("embed") === "true") {
+      if (!isYork && sp.get("embed") === "true") {
         setIsEmbedded(true);
         setViewLevel("editor");
       }
     }
-  }, [teamId, isDemoTeam, isDemoLeague]);
+  }, [teamId, isDemoTeam, isDemoLeague, isYork]);
 
-  const isEffectDemo = isDemoLeague || isDemoTeam || isDemoMode;
+  const isEffectDemo = !isYork && (isDemoLeague || isDemoTeam || isDemoMode);
 
   // Strict Playbook RBAC:
   // 1. League admins have NO access to customer team playbooks (competitive integrity & strategic confidentiality policy)
@@ -149,7 +152,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // 4. Opponent coaches, opponent players, spectators, and unauthenticated users have NO access
   // 5. York Lions follows the same rules as every other independent team.
   // Note: isEmbedded allows the interactive showcase on the marketing landing page (/page.tsx) to demo the studio
-  const isYork = isYorkTeam(teamId);
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
   const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
   const isOpponentCoach = isTeamAdmin() && !isTeamAdminForThisTeam;

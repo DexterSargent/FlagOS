@@ -400,6 +400,22 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.queryByRole("button", { name: /Create a Playbook/i })).toBeNull();
       expect(screen.queryByRole("button", { name: /Save to Cloud/i })).toBeNull();
     });
+
+  });
+
+  it("does not put York into demo or embedded mode from visitor flags", async () => {
+      mockAuth.isTeamAdmin = vi.fn(() => false);
+      mockAuth.canManageTeam = vi.fn(() => false);
+      sessionStorage.setItem("flagos_demo_active", "true");
+      delete (window as any).location;
+      window.location = new URL("http://localhost:3000/teams/york_lions/playbook?demo=true&embed=true") as any;
+      try {
+        await renderPage("york_lions");
+        expect(await screen.findByText("Sign In as Player / Coach")).toBeInTheDocument();
+        expect(screen.queryByRole("textbox", { name: "Play name" })).not.toBeInTheDocument();
+      } finally {
+        sessionStorage.removeItem("flagos_demo_active");
+      }
   });
 
   it("PLAYER INTERACTION: Rostered player in Playmaker view sees Coach Q&A button", async () => {
