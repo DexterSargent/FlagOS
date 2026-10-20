@@ -95,12 +95,8 @@ const STORY_SECTIONS: StorySection[] = [
     era: "2019 – 2023",
     location: "York University, Toronto",
     title: "York University Varsity Career",
-    suggestedPhoto: "York Lions varsity jersey #51, Thanksgiving blocked kick TD return, or living room couch",
-    photoPromptLabel: "York Lions #51 & Varsity Brotherhood",
-    quote: {
-      text: "Resilience and leadership aren't built in luxury facilities; they are forged through brotherhood and showing up every single day.",
-      attribution: "Dexter Sargent • York Lions #51",
-    },
+    suggestedPhoto: "York Lions varsity jersey #50, Thanksgiving blocked kick TD return, or living room couch",
+    photoPromptLabel: "York Lions #50 & Varsity Brotherhood",
     stat: {
       value: "4 Seasons",
       label: "Varsity Linebacker & Team Captain",
@@ -117,10 +113,6 @@ const STORY_SECTIONS: StorySection[] = [
     title: "Coaching York Women's Flag Football",
     suggestedPhoto: "York Women's Flag Football huddle, playoff win celebration, or whiteboard installation",
     photoPromptLabel: "York Women's Flag Football & 17-8 Playoff Win",
-    quote: {
-      text: "Many people in this situation would look to simplify, go with what works, but we knew our athletes had far more capacity if they were treated like the intelligent football players they are.",
-      attribution: "Dexter Sargent • Defensive Overhaul",
-    },
     stat: {
       value: "17 - 8",
       label: "Playoff Qualification Victory vs Waterloo",
@@ -153,10 +145,6 @@ const STORY_SECTIONS: StorySection[] = [
     title: "Building FlagOS",
     suggestedPhoto: "FlagOS sideline interface, wristband designer, or late-night code build",
     photoPromptLabel: "FlagOS Sideline Software & YUWFFL",
-    quote: {
-      text: "FlagOS was built late at night after practices because community coaches deserve tools that work without corporate hassle or enterprise price tags.",
-      attribution: "Dexter Sargent • FlagOS Architecture",
-    },
     stat: {
       value: "$30 / mo",
       label: "Community Accessible Pricing",
@@ -405,125 +393,6 @@ export default function MyStoryPage() {
           </div>
         </div>
       </header>
-
-      {/* Hero Documentary Header */}
-      <div className="relative border-b border-black/[0.08] dark:border-white/[0.08] overflow-hidden bg-gradient-to-b from-black/[0.02] to-transparent dark:from-white/[0.02]">
-        {/* Ambient Grid Background */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-            backgroundSize: "28px 28px",
-          }}
-        />
-
-        {/* Ambient Top Glow */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-96 w-[700px] rounded-full bg-gradient-to-br from-[#3CA505]/20 via-[#287A06]/10 to-transparent blur-3xl"
-        />
-
-        <div className="relative mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-          {/* Documentary Label Pill */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3CA505]/30 bg-[#3CA505]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#287A06] dark:border-[#3CA505]/40 dark:text-[#70CB42]">
-              <Sparkles className="h-3 w-3" />
-              Origins &amp; Archive
-            </span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-600">•</span>
-            <span className="font-mono text-xs text-neutral-500 dark:text-neutral-400">
-              2011 — Present
-            </span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-600">•</span>
-            <span className="inline-flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-              <Clock className="h-3 w-3" />
-              ~6 min read
-            </span>
-          </div>
-
-          {/* Main Title */}
-          <h1 className="mt-6 text-3xl font-extrabold tracking-tight text-[#1D211C] dark:text-[#EDF0EB] sm:text-5xl md:text-6xl sm:leading-[1.1] [text-wrap:balance]">
-            Building FlagOS: Software Born Out of Necessity
-          </h1>
-
-          {/* Subtitle */}
-          <p className="mt-5 max-w-3xl text-lg font-normal leading-relaxed text-neutral-600 dark:text-neutral-300 sm:text-2xl sm:leading-snug [text-wrap:balance]">
-            Reflections on varsity football, coaching York University, and building accessible tools for community athletics
-          </p>
-
-          {/* Byline with York & FlagOS Badges */}
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-black/10 pt-6 dark:border-white/10">
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#E31837] to-[#8A0C1E] text-white shadow-md font-bold text-sm tracking-wider ring-2 ring-white dark:ring-black">
-                DS
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#1D211C] dark:text-[#EDF0EB]">
-                  Dexter Sargent • Head Coach, York University Women&apos;s Flag Football
-                </p>
-                <div className="mt-0.5 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                  <span>Founder of FlagOS</span>
-                  <span>•</span>
-                  <span>York University Lions Football #51</span>
-                </div>
-              </div>
-            </div>
-
-            <a
-              href="mailto:dextersargent@gmail.com"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 shadow-sm transition hover:border-[#3CA505] hover:text-[#287A06] dark:border-white/10 dark:bg-[#131713] dark:text-neutral-300 dark:hover:border-[#70CB42] dark:hover:text-[#70CB42]"
-            >
-              <span>Contact Coach Dexter</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-
-          {/* Core Philosophy / Executive Quote Callout */}
-          <div className="mt-10 rounded-2xl border border-black/[0.08] bg-white/70 p-6 sm:p-8 shadow-sm backdrop-blur-md dark:border-white/[0.08] dark:bg-[#111611]/70">
-            <div className="flex items-start gap-4">
-              <Quote className="h-8 w-8 shrink-0 text-[#3CA505]/40" />
-              <div>
-                <p className="text-base leading-relaxed text-neutral-800 dark:text-neutral-200 sm:text-xl sm:leading-relaxed [text-wrap:pretty]">
-                  I spent four years as a varsity football player and team captain at York University while studying software engineering. When I took over coaching the York women&apos;s flag football team, I inherited a program with incredible athletes but zero structural support. Watching our team struggle with fragmented schedules, unorganized playbooks, and overpriced software made it clear how broken amateur sports administration really is. I built FlagOS late at night to give our team practical tools to operate without dealing with excessive software costs or corporate hassle.
-                </p>
-                <div className="mt-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#287A06] dark:text-[#70CB42]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#3CA505]" />
-                  The FlagOS Core Principle: By Coaches, For Grassroots Athletics
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Metrics / Story Highlights */}
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-xl border border-black/[0.06] bg-black/[0.02] p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
-              <span className="font-mono text-2xl font-black text-[#E31837]">4 Seasons</span>
-              <p className="mt-1 text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                York Lions Linebacker &amp; Team Captain
-              </p>
-            </div>
-            <div className="rounded-xl border border-black/[0.06] bg-black/[0.02] p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
-              <span className="font-mono text-2xl font-black text-[#287A06] dark:text-[#70CB42]">17 - 8</span>
-              <p className="mt-1 text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                Historic Play-In Victory vs Waterloo
-              </p>
-            </div>
-            <div className="rounded-xl border border-black/[0.06] bg-black/[0.02] p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
-              <span className="font-mono text-2xl font-black text-[#3CA505]">90+</span>
-              <p className="mt-1 text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                Students at Tryouts &amp; YUWFFL League
-              </p>
-            </div>
-            <div className="rounded-xl border border-black/[0.06] bg-black/[0.02] p-4 dark:border-white/[0.06] dark:bg-white/[0.02]">
-              <span className="font-mono text-2xl font-black text-[#1D211C] dark:text-[#EDF0EB]">$30 / mo</span>
-              <p className="mt-1 text-xs font-medium text-neutral-600 dark:text-neutral-400">
-                Grassroots Software Pricing
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content Layout with Sticky Chapter Index */}
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">

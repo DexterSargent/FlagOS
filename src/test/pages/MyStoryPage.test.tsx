@@ -37,11 +37,6 @@ describe("My Story Page (/my-story)", () => {
     render(<MyStoryPage />);
 
     expect(
-      screen.getByRole("heading", {
-        name: /building flagos: software born out of necessity/i,
-      }),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("heading", { name: /childhood roots in dartmouth/i }),
     ).toBeInTheDocument();
     expect(
