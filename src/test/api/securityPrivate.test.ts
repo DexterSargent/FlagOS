@@ -127,16 +127,31 @@ describe("private-data API", () => {
   it("applies weighted read limits before running expensive actions", async () => {
     verifyIdTokenMock.mockResolvedValue({
       ...token,
+      email: "coach@example.com",
+    });
+    transaction.get.mockResolvedValue({
+      exists: true,
+      get: (field: string) => field === "minuteStart" ? Date.now() : 1_900,
+    });
+
+    const response = await POST(request({ action: "lookup", data: {} }));
+
+    expect(response.status).toBe(429);
+    expect(collectionMock).not.toHaveBeenCalled();
+  });
+
+  it("does not throttle the platform admin overview", async () => {
+    verifyIdTokenMock.mockResolvedValue({
+      ...token,
       email: "dextersargent@gmail.com",
     });
     transaction.get.mockResolvedValue({
       exists: true,
-      get: (field: string) => field === "minuteStart" ? Date.now() : 900,
+      get: (field: string) => field === "minuteStart" ? Date.now() : 1_900,
     });
 
     const response = await POST(request({ action: "admin_overview", data: {} }));
 
-    expect(response.status).toBe(429);
-    expect(collectionMock).not.toHaveBeenCalled();
+    expect(response.status).not.toBe(429);
   });
 });
