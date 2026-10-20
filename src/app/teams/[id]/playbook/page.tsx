@@ -55,6 +55,7 @@ import {
 } from "@/lib/playbookTypes";
 import { getSandboxTeams } from "@/lib/demoSandbox";
 import { isYorkTeam, getYorkTeamData, YORK_TEAM_ID } from "@/lib/yorkTeamData";
+import { includeYorkOffensivePlaybook } from "@/lib/yorkOffensivePlaybook";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
 type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
@@ -249,9 +250,15 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           }
         }
 
+        const hasSavedPlaybooks = loadedPlaybooks.length > 0;
+
         // Seed with default playbooks if team has none
         if (!loadedPlaybooks || loadedPlaybooks.length === 0) {
           loadedPlaybooks = createDefaultPlaybooks(teamId, playersPerSide);
+        }
+
+        if (isYork) {
+          loadedPlaybooks = includeYorkOffensivePlaybook(loadedPlaybooks, teamId, !hasSavedPlaybooks);
         }
 
         // Guarantee squad format for every play (respecting book.playersOnField or league rules)
