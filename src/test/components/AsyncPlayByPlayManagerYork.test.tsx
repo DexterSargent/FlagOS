@@ -170,14 +170,143 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
     fireEvent.click(await screen.findByRole("button", { name: /START (NEXT )?PLAY/i }));
     fireEvent.click(screen.getByRole("button", { name: "PASS PLAY" }));
     fireEvent.click(screen.getByRole("button", { name: "Interception" }));
+    const quarterbackSummary = screen.queryByRole("button", { name: /^Quarterback:/ });
+    if (quarterbackSummary) fireEvent.click(quarterbackSummary);
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
     expect(screen.getByRole("group", { name: "Flagger(s) on Interception Return" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Team Defense" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
-    fireEvent.click(screen.getByRole("button", { name: "NEXT DOWN" }));
+    fireEvent.click(screen.getByRole("button", { name: "TURNOVER" }));
     await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
       passOutcome: "Interception",
       defenders: [],
       flaggers: ["Sonia Cabral"],
+    })));
+  });
+
+  const startRosteredPlay = async (type: "PASS PLAY" | "RUN PLAY") => {
+    vi.mocked(getDoc).mockResolvedValueOnce({
+      exists: () => true,
+      id: "match_york_mcmaster",
+      data: () => ({
+        ...getYorkMatch("match_york_mcmaster"),
+        roster: { home: ["Test Receiver"], away: ["Opponent Defender"] },
+      }),
+    } as Awaited<ReturnType<typeof getDoc>>);
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: /START (NEXT )?PLAY/i }));
+    fireEvent.click(screen.getByRole("button", { name: type }));
+    if (type === "PASS PLAY") {
+      const quarterbackSummary = screen.queryByRole("button", { name: /^Quarterback:/ });
+      if (quarterbackSummary) fireEvent.click(quarterbackSummary);
+      fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    }
+  };
+
+  it("filters gain results by offense, flagger, and out-of-bounds selections", async () => {
+    await startRosteredPlay("RUN PLAY");
+    expect(screen.queryByText("Save Play Result")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    expect(screen.getByRole("button", { name: "TOUCHDOWN (+6)" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "FIRST DOWN" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "NEXT DOWN" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "TURNOVER" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "SAFETY (+2 DEF)" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "OUT OF BOUNDS" }));
+    expect(screen.queryByRole("button", { name: "TOUCHDOWN (+6)" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "OOB - FIRST DOWN" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "OOB - SHORT" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Opponent Defender" }));
+    expect(screen.queryByRole("button", { name: /OOB -/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "TOUCHDOWN (+6)" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "FIRST DOWN" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "NEXT DOWN" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      result: "Next Down",
+      defenders: ["Opponent Defender"],
+    })));
+  });
+
+  it("requires a receiver for a rostered completion and clears OOB choices when the outcome changes", async () => {
+    await startRosteredPlay("PASS PLAY");
+    expect(screen.queryByText("Save Play Result")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Test Receiver" }));
+    fireEvent.click(screen.getByRole("button", { name: "OUT OF BOUNDS" }));
+    fireEvent.click(screen.getByRole("button", { name: "Incomplete" }));
+    expect(screen.getByRole("button", { name: "NEXT DOWN" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /OOB -|TOUCHDOWN|FIRST DOWN|TURNOVER|SAFETY/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Complete" }));
+    expect(screen.queryByText("Save Play Result")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["PASS PLAY", "Pass Breakup (PBU)", false],
+    ["PASS PLAY", "Sack", true],
+    ["PASS PLAY", "Flag Guarding / FFL", true],
+    ["RUN PLAY", "Loss of Yards", true],
+    ["RUN PLAY", "Flag Guarding / FFL", true],
+  ] as const)("filters %s / %s results and requires defensive credit", async (type, outcome, allowsSafety) => {
+    await startRosteredPlay(type);
+    fireEvent.click(screen.getByRole("button", { name: outcome }));
+    if (type === "RUN PLAY") fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    expect(screen.queryByText("Save Play Result")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Opponent Defender" }));
+    expect(screen.getByRole("button", { name: "NEXT DOWN" })).toBeInTheDocument();
+    expect(!!screen.queryByRole("button", { name: "SAFETY (+2 DEF)" })).toBe(allowsSafety);
+    expect(screen.queryByRole("button", { name: /TOUCHDOWN|FIRST DOWN|TURNOVER|PICK 6/ })).not.toBeInTheDocument();
+  });
+
+  it("only offers turnover results for interceptions and hides pick six after a return flag", async () => {
+    await startRosteredPlay("PASS PLAY");
+    fireEvent.click(screen.getByRole("button", { name: "Interception" }));
+    expect(screen.queryByText("Save Play Result")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Opponent Defender" }));
+    expect(screen.getByRole("button", { name: "PICK 6 (+6)" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "TURNOVER" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /NEXT DOWN|FIRST DOWN|TOUCHDOWN|SAFETY/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    expect(screen.queryByRole("button", { name: "PICK 6 (+6)" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "TURNOVER" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      result: "Turnover",
+      turnover: true,
+      passOutcome: "Interception",
+      defenders: ["Opponent Defender"],
+      flaggers: ["Sonia Cabral"],
+    })));
+  });
+
+  it("saves an out-of-bounds result and resets its choices for the next play", async () => {
+    await startRosteredPlay("RUN PLAY");
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    fireEvent.click(screen.getByRole("button", { name: "OUT OF BOUNDS" }));
+    fireEvent.click(screen.getByRole("button", { name: "OOB - SHORT" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      result: "Short",
+      defenders: [],
+      firstDown: false,
+    })));
+    fireEvent.click(screen.getByRole("button", { name: /START (NEXT )?PLAY/i }));
+    fireEvent.click(screen.getByRole("button", { name: "RUN PLAY" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    expect(screen.getByRole("button", { name: "TOUCHDOWN (+6)" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /OOB -/ })).not.toBeInTheDocument();
+  });
+
+  it("allows an unrostered opponent completion without inventing a receiver", async () => {
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: "McMaster Marauders" }));
+    fireEvent.click(screen.getByRole("button", { name: /START (NEXT )?PLAY/i }));
+    fireEvent.click(screen.getByRole("button", { name: "PASS PLAY" }));
+    expect(screen.getByRole("button", { name: "TOUCHDOWN (+6)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    fireEvent.click(screen.getByRole("button", { name: "NEXT DOWN" }));
+    await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
+      passOutcome: "Complete",
+      receiverPlayerId: null,
+      defenders: ["Sonia Cabral"],
     })));
   });
 });

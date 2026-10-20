@@ -155,6 +155,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [openSection, setOpenSection] = useState<"qb" | "receiver" | "defenders" | null>("qb");
   const [defenders, setDefenders] = useState<string[]>([]);
   const [flaggers, setFlaggers] = useState<string[]>([]);
+  const [isOobPrompt, setIsOobPrompt] = useState(false);
 
   // QB Autofill Memory
   const [lastHomeQB, setLastHomeQB] = useState<string>("");
@@ -574,6 +575,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setOpenSection("qb");
     setDefenders([]);
     setFlaggers([]);
+    setIsOobPrompt(false);
     setConvPts(null);
     setConvIsGood(null);
     setConvPasser("");
@@ -604,6 +606,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   };
 
   const selectOutcome = (id: string) => {
+    setIsOobPrompt(false);
     setDefenders([]);
     setFlaggers([]);
     if (id !== "Complete") setReceiver("");
@@ -613,6 +616,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   };
 
   const handleDefenders = (player: string) => {
+    setIsOobPrompt(false);
     if (outcome === "PBU" || outcome === "Interception") {
       setDefenders(defenders.includes(player) ? [] : [player]);
       return;
@@ -1065,6 +1069,14 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const defensePlayers = possession === homeTeamName ? awayPlayers : homePlayers;
   const hasBothRosters = homePlayers.length > 0 && awayPlayers.length > 0;
   const showDefensiveActions = defensePlayers.length > 0 || (outcome === "Interception" && offensePlayers.length > 0);
+  const hasOffenseSelected = !!qbRunner &&
+    (outcome !== "Complete" || !!receiver || offensePlayers.length === 0);
+  const isGain = outcome === "Complete" || outcome === "Gain";
+  const isLoss = outcome === "Loss" || outcome === "Sack" || outcome === "FFL";
+  const hasRequiredDefense = defensePlayers.length === 0 ||
+    (outcome === "Interception" ? defenders.length === 1 : defenders.length > 0);
+  const canSaveResult = hasOffenseSelected &&
+    (isGain || outcome === "Incomplete" || hasRequiredDefense);
   const homeTeamPalette = homeTeamColors;
   const awayTeamPalette = awayTeamColors;
   const homeTeamText = getReadableTextColor(homeTeamPalette.secondary, homeTeamPalette.primary);
@@ -1567,6 +1579,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                           aria-label={label}
                           aria-pressed={isSelected}
                           onClick={() => {
+                            setIsOobPrompt(false);
                             setQbRunner(p);
                             if (receiver === p) setReceiver("");
                             setOpenSection(playType === "Pass" && outcome === "Complete" ? "receiver" : "defenders");
@@ -1640,6 +1653,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                             aria-label={p}
                             aria-pressed={isSelected}
                             onClick={() => {
+                              setIsOobPrompt(false);
                               setReceiver(p);
                               setOpenSection("defenders");
                             }}
@@ -1724,51 +1738,72 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 )}
 
                 {/* ACTION RESULTS BUTTONS (STICKY IN-FRAME) */}
-                <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1 bg-neutral-900/95 backdrop-blur-md pb-1">
-                  <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
-                    Save Play Result
-                  </span>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
-                    <button
-                      onClick={() => handleSavePlay("Touchdown")}
-                      className="py-2 px-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
-                    >
-                      TOUCHDOWN (+6)
-                    </button>
-                    <button
-                      onClick={() => handleSavePlay("First Down")}
-                      className="py-2 px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      FIRST DOWN
-                    </button>
-                    <button
-                      onClick={() => handleSavePlay("Next Down")}
-                      className="py-2 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      NEXT DOWN
-                    </button>
-                    {outcome === "Interception" && (
-                      <button
-                        onClick={() => handleSavePlay("Pick 6")}
-                        className="py-2 px-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
-                      >
-                        PICK 6 (+6)
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleSavePlay("Turnover")}
-                      className="py-2 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      TURNOVER
-                    </button>
-                    <button
-                      onClick={() => handleSavePlay("Safety")}
-                      className="py-2 px-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      SAFETY (+2 DEF)
-                    </button>
+                {canSaveResult && (
+                  <div className="md:col-span-2 border-t border-white/10 pt-2 space-y-1 bg-neutral-900/95 backdrop-blur-md pb-1">
+                    <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
+                      Save Play Result
+                    </span>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                      {isGain && !isOobPrompt && defenders.length === 0 && (
+                        <button
+                          onClick={() => handleSavePlay("Touchdown")}
+                          className="py-2 px-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-black font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
+                        >
+                          TOUCHDOWN (+6)
+                        </button>
+                      )}
+                      {isGain && !isOobPrompt && defenders.length === 0 && defensePlayers.length > 0 && (
+                        <button
+                          onClick={() => setIsOobPrompt(true)}
+                          className="py-2 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          OUT OF BOUNDS
+                        </button>
+                      )}
+                      {isGain && (isOobPrompt || hasRequiredDefense) && (
+                        <button
+                          onClick={() => handleSavePlay("First Down")}
+                          className="py-2 px-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          {isOobPrompt ? "OOB - FIRST DOWN" : "FIRST DOWN"}
+                        </button>
+                      )}
+                      {((isGain && (isOobPrompt || hasRequiredDefense)) ||
+                        (!isGain && outcome !== "Interception")) && (
+                        <button
+                          onClick={() => handleSavePlay(isOobPrompt ? "Short" : "Next Down")}
+                          className="py-2 px-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-white/10 text-white font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          {isOobPrompt ? "OOB - SHORT" : "NEXT DOWN"}
+                        </button>
+                      )}
+                      {outcome === "Interception" && flaggers.length === 0 && (
+                        <button
+                          onClick={() => handleSavePlay("Pick 6")}
+                          className="py-2 px-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer"
+                        >
+                          PICK 6 (+6)
+                        </button>
+                      )}
+                      {outcome === "Interception" && (
+                        <button
+                          onClick={() => handleSavePlay("Turnover")}
+                          className="py-2 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          TURNOVER
+                        </button>
+                      )}
+                      {isLoss && (
+                        <button
+                          onClick={() => handleSavePlay("Safety")}
+                          className="py-2 px-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
+                        >
+                          SAFETY (+2 DEF)
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
