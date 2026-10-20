@@ -768,7 +768,7 @@ export default function FlagOSPlatformLandingPage() {
           )}
 
           {/* INTERACTIVE APPLICATION FRAME */}
-          <div className="bg-[#090D16] border border-white/15 rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative w-full max-w-full">
+          <div className="bg-white dark:bg-[#090D16] border border-slate-200 dark:border-white/15 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative w-full max-w-full">
             {/* Embedded Real Feature App Frame */}
             <div className="relative w-full h-[460px] sm:h-[560px] md:h-[680px] bg-black max-w-full overflow-hidden">
               <iframe
@@ -782,7 +782,7 @@ export default function FlagOSPlatformLandingPage() {
             </div>
 
             {/* Frame Footer Info */}
-            <div className="bg-[#0B0F1A] border-t border-white/10 px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 text-[11px] text-neutral-400 text-center sm:text-left">
+            <div className="bg-slate-50 dark:bg-[#0B0F1A] border-t border-slate-200 dark:border-white/10 px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 text-[11px] text-neutral-400 text-center sm:text-left">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
                 <span className="font-bold text-white">{getFeatureBadge().title}</span>
                 <span className="hidden sm:inline">•</span>
