@@ -1345,26 +1345,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10">
-                      {Array.from({ length: downsPerSeries }, (_, i) => i + 1).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => setCurrentDown(d)}
-                          aria-label={`${getOrdinal(d)} Down`}
-                          title={`Set to ${getOrdinal(d)} Down`}
-                          className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                            currentDown === d
-                              ? "bg-white text-black shadow-md font-black"
-                              : "text-neutral-400 hover:text-white hover:bg-white/10"
-                          }`}
-                        >
-                          {getOrdinal(d)} Down
-                        </button>
-                      ))}
-                    </div>
                     <button
                       onClick={resetPlayForm}
+                      aria-label="Cancel play"
                       className="p-2 text-neutral-400 hover:text-white rounded-lg hover:bg-white/5"
                     >
                       <X className="w-5 h-5" />

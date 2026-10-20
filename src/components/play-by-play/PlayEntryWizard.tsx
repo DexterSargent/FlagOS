@@ -98,25 +98,6 @@ export default function PlayEntryWizard(props: PlayEntryWizardProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {props.onDownChange && (
-              <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/10">
-                {Array.from({ length: props.downsPerSeries || 4 }, (_, i) => i + 1).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => props.onDownChange?.(d)}
-                    aria-label={`${getOrdinal(d)} Down`}
-                    className={`px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
-                      props.currentDown === d
-                        ? "bg-white text-black shadow-md font-black"
-                        : "text-neutral-400 hover:text-white hover:bg-white/10"
-                    }`}
-                  >
-                    {getOrdinal(d)}<span className="hidden sm:inline"> Down</span>
-                  </button>
-                ))}
-              </div>
-            )}
             {props.onCancel && (
               <button
                 type="button"
