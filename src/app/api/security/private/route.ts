@@ -303,7 +303,8 @@ export async function POST(request: Request) {
     }
     const { action, data } = parsePayload(JSON.parse(rawBody) as unknown);
     try {
-      await enforceReadLimit(token.uid, action);
+      // The platform admin's own overview/refresh must never be throttled by the per-user budget.
+      if (!isPlatformAdmin(token)) await enforceReadLimit(token.uid, action);
     } catch (limitError) {
       if (limitError instanceof RequestError || !isPlatformAdmin(token)) throw limitError;
       console.error("Read-limit bookkeeping failed for platform admin:", limitError);

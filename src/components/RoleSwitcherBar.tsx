@@ -69,6 +69,7 @@ export default function RoleSwitcherBar() {
     isEligibleHost &&
     isPageRoleSwitcherAllowed &&
     !isChromeLessPage &&
+    !(pathname === "/admin" || (pathname?.startsWith("/admin/") && !pathname.startsWith("/admin/sandbox"))) &&
     pathname !== "/" &&
     pathname !== "/pricing" &&
     pathname !== "/login";
