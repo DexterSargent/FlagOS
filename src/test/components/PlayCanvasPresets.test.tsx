@@ -221,6 +221,53 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(defender?.routeType).toBeUndefined();
   });
 
+  it("replaces a defender's old zone while preserving unassigned custom bubbles", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<PlayCanvas play={mockDefensePlay} onChange={onChange} />);
+    fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
+    const assigned = onChange.mock.lastCall![0] as PlayDiagram;
+    const oldZone = assigned.zones![0];
+    const customZone = { ...oldZone, id: "custom-zone", name: "Custom Landmark" };
+    rerender(<PlayCanvas play={{ ...assigned, zones: [...assigned.zones!, customZone] }} onChange={onChange} />);
+    fireEvent.click(screen.getByTestId("coverage-deep-half-r"));
+    const updated = onChange.mock.lastCall![0] as PlayDiagram;
+    expect(updated.zones?.some((zone) => zone.id === oldZone.id)).toBe(false);
+    expect(updated.zones?.some((zone) => zone.id === customZone.id)).toBe(true);
+    expect(updated.zones).toHaveLength(2);
+    const defender = updated.players.find((player) => player.id === "p_rush")!;
+    expect(updated.zones?.some((zone) => zone.id === defender.zoneId)).toBe(true);
+    rerender(<PlayCanvas play={updated} onChange={onChange} />);
+    expect(screen.getByTestId("coverage-deep-half-r")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("coverage-deep-half-l")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("keeps an old zone when another defender still uses it", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<PlayCanvas play={mockDefensePlay} onChange={onChange} />);
+    fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
+    const assigned = onChange.mock.lastCall![0] as PlayDiagram;
+    const oldZone = assigned.zones![0];
+    const shared = {
+      ...assigned,
+      players: assigned.players.map((player) => player.id === "p_cb1" ? { ...player, zoneId: oldZone.id } : player),
+    };
+    rerender(<PlayCanvas play={shared} onChange={onChange} />);
+    fireEvent.click(screen.getByTestId("coverage-deep-half-r"));
+    const updated = onChange.mock.lastCall![0] as PlayDiagram;
+    expect(updated.zones?.some((zone) => zone.id === oldZone.id)).toBe(true);
+    expect(updated.zones).toHaveLength(2);
+  });
+
+  it.each(["Man", "Rush", "Zone"])("removes the previous zone when switching to %s", (assignment) => {
+    const onChange = vi.fn();
+    const { rerender } = render(<PlayCanvas play={mockDefensePlay} onChange={onChange} />);
+    fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
+    const assigned = onChange.mock.lastCall![0] as PlayDiagram;
+    rerender(<PlayCanvas play={assigned} onChange={onChange} />);
+    fireEvent.click(screen.getByRole("button", { name: assignment === "Rush" ? /Rush.*yd/ : assignment }));
+    expect((onChange.mock.lastCall![0] as PlayDiagram).zones).toHaveLength(0);
+  });
+
   it("toggles the route presets catalog drawer without clipping", () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);

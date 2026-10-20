@@ -143,11 +143,17 @@ interface PlayCanvasProps {
 
 export default function PlayCanvas({
   play,
-  onChange,
+  onChange: onPlayChange,
   readOnly = false,
   playbook,
   onOpenQuestions,
 }: PlayCanvasProps) {
+  const onChange = useCallback((updatedPlay: PlayDiagram) => {
+    const previousZoneIds = new Set(play.players.map((player) => player.zoneId).filter(Boolean));
+    const assignedZoneIds = new Set(updatedPlay.players.map((player) => player.zoneId).filter(Boolean));
+    const zones = updatedPlay.zones?.filter((zone) => !previousZoneIds.has(zone.id) || assignedZoneIds.has(zone.id));
+    onPlayChange({ ...updatedPlay, zones });
+  }, [play.players, onPlayChange]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -1229,6 +1235,7 @@ export default function PlayCanvas({
   // Assign Standard Zone from templates to selected defender
   const handleAssignStandardZone = (zoneTemplate: StandardZoneTemplate) => {
     if (readOnly || !selectedPlayer) return;
+    setMode("select");
     setDefensiveZoneCategory(zoneTemplate.category);
 
     const targetY = Math.max(8, Math.min(losY - 2, losY + zoneTemplate.relY));
@@ -1881,7 +1888,10 @@ export default function PlayCanvas({
                   <text
                     x={(zone.x / 100) * 1000}
                     y={(zone.y / 100) * 700 + 4}
-                    fill={zone.color}
+                    fill="#FFFFFF"
+                    stroke="#07120D"
+                    strokeWidth="3"
+                    paintOrder="stroke"
                     fontSize="13"
                     fontWeight="800"
                     textAnchor="middle"
@@ -3053,7 +3063,7 @@ export default function PlayCanvas({
             /* Defense Coverage Presets Ribbon */
             <div className="space-y-1.5 [@media(min-width:600px)_and_(max-height:450px)]:grid [@media(min-width:600px)_and_(max-height:450px)]:grid-cols-[auto_1fr] [@media(min-width:600px)_and_(max-height:450px)]:gap-x-2">
               <div className="flex items-center justify-between [@media(min-width:600px)_and_(max-height:450px)]:col-span-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1">
+                <span className="text-xs font-black uppercase tracking-wider text-purple-200 flex items-center gap-1">
                   <Shield className="w-3 h-3" />
                   <span>Coverage & Assignment ({selectedPlayer.label}):</span>
                 </span>
@@ -3064,9 +3074,10 @@ export default function PlayCanvas({
                   type="button"
                   disabled={readOnly}
                   onClick={handleSelectZoneCoverage}
+                  aria-pressed={selectedPlayer.coverageType === "zone"}
                   className={`px-2.5 py-1.5 [@media(min-width:600px)_and_(max-height:450px)]:py-1 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
                     selectedPlayer.coverageType === "zone" || (!selectedPlayer.coverageType && selectedPlayer.label !== "RUSH")
-                      ? "bg-purple-500 text-black border-purple-400 shadow-md shadow-purple-500/25"
+                      ? "bg-purple-300 text-black border-purple-200 shadow-md"
                       : "bg-black/50 text-neutral-300 hover:bg-neutral-800 border-white/10"
                   }`}
                 >
@@ -3078,9 +3089,10 @@ export default function PlayCanvas({
                   type="button"
                   disabled={readOnly}
                   onClick={handleSelectManCoverage}
+                  aria-pressed={selectedPlayer.coverageType === "man" || mode === "man"}
                   className={`px-2.5 py-1.5 [@media(min-width:600px)_and_(max-height:450px)]:py-1 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
                     selectedPlayer.coverageType === "man" || mode === "man"
-                      ? "bg-pink-500 text-black border-pink-400 shadow-md shadow-pink-500/25"
+                      ? "bg-pink-300 text-black border-pink-200 shadow-md"
                       : "bg-black/50 text-neutral-300 hover:bg-neutral-800 border-white/10"
                   }`}
                 >
@@ -3092,9 +3104,10 @@ export default function PlayCanvas({
                   type="button"
                   disabled={readOnly}
                   onClick={handleSetPassRush}
+                  aria-pressed={selectedPlayer.coverageType === "rush"}
                   className={`px-2.5 py-1.5 [@media(min-width:600px)_and_(max-height:450px)]:py-1 rounded-xl text-xs font-bold transition-all shrink-0 border flex items-center gap-1.5 ${
                     selectedPlayer.coverageType === "rush"
-                      ? "bg-red-500 text-white border-red-400 shadow-md shadow-red-500/25"
+                      ? "bg-red-300 text-black border-red-200 shadow-md"
                       : "bg-black/50 text-neutral-300 hover:bg-neutral-800 border-white/10"
                   }`}
                   title={`Rusher must line up at least ${rushLineDistanceYards} yards behind the line of scrimmage`}
@@ -3116,7 +3129,7 @@ export default function PlayCanvas({
                     className={`rounded-lg px-2 py-1.5 [@media(min-width:600px)_and_(max-height:450px)]:py-1 text-[10px] font-black uppercase tracking-wide border transition-colors ${
                       defensiveZoneCategory === item.category
                         ? "bg-purple-500/20 border-purple-400/50 text-purple-200"
-                        : "bg-black/40 border-white/10 text-neutral-400 hover:text-white"
+                        : "bg-black/40 border-white/20 text-neutral-200 hover:text-white"
                     }`}
                   >
                     {item.label}
@@ -3135,13 +3148,14 @@ export default function PlayCanvas({
                       key={zt.id}
                       type="button"
                       disabled={readOnly}
+                      aria-pressed={isCurrent}
                       onClick={() => handleAssignStandardZone(zt)}
                       data-testid={`coverage-${zt.id}`}
                       title={zt.description}
-                      className={`min-w-0 px-2 py-1.5 [@media(min-width:600px)_and_(max-height:450px)]:py-1 rounded-lg text-[10px] font-bold transition-all border flex items-center gap-1.5 ${
+                      className={`min-w-0 min-h-10 px-2 py-2 [@media(min-width:600px)_and_(max-height:450px)]:py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-purple-200 focus-visible:outline-offset-2 ${
                         isCurrent
-                          ? "bg-purple-500 text-black border-purple-400 shadow-md"
-                          : "bg-black/50 text-neutral-300 hover:border-purple-400/40 hover:text-white border-white/10"
+                          ? "bg-purple-300 text-black border-purple-200 shadow-md"
+                          : "bg-black/50 text-neutral-100 hover:border-purple-300 hover:text-white border-white/20"
                       }`}
                     >
                       <span
