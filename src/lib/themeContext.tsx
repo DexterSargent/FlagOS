@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useLayoutEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 
 export type ThemeMode = "dark" | "light";
 const THEME_STORAGE_KEY = "flagos_theme_mode_v2";
@@ -50,6 +50,19 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.setItem(THEME_STORAGE_KEY, themeMode);
     } catch {}
   }, [themeMode]);
+
+  // Keep embedded showcase frames and the parent page in sync: storage events
+  // fire in other same-origin documents when the theme changes.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== THEME_STORAGE_KEY) return;
+      if (event.newValue === "light" || event.newValue === "dark") {
+        setThemeModeState(event.newValue);
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
