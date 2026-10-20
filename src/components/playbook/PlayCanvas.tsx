@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLeague } from "@/lib/leagueContext";
+import { YORK_OFFENSIVE_PLAYBOOK_ID } from "@/lib/yorkOffensivePlaybook";
 import {
   PlayerNode,
   RoutePoint,
@@ -398,7 +399,9 @@ export default function PlayCanvas({
       ...(playbook?.formations?.map((f) => f.name) || []),
       ...(playbook?.plays?.map((p) => p.formation) || []),
       play.formation,
-      ...(play.type === "defense"
+      ...(playbook?.id === YORK_OFFENSIVE_PLAYBOOK_ID
+        ? []
+        : play.type === "defense"
         ? ["Cover 2 Zone", "Cover 1 Man", "Cover 3 Cloud", "Goal Line Tight"]
         : ["Spread 2x1", "Trips Right", "Bunch Right", "Spread 2x2", "I-Formation", "Empty", "Double Wing"]),
     ].filter(Boolean))
@@ -1500,7 +1503,7 @@ export default function PlayCanvas({
   };
 
   return (
-    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-1.5 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0">
+    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-2 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0 [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400">
       {/* ============================================================== */}
       {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
       {/* ============================================================== */}
@@ -1508,26 +1511,29 @@ export default function PlayCanvas({
         {/* ============================================================== */}
         {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
         {/* ============================================================== */}
-        <div className="p-2 sm:p-2.5 [@media(max-height:450px)]:p-1 [@media(max-width:639px)]:p-1.5 bg-gradient-to-r from-[#0B0F19] via-[#0D1220] to-[#0B0F19] border-b border-white/10 flex flex-wrap items-center justify-between gap-2 [@media(max-height:450px)]:gap-1 [@media(max-width:639px)]:gap-1 shrink-0">
+        <div className="p-2 sm:p-3 [@media(max-height:450px)]:p-1.5 bg-[#0B0F19] border-b border-white/10 flex flex-col gap-2 shrink-0">
           {/* Play Name Editable Field */}
-          <div className="flex items-center gap-1.5 flex-1 min-w-[130px] sm:min-w-[180px] max-w-sm [@media(max-width:639px)]:min-w-0 [@media(max-width:639px)]:max-w-none">
+          <div className="flex items-center gap-2 min-w-0 w-full">
             <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider [@media(max-width:639px)]:hidden">Play:</span>
             <input
               type="text"
+              aria-label="Play name"
               disabled={readOnly}
               value={play.name}
               onChange={(e) => onChange({ ...play, name: e.target.value })}
               placeholder="Play Name..."
-              className="w-full text-xs sm:text-sm font-black text-white uppercase tracking-wider bg-black/40 hover:bg-black/60 focus:bg-black/80 focus:border-cyan-500 rounded-xl px-2.5 py-1 border border-white/10 outline-none transition-all shadow-inner"
+              className="min-w-0 w-full text-sm font-bold text-white bg-black/40 hover:bg-black/60 focus:bg-black/80 focus:border-cyan-500 rounded-lg px-3 py-2 border border-white/10 outline-none transition-all"
             />
           </div>
 
           {/* Formation Dropdown & Gameday Situation Dropdown */}
-          <div className="flex items-center gap-1.5 flex-wrap [@media(max-height:450px)]:hidden [@media(max-width:639px)]:flex-nowrap [@media(max-width:639px)]:gap-1">
+          <div className="flex items-center gap-2 flex-wrap [@media(max-height:450px)]:hidden">
             {/* Formation Dropdown */}
-            <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-xl px-2 py-1 shadow-inner">
-              <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono [@media(max-width:639px)]:hidden">Formation:</span>
+            <div className="flex flex-col gap-0.5 flex-1 min-w-[130px]">
+              <span className="text-[10px] font-semibold text-neutral-400">Formation</span>
               <select
+                aria-label="Play formation"
+                title={play.formation}
                 disabled={readOnly}
                 value={play.formation}
                 onChange={(e) => {
@@ -1536,15 +1542,19 @@ export default function PlayCanvas({
                     const customForm = prompt("Enter new formation name for this playbook:");
                     if (customForm && customForm.trim()) {
                       const trimmedForm = customForm.trim();
-                      const updated = applyFormationToSquad(play.players, trimmedForm, play.type, losY);
+                      const updated = playbook?.id === YORK_OFFENSIVE_PLAYBOOK_ID
+                        ? play.players
+                        : applyFormationToSquad(play.players, trimmedForm, play.type, losY);
                       onChange({ ...play, formation: trimmedForm, players: updated });
                     }
                   } else {
-                    const updated = applyFormationToSquad(play.players, val, play.type, losY);
+                    const updated = playbook?.id === YORK_OFFENSIVE_PLAYBOOK_ID
+                      ? play.players
+                      : applyFormationToSquad(play.players, val, play.type, losY);
                     onChange({ ...play, formation: val, players: updated });
                   }
                 }}
-                className="bg-transparent text-xs font-black text-cyan-300 outline-none cursor-pointer max-w-[150px] truncate [@media(max-width:639px)]:max-w-[84px] [@media(max-width:639px)]:text-[10px]"
+                className="w-full min-w-0 bg-black/40 border border-white/10 rounded-lg p-2 text-xs font-semibold text-cyan-300 outline-none focus:border-cyan-400 cursor-pointer"
               >
                 {playbookFormations.map((fName) => (
                   <option key={fName} value={fName} className="bg-[#0B0F19] text-white">
@@ -1560,13 +1570,14 @@ export default function PlayCanvas({
             </div>
 
             {/* Gameday Situation Dropdown */}
-            <div className="flex items-center gap-1 bg-black/50 border border-white/10 rounded-xl px-2 py-1 shadow-inner">
-              <span className="text-[10px] font-bold uppercase text-neutral-400 font-mono [@media(max-width:639px)]:hidden">Situation:</span>
+            <div className="flex flex-col gap-0.5 flex-1 min-w-[120px]">
+              <span className="text-[10px] font-semibold text-neutral-400">Situation</span>
               <select
+                aria-label="Play situation"
                 disabled={readOnly}
                 value={play.situation || "Standard"}
                 onChange={(e) => onChange({ ...play, situation: e.target.value })}
-                className="bg-transparent text-xs font-bold text-neutral-200 outline-none cursor-pointer [@media(max-width:639px)]:max-w-[74px] [@media(max-width:639px)]:text-[10px]"
+                className="w-full min-w-0 bg-black/40 border border-white/10 rounded-lg p-2 text-xs font-semibold text-neutral-200 outline-none focus:border-cyan-400 cursor-pointer"
               >
                 {SITUATION_OPTIONS.map((sit) => (
                   <option key={sit} value={sit} className="bg-[#0B0F19] text-white">
@@ -1588,7 +1599,7 @@ export default function PlayCanvas({
               title="Open general coaching notes & scheme progression"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Notes</span>
+              <span>Notes</span>
             </button>
 
             {/* Coach Q&A Button */}
@@ -2452,15 +2463,15 @@ export default function PlayCanvas({
           )}
 
           {/* Quick On-Field Canvas Helper Tooltip */}
-          <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-neutral-400 font-mono hidden sm:[@media(min-height:451px)]:flex items-center gap-2 pointer-events-none">
+          <div className="absolute bottom-3 left-3 right-3 max-w-fit bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] leading-relaxed text-neutral-400 hidden sm:[@media(min-height:451px)]:flex items-center gap-2 pointer-events-none">
             <Move className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span>Drag players to reposition • Drag waypoints to shape cuts</span>
+            <span>Drag players or route points to adjust.</span>
           </div>
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
-        <div className="px-3 sm:px-4 py-1.5 sm:py-2 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden [@media(max-width:639px)]:hidden">
-          <div className="flex items-center gap-2">
+        <div className="px-2 sm:px-3 py-1.5 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleToggleAnimate}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold uppercase tracking-wider text-xs transition-all cursor-pointer ${
@@ -2475,18 +2486,21 @@ export default function PlayCanvas({
 
             <button
               onClick={handleResetAnimate}
-              className="p-1 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              aria-label="Reset animation"
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
               title="Reset Timeline"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             <div className="flex items-center gap-1 ml-1">
-              <span className="text-[10px] font-mono text-neutral-500">Speed:</span>
+              <span className="text-[10px] font-mono text-neutral-400">Speed:</span>
               {[0.5, 1, 1.5].map((spd) => (
                 <button
                   key={spd}
                   onClick={() => setAnimSpeed(spd)}
+                  aria-label={`Animation speed ${spd}x`}
+                  aria-pressed={animSpeed === spd}
                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
                     animSpeed === spd
                       ? "bg-white/20 text-white border border-white/20"
@@ -2500,12 +2514,13 @@ export default function PlayCanvas({
           </div>
 
           {/* Timeline Scrubber */}
-          <div className="flex items-center gap-2 flex-1 max-w-xs ml-auto">
+          <div className="flex items-center gap-2 flex-1 min-w-24 max-w-xs ml-auto">
             <span className="text-[10px] font-mono text-neutral-500 tabular-nums">
               {(progress * 3.2).toFixed(1)}s
             </span>
             <input
               type="range"
+              aria-label="Animation timeline"
               min={0}
               max={1}
               step={0.01}
@@ -2523,12 +2538,12 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
       {/* ============================================================== */}
-      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[42%] lg:w-[390px] xl:w-[440px] 2xl:w-[480px] [@media(max-height:450px)]:w-full [@media(min-width:600px)_and_(max-height:450px)]:w-[46%] [@media(min-width:600px)_and_(max-height:450px)]:flex-none flex-none max-h-[46%] md:max-h-none md:flex-none md:shrink-0 [@media(max-width:599px)_and_(max-height:450px)]:flex-1 [@media(max-height:450px)]:max-h-none flex-col bg-[#0A0E17] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl min-h-0">
+      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[340px] xl:w-[380px] [@media(max-height:450px)]:w-full [@media(min-width:600px)_and_(max-height:450px)]:w-[46%] [@media(min-width:600px)_and_(max-height:450px)]:flex-none flex-none max-h-[46%] md:max-h-full md:self-start md:shrink-0 [@media(max-width:599px)_and_(max-height:450px)]:flex-1 [@media(max-height:450px)]:max-h-none flex-col bg-[#0A0E17] border border-white/10 rounded-2xl overflow-hidden shadow-xl min-h-0">
         <div className="p-2 sm:p-3.5 [@media(min-width:600px)_and_(max-height:450px)]:p-2 [@media(max-width:639px)]:p-2 flex-1 min-h-0 overflow-y-auto space-y-2.5 [@media(min-width:600px)_and_(max-height:450px)]:space-y-1 [@media(max-width:639px)]:space-y-1.5 scrollbar-thin">
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
-          <div className="flex flex-wrap [@media(min-width:600px)_and_(max-height:450px)]:flex-nowrap [@media(max-width:639px)]:flex-nowrap items-center justify-between gap-2.5 [@media(min-width:600px)_and_(max-height:450px)]:gap-1.5 [@media(max-width:639px)]:gap-1">
+          <div className="flex flex-col items-stretch gap-3">
             {/* Player Selection Pills with Coaching Notes Indicator */}
-            <div className="flex items-center gap-1.5 [@media(max-width:639px)]:gap-1 flex-nowrap overflow-x-auto max-w-full hide-scrollbar">
+            <div className="flex items-center gap-1.5 flex-wrap max-w-full">
               <span className="hidden sm:flex [@media(min-width:600px)_and_(max-height:450px)]:hidden text-[10px] font-black uppercase tracking-wider text-neutral-400 mr-1 items-center gap-1">
                 <Users className="w-3 h-3 text-cyan-400" />
                 <span>Player:</span>
@@ -2541,8 +2556,10 @@ export default function PlayCanvas({
                   <button
                     key={p.id}
                     type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`Select ${p.label}`}
                     onClick={() => setSelectedPlayerId(p.id)}
-                    className={`px-2.5 py-1 [@media(min-width:600px)_and_(max-height:450px)]:px-2 [@media(min-width:600px)_and_(max-height:450px)]:py-0.5 [@media(max-width:639px)]:px-1.5 [@media(max-width:639px)]:py-0.5 rounded-xl text-xs [@media(max-width:639px)]:text-[10px] font-mono font-bold transition-all border flex items-center gap-1.5 [@media(max-width:639px)]:gap-1 ${
+                    className={`min-w-10 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border flex items-center justify-center gap-1.5 ${
                       isSelected
                         ? p.side === "offense"
                           ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/25 ring-2 ring-cyan-400/30"
@@ -2581,9 +2598,9 @@ export default function PlayCanvas({
             </div>
 
             {/* Selected Player Status & Action Buttons */}
-            <div className="flex items-center gap-2 [@media(min-width:600px)_and_(max-height:450px)]:gap-1 [@media(max-width:639px)]:gap-1 ml-auto">
+            <div className="flex items-center gap-2 flex-wrap">
               {selectedPlayer && (
-              <div className="hidden sm:flex [@media(min-width:600px)_and_(max-height:450px)]:hidden items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] font-mono">
+              <div className="w-full flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
                   <span className="text-neutral-400">{selectedPlayer.role}:</span>
                   <span
                     className={`font-bold ${
@@ -2607,7 +2624,7 @@ export default function PlayCanvas({
                 aria-label="View and edit position notes"
               >
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                <span className="hidden sm:inline">Position Notes Sheet</span>
+                <span>Position Notes</span>
               </button>
 
               {/* Freehand Route Draw Mode Toggle */}
@@ -2624,8 +2641,7 @@ export default function PlayCanvas({
                   }`}
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline [@media(max-width:639px)]:hidden">{mode === "draw" ? "Drawing Active" : "Draw Route"}</span>
-                  <span className="md:hidden [@media(max-width:639px)]:hidden">Draw</span>
+                  <span>{mode === "draw" ? "Stop Drawing" : "Draw Route"}</span>
                 </button>
               )}
 
@@ -2647,18 +2663,19 @@ export default function PlayCanvas({
 
           {/* Position Coaching Notes Bar for Currently Selected Player */}
           {selectedPlayer && (
-            <div className="flex items-center gap-2.5 bg-black/70 border border-white/10 rounded-2xl px-3 py-2 shadow-inner [@media(max-height:450px)]:hidden [@media(max-width:639px)]:hidden">
+            <div className="space-y-1.5 border-t border-white/10 pt-3 [@media(max-height:450px)]:hidden max-sm:hidden">
               <div className="flex items-center gap-1.5 shrink-0 text-cyan-400 font-mono text-[11px] font-bold">
                 <FileText className="w-3.5 h-3.5" />
                 <span>{selectedPlayer.label} notes:</span>
               </div>
-              <input
-                type="text"
+              <textarea
+                rows={2}
+                aria-label={`${selectedPlayer.label} coaching notes`}
                 disabled={readOnly}
                 value={selectedPlayer.notes || ""}
                 onChange={(e) => handleUpdatePlayerNotes(selectedPlayer.id, e.target.value)}
                 placeholder="Coaching assignment and read notes..."
-                className="flex-1 bg-transparent text-xs text-white placeholder:text-neutral-500 outline-none"
+                className="w-full min-w-0 resize-y rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs leading-relaxed text-white placeholder:text-neutral-500 outline-none focus:border-cyan-400"
               />
             </div>
           )}
@@ -2667,8 +2684,8 @@ export default function PlayCanvas({
           {selectedPlayer?.side === "offense" ? (
             <div className="space-y-2 [@media(max-width:639px)]:space-y-1 relative" ref={presetMenuRef}>
               {/* Header row: Route assignment info & Action Buttons */}
-              <div className="flex items-center justify-between flex-wrap max-sm:flex-nowrap gap-2 [@media(max-width:639px)]:gap-1">
-                <div className="flex items-center gap-2 flex-wrap max-sm:flex-nowrap max-sm:min-w-0 max-sm:overflow-hidden">
+              <div className="flex flex-col items-stretch gap-2">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1 max-sm:hidden">
                     <Zap className="w-3 h-3" />
                     <span>Route Assignment ({selectedPlayer.label}):</span>
@@ -2699,7 +2716,7 @@ export default function PlayCanvas({
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 [@media(max-width:639px)]:gap-1 ml-auto shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   {/* Pre-Snap Motion Menu Button */}
                   <button
                     type="button"
@@ -2762,7 +2779,7 @@ export default function PlayCanvas({
                       title={isDemo ? "Add temporary custom preset (session only)" : `Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
                     >
                       <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="[@media(max-width:639px)]:hidden">Add Preset</span>
+                      <span>Save Preset</span>
                     </button>
                   )}
                 </div>
@@ -2856,6 +2873,7 @@ export default function PlayCanvas({
                       onClick={() => setIsPresetMenuOpen(false)}
                       className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
                       title="Close catalog"
+                      aria-label="Close route catalog"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -2918,7 +2936,7 @@ export default function PlayCanvas({
                         <Star className="w-3 h-3 fill-current text-amber-400" />
                         <span>Custom Team Presets ({customPresets.length}):</span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5">
+                      <div className="grid grid-cols-2 gap-2">
                         {customPresets.map((cp) => {
                           const isCurrent = selectedPlayer.quickRouteName === cp.name;
                           return (
@@ -2935,7 +2953,7 @@ export default function PlayCanvas({
                                     : "bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/50 hover:text-white border-emerald-500/30"
                                 }`}
                               >
-                                <span className="truncate">{cp.name}</span>
+                                <span className="min-w-0 break-words">{cp.name}</span>
                                 {isCurrent && <Check className="w-3 h-3 text-black shrink-0" />}
                               </button>
                               {!readOnly && (
@@ -2957,11 +2975,11 @@ export default function PlayCanvas({
 
                   {/* Standard Catalog Route Tree */}
                   <div className="space-y-1.5">
-                    <div className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider flex items-center justify-between">
+                    <div className="text-[10px] font-bold text-neutral-400 flex flex-wrap items-center justify-between gap-1">
                       <span>Standard Route Tree Catalog ({ROUTE_PRESETS_CATALOG.length})</span>
                       <span className="text-[10px] text-cyan-400/80 font-mono">Click to preview route on {selectedPlayer.label}</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5 sm:gap-2 max-h-64 max-sm:max-h-none overflow-y-auto pr-1 scrollbar-thin">
+                    <div className="grid grid-cols-2 gap-2">
                       {ROUTE_PRESETS_CATALOG.map((rp) => {
                         const isCurrent =
                           selectedPlayer.quickRouteName === rp.name ||
@@ -2982,8 +3000,8 @@ export default function PlayCanvas({
                             }`}
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black truncate">{rp.name}</span>
+                              <div className="flex flex-col items-start gap-1">
+                                <span className="font-bold break-words leading-snug">{rp.name}</span>
                                 <span
                                   className={`text-[9px] px-1.5 py-0.2 rounded font-mono uppercase ${
                                     isCurrent ? "bg-black/20 text-black" : "bg-white/10 text-neutral-400"
@@ -2993,7 +3011,7 @@ export default function PlayCanvas({
                                 </span>
                               </div>
                               <div
-                                className={`hidden sm:block text-[10px] mt-0.5 line-clamp-2 ${
+                                className={`text-[11px] leading-relaxed mt-1 ${
                                   isCurrent ? "text-black/80 font-medium" : "text-neutral-400 font-normal"
                                 }`}
                               >
@@ -3008,7 +3026,7 @@ export default function PlayCanvas({
                   </div>
 
                   {/* Bottom add preset shortcut inside menu */}
-                  <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
+                  <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-[11px]">
                     <span className="text-neutral-400 font-mono text-[10px]">
                       {isDemo ? "⚡ Demo Mode: Presets are session-only" : `Capacity: ${customPresets.length}/20 custom presets`}
                     </span>
@@ -3038,9 +3056,6 @@ export default function PlayCanvas({
                 <span className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1">
                   <Shield className="w-3 h-3" />
                   <span>Coverage & Assignment ({selectedPlayer.label}):</span>
-                </span>
-                <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline [@media(min-width:600px)_and_(max-height:450px)]:hidden">
-                  Click assignment to apply to {selectedPlayer.label} on the field above
                 </span>
               </div>
 
@@ -3108,7 +3123,7 @@ export default function PlayCanvas({
                   </button>
                 ))}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 [@media(min-width:600px)_and_(max-height:450px)]:grid-cols-5 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2 [@media(min-width:600px)_and_(max-height:450px)]:row-start-3 gap-1.5">
+              <div className="grid grid-cols-2 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2 [@media(min-width:600px)_and_(max-height:450px)]:row-start-3 gap-1.5">
                 {STANDARD_DEFENSIVE_ZONES.filter(
                   (zone) => zone.category === defensiveZoneCategory
                 ).map((zt) => {
@@ -3133,7 +3148,7 @@ export default function PlayCanvas({
                         className="w-2 h-2 rounded-full shrink-0"
                         style={{ backgroundColor: zt.color }}
                       />
-                      <span className="truncate">{zt.shortName}</span>
+                      <span className="min-w-0 break-words text-left">{zt.shortName}</span>
                       {isCurrent && <Check className="w-3 h-3 text-black stroke-[3] shrink-0" />}
                     </button>
                   );

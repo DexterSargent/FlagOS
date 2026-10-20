@@ -3,6 +3,7 @@ import {
   DEFAULT_LOS_Y,
   ensureSquadMatchup,
   MAX_PLAYBOOKS_PER_TEAM,
+  type FormationAlignment,
   type Playbook,
   type PlayDiagram,
   type PlayerNode,
@@ -18,6 +19,42 @@ type YorkPlaySpec = {
 
 const YORK_PLAY_SPECS: YorkPlaySpec[] = routeData;
 export const YORK_OFFENSIVE_PLAYBOOK_ID = "pb-york-offense-york_lions";
+export const YORK_OFFENSIVE_CATEGORIES = [
+  "Run",
+  "Pass",
+  "RPO",
+  "Extra Point/Short Yardage",
+  "Uncategorized",
+] as const;
+
+function createYorkCategories(): FormationAlignment[] {
+  return YORK_OFFENSIVE_CATEGORIES.map((name, index) => ({
+    id: `york-offense-category-${index + 1}`,
+    name,
+    side: "offense",
+    description: "Offensive coordinator play category. Individual play alignments are preserved.",
+  }));
+}
+
+function migrateYorkCategories(book: Playbook): Playbook {
+  const legacyCategory = "York Lions Offense";
+  const hasLegacyPlays = book.plays.some((play) => play.formation === legacyCategory);
+  const missingCategories = createYorkCategories().filter(
+    (category) => !book.formations.some((formation) => formation.name === category.name),
+  );
+  if (!hasLegacyPlays && missingCategories.length === 0) return book;
+
+  return {
+    ...book,
+    formations: [
+      ...book.formations.filter((formation) => formation.name !== legacyCategory),
+      ...missingCategories,
+    ],
+    plays: book.plays.map((play) =>
+      play.formation === legacyCategory ? { ...play, formation: "Uncategorized" } : play,
+    ),
+  };
+}
 
 export function includeYorkOffensivePlaybook(
   playbooks: Playbook[],
@@ -25,7 +62,9 @@ export function includeYorkOffensivePlaybook(
   replaceDefaultOffense: boolean,
 ): Playbook[] {
   if (playbooks.some((book) => book.id === YORK_OFFENSIVE_PLAYBOOK_ID)) {
-    return playbooks;
+    return playbooks.map((book) =>
+      book.id === YORK_OFFENSIVE_PLAYBOOK_ID ? migrateYorkCategories(book) : book,
+    );
   }
 
   if (replaceDefaultOffense) {
@@ -90,7 +129,8 @@ export function createYorkOffensivePlaybook(teamId: string): Playbook {
       teamId,
       name: spec.name,
       type: "offense",
-      formation: "York Lions Offense",
+      // The supplied PDF contains no per-play OC category assignments.
+      formation: "Uncategorized",
       situation: "Standard",
       notes: `Digitized from the York Lions offensive playbook, play ${index + 1}.`,
       players: ensureSquadMatchup(offensivePlayers, DEFAULT_LOS_Y, 5),
@@ -107,14 +147,7 @@ export function createYorkOffensivePlaybook(teamId: string): Playbook {
     type: "offense",
     playersOnField: 5,
     description: "38 plays digitized from the York Lions offensive playbook.",
-    formations: [
-      {
-        id: "york-lions-offense",
-        name: "York Lions Offense",
-        side: "offense",
-        description: "Routes and player alignments transcribed from the supplied playbook.",
-      },
-    ],
+    formations: createYorkCategories(),
     plays,
     createdAt: now,
     updatedAt: now,

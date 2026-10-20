@@ -148,6 +148,10 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
 
     expect(await screen.findByDisplayValue(play.name)).toBeInTheDocument();
     expect(screen.getByText("Coach Q&A")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save playbook" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Print playbook" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Formation" })).toBeInTheDocument();
+    expect(screen.queryByText("Tactical Confidentiality Guard Active")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Open play / })).not.toBeInTheDocument();
     const otherPlay = plays.find((item) => item.id !== play.id);
     if (otherPlay) {

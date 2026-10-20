@@ -4,6 +4,7 @@ import {
   createYorkOffensivePlaybook,
   includeYorkOffensivePlaybook,
   YORK_OFFENSIVE_PLAYBOOK_ID,
+  YORK_OFFENSIVE_CATEGORIES,
 } from "@/lib/yorkOffensivePlaybook";
 
 const EXPECTED_PLAY_NAMES = [
@@ -54,6 +55,8 @@ describe("York Lions offensive playbook", () => {
     expect(playbook.id).toBe(YORK_OFFENSIVE_PLAYBOOK_ID);
     expect(playbook.plays).toHaveLength(38);
     expect(playbook.plays.map((play) => play.name)).toEqual(EXPECTED_PLAY_NAMES);
+    expect(playbook.formations.map((formation) => formation.name)).toEqual(YORK_OFFENSIVE_CATEGORIES);
+    expect(playbook.plays.every((play) => play.formation === "Uncategorized")).toBe(true);
 
     for (const play of playbook.plays) {
       const offense = play.players.filter((player) => player.side === "offense");
@@ -104,5 +107,33 @@ describe("York Lions offensive playbook", () => {
     }));
 
     expect(includeYorkOffensivePlaybook(saved, "york_lions", false)).toBe(saved);
+  });
+
+  it("upgrades the legacy folder without changing routes, notes, or user-assigned categories", () => {
+    const original = createYorkOffensivePlaybook("york_lions");
+    const legacy = {
+      ...original,
+      formations: [
+        { id: "york-lions-offense", name: "York Lions Offense", side: "offense" as const },
+        { id: "custom", name: "Custom Install", side: "offense" as const },
+      ],
+      plays: original.plays.map((play, index) => ({
+        ...play,
+        formation: index === 0 ? "Custom Install" : "York Lions Offense",
+        notes: "Coach's saved edit",
+      })),
+    };
+    const [migrated] = includeYorkOffensivePlaybook([legacy], "york_lions", false);
+
+    expect(migrated.formations.map((formation) => formation.name)).toEqual([
+      "Custom Install", ...YORK_OFFENSIVE_CATEGORIES,
+    ]);
+    expect(migrated.plays[0]).toBe(legacy.plays[0]);
+    for (let index = 1; index < migrated.plays.length; index++) {
+      expect(migrated.plays[index]).toEqual({ ...legacy.plays[index], formation: "Uncategorized" });
+      expect(migrated.plays[index].players).toBe(legacy.plays[index].players);
+    }
+    const [unchanged] = includeYorkOffensivePlaybook([migrated], "york_lions", false);
+    expect(unchanged).toBe(migrated);
   });
 });

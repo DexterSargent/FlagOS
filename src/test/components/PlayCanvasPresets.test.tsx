@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
 import { PlayDiagram } from "@/lib/playbookTypes";
+import { createYorkOffensivePlaybook } from "@/lib/yorkOffensivePlaybook";
 
 vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({
@@ -64,6 +65,30 @@ function applyMotion(shortName: string) {
 }
 
 describe("PlayCanvas Route Presets Suite", () => {
+  it("moves York plays between OC categories without resetting player alignments or routes", () => {
+    const book = createYorkOffensivePlaybook("york_lions");
+    const play = book.plays[0];
+    const onChange = vi.fn();
+    render(<PlayCanvas play={play} onChange={onChange} playbook={book} />);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Play formation" }), { target: { value: "Pass" } });
+    const updated = onChange.mock.calls.at(-1)?.[0] as PlayDiagram;
+    expect(updated.formation).toBe("Pass");
+    expect(updated.players).toBe(play.players);
+    expect(screen.queryByRole("option", { name: "Spread 2x1" })).not.toBeInTheDocument();
+  });
+
+  it("exposes named controls and the selected player for keyboard and touch users", () => {
+    render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("textbox", { name: "Play name" })).toHaveValue(mockOffensePlay.name);
+    expect(screen.getByRole("combobox", { name: "Play situation" })).toHaveValue("Standard");
+    expect(screen.getByRole("button", { name: "Select X" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Select Y" }));
+    expect(screen.getByRole("button", { name: "Select Y" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("textbox", { name: "Y coaching notes" })).toBeInTheDocument();
+  });
+
   it("keeps routes and motion behind two menu buttons instead of a sliding ribbon", () => {
     render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
