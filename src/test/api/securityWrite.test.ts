@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/security/write/route";
 import { YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_TEAM_ALIASES } from "@/lib/yorkStaff";
+import { createYorkOffensivePlaybook } from "@/lib/yorkOffensivePlaybook";
+import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 
 const { verifyIdTokenMock, runTransactionMock, transaction } = vi.hoisted(() => {
   const transaction = {
@@ -154,6 +156,79 @@ describe("secure data write API", () => {
     expect(privateCreate?.[1]).not.toHaveProperty("leagueName");
   });
 
+  describe("playbook route payloads", () => {
+    beforeEach(() => {
+      transaction.get.mockResolvedValue({ exists: false, data: () => undefined });
+    });
+
+    function yorkPlaybooks() {
+      return [
+        createYorkOffensivePlaybook("york_lions"),
+        ...createDefaultPlaybooks("york_lions").filter((book) => book.type === "defense"),
+      ];
+    }
+
+    it.each(YORK_ADMIN_EMAILS)("saves the full York playbooks with route and motion coordinates for coach %s", async (email) => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email });
+      const playbooks = yorkPlaybooks();
+      playbooks[0].plays[0].players[0].motionPath = [{ x: 40, y: 50 }, { x: 50, y: 50 }];
+      const response = await POST(request({
+        entity: "playbook", data: { teamId: "york_lions", playbooks },
+      }));
+
+      expect(await response.json()).toEqual({ id: "playbook" });
+      expect(response.status).toBe(201);
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "teams/york_lions/meta/playbook" }),
+        expect.objectContaining({ playbooks }),
+      );
+    });
+
+    it("rejects excessively nested route coordinates before starting a transaction", async () => {
+      const playbooks = yorkPlaybooks();
+      const player = playbooks[0].plays[0].players[0];
+      player.route = [{ x: { nested: 50 } as unknown as number, y: 50 }];
+      const response = await POST(request({
+        entity: "playbook", data: { teamId: "york_lions", playbooks },
+      }));
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "Payload nesting is too deep." });
+      expect(runTransactionMock).not.toHaveBeenCalled();
+    });
+
+    it.each(["route", "motionPath"] as const)("still rejects more than 50 %s points", async (field) => {
+      const playbooks = yorkPlaybooks();
+      playbooks[0].plays[0].players[0][field] = Array.from({ length: 51 }, () => ({ x: 50, y: 50 }));
+      const response = await POST(request({
+        entity: "playbook", data: { teamId: "york_lions", playbooks },
+      }));
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "A player route may contain at most 50 points." });
+      expect(runTransactionMock).not.toHaveBeenCalled();
+    });
+
+    it("preserves the original nesting limit for other record types", async () => {
+      const response = await POST(request({
+        entity: "team", data: { teamId: "york_lions", playbooks: yorkPlaybooks() },
+      }));
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "Payload nesting is too deep." });
+      expect(runTransactionMock).not.toHaveBeenCalled();
+    });
+
+    it("still rejects playbook saves by non-coaches", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "player@example.com" });
+      const response = await POST(request({
+        entity: "playbook", data: { teamId: "york_lions", playbooks: yorkPlaybooks() },
+      }));
+
+      expect(response.status).toBe(403);
+      expect(transaction.set).not.toHaveBeenCalled();
+    });
+  });
   it("rejects an unverified account before writing", async () => {
     verifyIdTokenMock.mockResolvedValue({ ...validToken, email_verified: false });
     const response = await POST(request({
