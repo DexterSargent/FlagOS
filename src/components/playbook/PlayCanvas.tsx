@@ -2899,7 +2899,7 @@ export default function PlayCanvas({
                       disabled={readOnly}
                       onChange={(e) => handleDepthChange(parseInt(e.target.value, 10))}
                       aria-label="Route depth in yards"
-                      className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                      className="w-full h-6 cursor-pointer accent-cyan-400"
                     />
                     <div className="text-[10px] text-neutral-400 font-mono">
                       How far downfield the route breaks. Pick a route below to use this depth
