@@ -113,9 +113,10 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     return result;
   };
 
-  const openFormationCards = async (empty = false, type: "offense" | "defense" = "offense") => {
+  const openFormationCards = async (empty = false, type: "offense" | "defense" = "offense", withEmptyCategory = false) => {
     const book = createDefaultPlaybooks("team_apex").find((item) => item.type === type)!;
     const formation = book.formations[0];
+    if (withEmptyCategory) book.formations.push({ id: "empty-category", name: "Empty Category", side: type });
     if (empty) book.plays = book.plays.filter((play) => play.formation !== formation.name);
     localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify([book]));
     await renderPage();
@@ -150,7 +151,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     expect(screen.getByText("Coach Q&A")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save playbook" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Print playbook" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Formation" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Play category" })).toBeInTheDocument();
     expect(screen.queryByText("Tactical Confidentiality Guard Active")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Open play / })).not.toBeInTheDocument();
     const otherPlay = plays.find((item) => item.id !== play.id);
@@ -194,6 +195,58 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     expect(screen.getAllByRole("button", { name: /^Open play / })).toHaveLength(1);
   });
 
+  it.each(["offense", "defense"] as const)("moves every %s play out of a category without deleting it or changing diagrams", async (type) => {
+    const { book, formation, plays } = await openFormationCards(false, type, true);
+    for (const play of plays) {
+      fireEvent.change(screen.getByRole("combobox", { name: `Category for ${play.name}` }), {
+        target: { value: "Empty Category" },
+      });
+    }
+    expect(screen.getByText("No Plays in this Formation")).toBeInTheDocument();
+    const cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
+    expect(cached[0].formations.some((item: { name: string }) => item.name === formation.name)).toBe(true);
+    expect(cached[0].plays.filter((item: { formation: string }) => item.formation === formation.name)).toHaveLength(0);
+    for (const play of plays) {
+      const moved = cached[0].plays.find((item: { id: string }) => item.id === play.id);
+      expect(moved).toEqual({ ...book.plays.find((item) => item.id === play.id), formation: "Empty Category" });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Back to formations" }));
+    expect(screen.getByRole("heading", { name: formation.name })).toBeInTheDocument();
+  });
+
+  it("creates a category with zero plays and no automatic starter play", async () => {
+    const { book } = await openFormationCards();
+    fireEvent.click(screen.getByRole("button", { name: "Back to formations" }));
+    fireEvent.click(screen.getByRole("button", { name: /Add Formation/i }));
+    fireEvent.change(screen.getByPlaceholderText("e.g. Spread 2x1, Trips Right, Pistol Bunch..."), {
+      target: { value: "Empty Install" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Formation Alignment" }));
+    expect(screen.getByRole("heading", { name: "Empty Install" })).toBeInTheDocument();
+    const cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
+    expect(cached[0].plays).toHaveLength(book.plays.length);
+    expect(cached[0].formations.some((item: { name: string }) => item.name === "Empty Install")).toBe(true);
+    fireEvent.click(screen.getByRole("heading", { name: "Empty Install" }));
+    expect(screen.getByText("No Plays in this Formation")).toBeInTheDocument();
+  });
+
+  it("moves a play in the editor without applying an alignment and persists a newly named category", async () => {
+    const { book, formation, plays } = await openFormationCards(false, "offense", true);
+    fireEvent.click(screen.getByRole("button", { name: `Open play ${plays[0].name}` }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Play category" }), { target: { value: "Empty Category" } });
+    expect(screen.getByRole("button", { name: "Back to plays" })).toBeInTheDocument();
+    let cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
+    expect(cached[0].plays.find((item: { id: string }) => item.id === plays[0].id))
+      .toEqual({ ...book.plays.find((item) => item.id === plays[0].id), formation: "Empty Category" });
+    const prompt = vi.spyOn(window, "prompt").mockReturnValue("Custom Category");
+    fireEvent.change(screen.getByRole("combobox", { name: "Play formation" }), { target: { value: "__ADD_NEW__" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Play category" }), { target: { value: formation.name } });
+    cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
+    expect(cached[0].formations.some((item: { name: string }) => item.name === "Custom Category")).toBe(true);
+    expect(cached[0].plays.some((item: { formation: string }) => item.formation === "Custom Category")).toBe(false);
+    prompt.mockRestore();
+  });
+
   it("allows rostered players to open previews but not create, duplicate, or delete plays", async () => {
     mockAuth.isPlayer = true;
     mockAuth.playerTeamId = "team_apex";
@@ -203,6 +256,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     expect(screen.queryByRole("button", { name: "New Play" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Duplicate / })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Delete / })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /^Category for / })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: `Open play ${plays[0].name}` }));
     expect(await screen.findByText("Coach Q&A")).toBeInTheDocument();
     expect(screen.getByText(/Player View Only:/)).toBeInTheDocument();

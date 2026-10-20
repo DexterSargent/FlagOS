@@ -410,18 +410,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             ? book.formations.map((f) => (f.id === savedFormation.id || f.name === savedFormation.name ? savedFormation : f))
             : [...book.formations, savedFormation];
 
-          // If brand new formation with 0 plays, seed 1 baseline play in this formation
-          let nextPlays = book.plays;
-          if (!exists) {
-            const starterPlay = createPlayInFormation(book, savedFormation);
-            nextPlays = [starterPlay, ...book.plays];
-            setActivePlayId(starterPlay.id);
-          }
-
           return {
             ...book,
             formations: nextFormations,
-            plays: nextPlays,
             updatedAt: new Date().toISOString(),
           };
         }
@@ -509,14 +500,21 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const handleUpdateActivePlay = (updatedPlay: PlayDiagram) => {
     if (!hasEditAccess || !activePlaybook) return;
 
-    if (activePlay?.id === updatedPlay.id && activePlay.formation !== updatedPlay.formation) {
+    if (viewLevel === "editor" && activePlay?.id === updatedPlay.id && activePlay.formation !== updatedPlay.formation) {
       setSelectedFormationName(updatedPlay.formation);
     }
     setPlaybooks((prev) => {
       const next = prev.map((book) => {
         if (book.id === activePlaybook.id) {
           const nextPlays = book.plays.map((p) => (p.id === updatedPlay.id ? updatedPlay : p));
-          return { ...book, plays: nextPlays, updatedAt: new Date().toISOString() };
+          const nextFormations = book.formations.some((formation) => formation.name === updatedPlay.formation)
+            ? book.formations
+            : [...book.formations, {
+              id: `formation-${crypto.randomUUID()}`,
+              name: updatedPlay.formation,
+              side: book.type,
+            }];
+          return { ...book, formations: nextFormations, plays: nextPlays, updatedAt: new Date().toISOString() };
         }
         return book;
       });
@@ -1475,7 +1473,20 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       </div>
                     </button>
                     {hasEditAccess && (
-                      <div className="flex justify-end gap-2 mt-3">
+                      <div className="flex items-end justify-end gap-2 mt-3">
+                        <label className="flex-1 min-w-0 space-y-1 text-xs text-neutral-400">
+                          <span>Category</span>
+                          <select
+                            aria-label={`Category for ${play.name}`}
+                            value={play.formation}
+                            onChange={(event) => handleUpdateActivePlay({ ...play, formation: event.target.value })}
+                            className="block w-full min-w-0 rounded-lg border border-white/10 bg-black/40 px-2 py-2 text-xs text-cyan-300 outline-none focus:border-cyan-400"
+                          >
+                            {activePlaybook.formations.map((formation) => (
+                              <option key={formation.id} value={formation.name}>{formation.name}</option>
+                            ))}
+                          </select>
+                        </label>
                         <button
                           type="button"
                           aria-label={`Duplicate ${play.name}`}
@@ -1519,15 +1530,20 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   <ChevronLeft className="w-4 h-4" />
                   <span>Plays</span>
                 </button>
+                {hasEditAccess && <span className="text-xs text-neutral-400 shrink-0">Category</span>}
                 <select
-                  value={selectedFormationName}
-                  aria-label="Formation"
+                  value={activePlay?.formation ?? selectedFormationName}
+                  aria-label={hasEditAccess ? "Play category" : "Formation"}
                   onChange={(e) => {
                     const name = e.target.value;
-                    setSelectedFormationName(name);
-                    setViewLevel("plays");
+                    if (hasEditAccess && activePlay) {
+                      handleUpdateActivePlay({ ...activePlay, formation: name });
+                    } else {
+                      setSelectedFormationName(name);
+                      setViewLevel("plays");
+                    }
                   }}
-                  title={selectedFormationName}
+                  title={hasEditAccess ? `Move play to category: ${activePlay?.formation}` : selectedFormationName}
                   className="min-w-0 w-full max-w-64 h-9 px-2 rounded-lg bg-black/50 border border-white/10 text-xs font-semibold text-cyan-300 focus:border-cyan-400 outline-none"
                 >
                   {activePlaybook.formations.map((f) => (
