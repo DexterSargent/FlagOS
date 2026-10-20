@@ -6,7 +6,6 @@ import {
   onAuthStateChanged,
   User,
   signInWithPopup,
-  signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
@@ -34,7 +33,7 @@ const getAuthErrorMessage = (error: unknown): string => {
     case "auth/unauthorized-domain":
       return "This domain is not authorized for Google Sign-In in Firebase. If this is a new domain, please refresh and try again.";
     case "auth/popup-blocked":
-      return "The sign-in popup was blocked by your browser. Please allow popups or use redirect sign-in.";
+      return "The sign-in popup was blocked by your browser. Please allow popups for this site and try again, or sign in with email and password.";
     case "auth/cancelled-popup-request":
     case "auth/popup-closed-by-user":
       return "Sign-in was cancelled. Please try again.";
@@ -466,36 +465,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
 
-      const isMobile =
-        typeof navigator !== "undefined" &&
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-      // On mobile browsers where popups are frequently blocked or restricted, use redirect
-      if (isMobile) {
-        try {
-          await signInWithRedirect(auth, provider);
-          return { success: true };
-        } catch (redirectError: unknown) {
-          console.warn("signInWithRedirect failed, falling back to popup:", redirectError);
-        }
-      }
-
+      // Redirect sign-in can lose its result when mobile browsers block cross-site storage.
+      // Open the popup directly from the click handler to preserve user activation.
       await signInWithPopup(auth, provider);
       return { success: true };
     } catch (error: unknown) {
       console.error("Login Error:", error);
-      const fbError = error as { code?: string };
-      if (fbError?.code === "auth/popup-blocked") {
-        try {
-          const provider = new GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: "select_account" });
-          await signInWithRedirect(auth, provider);
-          return { success: true };
-        } catch (redirectErr) {
-          return { success: false, message: getAuthErrorMessage(redirectErr) };
-        }
-      }
-
       if (typeof window !== "undefined" && window.location.hostname === "localhost") {
         const message = getAuthErrorMessage(error);
         if (
