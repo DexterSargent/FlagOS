@@ -233,12 +233,23 @@ async function getLeaguePrivate(leagueId: string, token: DecodedIdToken) {
 
 async function getAdminOverview(token: DecodedIdToken) {
   if (!isPlatformAdmin(token)) fail("Platform administrator access is required.", 403);
-  const [leagues, teams, publicLeagues, publicTeams] = await Promise.all([
+  const empty = { docs: [] as FirebaseFirestore.QueryDocumentSnapshot[] };
+  const settled = await Promise.allSettled([
     adminDb.collection("league_private").limit(100).get(),
     adminDb.collection("team_private").limit(300).get(),
     adminDb.collection("leagues").limit(100).get(),
     adminDb.collection("teams").limit(300).get(),
   ]);
+  settled.forEach((entry, index) => {
+    if (entry.status === "rejected") console.error(`Admin overview query ${index} failed:`, entry.reason);
+  });
+  // Public collections are required; private collections degrade gracefully.
+  if (settled[2].status === "rejected") throw settled[2].reason;
+  if (settled[3].status === "rejected") throw settled[3].reason;
+  const leagues = settled[0].status === "fulfilled" ? settled[0].value : empty;
+  const teams = settled[1].status === "fulfilled" ? settled[1].value : empty;
+  const publicLeagues = settled[2].value;
+  const publicTeams = settled[3].value;
   const leagueData = new Map(leagues.docs.map((snapshot) => [snapshot.id, snapshot.data()]));
   for (const snapshot of publicLeagues.docs) {
     if (leagueData.has(snapshot.id)) continue;
@@ -285,7 +296,12 @@ export async function POST(request: Request) {
       return Response.json({ error: "Verify your email before accessing private data." }, { status: 403 });
     }
     const { action, data } = parsePayload(JSON.parse(rawBody) as unknown);
-    await enforceReadLimit(token.uid, action);
+    try {
+      await enforceReadLimit(token.uid, action);
+    } catch (limitError) {
+      if (limitError instanceof RequestError || !isPlatformAdmin(token)) throw limitError;
+      console.error("Read-limit bookkeeping failed for platform admin:", limitError);
+    }
     let result: unknown;
     if (action === "lookup") {
       if (Object.keys(data).length) fail("Lookup does not accept caller-supplied filters.");
