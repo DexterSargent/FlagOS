@@ -206,6 +206,21 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       expect(screen.queryByText(/All Teams/i)).toBeNull();
     });
 
+    it("shows three coaches with all seven sign-in addresses rather than seven separate admins", async () => {
+      await act(async () => render(
+        <Suspense fallback="loading"><TeamPortalHome params={Promise.resolve({ id: "york_lions" })} /></Suspense>,
+      ));
+      fireEvent.click(await screen.findByText("Coaches & Admins (3)"));
+      expect(screen.getByText("Current Team Admins (3)")).toBeInTheDocument();
+      expect(screen.getByText("Dexter Sargent")).toBeInTheDocument();
+      expect(screen.getByText("Theo Brown")).toBeInTheDocument();
+      expect(screen.getByText("Justin Fawcett")).toBeInTheDocument();
+      for (const email of ["dextersargent@gmail.com", "dexters4@my.yorku.ca", "tbrown99@my.yorku.ca", "theobrown24@icloud.com", "theoren911@gmail.com", "fawcett1@my.yorku.ca", "justinfawcett93@gmail.com"]) {
+        expect(screen.getByText(email)).toBeInTheDocument();
+      }
+      expect(screen.getByRole("link", { name: "Manage my connected emails" })).toHaveAttribute("href", "/account");
+    });
+
     it("opens edit team details modal allowing customization of name, logo, and colours", async () => {
       const paramsPromise = Promise.resolve({ id: "york_lions" });
       await act(async () => {

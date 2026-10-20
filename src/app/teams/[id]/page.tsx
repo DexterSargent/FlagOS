@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, getDocs, query, where, limit } from "firebase/firestore";
-import { isPrimaryTeamAdmin, getTeamAdminEmails, isDexterUser } from "@/lib/teamAdminRbac";
+import { isPrimaryTeamAdmin, getTeamAdminEmails, getTeamAdminAccounts, isDexterUser, type TeamAdminAccount } from "@/lib/teamAdminRbac";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
@@ -119,7 +119,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   const isDexter = isDexterUser(user?.email);
   const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
-  const currentAdminEmails = getTeamAdminEmails(team);
+  const currentAdminAccounts = getTeamAdminAccounts(team);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -177,20 +177,19 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleRemoveCoachAdmin = async (emailToRemove: string) => {
-    const cleanEmail = emailToRemove.trim().toLowerCase();
-    const currentList = getTeamAdminEmails(team);
-    if (currentList[0]?.toLowerCase() === cleanEmail) {
-      alert("The primary team admin (head coach) cannot be removed.");
+  const handleRemoveCoachAdmin = async (account: TeamAdminAccount) => {
+    if (account.primary || account.required) {
+      setStaffActionError("The primary admin and configured York coaching staff cannot be removed here.");
       return;
     }
-    if (!window.confirm(`Are you sure you want to remove ${cleanEmail} as a team admin?`)) {
+    const currentList = getTeamAdminEmails(team);
+    if (!window.confirm(`Remove ${account.name} and all their listed emails from team administration?`)) {
       return;
     }
 
     setSavingStaff(true);
     setStaffActionError("");
-    const nextList = currentList.filter((e) => e.toLowerCase() !== cleanEmail);
+    const nextList = currentList.filter((email) => !account.emails.includes(email));
 
     try {
       if (!isYork && isDemoLeague) {
@@ -203,7 +202,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       }
 
       setTeam((prev: any) => ({ ...prev, adminEmails: nextList }));
-      setStaffActionSuccess(`Removed ${cleanEmail} from team admins.`);
+      setStaffActionSuccess(`Removed ${account.name} from team admins.`);
       setTimeout(() => setStaffActionSuccess(""), 4500);
     } catch (err) {
       console.error("Failed to remove team admin:", err);
@@ -693,7 +692,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
                 >
                   <UserPlus className="w-4 h-4 text-emerald-400" />
-                  <span>Coaches &amp; Admins ({currentAdminEmails.length})</span>
+                  <span>Coaches &amp; Admins ({currentAdminAccounts.length})</span>
                 </button>
                 <button
                   type="button"
@@ -1242,6 +1241,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               <p>
                 Authorized team admins can invite additional coaches. <strong>Only the primary team admin (the first coach)</strong> has permission to delete players, games, and playbooks.
               </p>
+              <p>Each person is listed once, with their sign-in addresses below. York&apos;s configured addresses are grouped by coach; account owners can connect them after verifying both sign-ins.</p>
+              <Link href="/account" className="inline-block font-bold text-cyan-300 hover:text-cyan-200">Manage my connected emails</Link>
             </div>
 
             {staffActionSuccess && (
@@ -1259,21 +1260,25 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             {/* Current Admins List */}
             <div className="mt-5">
               <div className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
-                Current Team Admins ({currentAdminEmails.length})
+                Current Team Admins ({currentAdminAccounts.length})
               </div>
               <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-                {currentAdminEmails.map((email, idx) => {
-                  const isFirst = idx === 0;
+                {currentAdminAccounts.map((account) => {
+                  const isFirst = account.primary;
                   return (
                     <div
-                      key={email}
+                      key={account.id}
                       className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-neutral-950/70 p-3.5 transition-colors"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Mail className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
-                          <span className="font-mono text-xs text-white truncate font-semibold">{email}</span>
+                          <span className="text-sm text-white font-semibold">{account.name}</span>
                         </div>
+                        <p className="mt-1 text-xs text-neutral-400">{account.role}</p>
+                        <ul className="mt-2 space-y-1">
+                          {account.emails.map((email) => <li key={email} className="break-all font-mono text-xs text-neutral-300">{email}</li>)}
+                        </ul>
                         <div className="mt-1 flex items-center gap-2">
                           {isFirst ? (
                             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
@@ -1290,10 +1295,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                         </div>
                       </div>
 
-                      {!isFirst && isPrimary && (
+                      {!isFirst && !account.required && isPrimary && (
                         <button
                           type="button"
-                          onClick={() => handleRemoveCoachAdmin(email)}
+                          onClick={() => handleRemoveCoachAdmin(account)}
                           disabled={savingStaff}
                           className="p-1.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/20 hover:text-red-300 text-xs font-bold transition-colors disabled:opacity-50 shrink-0"
                           title="Remove team admin"

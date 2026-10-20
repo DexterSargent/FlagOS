@@ -402,7 +402,7 @@ export default function PlayerProfilePage() {
                   <div className="flex items-center gap-2 flex-wrap pt-1">
                     <span className="text-xs text-neutral-400 flex items-center gap-1">
                       <Mail className="w-3.5 h-3.5 text-neutral-500" />
-                      <span>Linked Email{attachedEmails.length > 1 ? "s" : ""}:</span>
+                      <span>Roster Email{attachedEmails.length > 1 ? "s" : ""}:</span>
                     </span>
                     {attachedEmails.map((em, idx) => (
                       <span
@@ -815,9 +815,12 @@ export default function PlayerProfilePage() {
             </div>
 
             {/* Linked Emails Box */}
+            <Link href="/account" className="inline-block text-sm font-bold text-cyan-400 hover:text-cyan-300">
+              Manage verified account sign-in emails
+            </Link>
             <div className="bg-black/50 border border-white/10 rounded-2xl p-5 space-y-3">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-300 block">
-                Attached Authentication Emails ({attachedEmails.length}):
+                Roster Contact Emails ({attachedEmails.length}):
               </span>
 
               {attachedEmails.length > 0 ? (
@@ -832,7 +835,7 @@ export default function PlayerProfilePage() {
                         <span className="text-xs font-mono font-bold text-white">{em}</span>
                       </div>
                       <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[10px] font-mono font-bold text-emerald-300 uppercase">
-                        Active Sign-In Email
+                        Registered Roster Contact
                       </span>
                     </div>
                   ))}

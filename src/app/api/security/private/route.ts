@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { isYorkTeam, YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_TEAM_ALIASES, YORK_TEAM_ID } from "@/lib/yorkStaff";
+import { accountEmailKey } from "@/lib/accountEmailKey";
 
 export const runtime = "nodejs";
 
@@ -208,9 +209,25 @@ async function getTeamPrivate(teamId: string, token: DecodedIdToken) {
       .map((snapshot) => [snapshot.id, snapshot.data()] as const),
   );
   if (playerPrivate.size > 30) fail("The team roster exceeds the supported limit.", 409);
+  const storedAdminEmails = privateData.adminEmails || publicData.adminEmails || [];
+  const adminEmails: string[] = [...new Set<string>([
+    ...(isYorkTeam(teamId) ? YORK_ADMIN_EMAILS : []),
+    ...(Array.isArray(storedAdminEmails) ? storedAdminEmails : []),
+  ])];
+  const adminAccountIds: Record<string, string> = {};
+  if (adminEmails.length) {
+    const connections = await adminDb.getAll(...adminEmails.map((email) =>
+      adminDb.doc(`account_email_addresses/${accountEmailKey(email)}`)));
+    connections.forEach((connection, index) => {
+      if (connection.exists && typeof connection.get("accountUid") === "string") {
+        adminAccountIds[adminEmails[index]] = connection.get("accountUid");
+      }
+    });
+  }
   return {
     team: {
-      adminEmails: isYorkTeam(teamId) ? YORK_ADMIN_EMAILS : privateData.adminEmails || publicData.adminEmails || [],
+      adminEmails,
+      adminAccountIds,
       coachEmail: isYorkTeam(teamId) ? YORK_HEAD_COACH_EMAILS[0] : privateData.coachEmail || publicData.coachEmail || "",
       adminEmail: privateData.adminEmail || publicData.adminEmail || "",
       email: privateData.email || publicData.email || "",

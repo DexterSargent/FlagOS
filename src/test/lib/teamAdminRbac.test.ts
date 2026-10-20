@@ -1,7 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { isPrimaryTeamAdmin, getTeamAdminEmails, isDexterUser } from "@/lib/teamAdminRbac";
+import { isPrimaryTeamAdmin, getTeamAdminEmails, getTeamAdminAccounts, isDexterUser } from "@/lib/teamAdminRbac";
 
 describe("Team Admin RBAC & Primary Admin Deletion Rights", () => {
+  it("presents the seven York addresses as three named coaching accounts", () => {
+    const accounts = getTeamAdminAccounts({ id: "york_lions" });
+    expect(accounts.map((account) => account.name)).toEqual(["Dexter Sargent", "Theo Brown", "Justin Fawcett"]);
+    expect(accounts.map((account) => account.emails.length)).toEqual([2, 3, 2]);
+    expect(accounts.filter((account) => account.primary).map((account) => account.name)).toEqual(["Dexter Sargent"]);
+  });
+
+  it("groups verified connected emails for other teams without merging unrelated coaches", () => {
+    const accounts = getTeamAdminAccounts({
+      id: "team_hawks", adminEmails: ["coach@hawks.com", "coach.personal@example.com", "assistant@hawks.com"],
+      adminAccountIds: { "coach@hawks.com": "coach-uid", "coach.personal@example.com": "coach-uid" },
+    });
+    expect(accounts).toHaveLength(2);
+    expect(accounts[0].emails).toEqual(["coach@hawks.com", "coach.personal@example.com"]);
+    expect(accounts[0].primary).toBe(true);
+    expect(accounts[1].primary).toBe(false);
+  });
+
   it("identifies platform owner / Dexter emails", () => {
     expect(isDexterUser("dextersargent@gmail.com")).toBe(true);
     expect(isDexterUser("DEXTERSARGENT@GMAIL.COM")).toBe(true);

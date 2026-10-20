@@ -14,6 +14,12 @@ export const YORK_ADMIN_EMAILS = [
   "fawcett1@my.yorku.ca", "justinfawcett93@gmail.com",
 ];
 
+export const YORK_COACH_ACCOUNTS = [
+  { id: "york-dexter", name: "Dexter Sargent", role: "Head Coach", emails: YORK_HEAD_COACH_EMAILS },
+  { id: "york-theo", name: "Theo Brown", role: "Defensive Coordinator", emails: ["tbrown99@my.yorku.ca", "theobrown24@icloud.com", "theoren911@gmail.com"] },
+  { id: "york-justin", name: "Justin Fawcett", role: "Offensive Coordinator", emails: ["fawcett1@my.yorku.ca", "justinfawcett93@gmail.com"] },
+];
+
 export function isYorkTeam(teamId?: string | null): boolean {
   return typeof teamId === "string" && YORK_TEAM_ALIASES.includes(teamId.trim().toLowerCase());
 }

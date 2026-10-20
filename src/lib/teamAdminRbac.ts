@@ -1,5 +1,35 @@
 import { isYorkTeam } from "./yorkTeamData";
-import { YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS } from "./yorkStaff";
+import { YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_COACH_ACCOUNTS } from "./yorkStaff";
+
+export interface TeamAdminAccount {
+  id: string;
+  name: string;
+  role: string;
+  emails: string[];
+  primary: boolean;
+  required: boolean;
+}
+
+export function getTeamAdminAccounts(team: {
+  id?: string; adminEmails?: string[]; coachEmail?: string; adminAccountIds?: Record<string, string>;
+} | null | undefined): TeamAdminAccount[] {
+  const emails = getTeamAdminEmails(team);
+  const accounts: TeamAdminAccount[] = isYorkTeam(team?.id)
+    ? YORK_COACH_ACCOUNTS.map((coach, index) => ({ ...coach, emails: [...coach.emails], primary: index === 0, required: true }))
+    : [];
+  for (const email of emails) {
+    const linkedId = team?.adminAccountIds?.[email];
+    const known = accounts.find((account) => account.emails.includes(email) ||
+      (linkedId && account.emails.some((address) => team?.adminAccountIds?.[address] === linkedId)));
+    if (known) {
+      if (!known.emails.includes(email)) known.emails.push(email);
+      continue;
+    }
+    const primary = emails[0] === email;
+    accounts.push({ id: linkedId || email, name: email, role: primary ? "Head Coach" : "Team Admin / Coach", emails: [email], primary, required: false });
+  }
+  return accounts;
+}
 
 export const DEXTER_EMAILS = [
   "dextersargent@gmail.com",

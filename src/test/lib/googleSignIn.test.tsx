@@ -4,6 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { useState } from "react";
 
+vi.mock("@/lib/accountEmails", () => ({
+  resolveConnectedAccount: vi.fn(async (user) => user),
+}));
+
 const { popupMock, redirectMock, parametersMock, authStateCallback } = vi.hoisted(() => ({
   popupMock: vi.fn(),
   redirectMock: vi.fn(),

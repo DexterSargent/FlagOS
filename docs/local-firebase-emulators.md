@@ -53,6 +53,57 @@ a verified email address. The additional York addresses confer team access,
 not platform administration. Only the head coach may delete team assets.
 No passwords or production accounts are provisioned by this configuration.
 
+### One account with multiple verified sign-in emails
+
+York's staff panel counts **three people**, not seven addresses. Each coach's
+configured addresses appear under their name. This grouping does not silently
+merge Auth accounts or assert that the additional sign-ins have been connected.
+
+Signed-in users can open **Manage connected emails** from sign-in settings,
+the staff panel, or the profile account tab. Account settings at `/account`
+require recent reauthentication of the primary account, followed by a separate
+Google or email/password sign-in to prove ownership of the additional email.
+Both addresses must be verified. The additional account must not already have
+connections, and each primary account supports at most ten addresses.
+
+After connecting, signing in through FlagOS with either address opens the same
+primary Firebase UID and profile. Choose the account with the intended team
+permissions as the primary account. Connections do not import the secondary
+account's roles, reassign old data, delete Auth users, or merge existing player
+records. In particular, connecting a coach address to another account does not
+automatically grant that account platform administration. Team admin panels
+group verified connected addresses for other teams too.
+
+Disconnecting requires recent primary-account reauthentication. It removes the
+connection, signs the current browser out, and revokes the primary account's
+refresh sessions. Existing ID tokens can remain valid for up to one hour for
+direct Firestore access; authenticated server APIs check revocation immediately.
+The additional email can still sign in to its original, independent Auth account.
+
+Connection records and email indexes are server-owned collections
+(`account_email_connections`, `account_email_members`, `account_email_addresses`,
+and `account_email_limits`), denied to clients by the default Firestore rules.
+The server validates both ID tokens with revocation checks, checks current Auth
+email/verification state, and binds connections transactionally. It never trusts
+caller-supplied email addresses or destination UIDs as proof.
+
+Production uses Firebase Admin custom-token signing to open the primary
+identity after an additional-email login. The runtime service account must have
+permission to sign tokens (IAM `iam.serviceAccounts.signBlob`, normally via
+Service Account Token Creator on the signing service account). Signing or
+connection lookup failures are explicit and sign out the attempted login;
+there is no fallback to an apparently connected account.
+
+With the isolated emulators and local app running, verify the actual UID
+exchange, private-store denial, and disconnect flow with:
+
+```powershell
+$env:FLAGOS_TEST_EMULATORS = "true"
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"
+$env:FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099"
+npm test -- src/test/api/accountEmails.emulator.test.ts
+```
+
 With the emulators and app running, exercise actual authenticated API writes
 and cross-coach persistence:
 

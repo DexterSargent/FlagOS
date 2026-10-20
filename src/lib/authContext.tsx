@@ -20,9 +20,14 @@ import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { getSandboxPlayers, subscribeDemoSandbox, notifySandboxChange } from "./demoSandbox";
 import { isYorkTeam, YORK_TEAM_ID, YORK_ADMIN_EMAILS, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS } from "./yorkTeamData";
 import { requestPrivateData } from "./secureWrites";
+import { resolveConnectedAccount } from "./accountEmails";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
 type LoginResult = { success: true; message?: string; defaultPath?: string } | { success: false; message: string };
+type IdentityLookup = {
+  teams: Array<{ id: string; name: string }>;
+  players: Array<{ id: string; email?: string; emails?: string[]; [key: string]: any }>;
+};
 
 function getSuccessfulLoginResult(user: User): LoginResult {
   const isYorkCoach = user.emailVerified && YORK_ADMIN_EMAILS.includes(user.email?.toLowerCase() || "");
@@ -168,13 +173,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     .filter(Boolean);
 
   // Helper to find player matching an email address
-  const findPlayerByEmail = async (email: string): Promise<{ id: string; teamId?: string; [key: string]: any } | null> => {
+  const findPlayerByEmail = async (email: string, lookup?: Promise<IdentityLookup>): Promise<{ id: string; teamId?: string; [key: string]: any } | null> => {
     if (!email) return null;
     const cleanEmail = email.trim().toLowerCase();
     try {
-      const results = await requestPrivateData<{
-        players: Array<{ id: string; email?: string; emails?: string[]; [key: string]: any }>;
-      }>("lookup");
+      const results = await (lookup || requestPrivateData<IdentityLookup>("lookup"));
       const match = results.players.find((player) => {
         const playerEmails = [
           ...(Array.isArray(player.emails) ? player.emails : []),
@@ -217,13 +220,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Helper to find team matching a coach or admin email address
-  const findTeamByEmail = async (email: string): Promise<{ id: string; name: string } | null> => {
+  const findTeamByEmail = async (email: string, lookup?: Promise<IdentityLookup>): Promise<{ id: string; name: string } | null> => {
     if (!email) return null;
     const cleanEmail = email.trim().toLowerCase();
     try {
-      const results = await requestPrivateData<{
-        teams: Array<{ id: string; name: string }>;
-      }>("lookup");
+      const results = await (lookup || requestPrivateData<IdentityLookup>("lookup"));
       const matchingTeam = results.teams.find((team) =>
         team.id !== "team_free_agents" &&
         team.name.trim().toLowerCase() !== "free agent" &&
@@ -258,7 +259,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("Redirect sign-in error:", err);
       });
 
+    let authVersion = 0;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      const version = ++authVersion;
       setUser(u);
       if (u) {
         const isPendingUnassignedAccount = !!u.email &&
@@ -284,9 +287,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           let matchingPlayer: any = null;
           let matchingTeam: any = null;
           if (u.email && u.emailVerified) {
-            matchingPlayer = await findPlayerByEmail(u.email);
-            matchingTeam = await findTeamByEmail(u.email);
+            const lookup = requestPrivateData<IdentityLookup>("lookup");
+            matchingPlayer = await findPlayerByEmail(u.email, lookup);
+            if (version !== authVersion) return;
+            matchingTeam = await findTeamByEmail(u.email, lookup);
           }
+          if (version !== authVersion) return;
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
@@ -324,6 +330,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             };
 
             await setDoc(userDocRef, profileDataToSave);
+            if (version !== authVersion) return;
             setUserProfile({
               uid: u.uid,
               email: u.email || "",
@@ -337,6 +344,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } catch (err) {
           console.error("Error fetching user profile:", err);
+          if (version !== authVersion) return;
           const isEmailLeagueAdmin = !!(u.email && adminEmails.includes(u.email.toLowerCase()));
           setUserProfile({
             uid: u.uid,
@@ -473,7 +481,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Redirect sign-in can lose its result when mobile browsers block cross-site storage.
       // Open the popup directly from the click handler to preserve user activation.
       const credential = await signInWithPopup(auth, provider);
-      return getSuccessfulLoginResult(credential.user);
+      return getSuccessfulLoginResult(await resolveConnectedAccount(credential.user));
     } catch (error: unknown) {
       console.error("Login Error:", error);
       if (typeof window !== "undefined" && window.location.hostname === "localhost") {
@@ -498,7 +506,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   ): Promise<LoginResult> => {
     try {
       const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      return getSuccessfulLoginResult(credential.user);
+      return getSuccessfulLoginResult(await resolveConnectedAccount(credential.user));
     } catch (error: unknown) {
       console.error("Email/password login error:", error);
       return { success: false, message: getAuthErrorMessage(error) };

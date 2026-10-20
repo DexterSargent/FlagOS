@@ -323,6 +323,9 @@ export default function LoginPage() {
               <p className="text-xs text-neutral-400">Signed in as</p>
               <p className="text-sm text-white font-bold font-mono">{user.email}</p>
             </div>
+            <Link href="/account" className="text-sm text-cyan-300 hover:text-cyan-200">
+              Manage connected emails
+            </Link>
 
             {isAuthorized ? (
               <div className="w-full space-y-2">
