@@ -19,7 +19,9 @@ const ROUTES: HelpRoute[] = [
       title: "Play Designer",
       summary: "Build offensive and defensive plays, then save them to your private playbook.",
       steps: [
-        "Pick a formation card, or start from a blank field.",
+        "Open a playbook, then pick a formation card to see its plays.",
+        "Each play has a card with a route preview. Select a play card to open the designer, or choose New Play to create one.",
+        "Use Back to plays to return to the cards and choose another play.",
         "Tap a receiver to select it. Tap empty field to deselect everyone.",
         "Open Routes to choose a route and set its depth in yards.",
         "Open Motion to add pre-snap motion for the selected player.",

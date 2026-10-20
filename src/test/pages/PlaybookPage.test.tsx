@@ -155,6 +155,11 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     }
     fireEvent.click(screen.getByRole("button", { name: "Back to plays" }));
     expect(screen.getAllByRole("button", { name: /^Open play / })).toHaveLength(plays.length);
+    fireEvent.click(screen.getByRole("button", { name: `Open play ${play.name}` }));
+    fireEvent.change(await screen.findByDisplayValue(play.name), { target: { value: "Updated card play" } });
+    fireEvent.click(screen.getByRole("button", { name: "Back to plays" }));
+    expect(screen.getByRole("button", { name: "Open play Updated card play" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Preview of Updated card play" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Back to formations" }));
     expect(screen.getByRole("heading", { name: "Spread 2x1" })).toBeInTheDocument();
   });
