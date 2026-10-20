@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import MyStoryPage from "@/app/my-story/page";
 
 const mockReplace = vi.fn();
@@ -38,35 +38,35 @@ describe("My Story Page (/my-story)", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /i grew up carrying a football to school/i,
+        name: /building flagos: software born out of necessity/i,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /it started with two footballs/i }),
+      screen.getByRole("heading", { name: /childhood roots in dartmouth/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /i made my own way to toronto/i }),
+      screen.getByRole("heading", { name: /high school & the recruiting grind/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /i learned how much the team matters/i }),
+      screen.getByRole("heading", { name: /york university varsity career/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /a week helping out became something bigger/i }),
+      screen.getByRole("heading", { name: /coaching york women's flag football/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /at 0–7, we had one week to prepare/i }),
+      screen.getByRole("heading", { name: /rebuilding & varsity status/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /the software came from a problem we had/i }),
+      screen.getByRole("heading", { name: /^building flagos$/i }),
     ).toBeInTheDocument();
 
     expect(screen.getAllByText(/dartmouth destroyers/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/\$4,500 athletic scholarship from york/i)).toBeInTheDocument();
-    expect(screen.getByText(/alfred olay/i)).toBeInTheDocument();
-    expect(screen.getByText(/slept on theo's pull-out couch/i)).toBeInTheDocument();
-    expect(screen.getByText(/17–8 to reach the playoffs/i)).toBeInTheDocument();
-    expect(screen.getByText(/ninety athletes came to 5v5 tryouts/i)).toBeInTheDocument();
-    expect(screen.getByText(/partners for planning/i)).toBeInTheDocument();
+    expect(screen.getByText(/full oua athletic scholarship to york university/i)).toBeInTheDocument();
+    expect(screen.getByText(/sleep on a couch in their living room/i)).toBeInTheDocument();
+    expect(screen.getByText(/17-8 to qualify for the playoffs/i)).toBeInTheDocument();
+    expect(screen.getByText(/york university women's flag football league/i)).toBeInTheDocument();
+    expect(screen.getByText(/\$30\/month for team playbooks/i)).toBeInTheDocument();
+    expect(screen.getByText(/dextersargent@gmail\.com/i)).toBeInTheDocument();
 
     const storySections = Array.from(document.querySelectorAll("article[id]")).map(
       (section) => section.id,
@@ -110,5 +110,67 @@ describe("My Story Page (/my-story)", () => {
 
     expect(mockReplace).toHaveBeenCalledWith("/");
     expect(screen.queryByText(/two footballs and an afternoon at recess/i)).toBeNull();
+  });
+
+  it("renders interactive photo frames and allows Dexter to add a photo via modal", () => {
+    localStorage.clear();
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@gmail.com" },
+      isPlatformAdmin: true,
+      loading: false,
+    });
+
+    render(<MyStoryPage />);
+
+    // Check that photo buttons exist for chapters
+    const addPhotoButtons = screen.getAllByText(/add photo to chapter/i);
+    expect(addPhotoButtons.length).toBe(6);
+
+    // Click on chapter 01 add photo
+    fireEvent.click(addPhotoButtons[0]);
+
+    // Modal should be open
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /add photo to chapter 01/i })).toBeInTheDocument();
+
+    // Fill in URL and caption
+    const urlInput = screen.getByPlaceholderText("https://example.com/photo.jpg");
+    fireEvent.change(urlInput, { target: { value: "https://example.com/dartmouth.jpg" } });
+
+    const captionInput = screen.getByPlaceholderText(/e\.g\. dartmouth destroyers/i);
+    fireEvent.change(captionInput, { target: { value: "Dartmouth Destroyers 2011" } });
+
+    // Click Save Photo
+    fireEvent.click(screen.getByRole("button", { name: /save photo/i }));
+
+    // Check localStorage saved
+    const saved = JSON.parse(localStorage.getItem("flagos_story_photos") || "{}");
+    expect(saved["first-football"]).toBeDefined();
+    expect(saved["first-football"].url).toBe("https://example.com/dartmouth.jpg");
+    expect(saved["first-football"].caption).toBe("Dartmouth Destroyers 2011");
+  });
+
+  it("loads and displays saved photos from localStorage", () => {
+    localStorage.setItem(
+      "flagos_story_photos",
+      JSON.stringify({
+        york: {
+          url: "https://example.com/york51.jpg",
+          caption: "Thanksgiving 2022 Touchdown Return",
+        },
+      }),
+    );
+
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@gmail.com" },
+      isPlatformAdmin: true,
+      loading: false,
+    });
+
+    render(<MyStoryPage />);
+
+    expect(screen.getByText("Thanksgiving 2022 Touchdown Return")).toBeInTheDocument();
+    const img = screen.getByAltText("Thanksgiving 2022 Touchdown Return");
+    expect(img).toHaveAttribute("src", "https://example.com/york51.jpg");
   });
 });

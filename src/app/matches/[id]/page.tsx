@@ -12,6 +12,7 @@ import { renderFlagOS } from "@/components/FlagOSText";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
+import { getYorkMatch } from "@/lib/yorkTeamData";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -145,9 +146,14 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
         const docSnap = await getDoc(doc(db, "matches", matchId));
         if (docSnap.exists()) {
           setMatchData(docSnap.data());
+        } else {
+          const ym = getYorkMatch(matchId);
+          if (ym) setMatchData(ym);
         }
       } catch (error) {
         console.error("Error fetching match:", error);
+        const ym = getYorkMatch(matchId);
+        if (ym) setMatchData(ym);
       }
       setLoading(false);
     };

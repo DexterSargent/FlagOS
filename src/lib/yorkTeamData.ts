@@ -7902,8 +7902,122 @@ export function getYorkTeamPlayers(): DemoPlayer[] {
   return YORK_LIONS_PLAYERS;
 }
 
+export const YORK_CUSTOM_MATCHES_KEY = "flagos_york_matches";
+export const YORK_CUSTOM_PLAYS_KEY_PREFIX = "flagos_york_plays_";
+
+export function getYorkCustomMatches(): DemoMatch[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(YORK_CUSTOM_MATCHES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn("Failed to parse custom York matches:", e);
+    return [];
+  }
+}
+
+export function saveYorkCustomMatch(match: DemoMatch & Record<string, any>): void {
+  if (typeof window === "undefined" || !match?.id) return;
+  try {
+    const existing = getYorkCustomMatches();
+    const idx = existing.findIndex((m) => m.id === match.id);
+    let updated: DemoMatch[];
+    if (idx >= 0) {
+      updated = [...existing];
+      updated[idx] = { ...updated[idx], ...match };
+    } else {
+      updated = [...existing, match];
+    }
+    localStorage.setItem(YORK_CUSTOM_MATCHES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Failed to save custom York match:", e);
+  }
+}
+
+export function deleteYorkCustomMatch(matchId: string): void {
+  if (typeof window === "undefined" || !matchId) return;
+  try {
+    const existing = getYorkCustomMatches();
+    const updated = existing.filter((m) => m.id !== matchId);
+    localStorage.setItem(YORK_CUSTOM_MATCHES_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Failed to delete custom York match:", e);
+  }
+}
+
 export function getYorkTeamMatches(): DemoMatch[] {
-  return YORK_LIONS_MATCHES;
+  if (typeof window === "undefined") {
+    return YORK_LIONS_MATCHES;
+  }
+  const custom = getYorkCustomMatches();
+  if (custom.length === 0) {
+    return YORK_LIONS_MATCHES;
+  }
+  const matchMap = new Map<string, DemoMatch>();
+  for (const m of YORK_LIONS_MATCHES) {
+    matchMap.set(m.id, m);
+  }
+  for (const m of custom) {
+    matchMap.set(m.id, { ...(matchMap.get(m.id) || {}), ...m } as DemoMatch);
+  }
+  return Array.from(matchMap.values());
+}
+
+export function getYorkMatch(matchId: string): (DemoMatch & Record<string, any>) | undefined {
+  if (!matchId) return undefined;
+  return getYorkTeamMatches().find((m) => m.id === matchId) as (DemoMatch & Record<string, any>) | undefined;
+}
+
+export function isYorkMatch(matchId?: string | null): boolean {
+  if (!matchId) return false;
+  if (matchId.startsWith("match_york_") || matchId.includes("york")) return true;
+  return getYorkTeamMatches().some((m) => m.id === matchId);
+}
+
+export function getYorkCustomPlays(matchId: string): DemoPlay[] {
+  if (typeof window === "undefined" || !matchId) return [];
+  try {
+    const raw = localStorage.getItem(`${YORK_CUSTOM_PLAYS_KEY_PREFIX}${matchId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn("Failed to parse custom York plays:", e);
+    return [];
+  }
+}
+
+export function saveYorkPlay(matchId: string, play: DemoPlay & Record<string, any>): void {
+  if (typeof window === "undefined" || !matchId || !play) return;
+  try {
+    const existing = getYorkCustomPlays(matchId);
+    const updated = [...existing, play];
+    localStorage.setItem(`${YORK_CUSTOM_PLAYS_KEY_PREFIX}${matchId}`, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Failed to save York play locally:", e);
+  }
+}
+
+export function deleteYorkPlay(matchId: string, playId: string): void {
+  if (typeof window === "undefined" || !matchId || !playId) return;
+  try {
+    const existing = getYorkCustomPlays(matchId);
+    const updated = existing.filter((p: any) => p.id !== playId);
+    localStorage.setItem(`${YORK_CUSTOM_PLAYS_KEY_PREFIX}${matchId}`, JSON.stringify(updated));
+  } catch (e) {
+    console.warn("Failed to delete York play locally:", e);
+  }
+}
+
+export function getYorkTeamPlaysForMatch(matchId: string): DemoPlay[] {
+  const seedPlays = YORK_LIONS_PLAYS.filter((p) => p.matchId === matchId);
+  const customPlays = getYorkCustomPlays(matchId);
+  const playMap = new Map<string, DemoPlay>();
+  seedPlays.forEach((p) => playMap.set(p.id, p));
+  customPlays.forEach((p) => playMap.set(p.id, p));
+  return Array.from(playMap.values());
 }
 
 export function getYorkTeamPlays(): DemoPlay[] {

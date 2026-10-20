@@ -17,7 +17,13 @@ import {
   deleteSandboxPlaysForMatch,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import { isYorkTeam, getYorkTeamData, getYorkTeamMatches } from "@/lib/yorkTeamData";
+import {
+  isYorkTeam,
+  getYorkTeamData,
+  getYorkTeamMatches,
+  saveYorkCustomMatch,
+  deleteYorkCustomMatch,
+} from "@/lib/yorkTeamData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 
 export default function TeamSchedulePage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,6 +52,15 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "York Turf Field 1");
   const [isScheduling, setIsScheduling] = useState(false);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("create") === "1" || sp.get("create") === "true") {
+        setIsScheduleModalOpen(true);
+      }
+    }
+  }, []);
+
   const handleDeleteMatch = async (e: React.MouseEvent, matchId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -63,14 +78,21 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       return;
     }
 
+    if (isYork) {
+      deleteYorkCustomMatch(matchId);
+      try {
+        await deleteDoc(doc(db, "matches", matchId));
+      } catch (err) {
+        console.warn("Could not delete from Firestore:", err);
+      }
+      setMatches((prev) => prev.filter((m) => m.id !== matchId));
+      return;
+    }
+
     try {
       await deleteDoc(doc(db, "matches", matchId));
       setMatches((prev) => prev.filter((m) => m.id !== matchId));
     } catch (err) {
-      if (isYork) {
-        setMatches((prev) => prev.filter((m) => m.id !== matchId));
-        return;
-      }
       console.error("Failed to delete match:", err);
       alert("Failed to delete match. Please check permissions.");
     }
@@ -80,7 +102,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     e.preventDefault();
     if (!canScheduleMatches) return;
     if (!opponentName.trim()) return;
-        setIsScheduling(true);
+    setIsScheduling(true);
     try {
       const oppId = `opponent_${Date.now()}`;
       const newMatchDoc = {
@@ -109,18 +131,27 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         return;
       }
 
+      let createdId = `match_york_${Date.now()}`;
       try {
-        const matchId = await createSecureRecord("match", {
+        createdId = await createSecureRecord("match", {
           ...newMatchDoc,
           leagueId: activeLeagueId,
         });
-        if (isYork) {
-          setMatches((prev) => [...prev, { id: matchId, ...newMatchDoc }]);
-        }
       } catch (err) {
-        if (!isYork) throw err;
-        setMatches((prev) => [...prev, { id: `match_york_${Date.now()}`, ...newMatchDoc }]);
+        console.warn("Firestore addDoc error, saving locally:", err);
       }
+
+      const createdMatch = { id: createdId, ...newMatchDoc };
+
+      if (isYork) {
+        saveYorkCustomMatch(createdMatch);
+      }
+
+      setMatches((prev) => {
+        const exists = prev.some((m) => m.id === createdMatch.id);
+        return exists ? prev.map((m) => (m.id === createdMatch.id ? createdMatch : m)) : [...prev, createdMatch];
+      });
+
       setOpponentName("");
       setIsScheduleModalOpen(false);
     } catch (err) {
@@ -135,16 +166,46 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     const fetchData = async () => {
       if (isYork) {
         const yTeam = getYorkTeamData();
-        setTeam(yTeam);
-        setAllTeams({ [yTeam.id]: yTeam });
-        setMatches(getYorkTeamMatches());
-        setLoading(false);
+        let currentTeam = yTeam;
         try {
           const snap = await getDoc(doc(db, "teams", teamId));
           if (snap.exists()) {
-            setTeam({ ...yTeam, ...snap.data() });
+            currentTeam = { ...yTeam, ...snap.data() };
           }
         } catch {}
+        setTeam(currentTeam);
+        setAllTeams({ [currentTeam.id]: currentTeam });
+
+        // Merge static seed matches + localStorage custom matches
+        let combinedMatches = getYorkTeamMatches();
+
+        // Also query remote Firestore matches collection for any matches for this team
+        try {
+          const snap = await getDocs(collection(db, "matches"));
+          const remoteMatches = snap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as any) }))
+            .filter((m) =>
+              !m.isHidden && (
+                m.homeTeamId === teamId ||
+                m.awayTeamId === teamId ||
+                m.managingTeamId === teamId ||
+                isYorkTeam(m.homeTeamId) ||
+                isYorkTeam(m.awayTeamId) ||
+                isYorkTeam(m.managingTeamId)
+              )
+            );
+
+          const matchMap = new Map<string, any>();
+          combinedMatches.forEach((m) => matchMap.set(m.id, m));
+          remoteMatches.forEach((m) => matchMap.set(m.id, { ...matchMap.get(m.id), ...m }));
+          combinedMatches = Array.from(matchMap.values());
+        } catch (err) {
+          console.warn("Unable to fetch remote York matches from Firestore, using local:", err);
+        }
+
+        combinedMatches.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        setMatches(combinedMatches);
+        setLoading(false);
         return;
       }
 
@@ -287,8 +348,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
             <p className="text-neutral-400 text-sm mt-1">Upcoming matchups, box scores, and live game tracking.</p>
           </div>
 
-          {/* Schedule Game Button (League Admins Only) */}
-          {isLeagueAdmin && (
+          {/* Schedule Game Button (Admins & Coaches) */}
+          {canScheduleMatches && (
             <button
               onClick={() => setIsScheduleModalOpen(true)}
               className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
@@ -309,8 +370,16 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
             </div>
 
             {upcomingMatches.length === 0 ? (
-              <div className="bg-neutral-900/40 border border-white/5 rounded-2xl p-8 text-center text-neutral-500 italic text-sm">
-                No upcoming games scheduled.
+              <div className="bg-neutral-900/40 border border-white/5 rounded-2xl p-8 text-center text-neutral-500 italic text-sm flex flex-col items-center gap-3">
+                <span>No upcoming games scheduled.</span>
+                {canScheduleMatches && (
+                  <button
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    Schedule Your First Game
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

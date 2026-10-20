@@ -30,6 +30,7 @@ import {
   AlertCircle,
   Mail,
   ShieldCheck,
+  Plus,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, getDocs, query, where, limit } from "firebase/firestore";
@@ -290,7 +291,27 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         setEditTertiaryColor(palette.tertiary);
 
         // Load York Matches & Plays
-        setMatches(getYorkTeamMatches());
+        let yMatches = getYorkTeamMatches();
+        try {
+          const snap = await getDocs(collection(db, "matches"));
+          const remoteMatches = snap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as any) }))
+            .filter((m) =>
+              !m.isHidden && (
+                m.homeTeamId === teamId ||
+                m.awayTeamId === teamId ||
+                m.managingTeamId === teamId ||
+                isYorkTeam(m.homeTeamId) ||
+                isYorkTeam(m.awayTeamId) ||
+                isYorkTeam(m.managingTeamId)
+              )
+            );
+          const mMap = new Map<string, any>();
+          yMatches.forEach((m) => mMap.set(m.id, m));
+          remoteMatches.forEach((m) => mMap.set(m.id, { ...mMap.get(m.id), ...m }));
+          yMatches = Array.from(mMap.values());
+        } catch {}
+        setMatches(yMatches);
         setPlays(getYorkTeamPlays());
 
         // Check custom stats display preference (defaulting to DEFAULT_VISIBLE_TEAM_STATS)
@@ -718,6 +739,13 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
             {hasEditAccess && (
               <>
+                <Link
+                  href={`/teams/${teamId}/schedule?create=1`}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wider transition-all border border-emerald-500/30 hover:border-emerald-500/50 backdrop-blur-md shadow-lg cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 text-emerald-400" />
+                  <span>Schedule Game</span>
+                </Link>
                 <button
                   type="button"
                   onClick={() => setIsStaffModalOpen(true)}
@@ -761,7 +789,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                <Link
+                  href={`/teams/${teamId}/schedule?create=1`}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Schedule Game</span>
+                </Link>
                 <Link
                   href={`/teams/${teamId}/playbook`}
                   className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg"
