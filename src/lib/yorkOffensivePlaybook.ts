@@ -27,32 +27,86 @@ export const YORK_OFFENSIVE_CATEGORIES = [
   "Uncategorized",
 ] as const;
 
+type YorkCategory = typeof YORK_OFFENSIVE_CATEGORIES[number];
+const YORK_CATEGORY_VERSION = 1;
+
+// Best-effort diagram classifications, matching the OC's supplied category totals.
+const YORK_PLAY_CATEGORIES: Record<string, YorkCategory> = {
+  Captains: "Extra Point/Short Yardage",
+  Hawaii: "Pass",
+  Cowboy: "Pass",
+  Levels: "Pass",
+  Smash: "Pass",
+  Spider: "Pass",
+  "Z ISO": "Pass",
+  "Y wheel": "Pass",
+  Pairs: "Pass",
+  Maui: "Pass",
+  Trailmix: "Pass",
+  "X option": "Pass",
+  Xbox: "Pass",
+  Chocolate: "Pass",
+  Stripes: "Pass",
+  Corn: "Pass",
+  Divide: "Pass",
+  Thieves: "Pass",
+  Wrap: "Pass",
+  Diamonds: "Pass",
+  Flood: "Pass",
+  Takeoff: "Pass",
+  Taps: "Pass",
+  Jello: "Run",
+  Jerry: "Run",
+  Cali: "Pass",
+  Snag: "Extra Point/Short Yardage",
+  "Coin Toss": "Pass",
+  "X Factor": "Pass",
+  Sheridan: "RPO",
+  Jailbreak: "Pass",
+  "Hot Potato": "RPO",
+  "Penny Pincher": "RPO",
+  "Run it back": "Run",
+  King: "RPO",
+  "007": "Uncategorized",
+  Basketball: "Uncategorized",
+  "Itsy Bitsy": "Pass",
+};
+
 function createYorkCategories(): FormationAlignment[] {
   return YORK_OFFENSIVE_CATEGORIES.map((name, index) => ({
     id: `york-offense-category-${index + 1}`,
     name,
     side: "offense",
-    description: "Offensive coordinator play category. Individual play alignments are preserved.",
+    description: "Best-effort category inferred from the source diagrams and OC totals. Editable without changing player alignments.",
   }));
 }
 
 function migrateYorkCategories(book: Playbook): Playbook {
   const legacyCategory = "York Lions Offense";
+  const needsCategorySeed = (book.seedCategoryVersion ?? 0) < YORK_CATEGORY_VERSION;
   const hasLegacyPlays = book.plays.some((play) => play.formation === legacyCategory);
   const missingCategories = createYorkCategories().filter(
     (category) => !book.formations.some((formation) => formation.name === category.name),
   );
-  if (!hasLegacyPlays && missingCategories.length === 0) return book;
+  if (!needsCategorySeed && !hasLegacyPlays && missingCategories.length === 0) return book;
 
   return {
     ...book,
+    seedCategoryVersion: YORK_CATEGORY_VERSION,
     formations: [
       ...book.formations.filter((formation) => formation.name !== legacyCategory),
       ...missingCategories,
     ],
-    plays: book.plays.map((play) =>
-      play.formation === legacyCategory ? { ...play, formation: "Uncategorized" } : play,
-    ),
+    plays: book.plays.map((play) => {
+      const sourceIndex = YORK_PLAY_SPECS.findIndex((spec) => spec.name === play.name);
+      const isImportedPlay = sourceIndex >= 0 &&
+        play.id === `york-offense-${String(sourceIndex + 1).padStart(2, "0")}`;
+      if (needsCategorySeed && isImportedPlay &&
+        (play.formation === legacyCategory || play.formation === "Uncategorized")) {
+        return { ...play, formation: YORK_PLAY_CATEGORIES[play.name] };
+      }
+      return play.formation === legacyCategory ? { ...play, formation: "Uncategorized" } : play;
+    }),
   };
 }
 
@@ -129,8 +183,7 @@ export function createYorkOffensivePlaybook(teamId: string): Playbook {
       teamId,
       name: spec.name,
       type: "offense",
-      // The supplied PDF contains no per-play OC category assignments.
-      formation: "Uncategorized",
+      formation: YORK_PLAY_CATEGORIES[spec.name],
       situation: "Standard",
       notes: `Digitized from the York Lions offensive playbook, play ${index + 1}.`,
       players: ensureSquadMatchup(offensivePlayers, DEFAULT_LOS_Y, 5),
@@ -147,6 +200,7 @@ export function createYorkOffensivePlaybook(teamId: string): Playbook {
     type: "offense",
     playersOnField: 5,
     description: "38 plays digitized from the York Lions offensive playbook.",
+    seedCategoryVersion: YORK_CATEGORY_VERSION,
     formations: createYorkCategories(),
     plays,
     createdAt: now,

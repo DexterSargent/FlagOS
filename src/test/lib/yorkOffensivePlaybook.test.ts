@@ -56,7 +56,18 @@ describe("York Lions offensive playbook", () => {
     expect(playbook.plays).toHaveLength(38);
     expect(playbook.plays.map((play) => play.name)).toEqual(EXPECTED_PLAY_NAMES);
     expect(playbook.formations.map((formation) => formation.name)).toEqual(YORK_OFFENSIVE_CATEGORIES);
-    expect(playbook.plays.every((play) => play.formation === "Uncategorized")).toBe(true);
+    expect(Object.fromEntries(YORK_OFFENSIVE_CATEGORIES.map((category) => [
+      category, playbook.plays.filter((play) => play.formation === category).length,
+    ]))).toEqual({
+      Run: 3,
+      Pass: 27,
+      RPO: 4,
+      "Extra Point/Short Yardage": 2,
+      Uncategorized: 2,
+    });
+    expect(playbook.plays.every((play) => YORK_OFFENSIVE_CATEGORIES.some(
+      (category) => category === play.formation,
+    ))).toBe(true);
 
     for (const play of playbook.plays) {
       const offense = play.players.filter((player) => player.side === "offense");
@@ -113,6 +124,7 @@ describe("York Lions offensive playbook", () => {
     const original = createYorkOffensivePlaybook("york_lions");
     const legacy = {
       ...original,
+      seedCategoryVersion: undefined,
       formations: [
         { id: "york-lions-offense", name: "York Lions Offense", side: "offense" as const },
         { id: "custom", name: "Custom Install", side: "offense" as const },
@@ -130,10 +142,44 @@ describe("York Lions offensive playbook", () => {
     ]);
     expect(migrated.plays[0]).toBe(legacy.plays[0]);
     for (let index = 1; index < migrated.plays.length; index++) {
-      expect(migrated.plays[index]).toEqual({ ...legacy.plays[index], formation: "Uncategorized" });
+      expect(migrated.plays[index]).toEqual({ ...legacy.plays[index], formation: original.plays[index].formation });
       expect(migrated.plays[index].players).toBe(legacy.plays[index].players);
     }
     const [unchanged] = includeYorkOffensivePlaybook([migrated], "york_lions", false);
     expect(unchanged).toBe(migrated);
+  });
+
+  it("categorizes previously unassigned imports once and preserves later coach corrections", () => {
+    const original = createYorkOffensivePlaybook("york_lions");
+    const legacy = {
+      ...original,
+      seedCategoryVersion: undefined,
+      plays: original.plays.map((play) => ({ ...play, formation: "Uncategorized" })),
+    };
+    const [migrated] = includeYorkOffensivePlaybook([legacy], "york_lions", false);
+    expect(migrated.plays.map((play) => play.formation)).toEqual(
+      original.plays.map((play) => play.formation),
+    );
+    const corrected = {
+      ...migrated,
+      plays: migrated.plays.map((play) => ({ ...play, formation: "Uncategorized" })),
+    };
+    expect(includeYorkOffensivePlaybook([corrected], "york_lions", false)[0]).toBe(corrected);
+  });
+
+  it("does not categorize duplicated, renamed, or custom plays as source imports", () => {
+    const original = createYorkOffensivePlaybook("york_lions");
+    const saved = {
+      ...original,
+      seedCategoryVersion: undefined,
+      plays: [
+        { ...original.plays[0], name: "Coach's special", formation: "Uncategorized" },
+        { ...original.plays[1], id: "custom-copy", formation: "Uncategorized" },
+        { ...original.plays[2], formation: "Run" },
+      ],
+    };
+    const [migrated] = includeYorkOffensivePlaybook([saved], "york_lions", false);
+    expect(migrated.plays).toEqual(saved.plays);
+    expect(migrated.plays.every((play, index) => play === saved.plays[index])).toBe(true);
   });
 });

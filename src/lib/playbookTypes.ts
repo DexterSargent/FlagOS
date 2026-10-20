@@ -286,6 +286,8 @@ export interface Playbook {
   type: PlaySide; // "offense" | "defense"
   playersOnField?: number; // e.g. 4, 5, 6, 7, 8 (defaults to league rules)
   description?: string;
+  // Prevent seed-category migrations from overwriting later coach corrections.
+  seedCategoryVersion?: number;
   formations: FormationAlignment[];
   plays: PlayDiagram[];
   createdAt: string;
