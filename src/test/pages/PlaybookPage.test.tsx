@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, act, fireEvent, within } from "@testing-library/react";
 import TeamPlaybookPage from "@/app/teams/[id]/playbook/page";
 import { createDefaultPlaybooks } from "@/lib/playbookTypes";
+import { getDoc } from "firebase/firestore";
 
 import { Suspense } from "react";
 
@@ -23,7 +24,11 @@ const mockAuth = {
   isTeamAdmin: vi.fn(),
   managedTeamId: "team_apex" as string | null,
   canManageTeam: vi.fn(),
+  loading: false,
 };
+
+const mockSecureWrite = vi.hoisted(() => vi.fn().mockResolvedValue("ok"));
+vi.mock("@/lib/secureWrites", () => ({ createSecureRecord: mockSecureWrite }));
 
 vi.mock("@/lib/authContext", () => ({
   useAuth: () => mockAuth,
@@ -94,6 +99,8 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     mockAuth.managedTeamId = "team_apex";
     mockAuth.isTeamAdmin = vi.fn((tid?: string) => tid === "team_apex");
     mockAuth.canManageTeam = vi.fn((tid?: string) => tid === "team_apex");
+    mockAuth.loading = false;
+    localStorage.clear();
 
     // Clean window location search
     delete (window as any).location;
@@ -140,6 +147,38 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.queryByRole("button", { name: `Open play ${play.name}` })).not.toBeInTheDocument();
     }
     expect(screen.queryByText("Coach Q&A")).not.toBeInTheDocument();
+  });
+
+  it("paints cached playbooks before Firestore responds, then swaps in the cloud copy without auto-saving it", async () => {
+    const [cachedBook] = createDefaultPlaybooks("team_apex");
+    cachedBook.title = "Cached Offense";
+    localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify([cachedBook]));
+    const cloudBook = { ...cachedBook, title: "Cloud Offense" };
+    let finishPlaybook!: (value: unknown) => void;
+    vi.mocked(getDoc)
+      .mockResolvedValueOnce({ exists: () => true, id: "team_apex", data: () => ({ name: "Apex Predators", shortcode: "APX" }) } as any)
+      .mockReturnValueOnce(new Promise((resolve) => { finishPlaybook = resolve; }) as any);
+
+    await renderPage();
+    expect(vi.mocked(getDoc)).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("heading", { name: "Cached Offense" })).toBeInTheDocument();
+
+    await act(async () => {
+      finishPlaybook({ exists: () => true, data: () => ({ playbooks: [cloudBook] }) });
+    });
+    expect(await screen.findByRole("heading", { name: "Cloud Offense" })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 2700));
+    expect(mockSecureWrite).not.toHaveBeenCalled();
+  });
+
+  it("shows a loading spinner instead of an access-denied screen while auth is still resolving", async () => {
+    mockAuth.loading = true;
+    mockAuth.isTeamAdmin = vi.fn(() => false);
+    mockAuth.managedTeamId = null;
+    await renderPage();
+    expect(screen.getByRole("status", { name: "Loading playbook" })).toBeInTheDocument();
+    expect(screen.queryByText(/Playbook Confidential/i)).not.toBeInTheDocument();
+    expect(vi.mocked(getDoc)).not.toHaveBeenCalled();
   });
 
   it("opens the selected play from its card and returns to the play grid without tabs", async () => {

@@ -41,6 +41,36 @@ describe("Parallel auth startup", () => {
     mocks.getDoc.mockResolvedValue(profile());
     mocks.lookup.mockResolvedValue({ teams: [], players: [] });
     mocks.sandboxPlayers.mockReturnValue([]);
+    localStorage.clear();
+  });
+
+  it("paints a cached profile for the same verified uid instantly, then revalidates", async () => {
+    localStorage.setItem("flagos_profile_verified", JSON.stringify({
+      uid: "verified", email: "verified@example.com", role: "team_admin", managedTeamId: "customer-team",
+    }));
+    let finishProfile!: (value: unknown) => void;
+    mocks.getDoc.mockReturnValue(new Promise((resolve) => { finishProfile = resolve; }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    let pending!: Promise<void>;
+    act(() => { pending = mocks.callback!(user()); });
+    expect(state()).toMatchObject({ uid: "verified", role: "team_admin", teamId: "customer-team", loading: false });
+    await act(async () => {
+      finishProfile(profile());
+      await pending;
+    });
+    expect(state()).toMatchObject({ role: "user", loading: false });
+    expect(JSON.parse(localStorage.getItem("flagos_profile_verified")!)).toMatchObject({ role: "user" });
+  });
+
+  it("ignores cached profiles for another uid or an unverified email", async () => {
+    localStorage.setItem("flagos_profile_verified", JSON.stringify({ uid: "other", email: "verified@example.com", role: "team_admin" }));
+    localStorage.setItem("flagos_profile_unverified", JSON.stringify({ uid: "unverified", email: "unverified@example.com", role: "team_admin" }));
+    mocks.getDoc.mockReturnValue(new Promise(() => {}));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    act(() => { void mocks.callback!(user()); });
+    expect(state()).toMatchObject({ role: "user", loading: true });
+    act(() => { void mocks.callback!({ ...user("unverified"), emailVerified: false }); });
+    expect(state()).toMatchObject({ role: "user", loading: true });
   });
 
   it("starts profile and a single shared identity lookup before either resolves", async () => {

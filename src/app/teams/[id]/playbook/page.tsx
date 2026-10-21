@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -65,7 +65,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
   const isYork = isYorkTeam(teamId);
 
-  const { canManageTeam, role, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, playerData } = useAuth();
+  const { canManageTeam, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, playerData, loading: authLoading } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const playersPerSide = settings?.rules?.playersOnField || 5;
@@ -169,151 +169,197 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // View access: team admins of THIS team OR rostered players of THIS team
   const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
 
+  // Warm the editor chunk while the playbook list loads so opening a play is instant.
+  useEffect(() => {
+    void import("@/components/playbook/PlayCanvas");
+  }, []);
+
+  const loadedPlaybooksKeyRef = useRef<string | null>(null);
+  const fetchGenerationRef = useRef(0);
+  const activePlaybookIdRef = useRef(activePlaybookId);
+  useEffect(() => {
+    activePlaybookIdRef.current = activePlaybookId;
+  }, [activePlaybookId]);
+  const hasPlaybookAccess = isEmbedded || (!isBlockedLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam));
+
   // 1. Fetch Team & Playbooks from Firestore / LocalStorage
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (isYork) {
-          const yTeam = getYorkTeamData();
-          setTeam({ id: yTeam.id, name: yTeam.name, shortcode: yTeam.shortcode || "YORK", adminEmails: yTeam.adminEmails });
-        } else if (isEmbedded) {
-          const sTeam = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
-          if (sTeam) {
-            setTeam({ id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) });
-          } else {
-            setTeam({ id: teamId, name: "Kansas City", shortcode: "KC" });
-          }
-        } else {
-          try {
-            const teamSnap = await getDoc(doc(db, "teams", teamId));
-            if (teamSnap.exists()) {
-              const tData = { id: teamSnap.id, ...(teamSnap.data() as any) };
-              if (isRealTeam(tData)) {
-                setTeam(tData);
-              }
-            } else if (isEffectDemo) {
-              const sTeam = getSandboxTeams().find((t) => t.id === teamId);
-              if (sTeam) {
-                setTeam({ id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) });
-              } else {
-                setTeam({ id: teamId, name: "Apex Predators", shortcode: "APX" });
-              }
-            }
-          } catch (e) {
-            console.warn("Unable to fetch live team from Firestore:", e);
-            const sTeam = getSandboxTeams().find((t) => t.id === teamId);
-            if (sTeam) {
-              setTeam({ id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) });
-            }
-          }
-        }
+    const loadKey = `${teamId}|${isEmbedded}`;
 
-        // If user is blocked league admin or unauthorized, do not load confidential playbooks
-        if (!isEmbedded && (isBlockedLeagueAdmin || (!isTeamAdminForThisTeam && !isRosteredPlayerOnTeam))) {
+    const resolveSandboxTeam = (fallbackName?: string, fallbackShortcode?: string) => {
+      const sTeam = getSandboxTeams().find((t) => t.id === teamId || (isEmbedded && teamId === "team_apex" && t.id === "team_kc"));
+      if (sTeam) return { ...sTeam, id: sTeam.id, name: sTeam.name, shortcode: (sTeam as any).shortcode || getTeamShortcode(sTeam) };
+      return fallbackName ? { id: teamId, name: fallbackName, shortcode: fallbackShortcode } : null;
+    };
+
+    const loadTeam = async () => {
+      if (isYork) {
+        const yTeam = getYorkTeamData();
+        let yData: any = { ...yTeam, id: yTeam.id, name: yTeam.name, shortcode: yTeam.shortcode || "YORK", adminEmails: yTeam.adminEmails };
+        if (typeof window !== "undefined") {
+          try {
+            const cached = localStorage.getItem("flagos_york_team_custom");
+            if (cached) yData = { ...yData, ...JSON.parse(cached) };
+          } catch {}
+        }
+        return yData;
+      }
+      if (isEmbedded) return resolveSandboxTeam("Kansas City", "KC");
+      try {
+        const teamSnap = await getDoc(doc(db, "teams", teamId));
+        if (teamSnap.exists()) {
+          const tData = { id: teamSnap.id, ...(teamSnap.data() as any) };
+          return isRealTeam(tData) ? tData : null;
+        }
+        return isEffectDemo ? resolveSandboxTeam("Apex Predators", "APX") : null;
+      } catch (e) {
+        console.warn("Unable to fetch live team from Firestore:", e);
+        return resolveSandboxTeam();
+      }
+    };
+
+    const loadRemotePlaybooks = async (): Promise<Playbook[] | null> => {
+      if (isEmbedded) return null;
+      try {
+        const playbookDocSnap = await getDoc(doc(db, "teams", teamId, "meta", "playbook"));
+        if (!playbookDocSnap.exists()) return null;
+        const data = playbookDocSnap.data();
+        if (data?.playbooks && Array.isArray(data.playbooks)) return data.playbooks;
+        if (data?.plays && Array.isArray(data.plays)) return migrateRawPlaysToPlaybooks(data.plays, teamId);
+      } catch (e) {
+        console.warn("Unable to fetch live playbook from Firestore:", e);
+      }
+      return null;
+    };
+
+    const readCachedPlaybooks = (): Playbook[] | null => {
+      if (typeof window === "undefined") return null;
+      const cachedPlaybooks = localStorage.getItem(`flagos_playbooks_${teamId}`);
+      if (cachedPlaybooks) {
+        try {
+          const parsed = JSON.parse(cachedPlaybooks);
+          return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+        } catch {}
+        return null;
+      }
+      const legacyCached = localStorage.getItem(`flagos_playbook_${teamId}`);
+      if (legacyCached) {
+        try {
+          return migrateRawPlaysToPlaybooks(JSON.parse(legacyCached), teamId);
+        } catch {}
+      }
+      return null;
+    };
+
+    const normalizePlaybooks = (source: Playbook[] | null): Playbook[] => {
+      const hasSavedPlaybooks = !!source && source.length > 0;
+      let books = hasSavedPlaybooks ? source! : createDefaultPlaybooks(teamId, playersPerSide);
+      if (isYork) {
+        books = includeYorkOffensivePlaybook(books, teamId, !hasSavedPlaybooks);
+      }
+      // Guarantee squad format for every play (respecting book.playersOnField or league rules)
+      return books.map((book) => {
+        const bookSquad = book.playersOnField || playersPerSide;
+        return {
+          ...book,
+          playersOnField: bookSquad,
+          plays: (book.plays || []).map((p) => ({
+            ...p,
+            players: ensureSquadMatchup(p.players || [], p.losY || DEFAULT_LOS_Y, bookSquad),
+          })),
+        };
+      });
+    };
+
+    const selectFirstPlay = (books: Playbook[]) => {
+      if (books.length === 0) return;
+      const firstBook = books[0];
+      setActivePlaybookId(firstBook.id);
+      const firstForm = firstBook.formations?.[0]?.name || firstBook.plays?.[0]?.formation || "";
+      setSelectedFormationName(firstForm);
+      const matchingPlay = firstBook.plays?.find((p) => p.formation === firstForm) || firstBook.plays?.[0];
+      if (matchingPlay) {
+        setActivePlayId(matchingPlay.id);
+      }
+      if (isEmbedded || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true")) {
+        setViewLevel("editor");
+      }
+    };
+
+    const fetchData = async () => {
+      // Playbooks for this team are already loading/loaded for an authorized viewer; auth
+      // revalidation or team metadata updates should not refetch or reset the editor.
+      if (loadedPlaybooksKeyRef.current === loadKey && hasPlaybookAccess) return;
+
+      // Hold the spinner while auth resolves instead of flashing an access-denied screen.
+      if (!hasPlaybookAccess && authLoading) return;
+
+      const generation = ++fetchGenerationRef.current;
+      const isStale = () => generation !== fetchGenerationRef.current;
+      loadedPlaybooksKeyRef.current = hasPlaybookAccess ? loadKey : null;
+
+      // Team and playbook documents are independent reads: fetch them in parallel.
+      const teamPromise = loadTeam();
+      const remotePromise = hasPlaybookAccess ? loadRemotePlaybooks() : Promise.resolve(null);
+
+      let paintedSnapshot: string | null = null;
+      if (hasPlaybookAccess && !isEmbedded) {
+        const cached = readCachedPlaybooks();
+        if (cached) {
+          const books = normalizePlaybooks(cached);
+          paintedSnapshot = JSON.stringify(books);
+          setPlaybooks(books);
+          selectFirstPlay(books);
+          setLoading(false);
+        }
+      }
+
+      try {
+        const loadedTeam = await teamPromise;
+        if (isStale()) return;
+        if (loadedTeam) setTeam(loadedTeam);
+
+        // League admins are only allowed through once the team doc confirms they're a listed admin.
+        if (!hasPlaybookAccess) {
           setLoading(false);
           return;
         }
 
-        let loadedPlaybooks: Playbook[] = [];
+        const remote = await remotePromise;
+        if (isStale()) return;
 
-        if (!isEmbedded) {
-          try {
-            const playbookDocSnap = await getDoc(doc(db, "teams", teamId, "meta", "playbook"));
-            if (playbookDocSnap.exists()) {
-              const data = playbookDocSnap.data();
-              if (data?.playbooks && Array.isArray(data.playbooks)) {
-                loadedPlaybooks = data.playbooks;
-              } else if (data?.plays && Array.isArray(data.plays)) {
-                loadedPlaybooks = migrateRawPlaysToPlaybooks(data.plays, teamId);
-              }
-            }
-          } catch (e) {
-            console.warn("Unable to fetch live playbook from Firestore:", e);
-          }
-        }
-
-        // Check local storage fallback
-        if (!loadedPlaybooks || loadedPlaybooks.length === 0) {
-          if (typeof window !== "undefined") {
-            const cachedPlaybooks = localStorage.getItem(`flagos_playbooks_${teamId}`);
-            if (cachedPlaybooks) {
-              try {
-                loadedPlaybooks = JSON.parse(cachedPlaybooks);
-              } catch (e) {}
-            } else {
-              const legacyCached = localStorage.getItem(`flagos_playbook_${teamId}`);
-              if (legacyCached) {
-                try {
-                  const rawPlays = JSON.parse(legacyCached);
-                  loadedPlaybooks = migrateRawPlaysToPlaybooks(rawPlays, teamId);
-                } catch (e) {}
-              }
-            }
-          }
-        }
-
-        const hasSavedPlaybooks = loadedPlaybooks.length > 0;
-
-        // Seed with default playbooks if team has none
-        if (!loadedPlaybooks || loadedPlaybooks.length === 0) {
-          loadedPlaybooks = createDefaultPlaybooks(teamId, playersPerSide);
-        }
-
-        if (isYork) {
-          loadedPlaybooks = includeYorkOffensivePlaybook(loadedPlaybooks, teamId, !hasSavedPlaybooks);
-        }
-
-        // Guarantee squad format for every play (respecting book.playersOnField or league rules)
-        loadedPlaybooks = loadedPlaybooks.map((book) => {
-          const bookSquad = book.playersOnField || playersPerSide;
-          return {
-            ...book,
-            playersOnField: bookSquad,
-            plays: (book.plays || []).map((p) => ({
-              ...p,
-              players: ensureSquadMatchup(p.players || [], p.losY || DEFAULT_LOS_Y, bookSquad),
-            })),
-          };
-        });
+        const loadedPlaybooks = normalizePlaybooks(remote && remote.length > 0 ? remote : readCachedPlaybooks());
+        const loadedSnapshot = JSON.stringify(loadedPlaybooks);
 
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem(`flagos_playbooks_${teamId}`, JSON.stringify(loadedPlaybooks));
-          } catch (e) {}
+            localStorage.setItem(`flagos_playbooks_${teamId}`, loadedSnapshot);
+          } catch {}
         }
 
-        setPlaybooks(loadedPlaybooks);
-        if (loadedPlaybooks.length > 0) {
-          const firstBook = loadedPlaybooks[0];
-          setActivePlaybookId(firstBook.id);
-          const firstForm = firstBook.formations?.[0]?.name || firstBook.plays?.[0]?.formation || "";
-          setSelectedFormationName(firstForm);
-          const matchingPlay = firstBook.plays?.find((p) => p.formation === firstForm) || firstBook.plays?.[0];
-          if (matchingPlay) {
-            setActivePlayId(matchingPlay.id);
-          }
-          if (isEmbedded || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true")) {
-            setViewLevel("editor");
+        if (paintedSnapshot === null) {
+          setPlaybooks(loadedPlaybooks);
+          selectFirstPlay(loadedPlaybooks);
+        } else if (paintedSnapshot !== loadedSnapshot) {
+          setPlaybooks((current) => {
+            // Keep edits made against the cached copy rather than discarding them.
+            if (JSON.stringify(current) !== paintedSnapshot) return [...current];
+            return loadedPlaybooks;
+          });
+          if (!loadedPlaybooks.some((b) => b.id === activePlaybookIdRef.current)) {
+            selectFirstPlay(loadedPlaybooks);
           }
         }
+        loadedPlaybooksKeyRef.current = loadKey;
       } catch (err) {
         console.error("Error loading playbooks:", err);
       }
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     };
 
     fetchData();
-  }, [
-    teamId,
-    isEmbedded,
-    isBlockedLeagueAdmin,
-    isTeamAdminForThisTeam,
-    isRosteredPlayerOnTeam,
-    role,
-    playerTeamId,
-    managedTeamId,
-  ]);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, isEmbedded, hasPlaybookAccess, authLoading]);
   // Active Playbook, Formation, & Play references
   const activePlaybook =
     playbooks.find((b) => b.id === activePlaybookId) || playbooks[0] || null;
@@ -638,7 +684,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
+      <div role="status" aria-label="Loading playbook" className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
         <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );

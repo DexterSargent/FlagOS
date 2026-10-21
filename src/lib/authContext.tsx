@@ -71,6 +71,38 @@ const getAuthErrorMessage = (error: unknown): string => {
   }
 };
 
+const PROFILE_CACHE_PREFIX = "flagos_profile_";
+
+function readCachedProfile(uid: string, email: string | null): UserProfile | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_PREFIX + uid);
+    if (!raw) return null;
+    const profile = JSON.parse(raw) as UserProfile;
+    if (profile?.uid !== uid) return null;
+    if ((profile.email || "").toLowerCase() !== (email || "").toLowerCase()) return null;
+    return profile;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProfile(uid: string, profile: UserProfile) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(PROFILE_CACHE_PREFIX + uid, JSON.stringify({ ...profile, uid }));
+  } catch {}
+}
+
+function clearCachedProfiles() {
+  if (typeof window === "undefined") return;
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(PROFILE_CACHE_PREFIX))
+      .forEach((key) => localStorage.removeItem(key));
+  } catch {}
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -270,8 +302,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       const version = ++authVersion;
       setUser(u);
-      setUserProfile(null);
-      setLoading(true);
+      // Paint the last resolved profile for this uid instantly (UI gating only;
+      // Firestore rules enforce real access) and revalidate in the background.
+      const cachedProfile = u?.emailVerified ? readCachedProfile(u.uid, u.email) : null;
+      setUserProfile(cachedProfile);
+      setLoading(!cachedProfile && !!u);
       if (u) {
         const isPendingUnassignedAccount = !!u.email &&
           pendingAccountEmails.current.has(u.email.trim().toLowerCase());
@@ -320,6 +355,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (matchingTeam) {
               data.managedTeamId = matchingTeam.id;
             }
+            writeCachedProfile(u.uid, data);
             setUserProfile(data);
           } else {
             // Create user profile in Firestore (strictly omitting undefined fields)
@@ -340,7 +376,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             await setDoc(userDocRef, profileDataToSave);
             if (version !== authVersion) return;
-            setUserProfile({
+            const createdProfile: UserProfile = {
               uid: u.uid,
               email: u.email || "",
               displayName: u.displayName || matchingPlayer?.playerName || "",
@@ -349,17 +385,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               playerTeamId: matchingPlayer?.teamId,
               playerData: matchingPlayer,
               managedTeamId: matchingTeam?.id,
-            });
+            };
+            writeCachedProfile(u.uid, createdProfile);
+            setUserProfile(createdProfile);
           }
         } catch (err) {
           console.error("Error fetching user profile:", err);
           if (version !== authVersion) return;
-          const isEmailLeagueAdmin = !!(u.email && adminEmails.includes(u.email.toLowerCase()));
-          setUserProfile({
-            uid: u.uid,
-            email: u.email || "",
-            role: isEmailLeagueAdmin ? "league_admin" : "user",
-          });
+          if (!cachedProfile) {
+            const isEmailLeagueAdmin = !!(u.email && adminEmails.includes(u.email.toLowerCase()));
+            setUserProfile({
+              uid: u.uid,
+              email: u.email || "",
+              role: isEmailLeagueAdmin ? "league_admin" : "user",
+            });
+          }
         }
       } else {
         setUserProfile(null);
@@ -577,6 +617,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem("dev_managed_team_id");
       localStorage.removeItem("dev_player_id");
       localStorage.removeItem("dev_player_data");
+      clearCachedProfiles();
     }
     await signOut(auth);
   };
