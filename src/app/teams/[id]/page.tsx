@@ -707,55 +707,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* Standalone Pro Team Subscription Banner (for York Lions and standalone subscribers) */}
-        {(isYork || team.isStandalone || team.subscription) && (
-          <div className="w-full max-w-5xl mb-10 bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-black border border-red-500/30 rounded-3xl p-4 sm:p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
-              <div className="space-y-1.5 min-w-0">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-[11px] font-mono font-bold border border-emerald-500/30 whitespace-nowrap">
-                    Active Subscription (Complimentary Lifetime)
-                  </span>
-                  <span className="text-neutral-500 text-xs">•</span>
-                  <span className="text-xs text-neutral-300 font-semibold whitespace-nowrap">Tier: Pro Team Portal ($0/mo)</span>
-                </div>
-                <h3 className="text-base sm:text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-amber-400 shrink-0" />
-                  <span>York Lions Varsity Digital Headquarters</span>
-                </h3>
-                <p className="text-xs text-neutral-400 max-w-2xl leading-relaxed">
-                  Full standalone autonomy enabled: private depth charts, unlimited tournament &amp; scrimmage stat logging via the Play-by-Play Wizard, and up to 5 custom playbooks with pre-snap motion.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                <Link
-                  href={`/teams/${teamId}/schedule?create=1`}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Schedule Game</span>
-                </Link>
-                <Link
-                  href={`/teams/${teamId}/playbook`}
-                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Open Playbook</span>
-                </Link>
-                <Link
-                  href={`/teams/${teamId}/roster`}
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all border border-white/10"
-                >
-                  <Users className="w-4 h-4" />
-                  <span>Roster</span>
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Team Season Stats Banner (Customizable by Team Admin) */}
         {(() => {
           const stats = calculateTeamComprehensiveStats(
