@@ -921,7 +921,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
       <div className={`mx-auto ${
         viewLevel === "editor"
-          ? "max-w-[1600px] p-2 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 h-full min-h-0 flex-1 overflow-hidden"
+          ? "max-w-[1600px] p-1.5 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 h-full min-h-0 flex-1 overflow-hidden"
           : isEmbedded
           ? "max-w-7xl space-y-3 p-2 sm:p-3 flex-1"
           : "max-w-7xl space-y-6 p-4 sm:p-6 md:p-8 flex-1"
@@ -1520,9 +1520,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         {viewLevel === "editor" && activePlaybook && (
           <div className="flex flex-col gap-2 flex-1 min-h-0 h-full overflow-hidden">
             {/* Unified Studio Top Toolbar */}
-            <div data-testid="designer-toolbar" className="flex flex-wrap items-center justify-between gap-2 bg-[#0B0F19] p-2 rounded-xl border border-white/10 shrink-0 [&_button]:min-h-9 [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-cyan-400">
+            <div data-testid="designer-toolbar" className="flex flex-wrap max-sm:flex-nowrap items-center justify-between gap-2 max-sm:gap-1 bg-[#0B0F19] p-2 max-sm:p-1.5 rounded-xl border border-white/10 shrink-0 [&_button]:min-h-9 [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-cyan-400">
               {/* Left: Navigation & Formation */}
-              <div className="flex items-center gap-2 min-w-0 flex-1 basis-40">
+              <div className="flex items-center gap-2 max-sm:gap-1.5 min-w-0 flex-1 basis-40 max-sm:basis-0">
                 <button
                   onClick={() => setViewLevel("plays")}
                   className="p-2 sm:p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
@@ -1530,9 +1530,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   aria-label="Back to plays"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span>Plays</span>
+                  <span className="hidden sm:inline">Plays</span>
                 </button>
-                {hasEditAccess && <span className="text-xs text-neutral-400 shrink-0">Category</span>}
+                {hasEditAccess && <span className="hidden sm:inline text-xs text-neutral-400 shrink-0">Category</span>}
                 <select
                   value={activePlay?.formation ?? selectedFormationName}
                   aria-label={hasEditAccess ? "Play category" : "Formation"}
@@ -1593,13 +1593,13 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     className="px-2.5 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-1 shrink-0 transition-all cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>New Play</span>
+                    <span className="hidden sm:inline">New Play</span>
                   </button>
                 )}
               </div>
 
               {/* Right: Actions (Q&A, Print, Save) */}
-              <div className="flex items-center justify-end gap-2 flex-wrap">
+              <div className="flex items-center justify-end gap-2 max-sm:gap-1 flex-wrap max-sm:flex-nowrap shrink-0">
                 {activePlay && (
                   <button
                     onClick={() => setIsQuestionsModalOpen(true)}

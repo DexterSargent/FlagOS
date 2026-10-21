@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import AsyncPlayByPlayManager from "@/components/AsyncPlayByPlayManager";
-import { getDoc, setDoc } from "firebase/firestore";
+import { getDoc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { createSecureRecord } from "@/lib/secureWrites";
-import { getYorkMatch } from "@/lib/yorkTeamData";
+import { getYorkMatch, saveYorkCustomMatch } from "@/lib/yorkTeamData";
 
 const { authState } = vi.hoisted(() => ({
   authState: { canManageTeam: true },
@@ -56,6 +56,12 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
   beforeEach(() => {
     localStorage.clear();
     authState.canManageTeam = true;
+    saveYorkCustomMatch({
+      ...getYorkMatch("match_york_mcmaster")!,
+      status: "scheduled",
+      homeScore: 0,
+      awayScore: 0,
+    });
   });
 
   it("loads a York seed match directly without infinite pinwheel spinner", async () => {
@@ -88,6 +94,56 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
       expect(screen.getByText(/Game Not Found/i)).toBeInTheDocument();
       expect(screen.getByText(/Return to Schedule/i)).toBeInTheDocument();
     });
+  });
+
+  it("opens a finalized York game as read-only with its final score, play log and box score", async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce({
+      exists: () => true,
+      id: "match_york_mcmaster",
+      data: () => ({
+        ...getYorkMatch("match_york_mcmaster"),
+        status: "completed",
+        homeScore: 46,
+        awayScore: 12,
+      }),
+    } as Awaited<ReturnType<typeof getDoc>>);
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+
+    expect(await screen.findByRole("region", { name: "Game play log" })).toBeInTheDocument();
+    expect(screen.getByText("Game Complete")).toBeInTheDocument();
+    expect(screen.getByTestId("home-scoreboard")).toHaveTextContent("46");
+    expect(screen.getByTestId("away-scoreboard")).toHaveTextContent("12");
+    expect(screen.queryByRole("region", { name: "Play entry" })).not.toBeInTheDocument();
+    for (const name of [/START (NEXT )?PLAY/i, /^Stat Keeper$/, /^Game Over$/, /^Undo$/, /^Add Player$/, /Halftime/, /Down$/]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByText(/Press "START PLAY"/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Box Score" }));
+    expect(screen.getByRole("region", { name: "Player box score" })).toBeInTheDocument();
+    expect(screen.getByText("Sonia Cabral")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Play Log/ }));
+    expect(screen.getByRole("region", { name: "Game play log" })).toBeInTheDocument();
+    expect(setDoc).not.toHaveBeenCalled();
+    expect(updateDoc).not.toHaveBeenCalled();
+    expect(deleteDoc).not.toHaveBeenCalled();
+    expect(createSecureRecord).not.toHaveBeenCalled();
+  });
+
+  it("removes the play-entry interface immediately after successfully finalizing a game", async () => {
+    vi.spyOn(window, "alert").mockImplementation(() => {});
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Game Over" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Final Score" }));
+
+    expect(await screen.findByText("Game Complete")).toBeInTheDocument();
+    expect(setDoc).toHaveBeenCalledWith(undefined, expect.objectContaining({ status: "completed" }), { merge: true });
+    expect(screen.getByRole("region", { name: "Game play log" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Stat Keeper$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /START (NEXT )?PLAY/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Play entry" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Box Score" }));
+    expect(screen.getByRole("region", { name: "Player box score" })).toBeInTheDocument();
   });
 
   it("shows public box scores without management controls or autosaves", async () => {
@@ -190,9 +246,15 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
     fireEvent.click(await screen.findByRole("button", { name: /START (NEXT )?PLAY/i }));
     fireEvent.click(screen.getByRole("button", { name: "PASS PLAY" }));
     fireEvent.click(screen.getByRole("button", { name: "Interception" }));
-    expect(screen.getByRole("group", { name: "Flagger(s) on Interception Return" })).toBeInTheDocument();
+    const returnFlaggers = screen.getByRole("group", { name: "Flagger(s) on Interception Return" });
     expect(screen.queryByRole("button", { name: "Team Defense" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    const expandFlaggers = within(returnFlaggers).queryByRole("button", { name: /Click to change/ });
+    if (expandFlaggers) fireEvent.click(expandFlaggers);
+    fireEvent.click(within(returnFlaggers).getByRole("button", { name: "Sonia Cabral" }));
+    if (!screen.queryByRole("button", { name: /Quarterback:.*Sonia Cabral/ })) {
+      fireEvent.click(screen.getByRole("button", { name: /Quarterback:.*Click to change/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Sonia Cabral" }));
+    }
     fireEvent.click(screen.getByRole("button", { name: /FLAGGED.*Save Turnover/ }));
     await waitFor(() => expect(createSecureRecord).toHaveBeenCalledWith("play", expect.objectContaining({
       passOutcome: "Interception",

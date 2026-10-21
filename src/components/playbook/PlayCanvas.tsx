@@ -1510,15 +1510,15 @@ export default function PlayCanvas({
   };
 
   return (
-    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-2 sm:gap-3 w-full max-w-full overflow-hidden font-sans h-full min-h-0 [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400">
+    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-2 sm:gap-3 [@media(max-width:639px)_and_(min-height:451px)]:gap-1.5 w-full max-w-full overflow-hidden [@media(max-width:639px)_and_(min-height:451px)]:overflow-y-auto font-sans h-full min-h-0 [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400">
       {/* ============================================================== */}
       {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
       {/* ============================================================== */}
-      <div data-testid="designer-field-pane" className="flex flex-1 md:flex-1 [@media(max-width:599px)_and_(max-height:450px)]:flex-[0_0_42%] [@media(min-width:600px)_and_(max-height:450px)]:flex-1 min-w-0 min-h-0 flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
+      <div data-testid="designer-field-pane" className="flex flex-1 [@media(max-width:639px)_and_(min-height:451px)]:flex-none md:flex-1 [@media(max-width:599px)_and_(max-height:450px)]:flex-[0_0_42%] [@media(min-width:600px)_and_(max-height:450px)]:flex-1 min-w-0 min-h-0 flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
         {/* ============================================================== */}
         {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
         {/* ============================================================== */}
-        <div className="p-2 sm:p-3 [@media(max-height:450px)]:p-1.5 bg-[#0B0F19] border-b border-white/10 flex flex-col gap-2 shrink-0">
+        <div className="p-2 sm:p-3 [@media(max-height:450px)]:p-1.5 [@media(max-width:639px)_and_(min-height:451px)]:p-1.5 bg-[#0B0F19] border-b border-white/10 flex flex-col gap-2 [@media(max-width:639px)_and_(min-height:451px)]:gap-1.5 shrink-0">
           {/* Play Name Editable Field */}
           <div className="flex items-center gap-2 min-w-0 w-full">
             <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider [@media(max-width:639px)]:hidden">Play:</span>
@@ -1534,10 +1534,10 @@ export default function PlayCanvas({
           </div>
 
           {/* Formation Dropdown & Gameday Situation Dropdown */}
-          <div className="flex items-center gap-2 flex-wrap [@media(max-height:450px)]:hidden">
+          <div className="flex items-center gap-2 max-sm:gap-1.5 flex-wrap max-sm:flex-nowrap [@media(max-height:450px)]:hidden">
             {/* Formation Dropdown */}
-            <div className="flex flex-col gap-0.5 flex-1 min-w-[130px]">
-              <span className="text-[10px] font-semibold text-neutral-400">Formation</span>
+            <div className="flex flex-col gap-0.5 flex-1 min-w-[130px] max-sm:min-w-0">
+              <span className="text-[10px] font-semibold text-neutral-400 max-sm:hidden">Formation</span>
               <select
                 aria-label="Play formation"
                 title={play.formation}
@@ -1577,8 +1577,8 @@ export default function PlayCanvas({
             </div>
 
             {/* Gameday Situation Dropdown */}
-            <div className="flex flex-col gap-0.5 flex-1 min-w-[120px]">
-              <span className="text-[10px] font-semibold text-neutral-400">Situation</span>
+            <div className="flex flex-col gap-0.5 flex-1 min-w-[120px] max-sm:min-w-0">
+              <span className="text-[10px] font-semibold text-neutral-400 max-sm:hidden">Situation</span>
               <select
                 aria-label="Play situation"
                 disabled={readOnly}
@@ -1598,7 +1598,7 @@ export default function PlayCanvas({
             <button
               type="button"
               onClick={() => setIsPlayNotesModalOpen(true)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+              className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0 ${
                 play.notes && play.notes.trim().length > 0
                   ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300"
                   : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
@@ -1663,7 +1663,7 @@ export default function PlayCanvas({
                 title={alignmentIssues.map((i) => i.warning).join("\n")}
               >
                 <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-red-400" />
-                <span>{alignmentIssues.length} Warning{alignmentIssues.length > 1 ? "s" : ""}</span>
+                <span>{alignmentIssues.length}<span className="hidden sm:inline"> Warning{alignmentIssues.length > 1 ? "s" : ""}</span></span>
               </div>
             )}
           </div>
@@ -1672,7 +1672,7 @@ export default function PlayCanvas({
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
-          className="relative flex-1 w-full aspect-[16/10] md:aspect-auto [@media(max-width:639px)]:aspect-auto bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair min-h-[250px] md:min-h-0 [@media(max-width:639px)]:min-h-0 [@media(max-height:450px)]:min-h-[120px]"
+          className="relative flex-1 [@media(max-width:639px)_and_(min-height:451px)]:flex-none w-full aspect-[16/10] md:aspect-auto [@media(max-width:639px)_and_(max-height:450px)]:aspect-auto [@media(max-width:639px)_and_(min-height:451px)]:aspect-[10/7] bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair min-h-[250px] md:min-h-0 [@media(max-width:639px)]:min-h-0 [@media(max-height:450px)]:min-h-[120px]"
           data-testid="designer-field"
         >
           <svg
@@ -2547,7 +2547,7 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
       {/* ============================================================== */}
-      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[340px] xl:w-[380px] [@media(max-height:450px)]:w-full [@media(min-width:600px)_and_(max-height:450px)]:w-[46%] [@media(min-width:600px)_and_(max-height:450px)]:flex-none flex-none max-h-[46%] md:max-h-full md:self-start md:shrink-0 [@media(max-width:599px)_and_(max-height:450px)]:flex-1 [@media(max-height:450px)]:max-h-none flex-col bg-[#0A0E17] border border-white/10 rounded-2xl overflow-hidden shadow-xl min-h-0">
+      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[340px] xl:w-[380px] [@media(max-height:450px)]:w-full [@media(min-width:600px)_and_(max-height:450px)]:w-[46%] [@media(min-width:600px)_and_(max-height:450px)]:flex-none flex-none max-h-[46%] [@media(max-width:639px)_and_(min-height:451px)]:flex-1 [@media(max-width:639px)_and_(min-height:451px)]:max-h-none [@media(max-width:639px)_and_(min-height:451px)]:min-h-[180px] md:max-h-full md:self-start md:shrink-0 [@media(max-width:599px)_and_(max-height:450px)]:flex-1 [@media(max-height:450px)]:max-h-none flex-col bg-[#0A0E17] border border-white/10 rounded-2xl overflow-hidden shadow-xl min-h-0">
         <div className="p-2 sm:p-3.5 [@media(min-width:600px)_and_(max-height:450px)]:p-2 [@media(max-width:639px)]:p-2 flex-1 min-h-0 overflow-y-auto space-y-2.5 [@media(min-width:600px)_and_(max-height:450px)]:space-y-1 [@media(max-width:639px)]:space-y-1.5 scrollbar-thin">
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
           <div className="flex flex-col items-stretch gap-3">

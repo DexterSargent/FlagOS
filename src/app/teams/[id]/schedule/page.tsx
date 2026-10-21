@@ -308,7 +308,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
       </div>
 
-      <div className="max-w-5xl mx-auto space-y-8 relative z-10 flex-1 w-full p-6 md:p-12">
+      <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
         {scheduleError && <p role="alert" className="text-red-300">{scheduleError}</p>}
         {/* Navigation */}
         <Link
@@ -326,7 +326,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               <Calendar className="w-4 h-4" />
               <span>Official Schedule</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
               {teamName} <span className="text-neutral-500 font-normal">Schedule</span>
             </h1>
             <p className="text-neutral-400 text-sm mt-1">Upcoming matchups, box scores, and live game tracking.</p>
@@ -336,10 +336,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           {canScheduleMatches && (
             <button
               onClick={() => setIsScheduleModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
             >
-              <Plus className="w-4 h-4" />
-              <span>Schedule Game (Named Opponent)</span>
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>Schedule Game<span className="hidden sm:inline"> (Named Opponent)</span></span>
             </button>
           )}
         </div>
@@ -379,22 +379,22 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                   return (
                     <div
                       key={m.id}
-                      className="bg-neutral-900/70 border border-white/5 rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between hover:border-white/15 transition-all group"
+                      className="bg-neutral-900/70 border border-white/5 rounded-3xl p-4 sm:p-6 backdrop-blur-md shadow-xl flex flex-col justify-between hover:border-white/15 transition-all group"
                     >
                       <div>
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-mono text-neutral-400 bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                          <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
+                            <span className="text-[11px] font-mono text-neutral-400 bg-white/5 px-2 sm:px-2.5 py-1 rounded-md border border-white/5 truncate">
                               {m.week || "Gameday"}
                             </span>
                             {isAsyncMatch && (
-                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Sparkles className="w-3 h-3" /> Clockless Async
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                                <Sparkles className="w-3 h-3" /> <span className="sm:hidden">Async</span><span className="hidden sm:inline">Clockless Async</span>
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider sm:tracking-widest whitespace-nowrap">
                               {m.status === "in_progress" ? "● LIVE NOW" : "Scheduled"}
                             </span>
                             {canDeleteMatch && (
@@ -410,22 +410,22 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between my-4">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between gap-2 my-4">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                             <TeamLogo
                               teamName={teamName}
-                              className="w-8 h-8"
+                              className="w-7 h-7 sm:w-8 sm:h-8 shrink-0"
                               isDemo={isDemoLeague}
                               primaryColor={team?.primaryColor || team?.color}
                             />
-                            <span className="font-bold text-base">{teamName}</span>
+                            <span className="font-bold text-sm sm:text-base leading-tight min-w-0 break-words">{teamName}</span>
                           </div>
-                          <span className="text-xs font-black text-neutral-500 uppercase">VS</span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-bold text-base text-neutral-300">{opponentName}</span>
+                          <span className="text-xs font-black text-neutral-500 uppercase shrink-0">VS</span>
+                          <div className="flex items-center justify-end gap-2 sm:gap-3 min-w-0 flex-1 text-right">
+                            <span className="font-bold text-sm sm:text-base leading-tight min-w-0 break-words text-neutral-300">{opponentName}</span>
                             <TeamLogo
                               teamName={opponentName}
-                              className="w-8 h-8"
+                              className="w-7 h-7 sm:w-8 sm:h-8 shrink-0"
                               isDemo={isDemoLeague}
                               primaryColor={allTeams[opponentId]?.primaryColor || allTeams[opponentId]?.color}
                             />
@@ -461,8 +461,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                               : "bg-white/5 hover:bg-gradient-to-r hover:from-cyan-500 hover:to-blue-600 text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
                           }`}
                         >
-                          <PlayCircle className="w-4 h-4" />
-                          <span>{!canScheduleMatches ? "Watch Game" : isAsyncMatch ? "Open Async Stat Keeper (Clockless)" : "Track Game / Play-by-Play"}</span>
+                          <PlayCircle className="w-4 h-4 shrink-0" />
+                          <span className="whitespace-nowrap">{!canScheduleMatches ? "Watch Game" : isAsyncMatch ? <>Open Async Stat Keeper<span className="hidden sm:inline"> (Clockless)</span></> : "Track Game / Play-by-Play"}</span>
                         </Link>
                       </div>
                     </div>
@@ -474,8 +474,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
           {/* Past Matches */}
           <div className="space-y-4 pt-4">
-            <div className="flex items-center gap-2.5 text-lg font-black uppercase tracking-wider text-blue-400">
-              <History className="w-5 h-5" />
+            <div className="flex items-center gap-2.5 text-base sm:text-lg font-black uppercase tracking-wide sm:tracking-wider whitespace-nowrap text-blue-400">
+              <History className="w-5 h-5 shrink-0" />
               <span>Past Results & Box Scores</span>
             </div>
 
@@ -500,10 +500,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                     <Link
                       key={m.id}
                       href={matchUrl}
-                      className="bg-neutral-900/70 border border-white/5 rounded-3xl p-6 backdrop-blur-md shadow-xl flex items-center justify-between hover:bg-neutral-900 hover:border-white/15 transition-all group"
+                      className="bg-neutral-900/70 border border-white/5 rounded-3xl p-4 sm:p-6 backdrop-blur-md shadow-xl flex items-center justify-between gap-3 hover:bg-neutral-900 hover:border-white/15 transition-all group"
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 whitespace-nowrap">
                           <span className="text-[10px] uppercase font-bold tracking-widest text-neutral-500 font-mono">
                             {localMatchDate(m.date).toLocaleDateString()}
                           </span>
@@ -513,20 +513,18 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             </span>
                           )}
                         </div>
-                        <div className="font-bold text-base text-white group-hover:text-cyan-400 transition-colors">
+                        <div className="font-bold text-sm sm:text-base leading-snug text-white group-hover:text-cyan-400 transition-colors break-words">
                           vs {opponentName}
                         </div>
-                        <div className="text-xs text-neutral-400">Box Score & Plays →</div>
+                        <div className="text-xs text-neutral-400 whitespace-nowrap">Box Score & Plays →</div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <span className="text-2xl font-black tabular-nums tracking-tight">
-                            {scored} - {allowed}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                        <span className="text-xl sm:text-2xl font-black tabular-nums tracking-tight whitespace-nowrap">
+                          {scored} - {allowed}
+                        </span>
                         <span
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm ${
+                          className={`w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl flex items-center justify-center font-black text-sm ${
                             isWin
                               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                               : isLoss
@@ -541,7 +539,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             type="button"
                             onClick={(e) => handleDeleteMatch(e, m.id)}
                             title="Delete Event"
-                            className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl transition-colors cursor-pointer z-10"
+                            className="p-1.5 sm:p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-xl transition-colors cursor-pointer z-10"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

@@ -294,7 +294,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-8 relative z-10 flex-1 w-full p-6 md:p-12">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
         {/* Navigation */}
         <Link
           href={`/teams/${teamId}`}
@@ -310,7 +310,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             <Activity className="w-3.5 h-3.5" />
             <span>Leaderboards</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-white">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight text-white">
             {teamName} <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Stat Leaders</span>
           </h1>
           <p className="text-lg text-neutral-400 font-light">Top Performers of {teamName}</p>
@@ -324,7 +324,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             return (
               <div
                 key={idx}
-                className="bg-neutral-900/70 border border-white/5 rounded-3xl p-6 flex flex-col hover:border-white/15 transition-all shadow-xl backdrop-blur-md"
+                className="bg-neutral-900/70 border border-white/5 rounded-3xl p-4 sm:p-6 flex flex-col hover:border-white/15 transition-all shadow-xl backdrop-blur-md"
               >
                 <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
                   <div className={`p-2 bg-white/5 rounded-xl ${cat.color}`}>
@@ -336,20 +336,20 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
                 <div className="flex-1 flex flex-col gap-4">
                   {top3.length > 0 ? (
                     top3.map((player, rank) => (
-                      <div key={player.name} className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
+                      <div key={player.name} className="flex items-center justify-between gap-3 group">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           <span
-                            className={`w-6 text-center font-black ${rank === 0 ? "text-cyan-400 text-lg" : "text-neutral-500"
+                            className={`w-6 shrink-0 text-center font-black ${rank === 0 ? "text-cyan-400 text-lg" : "text-neutral-500"
                               }`}
                           >
                             #{rank + 1}
                           </span>
-                          <span className="font-bold text-neutral-300 group-hover:text-white transition-colors text-sm">
+                          <span className="font-bold text-neutral-300 group-hover:text-white transition-colors text-sm min-w-0 truncate" title={player.name}>
                             {player.name}{" "}
                             {player.number && <span className="text-neutral-600 font-normal ml-1">#{player.number}</span>}
                           </span>
                         </div>
-                        <span className={`font-black text-2xl tabular-nums ${rank === 0 ? "text-white" : "text-neutral-400"}`}>
+                        <span className={`shrink-0 font-black text-2xl tabular-nums ${rank === 0 ? "text-white" : "text-neutral-400"}`}>
                           {player[cat.key]}
                         </span>
                       </div>

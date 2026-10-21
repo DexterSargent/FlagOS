@@ -556,7 +556,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 {hasEditAccess && (
                   <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white dark:bg-black/90 border border-slate-200 dark:border-white/20 text-slate-800 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-400 opacity-90 group-hover/logo:opacity-100 transition-all shadow-lg flex items-center gap-1 cursor-pointer"
+                    className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white dark:bg-black/90 border border-slate-200 dark:border-white/20 text-slate-800 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-400 opacity-90 group-hover/logo:opacity-100 transition-all shadow-lg flex items-center gap-1 cursor-pointer whitespace-nowrap"
                     title="Change Logo"
                   >
                     <Edit3 className="w-3 h-3 text-amber-500 dark:text-amber-400" />
@@ -601,7 +601,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           </div>
 
           <div 
-            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full backdrop-blur-md mb-2 shadow-2xl border"
+            className="inline-flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2 rounded-full backdrop-blur-md mb-2 shadow-2xl border max-w-full"
             style={{
               backgroundColor: palette.secondary,
               borderColor: `${palette.primary}40`,
@@ -616,14 +616,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               primaryColor={palette.primary}
             />
             <span 
-              className="text-sm font-black tracking-widest uppercase"
+              className="text-[11px] sm:text-sm font-black tracking-wider sm:tracking-widest uppercase whitespace-nowrap"
               style={{ color: getReadableTextColor(palette.secondary, palette.primary) }}
             >
               {shortcode} • {isYork ? "Varsity Club Team Portal" : isStandaloneOrPaidTeam ? "Independent Team Portal" : `${settings.leagueName} Member Club`}
             </span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight drop-shadow-sm uppercase">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight drop-shadow-sm uppercase">
             {team.name}
           </h1>
 
@@ -709,19 +709,19 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
         {/* Standalone Pro Team Subscription Banner (for York Lions and standalone subscribers) */}
         {(isYork || team.isStandalone || team.subscription) && (
-          <div className="w-full max-w-5xl mb-10 bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-black border border-red-500/30 rounded-3xl p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+          <div className="w-full max-w-5xl mb-10 bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-black border border-red-500/30 rounded-3xl p-4 sm:p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-80 h-80 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-mono font-bold border border-emerald-500/30">
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-[11px] font-mono font-bold border border-emerald-500/30 whitespace-nowrap">
                     Active Subscription (Complimentary Lifetime)
                   </span>
                   <span className="text-neutral-500 text-xs">•</span>
-                  <span className="text-xs text-neutral-300 font-semibold">Tier: Pro Team Portal ($0/mo)</span>
+                  <span className="text-xs text-neutral-300 font-semibold whitespace-nowrap">Tier: Pro Team Portal ($0/mo)</span>
                 </div>
-                <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-amber-400" />
+                <h3 className="text-base sm:text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-amber-400 shrink-0" />
                   <span>York Lions Varsity Digital Headquarters</span>
                 </h3>
                 <p className="text-xs text-neutral-400 max-w-2xl leading-relaxed">
@@ -783,10 +783,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base md:text-lg font-black uppercase tracking-tight text-white">
+                        <h3 className="text-base md:text-lg font-black uppercase tracking-tight text-white whitespace-nowrap">
                           Season Team Stats
                         </h3>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10 whitespace-nowrap">
                           {visibleStatIds.length} ACTIVE
                         </span>
                       </div>
@@ -1364,12 +1364,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       {/* Standalone / Paid Team Portal Footer with subtle Powered by FlagOS Disclaimer */}
       <footer className="relative z-10 w-full border-t border-white/10 bg-black/80 backdrop-blur-md py-8 px-6 text-xs text-neutral-400 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-white uppercase">{team.name}</span>
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+            <span className="font-bold text-white uppercase whitespace-nowrap">{team.name}</span>
             <span>•</span>
-            <span>{isYork ? "Varsity Club Team Portal" : isStandaloneOrPaidTeam ? "Independent Team Portal" : "Official Team Portal"}</span>
+            <span className="whitespace-nowrap">{isYork ? "Varsity Club Team Portal" : isStandaloneOrPaidTeam ? "Independent Team Portal" : "Official Team Portal"}</span>
             <span>•</span>
-            <span>{settings.seasonTitle || "2026"}</span>
+            <span className="whitespace-nowrap">{settings.seasonTitle || "2026"}</span>
           </div>
           <div className="flex items-center gap-2 text-neutral-400 font-medium">
             <span>Powered by</span>

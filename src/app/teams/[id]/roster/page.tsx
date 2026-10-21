@@ -537,7 +537,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-8 relative z-10 flex-1 w-full p-6 md:p-12">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
         {/* Navigation */}
         <Link
           href={`/teams/${teamId}`}
@@ -573,7 +573,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 </span>
               )}
             </div>
-            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
               {teamName} <span className="text-neutral-500 font-normal">Team</span>
             </h1>
             <p className="text-neutral-400 text-sm mt-1">
@@ -606,44 +606,44 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Team Overview Stats Banner */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-md">
-            <span className="text-xs uppercase font-bold text-neutral-500 tracking-wider">Record</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
+            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Record</span>
             <div className="text-2xl font-black text-white mt-1">
               {wins}-{losses}{ties > 0 ? `-${ties}` : ""}
             </div>
           </div>
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-md">
-            <span className="text-xs uppercase font-bold text-neutral-500 tracking-wider">Games Played</span>
+          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
+            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Games Played</span>
             <div className="text-2xl font-black text-white mt-1">{teamMatches.length}</div>
           </div>
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-md">
-            <span className="text-xs uppercase font-bold text-neutral-500 tracking-wider">Points Scored</span>
+          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
+            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Points Scored</span>
             <div className="text-2xl font-black text-emerald-400 mt-1">{pf}</div>
           </div>
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-5 backdrop-blur-md">
-            <span className="text-xs uppercase font-bold text-neutral-500 tracking-wider">Points Allowed</span>
+          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
+            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Points Allowed</span>
             <div className="text-2xl font-black text-red-400 mt-1">{pa}</div>
           </div>
         </div>
 
         {/* Players List Table */}
         <div className="bg-neutral-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
-          <div className="bg-neutral-900 px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-neutral-900 px-4 sm:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <User className="w-5 h-5 text-neutral-400" />
-              <h3 className="font-bold text-lg text-white">
+              <h3 className="font-bold text-base sm:text-lg text-white whitespace-nowrap">
                 {activeTab === "roster"
-                  ? `Roster (${players.length}/${maxRosterSize} Max • Min: ${minRosterSize})`
+                  ? `Roster (${players.length}/${maxRosterSize})`
                   : `${teamName} Official Depth Chart`}
               </h3>
             </div>
 
             {/* View Switcher: Roster Table vs Depth Chart */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto">
+            <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto whitespace-nowrap max-w-full">
               <button
                 onClick={() => setActiveTab("roster")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "roster"
                     ? "bg-cyan-500 text-black font-black shadow-md"
                     : "text-neutral-400 hover:text-white"
@@ -653,7 +653,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </button>
               <button
                 onClick={() => setActiveTab("depth_chart")}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "depth_chart"
                     ? "bg-emerald-500 text-black font-black shadow-md"
                     : "text-neutral-400 hover:text-white"
@@ -664,7 +664,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               <button
                 type="button"
                 onClick={() => setShowStats(!showStats)}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   showStats
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                     : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -682,20 +682,20 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-black/50 text-neutral-500 text-xs font-semibold uppercase tracking-wider">
-                  <th className="py-4 px-6 w-16">#</th>
-                  <th className="py-4 px-6">Player Name</th>
-                  <th className="py-4 px-6">Position</th>
-                  <th className="py-4 px-6 text-center">Status</th>
+                  <th className="py-3 px-3 sm:py-4 sm:px-6 w-16">#</th>
+                  <th className="py-3 px-3 sm:py-4 sm:px-6">Player Name</th>
+                  <th className="py-3 px-3 sm:py-4 sm:px-6">Position</th>
+                  <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">Status</th>
                   {showStats && (
                     <>
-                      <th className="py-4 px-6 text-center">GP</th>
-                      <th className="py-4 px-6 text-center">Pass TD</th>
-                      <th className="py-4 px-6 text-center">Rec TD</th>
-                      <th className="py-4 px-6 text-center">Flags</th>
-                      <th className="py-4 px-6 text-center">INT</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">GP</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">Pass TD</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">Rec TD</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">Flags</th>
+                      <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">INT</th>
                     </>
                   )}
-                  <th className="py-4 px-6 text-right">Actions</th>
+                  <th className="py-3 px-3 sm:py-4 sm:px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -709,19 +709,19 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   return (
                     <tr key={p.id} className="hover:bg-white/5 transition-colors group">
                       {/* Jersey Number */}
-                      <td className="py-4 px-6 font-mono text-sm font-bold text-neutral-400">
+                      <td className="py-3 px-3 sm:py-4 sm:px-6 font-mono text-sm font-bold text-neutral-400">
                         {jerseyNumber !== "-" ? `#${jerseyNumber}` : "-"}
                       </td>
 
                       {/* Player Name (Click to pull up stats modal) */}
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-3 sm:py-4 sm:px-6">
                         <button
                           type="button"
                           onClick={() => setSelectedPlayerForStats(p)}
                           className="font-bold text-base text-white hover:text-cyan-400 transition-colors flex items-center gap-2 text-left cursor-pointer group/player"
                           title={`Click to view stats for ${p.playerName}`}
                         >
-                          <span className="group-hover/player:underline underline-offset-4 decoration-cyan-400/60">{p.playerName}</span>
+                          <span className="group-hover/player:underline underline-offset-4 decoration-cyan-400/60 whitespace-nowrap">{p.playerName}</span>
                           <span className="text-[10px] text-cyan-400/80 group-hover/player:text-cyan-300 flex items-center gap-1 font-mono font-normal">
                             <Activity className="w-3 h-3" />
                             <span>Stats</span>
@@ -738,8 +738,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       </td>
 
                       {/* Position */}
-                      <td className="py-4 px-6">
-                        <div className="flex flex-wrap gap-1">
+                      <td className="py-3 px-3 sm:py-4 sm:px-6">
+                        <div className="flex flex-wrap gap-1 min-w-[72px]">
                           {positions.map((pos: string) => (
                             <span
                               key={pos}
@@ -752,9 +752,9 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-6 text-center">
+                      <td className="py-3 px-3 sm:py-4 sm:px-6 text-center">
                         <span
-                          className="px-2.5 py-1 rounded-full font-mono text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          className="px-2.5 py-1 rounded-full font-mono text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap"
                         >
                           Active
                         </span>
@@ -763,26 +763,26 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       {/* Stats columns - only rendered if user toggles showStats */}
                       {showStats && (
                         <>
-                          <td className="py-4 px-6 text-center text-sm font-medium text-neutral-300">
+                          <td className="py-3 px-3 sm:py-4 sm:px-6 text-center text-sm font-medium text-neutral-300">
                             {s.gamesPlayed}
                           </td>
-                          <td className="py-4 px-6 text-center text-sm font-bold text-emerald-400">
+                          <td className="py-3 px-3 sm:py-4 sm:px-6 text-center text-sm font-bold text-emerald-400">
                             {s.passTD}
                           </td>
-                          <td className="py-4 px-6 text-center text-sm font-bold text-blue-400">
+                          <td className="py-3 px-3 sm:py-4 sm:px-6 text-center text-sm font-bold text-blue-400">
                             {s.recTD}
                           </td>
-                          <td className="py-4 px-6 text-center text-sm font-bold text-amber-400">
+                          <td className="py-3 px-3 sm:py-4 sm:px-6 text-center text-sm font-bold text-amber-400">
                             {s.flagPulls}
                           </td>
-                          <td className="py-4 px-6 text-center text-sm font-bold text-purple-400">
+                          <td className="py-3 px-3 sm:py-4 sm:px-6 text-center text-sm font-bold text-purple-400">
                             {s.int}
                           </td>
                         </>
                       )}
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-3 px-3 sm:py-4 sm:px-6 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {/* View Stats Button */}
                           <button

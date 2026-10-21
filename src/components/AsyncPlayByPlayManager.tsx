@@ -114,6 +114,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const canEdit = !authLoading && (
     !!canManageTeam?.(managingTeamId) || (!isYorkMatch(matchId) && isLeagueAdmin)
   );
+  const canTrackPlays = canEdit && matchStatus !== "completed";
 
   // Match Information
   const [homeTeamName, setHomeTeamName] = useState("HOME");
@@ -180,8 +181,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     if (playEntryRef.current) playEntryRef.current.scrollTop = 0;
   }, [step, activeTab]);
   useEffect(() => {
-    if (!canEdit) setActiveTab("box-score");
-  }, [canEdit]);
+    if (matchStatus === "completed") setActiveTab("play-by-play");
+    else if (!canEdit) setActiveTab("box-score");
+  }, [canEdit, matchStatus]);
   const [boxScoreTab, setBoxScoreTab] = useState<"home" | "away">("home");
   const [plays, setPlays] = useState<any[]>([]);
   const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
@@ -1211,7 +1213,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         {/* View mode tabs */}
         <div className="flex min-w-0 items-center gap-0.5 bg-black/60 p-1 rounded-xl border border-white/10 text-[10px] sm:text-xs font-bold">
-          {canEdit && <button
+          {canTrackPlays && <button
             onClick={() => setActiveTab("tracker")}
             className={`px-2 sm:px-3 py-2 rounded-lg transition-all ${
               activeTab === "tracker" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
@@ -1342,7 +1344,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </div>
         )}
         {/* TAB 1: INTERACTIVE STAT KEEPER */}
-        {canEdit && activeTab === "tracker" && (
+        {canTrackPlays && activeTab === "tracker" && (
           <div ref={playEntryRef} role="region" aria-label="Play entry" tabIndex={0} className={`flex flex-col flex-1 min-h-0 min-w-0 gap-2 ${step === "IDLE" || step === "GAME_OVER" ? "overflow-y-auto overscroll-contain" : "overflow-hidden"}`}>
             {/* MASTER PERIOD & ACTION CONTROLS */}
             <div className={`${step === "IDLE" ? "flex" : "hidden"} flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0`}>
@@ -1903,7 +1905,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {plays.length === 0 ? (
               <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-8 text-center text-neutral-500 text-sm italic">
-                No plays recorded yet. Press "START PLAY" on the Stat Keeper tab to log plays.
+                No plays recorded yet.{canTrackPlays && ' Press "START PLAY" on the Stat Keeper tab to log plays.'}
               </div>
             ) : (
               <div className="space-y-2.5">

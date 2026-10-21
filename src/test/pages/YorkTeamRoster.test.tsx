@@ -77,7 +77,7 @@ describe("Team Roster & Depth Chart Specification", () => {
     await waitFor(() => {
       // Hard cap of 30 players is displayed
       expect(screen.getByText("20/30 Players (Min: 5)")).toBeInTheDocument();
-      expect(screen.getByText("Roster (20/30 Max • Min: 5)")).toBeInTheDocument();
+      expect(screen.getByText("Roster (20/30)")).toBeInTheDocument();
     });
   });
 
