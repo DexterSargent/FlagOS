@@ -47,3 +47,6 @@ next-env.d.ts
 
 # local helpers
 push-to-github.bat
+
+# Private team playbooks / documents
+*.pdf
