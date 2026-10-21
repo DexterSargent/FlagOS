@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import PricingPage from "@/app/pricing/page";
 
 // Mock router
@@ -54,10 +54,30 @@ vi.mock("firebase/firestore", () => ({
   addDoc: vi.fn().mockResolvedValue({ id: "team_mock_123" }),
 }));
 
+const mockCreateSecureRecord = vi.fn();
+vi.mock("@/lib/secureWrites", () => ({
+  createSecureRecord: (...args: unknown[]) => mockCreateSecureRecord(...args),
+}));
+
+const ownerAuth = () => ({
+  user: { uid: "owner-1", email: "dextersargent@gmail.com", emailVerified: true },
+  isLeagueAdmin: true,
+  isPlatformAdmin: true,
+  setDevRole: mockSetDevRole,
+});
+
 describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mockCreateLeague.mockResolvedValue("league_new_99");
+    mockCreateSecureRecord.mockResolvedValue("team_new_42");
+    mockAuth = {
+      user: { uid: "test-user-1", email: "coach@flagos.ca" },
+      isLeagueAdmin: false,
+      isPlatformAdmin: false,
+      setDevRole: mockSetDevRole,
+    };
   });
 
   it("renders side-by-side subscription plans with correct base rates", () => {
@@ -150,12 +170,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
   });
 
   it("enables league creation modal and creates league when logged into owner email using subscribe button", async () => {
-    mockAuth = {
-      user: { uid: "owner-1", email: "dextersargent@gmail.com" },
-      isLeagueAdmin: true,
-      isPlatformAdmin: true,
-      setDevRole: mockSetDevRole,
-    };
+    mockAuth = ownerAuth() as typeof mockAuth;
 
     render(<PricingPage />);
 
@@ -184,5 +199,50 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
         shortcode: "MFL",
       })
     );
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/league/league_new_99"));
+  });
+
+  it("creates a complimentary independent team for the owner and opens its portal", async () => {
+    mockAuth = ownerAuth() as typeof mockAuth;
+    render(<PricingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Waterloo Wolves" } });
+    fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "wat" } });
+    fireEvent.change(screen.getByLabelText(/Team Portal Visibility/i), { target: { value: "private" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay \$30/i }));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
+    expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
+      name: "Waterloo Wolves",
+      shortcode: "WAT",
+      leagueId: "",
+      isStandalone: true,
+      visibility: "private",
+      adminEmails: ["dextersargent@gmail.com"],
+      subscription: expect.objectContaining({ status: "active", paymentMethod: "complimentary" }),
+    }));
+  });
+
+  it("shows the server error inside the checkout instead of a generic notice", async () => {
+    mockAuth = ownerAuth() as typeof mockAuth;
+    mockCreateSecureRecord.mockRejectedValue(new Error("Write rate limit reached."));
+    render(<PricingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Wolves" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay \$30/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Write rate limit reached.");
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("ignores the local dev-role override for non-owner accounts", () => {
+    localStorage.setItem("dev_auth_role", "league_admin");
+    render(<PricingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Launch & Subscribe League/i }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("FlagOS is still in development");
+    expect(screen.queryByPlaceholderText(/Gotham Flag Football League/i)).not.toBeInTheDocument();
   });
 });

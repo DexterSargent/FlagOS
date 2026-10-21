@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
+import { isPlatformAdminEmail } from "@/lib/platformAdmin";
+import { createSecureRecord } from "@/lib/secureWrites";
 import { FlagOSText } from "@/components/FlagOSText";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -35,10 +37,8 @@ export default function PricingPage() {
   const { activeLeagueId, settings, createLeague } = useLeague();
   const { user, isAuthorized, isPlatformAdmin, logout } = useAuth();
 
-  const isOwnerEmail =
-    isPlatformAdmin ||
-    user?.email?.toLowerCase() === "dextersargent@gmail.com" ||
-    (typeof window !== "undefined" && localStorage.getItem("dev_auth_role") === "league_admin");
+  // Until real billing exists, only the platform owner's verified account can "pay".
+  const isOwnerEmail = !!user?.emailVerified && isPlatformAdminEmail(user.email);
 
   // League interactive slider
   const [teamCount, setTeamCount] = useState<number>(4);
@@ -64,12 +64,16 @@ export default function PricingPage() {
   const [isSubmittingLeague, setIsSubmittingLeague] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [teamShortcode, setTeamShortcode] = useState("");
+  const [teamColor, setTeamColor] = useState("#22c55e");
+  const [teamVisibility, setTeamVisibility] = useState<"public" | "private">("public");
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   const handleSubscribeLeague = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!leagueName.trim() || !leagueShortcode.trim()) return;
+    if (!isOwnerEmail || !leagueName.trim() || !leagueShortcode.trim()) return;
     setIsSubmittingLeague(true);
+    setCheckoutError("");
     try {
       const newLeagueId = await createLeague({
         name: leagueName.trim(),
@@ -83,17 +87,43 @@ export default function PricingPage() {
       router.push(`/league/${newLeagueId}`);
     } catch (err) {
       console.error("Failed to provision league:", err);
-      setIsLeagueModalOpen(false);
-      setShowDevelopmentNotice(true);
+      setCheckoutError(err instanceof Error ? err.message : "Could not create the league.");
     } finally {
       setIsSubmittingLeague(false);
     }
   };
 
-  const handleSubscribeTeam = (e: React.FormEvent) => {
+  const handleSubscribeTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsTeamModalOpen(false);
-    setShowDevelopmentNotice(true);
+    if (!isOwnerEmail || !user?.email || !teamName.trim()) return;
+    setIsSubmittingTeam(true);
+    setCheckoutError("");
+    try {
+      const newTeamId = await createSecureRecord("team", {
+        name: teamName.trim(),
+        shortcode: teamShortcode.trim().toUpperCase(),
+        leagueId: "",
+        isStandalone: true,
+        visibility: teamVisibility,
+        primaryColor: teamColor,
+        adminEmails: [user.email.trim().toLowerCase()],
+        subscription: {
+          plan: "team",
+          status: "active",
+          monthlyFee: 30,
+          billingCycle: "monthly",
+          paymentMethod: "complimentary",
+          renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      });
+      setIsTeamModalOpen(false);
+      router.push(`/teams/${newTeamId}`);
+    } catch (err) {
+      console.error("Failed to provision team:", err);
+      setCheckoutError(err instanceof Error ? err.message : "Could not create the team.");
+    } finally {
+      setIsSubmittingTeam(false);
+    }
   };
 
   // Comprehensive Feature Comparison Matrix items
@@ -559,7 +589,14 @@ export default function PricingPage() {
 
             <div className="pt-6 border-t border-white/10 mt-6 space-y-3">
               <button
-                onClick={() => setShowDevelopmentNotice(true)}
+                onClick={() => {
+                  if (isOwnerEmail) {
+                    setCheckoutError("");
+                    setIsTeamModalOpen(true);
+                  } else {
+                    setShowDevelopmentNotice(true);
+                  }
+                }}
                 className="w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <span>Subscribe Team Portal ($30/mo)</span>
@@ -694,6 +731,7 @@ export default function PricingPage() {
               <button
                 onClick={() => {
                   if (isOwnerEmail) {
+                    setCheckoutError("");
                     setIsLeagueModalOpen(true);
                   } else {
                     setShowDevelopmentNotice(true);
@@ -1161,6 +1199,9 @@ export default function PricingPage() {
                 <CreditCard className="w-4 h-4" />
                 <span>{isSubmittingLeague ? "Provisioning League..." : `Confirm & Pay $${totalLeagueMonthly}/mo`}</span>
               </button>
+              {checkoutError && (
+                <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{checkoutError}</p>
+              )}
             </form>
           </div>
         </div>
@@ -1212,6 +1253,35 @@ export default function PricingPage() {
                 />
               </div>
 
+              <div>
+                <label className="text-xs font-bold text-neutral-300 block mb-1.5">Primary Team Color</label>
+                <div className="flex items-center gap-2">
+                  {["#22c55e", "#06B6D4", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#111827"].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={`Team color ${c}`}
+                      onClick={() => setTeamColor(c)}
+                      className={`w-8 h-8 rounded-lg border border-white/20 transition-transform cursor-pointer ${teamColor === c ? "scale-110 ring-2 ring-white" : ""}`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="team-visibility" className="text-xs font-bold text-neutral-300 block mb-1">Team Portal Visibility</label>
+                <select
+                  id="team-visibility"
+                  value={teamVisibility}
+                  onChange={(e) => setTeamVisibility(e.target.value === "private" ? "private" : "public")}
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-400"
+                >
+                  <option value="public">Public – anyone can view schedule, roster names &amp; stats</option>
+                  <option value="private">Private – only coaches &amp; rostered players</option>
+                </select>
+              </div>
+
               {/* Order Summary */}
               <div className="bg-neutral-900/80 border border-white/10 rounded-2xl p-4 text-xs space-y-2 mt-4">
                 <div className="flex justify-between text-neutral-400">
@@ -1236,6 +1306,10 @@ export default function PricingPage() {
                 <CreditCard className="w-4 h-4" />
                 <span>{isSubmittingTeam ? "Provisioning Team..." : "Confirm & Pay $30/mo"}</span>
               </button>
+              <p className="text-center text-[11px] text-neutral-500">Owner account: payment is recorded as complimentary — no card is charged.</p>
+              {checkoutError && (
+                <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{checkoutError}</p>
+              )}
             </form>
           </div>
         </div>

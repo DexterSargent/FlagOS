@@ -5,7 +5,7 @@ import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 const TEAM_ADMIN_EMAILS = ["head@falcons.com", "assistant@falcons.com", "coordinator@falcons.com"];
 const PRIMARY_ADMIN_EMAILS = [TEAM_ADMIN_EMAILS[0]];
 
-const { verifyIdTokenMock, runTransactionMock, transaction } = vi.hoisted(() => {
+const { verifyIdTokenMock, runTransactionMock, transaction, batchMock } = vi.hoisted(() => {
   const transaction = {
     get: vi.fn(),
     getAll: vi.fn(),
@@ -18,8 +18,12 @@ const { verifyIdTokenMock, runTransactionMock, transaction } = vi.hoisted(() => 
     verifyIdTokenMock: vi.fn(),
     runTransactionMock: vi.fn(),
     transaction,
+    batchMock: { delete: vi.fn(), commit: vi.fn() },
   };
 });
+
+const emptyQuery = { docs: [] as unknown[] };
+const queryResults = new Map<string, { docs: unknown[] }>();
 
 vi.mock("@/lib/firebaseAdmin", () => ({
   adminAuth: { verifyIdToken: verifyIdTokenMock },
@@ -28,9 +32,13 @@ vi.mock("@/lib/firebaseAdmin", () => ({
     collection: vi.fn((name: string) => ({
       where: vi.fn(() => ({
         limit: vi.fn(() => ({ collection: name })),
+        get: vi.fn(async () => queryResults.get(name) || emptyQuery),
       })),
+      get: vi.fn(async () => queryResults.get(name) || emptyQuery),
+      limit: vi.fn(() => ({ collection: name })),
       doc: vi.fn(() => ({ id: "created-record-id" })),
     })),
+    batch: vi.fn(() => batchMock),
     runTransaction: runTransactionMock,
   },
 }));
@@ -316,6 +324,91 @@ describe("secure data write API", () => {
     expect(response.status).toBe(413);
     expect(verifyIdTokenMock).not.toHaveBeenCalled();
     expect(transaction.create).not.toHaveBeenCalled();
+  });
+
+  describe("platform-owner provisioning", () => {
+    const independentTeam = {
+      name: "Waterloo Wolves", shortcode: "WAT", leagueId: "", isStandalone: true,
+      visibility: "public", primaryColor: "#22c55e", adminEmails: [validToken.email],
+      subscription: { plan: "team", status: "active", paymentMethod: "complimentary" },
+    };
+
+    it("rejects league creation by anyone other than the platform owner", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "coach@example.com" });
+      const response = await POST(request({
+        entity: "league", data: { ...validLeague, adminEmails: ["coach@example.com"] },
+      }));
+      expect(response.status).toBe(403);
+      expect(transaction.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects team creation by anyone other than the platform owner, even league admins", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "commissioner@example.com" });
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 0 }
+        : ref.path === "league_private/league-1"
+          ? { exists: true, data: () => ({ adminEmails: ["commissioner@example.com"] }) }
+          : { exists: false, data: () => undefined });
+      for (const data of [independentTeam, { name: "Hawks", leagueId: "league-1" }]) {
+        const response = await POST(request({ entity: "team", data }));
+        expect(response.status).toBe(403);
+      }
+      expect(transaction.create).not.toHaveBeenCalled();
+    });
+
+    it("lets the platform owner create a paid independent team with private staff emails", async () => {
+      const response = await POST(request({ entity: "team", data: independentTeam }));
+      expect(response.status).toBe(201);
+      const publicCreate = transaction.create.mock.calls.find(([ref]) => ref.id === "created-record-id");
+      expect(publicCreate?.[1]).toMatchObject({
+        name: "Waterloo Wolves", leagueId: "", isStandalone: true, visibility: "public",
+        subscription: { status: "active" },
+      });
+      expect(publicCreate?.[1]).not.toHaveProperty("adminEmails");
+      expect(transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "team_private/created-record-id" }),
+        expect.objectContaining({ leagueId: "", adminEmails: [validToken.email] }),
+      );
+    });
+
+    it("lets the platform owner delete an independent team and purge its data", async () => {
+      queryResults.set("players", { docs: [{ id: "p1", ref: { path: "players/p1" } }] });
+      queryResults.set("matches", { docs: [
+        { id: "m1", ref: { path: "matches/m1" }, get: (field: string) => field === "isStandalone" },
+        { id: "m2", ref: { path: "matches/m2" }, get: (field: string) => field === "leagueId" ? "league-1" : false },
+      ] });
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 0 }
+        : ref.path === "teams/wolves"
+          ? { exists: true, data: () => ({ name: "Wolves", leagueId: "" }) }
+          : { exists: false, data: () => undefined });
+      try {
+        const response = await POST(request({ entity: "delete_team", data: { teamId: "wolves", purge: true } }));
+        expect(response.status).toBe(201);
+        expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "teams/wolves" }));
+        const purged = batchMock.delete.mock.calls.map(([ref]) => ref.path);
+        expect(purged).toEqual(expect.arrayContaining([
+          "team_depth_charts/wolves", "players/p1", "player_private/p1", "matches/m1",
+        ]));
+        expect(purged).not.toContain("matches/m2");
+        expect(batchMock.commit).toHaveBeenCalled();
+      } finally {
+        queryResults.clear();
+      }
+    });
+
+    it("refuses purge requests from non-owners", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "commissioner@example.com" });
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 0 }
+        : ref.path === "teams/wolves"
+          ? { exists: true, data: () => ({ name: "Wolves", leagueId: "" }) }
+          : { exists: false, data: () => undefined });
+      const response = await POST(request({ entity: "delete_team", data: { teamId: "wolves", purge: true } }));
+      expect(response.status).toBe(403);
+      expect(transaction.delete).not.toHaveBeenCalled();
+      expect(batchMock.delete).not.toHaveBeenCalled();
+    });
   });
 
   describe("independent team matches", () => {

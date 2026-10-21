@@ -637,8 +637,8 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
     const pColor = data.primaryColor || "#3ca505";
     const aColor = data.accentColor || "#3b82f6";
     const teams = data.teamCount || 8;
-    const baseFee = 49;
-    const perTeamFee = 5;
+    const baseFee = 40;
+    const perTeamFee = 15;
 
     const newSub: LeagueSubscriptionInfo = {
       plan: "league",

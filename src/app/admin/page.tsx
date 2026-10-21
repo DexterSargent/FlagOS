@@ -80,6 +80,7 @@ export default function PlatformAdminPage() {
   const [editingLeague, setEditingLeague] = useState<ManagedRecord | null>(null);
   const [adminManagingLeague, setAdminManagingLeague] = useState<ManagedRecord | null>(null);
   const [deletingLeague, setDeletingLeague] = useState<ManagedRecord | null>(null);
+  const [deletingTeam, setDeletingTeam] = useState<ManagedRecord | null>(null);
 
   // Form states for Editing League
   const [editForm, setEditForm] = useState({
@@ -452,6 +453,26 @@ export default function PlatformAdminPage() {
     }
   };
 
+  const handleConfirmDeleteTeam = async () => {
+    if (!deletingTeam) return;
+    setActionInProgress(true);
+    setError("");
+    try {
+      await createSecureRecord("delete_team", { teamId: deletingTeam.id, purge: true });
+      setTeams((prev) => prev.filter((t) => t.id !== deletingTeam.id));
+      setSuccessMessage(`Team "${deletingTeam.name}" and its roster, playbooks and games were deleted.`);
+      setDeletingTeam(null);
+    } catch (delError) {
+      console.error("Failed to delete team:", delError);
+      setError(delError instanceof Error && delError.message
+        ? `Failed to delete team. ${delError.message}`
+        : "Failed to delete team. Check console for details.");
+      setDeletingTeam(null);
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
   // Open Admins Modal
   const openAdminsModal = (league: ManagedRecord) => {
     setAdminManagingLeague(league);
@@ -577,6 +598,12 @@ export default function PlatformAdminPage() {
           >
             <RefreshCw className={`h-4 w-4 ${loadingRecords ? "animate-spin" : ""}`} /> Refresh
           </button>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200 hover:bg-emerald-500/20"
+          >
+            <Plus className="h-4 w-4" /> New team / league
+          </Link>
           <button
             type="button"
             onClick={() => void logout()}
@@ -829,12 +856,21 @@ export default function PlatformAdminPage() {
                                           <span className="text-neutral-500">No team admins</span>
                                         )}
                                       </span>
-                                      <Link
-                                        href={`/teams/${team.id}`}
-                                        className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300"
-                                      >
-                                        Manage team <ExternalLink className="h-3 w-3" />
-                                      </Link>
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          type="button"
+                                          onClick={() => { setError(""); setDeletingTeam(team); }}
+                                          className="inline-flex items-center gap-1 text-xs font-bold text-red-300 hover:text-red-200"
+                                        >
+                                          <Trash2 className="h-3 w-3" /> Delete
+                                        </button>
+                                        <Link
+                                          href={`/teams/${team.id}`}
+                                          className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300"
+                                        >
+                                          Manage team <ExternalLink className="h-3 w-3" />
+                                        </Link>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -941,12 +977,21 @@ export default function PlatformAdminPage() {
                             <span className="text-neutral-500">No team admins</span>
                           )}
                         </span>
-                        <Link
-                          href={`/teams/${team.id}`}
-                          className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/20"
-                        >
-                          Manage team <ExternalLink className="h-3.5 w-3.5" />
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setError(""); setDeletingTeam(team); }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/15"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
+                          </button>
+                          <Link
+                            href={`/teams/${team.id}`}
+                            className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/20"
+                          >
+                            Manage team <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
                       </div>
                     </article>
                   );
@@ -1263,6 +1308,43 @@ export default function PlatformAdminPage() {
               >
                 <Trash2 className="h-4 w-4" />
                 {actionInProgress ? "Deleting…" : "Confirm Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deletingTeam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-team-title" className="w-full max-w-md rounded-3xl border border-red-500/20 bg-neutral-900 p-6 sm:p-8 shadow-2xl">
+            <div className="flex items-center gap-3 text-red-400">
+              <AlertCircle className="h-6 w-6 shrink-0" />
+              <h2 id="delete-team-title" className="text-xl font-black text-white">Delete Team</h2>
+            </div>
+            <p className="mt-4 text-sm text-neutral-300">
+              Permanently delete <strong className="text-white">"{deletingTeam.name}"</strong>?
+            </p>
+            <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200">
+              This also deletes the team&apos;s roster, player contact details, playbooks, depth charts, and its own
+              scrimmages/games with their play-by-play. League-scheduled games are kept. This cannot be undone.
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={actionInProgress}
+                onClick={() => setDeletingTeam(null)}
+                className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-neutral-300 hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionInProgress}
+                onClick={() => void handleConfirmDeleteTeam()}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-500 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                {actionInProgress ? "Deleting…" : "Delete Team"}
               </button>
             </div>
           </div>

@@ -5,10 +5,10 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { accountEmailKey } from "@/lib/accountEmailKey";
 import { validateDepthCharts } from "@/lib/depthChart";
+import { PLATFORM_ADMIN_EMAIL } from "@/lib/platformAdmin";
 
 export const runtime = "nodejs";
 
-const PLATFORM_ADMIN_EMAIL = "dextersargent@gmail.com";
 const MAX_REQUEST_BYTES = 300_000;
 const MAX_ARRAY_ITEMS = 100;
 const MAX_OBJECT_FIELDS = 80;
@@ -242,6 +242,7 @@ async function authorizeWrite(
   token: DecodedIdToken,
 ): Promise<void> {
   if (entity === "league") {
+    if (!isPlatformAdmin(token)) fail("Only the FlagOS platform administrator can create leagues.", 403);
     if (data.ownerUid !== token.uid ||
       typeof token.email !== "string" ||
       !Array.isArray(data.adminEmails) ||
@@ -251,7 +252,20 @@ async function authorizeWrite(
     return;
   }
 
-  if (entity === "team" || entity === "match") {
+  if (entity === "team") {
+    if (!isPlatformAdmin(token)) fail("Only the FlagOS platform administrator can create teams.", 403);
+    if (data.leagueId === "") {
+      data.isStandalone = true;
+      return;
+    }
+    if (!isDocumentId(data.leagueId)) fail("A valid league ID is required.");
+    const league = await transaction.get(adminDb.doc(`leagues/${data.leagueId}`));
+    if (!league.exists) fail("The league was not found.", 404);
+    delete data.isStandalone;
+    return;
+  }
+
+  if (entity === "match") {
     if (entity === "match" && isDocumentId(data.managingTeamId)) {
       const manager = await isTeamAdmin(transaction, data.managingTeamId, token);
       if (data.isStandalone === true || data.isIndependent === true || manager.standalone) {
@@ -287,28 +301,24 @@ async function authorizeWrite(
     }
     const leagueId = data.leagueId;
     if (!isDocumentId(leagueId)) fail("A valid league ID is required.");
-    if (entity === "match") {
-      for (const field of ["homeTeamId", "awayTeamId", "managingTeamId"]) {
-        const teamId = data[field];
-        if (teamId !== undefined && teamId !== "" && !isDocumentId(teamId)) {
-          fail("Match team IDs are invalid.");
-        }
+    for (const field of ["homeTeamId", "awayTeamId", "managingTeamId"]) {
+      const teamId = data[field];
+      if (teamId !== undefined && teamId !== "" && !isDocumentId(teamId)) {
+        fail("Match team IDs are invalid.");
       }
-      const teamIds = [data.homeTeamId, data.awayTeamId, data.managingTeamId]
-        .filter((value): value is string => typeof value === "string" && value.length > 0);
-      const leagueAdmin = await isLeagueAdmin(transaction, leagueId, token);
-      let teamAdmin = false;
-      for (const teamId of new Set(teamIds)) {
-        const team = await isTeamAdmin(transaction, teamId, token);
-        if (!team.exists || team.leagueId !== leagueId) {
-          fail("Every match team must belong to the selected league.", 400);
-        }
-        teamAdmin = teamAdmin || team.allowed;
-      }
-      if (leagueAdmin || teamAdmin) return;
-      fail("You do not have permission to create this record.", 403);
     }
-    if (await isLeagueAdmin(transaction, leagueId, token)) return;
+    const teamIds = [data.homeTeamId, data.awayTeamId, data.managingTeamId]
+      .filter((value): value is string => typeof value === "string" && value.length > 0);
+    const leagueAdmin = await isLeagueAdmin(transaction, leagueId, token);
+    let teamAdmin = false;
+    for (const teamId of new Set(teamIds)) {
+      const team = await isTeamAdmin(transaction, teamId, token);
+      if (!team.exists || team.leagueId !== leagueId) {
+        fail("Every match team must belong to the selected league.", 400);
+      }
+      teamAdmin = teamAdmin || team.allowed;
+    }
+    if (leagueAdmin || teamAdmin) return;
     fail("You do not have permission to create this record.", 403);
   }
 
@@ -415,6 +425,10 @@ async function authorizeWrite(
     const team = await transaction.get(adminDb.doc(`teams/${teamId}`));
     const teamData = team.data();
     if (!teamData) fail("The team was not found.", 404);
+    if (data.purge !== undefined && (typeof data.purge !== "boolean" || !isPlatformAdmin(token))) {
+      fail("Only the platform administrator can permanently purge a team.", 403);
+    }
+    if (isPlatformAdmin(token)) return;
     if (typeof teamData.leagueId !== "string" ||
       !(await isLeagueAdmin(transaction, teamData.leagueId, token))) {
       fail("Only the league administrator can delete this team.", 403);
@@ -504,10 +518,9 @@ function resolveScopes(entity: Entity, data: Record<string, unknown>, token: Dec
     }];
   }
   if (entity === "team") {
-    return [
-      { kind: "team-global", id: "all", ...ENTITY_LIMITS.allTeams },
-      { kind: "team-league", id: String(data.leagueId), ...ENTITY_LIMITS.team },
-    ];
+    const scopes: Scope[] = [{ kind: "team-global", id: "all", ...ENTITY_LIMITS.allTeams }];
+    if (data.leagueId) scopes.push({ kind: "team-league", id: String(data.leagueId), ...ENTITY_LIMITS.team });
+    return scopes;
   }
   if (entity === "player" && data.teamId === "") {
     return [{
@@ -635,6 +648,35 @@ function buildRecord(entity: Entity, data: Record<string, unknown>): Record<stri
   if (entity === "match" && typeof record.isHidden !== "boolean") record.isHidden = false;
   if (entity !== "playbook") record.createdAt = FieldValue.serverTimestamp();
   return record;
+}
+
+/**
+ * Removes everything owned by a deleted team: roster, private contact data, depth charts,
+ * playbooks, and the team's own (standalone) games with their plays. League games are kept.
+ */
+async function purgeTeamData(teamId: string): Promise<void> {
+  const refs: FirebaseFirestore.DocumentReference[] = [adminDb.doc(`team_depth_charts/${teamId}`)];
+  const [players, meta, matches] = await Promise.all([
+    adminDb.collection("players").where("teamId", "==", teamId).get(),
+    adminDb.collection(`teams/${teamId}/meta`).get(),
+    adminDb.collection("matches").where("managingTeamId", "==", teamId).get(),
+  ]);
+  for (const player of players.docs) refs.push(player.ref, adminDb.doc(`player_private/${player.id}`));
+  refs.push(...meta.docs.map((entry) => entry.ref));
+  const ownMatches = matches.docs.filter((match) => match.get("isStandalone") === true || !match.get("leagueId"));
+  for (const match of ownMatches) {
+    refs.push(match.ref);
+    const [plays, redPlays] = await Promise.all([
+      adminDb.collection("plays").where("matchId", "==", match.id).get(),
+      adminDb.collection("red_plays").where("matchId", "==", match.id).get(),
+    ]);
+    refs.push(...plays.docs.map((play) => play.ref), ...redPlays.docs.map((play) => play.ref));
+  }
+  for (let index = 0; index < refs.length; index += 400) {
+    const batch = adminDb.batch();
+    for (const ref of refs.slice(index, index + 400)) batch.delete(ref);
+    await batch.commit();
+  }
 }
 
 export async function POST(request: Request) {
@@ -769,6 +811,16 @@ export async function POST(request: Request) {
         if (value !== undefined && value !== "" && !validEmail(value)) {
           fail(`${emailField} is invalid.`);
         }
+      }
+      if (typeof data.leagueId !== "string" ||
+        (data.shortcode !== undefined && (typeof data.shortcode !== "string" || data.shortcode.length > 6)) ||
+        (data.visibility !== undefined && !["public", "private"].includes(String(data.visibility))) ||
+        (data.primaryColor !== undefined &&
+          (typeof data.primaryColor !== "string" || !/^#[0-9a-f]{6}$/i.test(data.primaryColor))) ||
+        (data.isStandalone !== undefined && typeof data.isStandalone !== "boolean") ||
+        (data.subscription !== undefined &&
+          (!data.subscription || typeof data.subscription !== "object" || Array.isArray(data.subscription)))) {
+        fail("Team settings are invalid or exceed their limits.");
       }
     }
     if (requestedEntity === "player" && (typeof data.playerName !== "string" || typeof data.teamId !== "string")) {
@@ -1044,6 +1096,10 @@ export async function POST(request: Request) {
         createdId = recordRef.id;
       }
     });
+
+    if (requestedEntity === "delete_team" && data.purge === true) {
+      await purgeTeamData(String(data.teamId));
+    }
 
     return Response.json({ id: createdId }, { status: 201 });
   } catch (error) {

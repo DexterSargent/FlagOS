@@ -67,7 +67,7 @@ export default function TeamsPage() {
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
-  const { isAdmin, isLeagueAdmin, canManageTeam, canRegisterAsPlayer } = useAuth();
+  const { isAdmin, isLeagueAdmin, isPlatformAdmin, canManageTeam, canRegisterAsPlayer } = useAuth();
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
 
@@ -608,7 +608,7 @@ export default function TeamsPage() {
             </p>
           </div>
 
-          {!activeTeamId && isLeagueAdmin && (
+          {!activeTeamId && isLeagueAdmin && (isDemoLeague || isPlatformAdmin) && (
             <div className="mt-4 md:mt-0 flex gap-2">
               {isAddingTeam ? (
                 <div className="flex items-center gap-2">

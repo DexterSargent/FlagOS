@@ -228,8 +228,8 @@ describe("Platform management page", () => {
 
     expect(await screen.findByText("Customer League")).toBeInTheDocument();
 
-    // Click Delete button on league card
-    fireEvent.click(screen.getByRole("button", { name: /Delete/i }));
+    // Click Delete button on league card (the first Delete belongs to the league column)
+    fireEvent.click(screen.getAllByRole("button", { name: /^Delete$/i })[0]);
 
     // Confirmation dialog opens
     expect(screen.getByRole("heading", { name: "Delete League" })).toBeInTheDocument();
@@ -247,6 +247,27 @@ describe("Platform management page", () => {
     // League is removed from list
     await waitFor(() => {
       expect(screen.queryByText("Customer League")).not.toBeInTheDocument();
+    });
+  });
+
+  it("permanently deletes a team and its data after confirmation", async () => {
+    render(<PlatformAdminPage />);
+
+    expect(await screen.findByText("Customer Team")).toBeInTheDocument();
+    const deleteButtons = screen.getAllByRole("button", { name: /^Delete$/i });
+    fireEvent.click(deleteButtons[deleteButtons.length - 1]);
+
+    expect(screen.getByRole("heading", { name: "Delete Team" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delete Team" }));
+
+    await waitFor(() => {
+      expect(mockCreateSecureRecord).toHaveBeenCalledWith(
+        "delete_team",
+        { teamId: "team_customer_1", purge: true },
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Customer Team")).not.toBeInTheDocument();
     });
   });
 
