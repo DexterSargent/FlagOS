@@ -10,6 +10,18 @@ import {
   YORK_LIONS_PLAYS,
 } from "@/lib/yorkTeamData";
 import TeamPortalHome from "@/app/teams/[id]/page";
+import { loadTeamSeasonSummary } from "@/lib/teamSeasonSummary";
+
+vi.mock("@/lib/teamSeasonSummary", async () => {
+  const { calculateTeamComprehensiveStats } = await import("@/lib/teamStatsCalculator");
+  return { loadTeamSeasonSummary: vi.fn().mockResolvedValue({
+    teamStats: calculateTeamComprehensiveStats("york_lions", [], []), playerStats: {},
+  }) };
+});
+vi.mock("@/lib/secureWrites", () => ({
+  requestPrivateData: vi.fn().mockResolvedValue({ team: {} }),
+  createSecureRecord: vi.fn().mockResolvedValue("record-id"),
+}));
 
 // Mock router
 const mockPush = vi.fn();
@@ -138,6 +150,18 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
     });
 
   describe("TeamPortalHome Page Component for York Lions", () => {
+    it("shows branding and navigation while the season summary is still loading, without querying raw plays", async () => {
+      vi.mocked(loadTeamSeasonSummary).mockReturnValueOnce(new Promise(() => {}));
+      const { getDocs } = await import("firebase/firestore");
+      await act(async () => {
+        render(<Suspense><TeamPortalHome params={Promise.resolve({ id: "york_lions" })} /></Suspense>);
+      });
+      expect(screen.getByText("Schedule")).toBeInTheDocument();
+      expect(screen.getByText("Team")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Loading season statistics");
+      expect(getDocs).not.toHaveBeenCalled();
+    });
+
     it("keeps team edits open and does not cache unsaved colors when a shared save fails", async () => {
       const { updateDoc } = await import("firebase/firestore");
       vi.mocked(updateDoc).mockRejectedValueOnce(new Error("Network unavailable"));
@@ -153,7 +177,7 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       alert.mockRestore();
     });
 
-    it("renders York Lions varsity club branding and complimentary active subscription badge", async () => {
+    it("renders York Lions varsity branding, staff and team navigation", async () => {
       const paramsPromise = Promise.resolve({ id: "york_lions" });
       await act(async () => {
         render(
@@ -170,10 +194,6 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
 
       // Check varsity portal badge
       expect(screen.getAllByText(/Varsity Club Team Portal/i).length).toBeGreaterThan(0);
-
-      // Check complimentary subscription banner
-      expect(screen.getByText(/Active Subscription \(Complimentary Lifetime\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/York Lions Varsity Digital Headquarters/i)).toBeInTheDocument();
 
       // Check coaching staff
       expect(screen.getAllByText(/Dexter Sargent/i).length).toBeGreaterThan(0);
@@ -297,7 +317,7 @@ describe("York Lions Dedicated Team Portal & Standalone Subscription", () => {
       fireEvent.click(screen.getByText("Customize Stats"));
 
       // Check modal heading and category controls
-      expect(screen.getByText("Customize Team Stats Display")).toBeInTheDocument();
+      expect(await screen.findByText("Customize Team Stats Display")).toBeInTheDocument();
       expect(screen.getByText("Reset to Default (Record, PF, PA)")).toBeInTheDocument();
       expect(screen.getByText("Select All")).toBeInTheDocument();
       expect(screen.getByText("Clear All")).toBeInTheDocument();

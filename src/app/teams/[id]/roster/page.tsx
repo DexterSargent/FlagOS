@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   ChevronLeft,
   User,
@@ -32,28 +33,18 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
-import {
-  getSandboxTeams,
-  getSandboxPlayers,
-  getSandboxMatches,
-  getSandboxPlays,
-  addSandboxPlayer,
-  updateSandboxPlayer,
-  deleteSandboxPlayer,
-  subscribeDemoSandbox,
-} from "@/lib/demoSandbox";
-import {
-  isYorkTeam,
-  getYorkTeamData,
-  getYorkTeamPlayers,
-  getYorkTeamMatches,
-  getYorkTeamPlays,
-  YORK_TEAM_ID,
-} from "@/lib/yorkTeamData";
+import { useDemoSandbox } from "@/lib/useDemoSandbox";
+import DemoLoadError from "@/components/DemoLoadError";
+import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
+import { getYorkTeamData } from "@/lib/yorkTeamProfile";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
-import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
-import TeamDepthCharts from "@/components/TeamDepthCharts";
+import { loadTeamSeasonSummary, buildRosterPlayerStats, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
+import type { TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
 import { getFormationPositions, getPlayerPositions, type DepthFormation } from "@/lib/depthChart";
+
+const TeamDepthCharts = dynamic(() => import("@/components/TeamDepthCharts"), {
+  loading: () => <p role="status">Loading depth charts...</p>,
+});
 
 export default function TeamRosterPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -61,12 +52,17 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
   const { canManageTeam, isLeagueAdmin, isTeamAdmin, user } = useAuth();
   const { settings, isDemoLeague } = useLeague();
+  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYorkTeam(teamId));
   const [team, setTeam] = useState<any>(null);
   const [players, setPlayers] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
-  const [plays, setPlays] = useState<any[]>([]);
+  const [seasonTeamStats, setSeasonTeamStats] = useState<TeamComprehensiveStats | null>(null);
   const [playerStats, setPlayerStats] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(isYorkTeam(teamId));
+  const [loadError, setLoadError] = useState("");
+  const [privateRosterReady, setPrivateRosterReady] = useState(false);
+  const requestVersion = useRef(0);
   const [activeTab, setActiveTab] = useState<"roster" | "depth_chart">("roster");
   const [showStats, setShowStats] = useState(false);
   const [depthFormations, setDepthFormations] = useState<DepthFormation[]>([]);
@@ -91,8 +87,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [editPlayerEmails, setEditPlayerEmails] = useState("");
   const [editPlayerPositions, setEditPlayerPositions] = useState<string[]>(["ATH"]);
   const [savingPlayer, setSavingPlayer] = useState(false);
+  const isTeamOrLeagueAdmin = isLeagueAdmin || canManageTeam(teamId) || (typeof isTeamAdmin === "function" && isTeamAdmin(teamId));
 
   const fetchData = async () => {
+    const version = ++requestVersion.current;
     try {
       let tObj: any = null;
       let pList: any[] = [];
@@ -110,27 +108,44 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
           hasSharedRoster = teamSnap.exists();
           pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          if (isTeamOrLeagueAdmin) {
-            const privateData = await requestPrivateData<{
-              team: Record<string, unknown>;
-              players: Record<string, { email?: string; emails?: string[] }>;
-            }>("team", { teamId });
-            tObj = { ...tObj, ...privateData.team };
-            pList = pList.map((player) => ({
-              ...player,
-              ...(privateData.players[player.id] || {}),
-            }));
-          }
         } catch (e) {
           console.warn("Using offline/seed York Lions roster data:", e);
         }
         if (pList.length === 0 && !hasSharedRoster) {
-          pList = getYorkTeamPlayers();
+          pList = (await import("@/lib/yorkTeamData")).getYorkTeamPlayers();
         }
-        const season = await loadYorkSeasonData();
-        mList = season.matches;
-        playList = season.plays;
+        if (version !== requestVersion.current) return;
+        setTeam(tObj);
+        setPlayers([...pList].sort((a, b) => a.playerName.localeCompare(b.playerName)));
+        setLoading(false);
+        if (isTeamOrLeagueAdmin) {
+          requestPrivateData<{
+            team: Record<string, unknown>;
+            players: Record<string, { email?: string; emails?: string[] }>;
+          }>("team", { teamId }).then((privateData) => {
+            if (version !== requestVersion.current) return;
+            setTeam((current: Record<string, unknown>) => ({ ...current, ...privateData.team }));
+            setPlayers((current) => current.map((player) => ({ ...player, ...(privateData.players[player.id] || {}) })));
+            setPrivateRosterReady(true);
+          }).catch((error: unknown) => {
+            console.error("Unable to load private roster settings:", error);
+            if (version === requestVersion.current) setLoadError("Coach roster settings could not be loaded. Refresh before editing.");
+          });
+        }
+        setStatsLoading(true);
+        loadTeamSeasonSummary(teamId).then((summary) => {
+          if (version !== requestVersion.current) return;
+          setSeasonTeamStats(summary.teamStats);
+          setPlayerStats(buildRosterPlayerStats(summary, pList.map((player) => player.playerName)));
+        }).catch((error: unknown) => {
+          console.error("Unable to load roster statistics:", error);
+          if (version === requestVersion.current) setLoadError("Season statistics could not be loaded. Refresh to retry.");
+        }).finally(() => { if (version === requestVersion.current) setStatsLoading(false); });
+        return;
       } else if (isDemoLeague) {
+        if (!sandbox) return;
+        setPrivateRosterReady(true);
+        const { getSandboxTeams, getSandboxPlayers, getSandboxMatches, getSandboxPlays } = sandbox;
         tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
         const effectiveTeamId = tObj?.id || teamId;
         pList = getSandboxPlayers().filter((p) => p.teamId === effectiveTeamId);
@@ -140,8 +155,38 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         const teamSnap = await getDoc(doc(db, "teams", teamId));
         if (teamSnap.exists()) tObj = { id: teamSnap.id, ...teamSnap.data() };
         const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
-        const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
-          getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
+        const playersSnap = await getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30)));
+        if (version !== requestVersion.current) return;
+        pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setTeam(tObj && isRealTeam(tObj) ? tObj : null);
+        setPlayers([...pList].sort((a, b) => a.playerName.localeCompare(b.playerName)));
+        setLoading(false);
+        if (isTeamOrLeagueAdmin) {
+          requestPrivateData<{
+            team: Record<string, unknown>;
+            players: Record<string, { email?: string; emails?: string[] }>;
+          }>("team", { teamId }).then((privateData) => {
+            if (version !== requestVersion.current) return;
+            setTeam((current: Record<string, unknown>) => ({ ...current, ...privateData.team }));
+            setPlayers((current) => current.map((player) => ({ ...player, ...(privateData.players[player.id] || {}) })));
+            setPrivateRosterReady(true);
+          }).catch((error: unknown) => {
+            console.error("Unable to load private roster settings:", error);
+            if (version === requestVersion.current) setLoadError("Coach roster settings could not be loaded. Refresh before editing.");
+          });
+        }
+        setStatsLoading(true);
+        try {
+          const summary = await loadTeamSeasonSummary(teamId);
+          if (version !== requestVersion.current) return;
+          setSeasonTeamStats(summary.teamStats);
+          setPlayerStats(buildRosterPlayerStats(summary, pList.map((player) => player.playerName)));
+          setStatsLoading(false);
+          return;
+        } catch (error) {
+          if (!(error instanceof TeamSeasonSummaryError) || error.status !== 404) throw error;
+        }
+        const [matchesSnap, playsSnap] = await Promise.all([
           getDocs(query(
             collection(db, "matches"),
             where("leagueId", "==", leagueId),
@@ -155,22 +200,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             limit(10_000),
           )),
         ]);
-        pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        if (isTeamOrLeagueAdmin) {
-          const privateData = await requestPrivateData<{
-            team: Record<string, unknown>;
-            players: Record<string, { email?: string; emails?: string[] }>;
-          }>("team", { teamId });
-          tObj = { ...tObj, ...privateData.team };
-          pList = pList.map((player) => ({
-            ...player,
-            ...(privateData.players[player.id] || {}),
-          }));
-        }
         mList = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         playList = playsSnap.docs.map((d) => d.data() as any);
       }
 
+      if (version !== requestVersion.current) return;
       if (tObj && isRealTeam(tObj)) {
         setTeam(tObj);
       } else {
@@ -179,7 +213,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       pList.sort((a: any, b: any) => a.playerName.localeCompare(b.playerName));
       setPlayers(pList);
       setMatches(mList);
-      setPlays(playList);
 
       // Compute Individual Player Stats for this team's players
       const statsMap: Record<string, any> = {};
@@ -293,17 +326,24 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       setPlayerStats(statsMap);
     } catch (e) {
       console.error("Error fetching roster data:", e);
+      if (version === requestVersion.current) setLoadError("The roster could not be loaded. Refresh to retry.");
     }
+    if (version !== requestVersion.current) return;
     setLoading(false);
+    setStatsLoading(false);
   };
 
   useEffect(() => {
+    setPrivateRosterReady(false);
+    setSeasonTeamStats(null);
+    setLoadError("");
     fetchData();
-    if (isDemoLeague && !isYorkTeam(teamId)) {
-      const unsub = subscribeDemoSandbox(() => fetchData());
-      return () => unsub();
+    let unsubscribe: (() => void) | undefined;
+    if (isDemoLeague && !isYorkTeam(teamId) && sandbox) {
+      unsubscribe = sandbox.subscribeDemoSandbox(() => fetchData());
     }
-  }, [teamId, isDemoLeague]);
+    return () => { requestVersion.current++; unsubscribe?.(); };
+  }, [teamId, isDemoLeague, isTeamOrLeagueAdmin, sandbox]);
 
   const minRosterSize = settings.rules?.minRosterSize || 5;
   const maxRosterSize = 30; // Hard cap of 30 players for all teams
@@ -328,7 +368,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         .filter(Boolean);
 
       if (isDemoLeague && !isYorkTeam(teamId)) {
-        const newPlayerObj = addSandboxPlayer({
+        if (!sandbox) throw new Error("The demo is not loaded.");
+        const newPlayerObj = sandbox.addSandboxPlayer({
           playerName: newPlayerName.trim(),
           teamId: teamId,
           number: newPlayerNumber.trim(),
@@ -388,6 +429,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
   // Handler: Open Edit Player Modal
   const handleOpenEditPlayer = (p: any) => {
+    if (!privateRosterReady) {
+      setLoadError("Coach roster settings must finish loading before players can be edited.");
+      return;
+    }
     setEditingPlayer(p);
     setEditPlayerName(p.playerName || "");
     setEditPlayerNumber(p.number || p.jerseyNumber || "");
@@ -422,7 +467,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       };
 
       if (isDemoLeague && !isYorkTeam(teamId)) {
-        updateSandboxPlayer(editingPlayer.id, updatedFields);
+        if (!sandbox) throw new Error("The demo is not loaded.");
+        sandbox.updateSandboxPlayer(editingPlayer.id, updatedFields);
         setPlayers((prev) =>
           prev.map((p) => (p.id === editingPlayer.id ? { ...p, ...updatedFields } : p))
         );
@@ -460,7 +506,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
     try {
       if (isDemoLeague && !isYorkTeam(teamId)) {
-        deleteSandboxPlayer(playerId);
+        if (!sandbox) throw new Error("The demo is not loaded.");
+        sandbox.deleteSandboxPlayer(playerId);
         setPlayers((prev) => prev.filter((p) => p.id !== playerId));
         if (selectedPlayerForStats?.id === playerId) {
           setSelectedPlayerForStats(null);
@@ -478,7 +525,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const isTeamOrLeagueAdmin = isLeagueAdmin || canManageTeam(teamId) || (typeof isTeamAdmin === "function" && isTeamAdmin(teamId));
   const hasEditAccess = isTeamOrLeagueAdmin;
   const teamName = team?.name || "Team";
 
@@ -503,7 +549,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     else if (scored < allowed) losses++;
     else ties++;
   });
+  if (seasonTeamStats) {
+    ({ wins, losses, ties, pf, pa } = seasonTeamStats);
+  }
 
+  if (demoError) return <DemoLoadError retry={retryDemo} />;
   if (loading) {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
@@ -538,6 +588,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
+        {loadError && <p role="alert" className="text-red-300">{loadError}</p>}
+        {statsLoading && <p role="status" className="text-neutral-400">Loading season statistics...</p>}
         {/* Navigation */}
         <Link
           href={`/teams/${teamId}`}
@@ -615,7 +667,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           </div>
           <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
             <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Games Played</span>
-            <div className="text-2xl font-black text-white mt-1">{teamMatches.length}</div>
+            <div className="text-2xl font-black text-white mt-1">{seasonTeamStats?.gp ?? teamMatches.length}</div>
           </div>
           <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
             <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Points Scored</span>
@@ -800,6 +852,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                                 onClick={() => handleOpenEditPlayer(p)}
                                 className="p-1.5 rounded-lg bg-white/5 hover:bg-blue-500/20 text-neutral-400 hover:text-blue-400 transition-colors"
                                 title="Edit Player Details"
+                                disabled={!privateRosterReady}
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>

@@ -13,6 +13,8 @@ import {
 } from "./demoSeedData";
 import { getGeneratedSeasonPlays } from "./demoPlayGenerator";
 import { isYorkTeam, YORK_LIONS_MATCHES, YORK_LIONS_PLAYS } from "./yorkTeamData";
+import { DEMO_EVENT, isDemoLeague, notifySandboxChange } from "./demoSandboxRuntime";
+export { DEMO_EVENT, isDemoLeague, notifySandboxChange, subscribeDemoSandbox } from "./demoSandboxRuntime";
 
 export type { DemoTeam, DemoPlayer, DemoMatch, DemoPlay };
 export { SEED_DEMO_TEAMS, SEED_DEMO_PLAYERS, SEED_DEMO_MATCHES, SEED_DEMO_PLAYS, getGeneratedSeasonPlays };
@@ -39,23 +41,6 @@ export interface ScheduleBackup {
   savedAt: number;
   expiresAt: number;
 }
-
-export const DEMO_EVENT = "flagos_demo_sandbox_updated";
-
-export const isDemoLeague = (leagueId?: string | null): boolean => {
-  if (typeof window !== "undefined") {
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      if (sp.get("embed") === "true" || sp.get("demo") === "true") {
-        return true;
-      }
-    } catch {
-      // ignore
-    }
-  }
-  if (!leagueId) return true;
-  return leagueId === "default" || leagueId === "demo";
-};
 
 export const isDemoMatch = (matchId?: string | null, leagueId?: string | null): boolean => {
   if (typeof window !== "undefined") {
@@ -179,19 +164,6 @@ export const resetDemoSession = (): void => {
 
   // Notify all components in the active tab to re-sync
   window.dispatchEvent(new CustomEvent(DEMO_EVENT));
-};
-
-export const notifySandboxChange = (): void => {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent(DEMO_EVENT));
-  }
-};
-
-export const subscribeDemoSandbox = (callback: () => void): (() => void) => {
-  if (typeof window === "undefined") return () => {};
-  const handler = () => callback();
-  window.addEventListener(DEMO_EVENT, handler);
-  return () => window.removeEventListener(DEMO_EVENT, handler);
 };
 
 // ---------------------------------------------------------------------------

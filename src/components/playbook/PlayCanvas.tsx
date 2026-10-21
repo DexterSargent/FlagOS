@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import { useLeague } from "@/lib/leagueContext";
 import { YORK_OFFENSIVE_PLAYBOOK_ID } from "@/lib/yorkOffensivePlaybook";
 import {
@@ -42,6 +43,13 @@ import {
   StandardZoneTemplate,
 } from "@/lib/playbookTypes";
 import {
+  advanceAnimationProgress,
+  createAnimationProgressStore,
+  createPlayAnimationModel,
+  PLAY_ANIMATION_DURATION_SECONDS,
+  type AnimationProgressStore,
+} from "./playAnimation";
+import {
   Play,
   Pause,
   RotateCcw,
@@ -72,9 +80,7 @@ import {
   Hash,
   Ruler,
   Compass,
-  Bookmark,
   FileText,
-  Star,
   X,
   Layers,
   MessageSquare,
@@ -96,41 +102,40 @@ const DEFENSIVE_ZONE_CATEGORIES = [
   { id: "special", label: "Special", category: "Special Assignment" },
 ] as const;
 
-function interpolatePointsAlongPath(points: RoutePoint[], progress: number): { x: number; y: number } {
-  if (points.length === 0) return { x: 50, y: 50 };
-  if (points.length === 1 || progress <= 0) return { x: points[0].x, y: points[0].y };
-  if (progress >= 1) return { x: points[points.length - 1].x, y: points[points.length - 1].y };
+// Lightweight dialogs are only fetched when a coach opens them.
+const SaveRoutePresetDialog = dynamic(() =>
+  import("./PlayCanvasDialogs").then((mod) => mod.SaveRoutePresetDialog)
+);
+const PositionNotesDialog = dynamic(() =>
+  import("./PlayCanvasDialogs").then((mod) => mod.PositionNotesDialog)
+);
+const PlayNotesDialog = dynamic(() => import("./PlayCanvasDialogs").then((mod) => mod.PlayNotesDialog));
+const loadRouteCatalogDrawer = () => import("./RouteCatalogDrawer");
+// The route tree drawer (40+ preset cards) is split out and warmed on hover/focus of its toggle.
+const RouteCatalogDrawer = dynamic(loadRouteCatalogDrawer, {
+  loading: () => (
+    <div
+      role="status"
+      className="mt-2.5 rounded-2xl border border-cyan-500/40 bg-[#0A0E17] p-3 text-xs font-bold text-cyan-300"
+    >
+      Loading route catalog?
+    </div>
+  ),
+});
 
-  const dists: number[] = [];
-  let totalDist = 0;
-  for (let i = 0; i < points.length - 1; i++) {
-    const dx = points[i + 1].x - points[i].x;
-    const dy = points[i + 1].y - points[i].y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    dists.push(d);
-    totalDist += d;
-  }
-
-  if (totalDist === 0) return { x: points[0].x, y: points[0].y };
-
-  const targetDist = progress * totalDist;
-  let accumulated = 0;
-
-  for (let i = 0; i < dists.length; i++) {
-    const segDist = dists[i];
-    if (accumulated + segDist >= targetDist || i === dists.length - 1) {
-      const segProgress = segDist > 0 ? (targetDist - accumulated) / segDist : 0;
-      const currentP = points[i];
-      const nextP = points[i + 1];
-      return {
-        x: currentP.x + (nextP.x - currentP.x) * Math.min(1, Math.max(0, segProgress)),
-        y: currentP.y + (nextP.y - currentP.y) * Math.min(1, Math.max(0, segProgress)),
-      };
-    }
-    accumulated += segDist;
-  }
-
-  return points[points.length - 1];
+/**
+ * Subscribes only its own subtree to animation progress so each frame skips the
+ * heavy designer chrome (sidebar, catalogs, command bar).
+ */
+function AnimationProgressView({
+  store,
+  children,
+}: {
+  store: AnimationProgressStore;
+  children: (progress: number) => ReactNode;
+}) {
+  const progress = useSyncExternalStore(store.subscribe, store.get, store.get);
+  return <>{children(progress)}</>;
 }
 
 interface PlayCanvasProps {
@@ -142,18 +147,54 @@ interface PlayCanvasProps {
 }
 
 export default function PlayCanvas({
-  play,
+  play: committedPlay,
   onChange: onPlayChange,
   readOnly = false,
   playbook,
   onOpenQuestions,
 }: PlayCanvasProps) {
+  // Pointer drags edit a local draft so the parent (and its localStorage persistence) only
+  // receives the released result instead of one full playbook write per pointer move.
+  const [dragDraft, setDragDraft] = useState<PlayDiagram | null>(null);
+  const dragDraftRef = useRef<PlayDiagram | null>(null);
+  const play = dragDraft && dragDraft.id === committedPlay.id ? dragDraft : committedPlay;
+
   const onChange = useCallback((updatedPlay: PlayDiagram) => {
-    const previousZoneIds = new Set(play.players.map((player) => player.zoneId).filter(Boolean));
+    const previousZoneIds = new Set(committedPlay.players.map((player) => player.zoneId).filter(Boolean));
     const assignedZoneIds = new Set(updatedPlay.players.map((player) => player.zoneId).filter(Boolean));
     const zones = updatedPlay.zones?.filter((zone) => !previousZoneIds.has(zone.id) || assignedZoneIds.has(zone.id));
     onPlayChange({ ...updatedPlay, zones });
-  }, [play.players, onPlayChange]);
+  }, [committedPlay.players, onPlayChange]);
+
+  const getDragBase = () =>
+    dragDraftRef.current && dragDraftRef.current.id === committedPlay.id ? dragDraftRef.current : play;
+  const updateDragDraft = (next: PlayDiagram) => {
+    dragDraftRef.current = next;
+    setDragDraft(next);
+  };
+  const commitDragDraft = () => {
+    const draft = dragDraftRef.current;
+    dragDraftRef.current = null;
+    setDragDraft(null);
+    if (draft && draft.id === committedPlay.id) onChange(draft);
+  };
+
+  // Never drop an in-progress drag: flush it if the designer unmounts or switches plays mid-drag.
+  const flushDragDraftRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    flushDragDraftRef.current = () => {
+      const draft = dragDraftRef.current;
+      dragDraftRef.current = null;
+      if (draft) onPlayChange(draft);
+    };
+  }, [onPlayChange]);
+  useEffect(() => () => flushDragDraftRef.current?.(), []);
+  useEffect(() => {
+    if (dragDraftRef.current && dragDraftRef.current.id !== committedPlay.id) {
+      flushDragDraftRef.current?.();
+      setDragDraft(null);
+    }
+  }, [committedPlay.id]);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -198,7 +239,8 @@ export default function PlayCanvas({
 
   // Animation State
   const [animating, setAnimating] = useState(false);
-  const [progress, setProgress] = useState(0); // 0 to 1
+  // Progress (0 to 1) lives outside React state so frames only re-render subscribed field layers.
+  const [progressStore] = useState(() => createAnimationProgressStore());
   const [animSpeed, setAnimSpeed] = useState<number>(1); // 0.5x, 1x, 1.5x
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
@@ -496,6 +538,9 @@ export default function PlayCanvas({
   }, [play.id, play.type, play.players, selectedPlayerId]);
 
   const offensePlayers = play.players.filter((p) => p.side === "offense");
+  const currentQb = offensePlayers.find(
+    (p) => p.label === "QB" || p.role.toLowerCase().includes("qb")
+  ) || { x: 50, y: (play.losY || DEFAULT_LOS_Y) + 9 };
   const defensePlayers = play.players.filter((p) => p.side === "defense");
 
   const losY = play.losY || DEFAULT_LOS_Y;
@@ -514,8 +559,13 @@ export default function PlayCanvas({
   const visiblePlayers = (play.players || []).filter((p) => (showOpposingSide ? true : p.side === play.type));
 
   // Compute legal status across visible players in play
+  const legalityByPlayer = useMemo(
+    () => new Map(play.players.map((p) => [p, checkLegalPosition(p, losY)] as const)),
+    [play.players, losY]
+  );
+  const getLegality = (p: PlayerNode) => legalityByPlayer.get(p) ?? checkLegalPosition(p, losY);
   const alignmentIssues = visiblePlayers
-    .map((p) => ({ player: p, ...checkLegalPosition(p, losY) }))
+    .map((p) => ({ player: p, ...getLegality(p) }))
     .filter((item) => !item.isLegal);
 
   // Guarantee squad sizing matching active squad size on both sides of the ball
@@ -541,7 +591,7 @@ export default function PlayCanvas({
       setAnimating(false);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     } else {
-      if (progress >= 1) setProgress(0);
+      if (progressStore.get() >= 1) progressStore.set(0);
       setAnimating(true);
       lastTimeRef.current = performance.now();
     }
@@ -549,7 +599,7 @@ export default function PlayCanvas({
 
   const handleResetAnimate = () => {
     setAnimating(false);
-    setProgress(0);
+    progressStore.set(0);
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
   };
 
@@ -561,17 +611,13 @@ export default function PlayCanvas({
       const delta = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
 
-      // Complete play in ~3.2 seconds at 1x
-      const rate = (1 / 3.2) * animSpeed;
-      setProgress((prev) => {
-        const next = prev + delta * rate;
-        if (next >= 1) {
-          setAnimating(false);
-          return 1;
-        }
-        return next;
-      });
-
+      const { progress: next, done } = advanceAnimationProgress(progressStore.get(), delta, animSpeed);
+      progressStore.set(next);
+      if (done) {
+        animFrameRef.current = null;
+        setAnimating(false);
+        return;
+      }
       animFrameRef.current = requestAnimationFrame(animateStep);
     };
 
@@ -579,7 +625,7 @@ export default function PlayCanvas({
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [animating, animSpeed]);
+  }, [animating, animSpeed, progressStore]);
 
   // Convert client cursor coords to SVG percentage (0 - 100) with precise SVG screen transformation
   const getSvgCoordinates = useCallback(
@@ -740,8 +786,10 @@ export default function PlayCanvas({
   // Pointer Move (Dragging with Strict LOS Clamping)
   const handlePointerMove = (e: React.PointerEvent) => {
     if (readOnly) return;
+    if (!draggedPlayerId && !draggedZoneId) return;
     const coords = getSvgCoordinates(e);
     if (!coords) return;
+    const play = getDragBase();
 
     // Dragging Player Starting Node
     if (draggedPlayerId && draggedWaypointIndex === null && dragStartRef.current) {
@@ -806,7 +854,7 @@ export default function PlayCanvas({
         }
         return p;
       });
-      onChange({ ...play, players: updatedPlayers });
+      updateDragDraft({ ...play, players: updatedPlayers });
       return;
     }
 
@@ -839,7 +887,7 @@ export default function PlayCanvas({
         }
         return p;
       });
-      onChange({ ...play, players: updatedPlayers });
+      updateDragDraft({ ...play, players: updatedPlayers });
       return;
     }
 
@@ -863,12 +911,14 @@ export default function PlayCanvas({
       const attachedPlayers = play.players.map((p) =>
         p.zoneId === draggedZoneId ? { ...p, route: [{ x: clampedZone.x, y: clampedZone.y }] } : p
       );
-      onChange({ ...play, zones: updatedZones, players: attachedPlayers });
+      updateDragDraft({ ...play, zones: updatedZones, players: attachedPlayers });
       return;
     }
   };
 
+  // Release, cancel and lost capture all end the drag and persist the latest preview once.
   const handlePointerUp = (e: React.PointerEvent) => {
+    commitDragDraft();
     setDraggedPlayerId(null);
     setDraggedWaypointIndex(null);
     setDraggedZoneId(null);
@@ -1455,72 +1505,10 @@ export default function PlayCanvas({
     setSelectedPlayerId(null);
   };
 
-  // Calculate animated position of player given progress (0 to 1)
-  const getAnimatedPlayerPos = (player: PlayerNode): { x: number; y: number } => {
-    if (player.side === "defense" && player.coverageType === "man" && player.manTargetId) {
-      const receiver = play.players.find((target) => target.id === player.manTargetId && target.side === "offense");
-      if (receiver) {
-        const receiverPos = getAnimatedPlayerPos(receiver);
-        return {
-          x: player.x + receiverPos.x - receiver.x,
-          y: player.y + receiverPos.y - receiver.y,
-        };
-      }
-    }
-    const isOffense = player.side === "offense";
-    const hasMotion = isOffense && playerHasMotion(player);
-    const motionPts = hasMotion ? getPlayerMotionPath(player) : null;
-    const hasPostSnapRoute = Boolean(
-      player.route &&
-      player.route.length > 0 &&
-      (player.routeType !== "motion" || !motionPts)
-    );
-
-    const hasAnyMotionInPlay = play.players.some((p) => p.side === "offense" && playerHasMotion(p));
-
-    if (hasAnyMotionInPlay) {
-      if (progress <= 0.35) {
-        // Pre-snap phase: motion player runs their motion path; all others hold alignment
-        if (hasMotion && motionPts && motionPts.length > 0) {
-          const fullMotionPoints = [{ x: player.x, y: player.y }, ...motionPts];
-          const motionProg = Math.min(1, Math.max(0, progress / 0.35));
-          return interpolatePointsAlongPath(fullMotionPoints, motionProg);
-        }
-        return { x: player.x, y: player.y };
-      }
-
-      // Post-snap phase: progress > 0.35
-      const postSnapProg = Math.min(1, Math.max(0, (progress - 0.35) / 0.65));
-
-      if (hasPostSnapRoute && player.route && player.route.length > 0) {
-        const origin = motionPts && motionPts.length > 0 ? motionPts[motionPts.length - 1] : { x: player.x, y: player.y };
-        const fullRoutePoints = [origin, ...player.route];
-        return interpolatePointsAlongPath(fullRoutePoints, postSnapProg);
-      }
-
-      if (hasMotion && motionPts && motionPts.length > 0) {
-        return motionPts[motionPts.length - 1];
-      }
-
-      if (animating && player.label === "QB") {
-        return { x: player.x, y: player.y + postSnapProg * 2.5 };
-      }
-
-      return { x: player.x, y: player.y };
-    }
-
-    // Play without motion:
-    if (hasPostSnapRoute && player.route && player.route.length > 0) {
-      const fullRoutePoints = [{ x: player.x, y: player.y }, ...player.route];
-      return interpolatePointsAlongPath(fullRoutePoints, progress);
-    }
-
-    if (animating && player.label === "QB") {
-      return { x: player.x, y: player.y + progress * 2.5 };
-    }
-
-    return { x: player.x, y: player.y };
-  };
+  // Route/motion geometry is measured once per players change; frames only interpolate.
+  const animationModel = useMemo(() => createPlayAnimationModel(play.players), [play.players]);
+  const getAnimatedPlayerPos = (player: PlayerNode, progress: number) =>
+    animationModel.getPosition(player, progress, animating);
 
   return (
     <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-2 sm:gap-3 [@media(max-width:639px)_and_(min-height:451px)]:gap-1.5 w-full max-w-full overflow-hidden [@media(max-width:639px)_and_(min-height:451px)]:overflow-y-auto font-sans h-full min-h-0 [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400">
@@ -1695,6 +1683,8 @@ export default function PlayCanvas({
             className="w-full h-full"
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onLostPointerCapture={handlePointerUp}
             onPointerDown={handleCanvasClick}
           >
             <defs>
@@ -1919,15 +1909,16 @@ export default function PlayCanvas({
             {/* ============================================================== */}
             {/* MAN COVERAGE DOTTED LOCK LINES                                 */}
             {/* ============================================================== */}
-            {play.players
+            <AnimationProgressView store={progressStore}>
+            {(progress) => play.players
               .filter((p) => p.side === "defense" && p.coverageType === "man" && p.manTargetId)
               .map((def) => {
                 const targetOff = play.players.find((p) => p.id === def.manTargetId);
                 if (!targetOff) return null;
                 if (!showOpposingSide && selectedPlayerId !== def.id) return null;
 
-                const defPos = getAnimatedPlayerPos(def);
-                const targetPos = getAnimatedPlayerPos(targetOff);
+                const defPos = getAnimatedPlayerPos(def, progress);
+                const targetPos = getAnimatedPlayerPos(targetOff, progress);
 
                 const x1 = (defPos.x / 100) * 1000;
                 const y1 = (defPos.y / 100) * 700;
@@ -2004,6 +1995,7 @@ export default function PlayCanvas({
                   </g>
                 );
               })}
+            </AnimationProgressView>
 
             {/* ============================================================== */}
             {/* ROUTE PATHS (WAYPOINTS, Rush BEND & ARROWHEADS)           */}
@@ -2040,10 +2032,6 @@ export default function PlayCanvas({
               let routePathStr = "";
               let bendWp: RoutePoint | null = null;
               if (hasPostSnapRoute && player.route && player.route.length > 0) {
-                const currentQb = play.players.find(
-                  (p) => p.side === "offense" && (p.label === "QB" || p.role.toLowerCase().includes("qb"))
-                ) || { x: 50, y: losY + 9 };
-
                 bendWp = isRush
                   ? player.route[0] || { x: (player.x + currentQb.x) / 2, y: (player.y + currentQb.y) / 2 }
                   : null;
@@ -2253,16 +2241,17 @@ export default function PlayCanvas({
             {/* ============================================================== */}
             {/* PLAYER NODES (OFFENSE & DEFENSE)                              */}
             {/* ============================================================== */}
-            {visiblePlayers.map((player) => {
+            <AnimationProgressView store={progressStore}>
+            {(progress) => visiblePlayers.map((player) => {
               const isSelected = selectedPlayerId === player.id;
               const isOffense = player.side === "offense";
-              const animPos = getAnimatedPlayerPos(player);
+              const animPos = getAnimatedPlayerPos(player, progress);
 
               const px = (animPos.x / 100) * 1000;
               const py = (animPos.y / 100) * 700;
 
               // Check legality on starting spot (not during animation)
-              const legality = checkLegalPosition(player, losY);
+              const legality = getLegality(player);
               const isIllegal = !legality.isLegal;
 
               return (
@@ -2454,6 +2443,7 @@ export default function PlayCanvas({
                 </g>
               );
             })}
+            </AnimationProgressView>
 
             {/* Live depth readout while holding a route point */}
             {draggedWaypointYards !== null &&
@@ -2503,7 +2493,9 @@ export default function PlayCanvas({
               }`}
             >
               {animating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              <span>{animating ? "Pause" : progress >= 1 ? "Replay" : "Run Play"}</span>
+              <AnimationProgressView store={progressStore}>
+                {(progress) => <span>{animating ? "Pause" : progress >= 1 ? "Replay" : "Run Play"}</span>}
+              </AnimationProgressView>
             </button>
 
             <button
@@ -2536,9 +2528,11 @@ export default function PlayCanvas({
           </div>
 
           {/* Timeline Scrubber */}
+          <AnimationProgressView store={progressStore}>
+            {(progress) => (
           <div className="flex items-center gap-2 flex-1 min-w-24 max-w-xs ml-auto">
             <span className="text-[10px] font-mono text-neutral-500 tabular-nums">
-              {(progress * 3.2).toFixed(1)}s
+              {(progress * PLAY_ANIMATION_DURATION_SECONDS).toFixed(1)}s
             </span>
             <input
               type="range"
@@ -2549,11 +2543,13 @@ export default function PlayCanvas({
               value={progress}
               onChange={(e) => {
                 setAnimating(false);
-                setProgress(parseFloat(e.target.value));
+                progressStore.set(parseFloat(e.target.value));
               }}
               className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
             />
           </div>
+            )}
+          </AnimationProgressView>
         </div>
       </div>
 
@@ -2770,6 +2766,9 @@ export default function PlayCanvas({
                       setIsPresetMenuOpen((prev) => !prev);
                       setIsMotionMenuOpen(false);
                     }}
+                    onPointerEnter={() => void loadRouteCatalogDrawer()}
+                    onPointerDown={() => void loadRouteCatalogDrawer()}
+                    onFocus={() => void loadRouteCatalogDrawer()}
                     data-testid="route-presets-toggle"
                     aria-label={isPresetMenuOpen ? "Hide route catalog" : "Show route catalog"}
                     aria-expanded={isPresetMenuOpen}
@@ -2881,194 +2880,29 @@ export default function PlayCanvas({
 
               {/* Inline Collapsible Catalog Drawer (rendered in-flow so overflow-hidden never clips it) */}
               {isPresetMenuOpen && (
-                <div
-                  data-testid="route-presets-catalog"
-                  className="mt-2.5 bg-[#0A0E17] border border-cyan-500/40 rounded-2xl p-3 shadow-2xl space-y-2.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[42dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:450px)]:fixed [@media(max-height:450px)]:inset-y-0 [@media(max-height:450px)]:right-0 [@media(max-height:450px)]:left-auto [@media(max-height:450px)]:bottom-0 [@media(max-height:450px)]:z-[70] [@media(max-height:450px)]:mt-0 [@media(max-height:450px)]:w-[42%] [@media(max-height:450px)]:max-h-none [@media(max-height:450px)]:overflow-y-auto [@media(max-height:450px)]:rounded-none [@media(max-height:450px)]:border-y-0 [@media(max-height:450px)]:border-r-0"
-                >
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-cyan-400" />
-                      <span className="text-xs font-black uppercase tracking-wider text-white">Route Tree & Team Presets Catalog</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsPresetMenuOpen(false)}
-                      className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
-                      title="Close catalog"
-                      aria-label="Close route catalog"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Adjustable route depth */}
-                  <div data-testid="route-depth-control" className="rounded-xl bg-black/50 border border-white/10 p-2.5 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-black uppercase tracking-wider text-neutral-300">
-                        Route depth
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          disabled={readOnly}
-                          onClick={() => handleDepthChange(effectiveRouteDepth - 1)}
-                          aria-label="Decrease route depth"
-                          className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white text-lg font-black cursor-pointer"
-                        >
-                          −
-                        </button>
-                        <span
-                          data-testid="route-depth-value"
-                          className="min-w-16 text-center text-sm font-mono font-black text-cyan-300 tabular-nums"
-                        >
-                          {effectiveRouteDepth} yd
-                        </span>
-                        <button
-                          type="button"
-                          disabled={readOnly}
-                          onClick={() => handleDepthChange(effectiveRouteDepth + 1)}
-                          aria-label="Increase route depth"
-                          className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white text-lg font-black cursor-pointer"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <input
-                      type="range"
-                      min={MIN_ROUTE_DEPTH_YARDS}
-                      max={maxRouteDepthYards}
-                      step={1}
-                      value={effectiveRouteDepth}
-                      disabled={readOnly}
-                      onChange={(e) => handleDepthChange(parseInt(e.target.value, 10))}
-                      aria-label="Route depth in yards"
-                      className="w-full h-6 cursor-pointer accent-cyan-400"
-                    />
-                    <div className="hidden sm:block text-[10px] text-neutral-400 font-mono">
-                      How far downfield the route breaks. Pick a route below to use this depth
-                      {routeDepth === null && currentCatalogRoute ? " (currently the route default)" : ""}.
-                    </div>
-                  </div>
-
-                  {/* Custom Team Presets Section */}
-                  {customPresets.length > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-current text-amber-400" />
-                        <span>Custom Team Presets ({customPresets.length}):</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {customPresets.map((cp) => {
-                          const isCurrent = selectedPlayer.quickRouteName === cp.name;
-                          return (
-                            <div key={cp.id} className="relative group">
-                              <button
-                                type="button"
-                                disabled={readOnly}
-                                onClick={() => {
-                                  handleApplyCustomPreset(cp);
-                                }}
-                                className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
-                                  isCurrent
-                                    ? "bg-emerald-500 text-black border-emerald-400 shadow-md font-extrabold"
-                                    : "bg-emerald-950/30 text-emerald-300 hover:bg-emerald-900/50 hover:text-white border-emerald-500/30"
-                                }`}
-                              >
-                                <span className="min-w-0 break-words">{cp.name}</span>
-                                {isCurrent && <Check className="w-3 h-3 text-black shrink-0" />}
-                              </button>
-                              {!readOnly && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteCustomPreset(cp.id, cp.name, e)}
-                                  className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-600/80 hover:bg-red-500 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                  title={`Delete preset ${cp.name}`}
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Standard Catalog Route Tree */}
-                  <div className="space-y-1.5">
-                    <div className="text-[10px] font-bold text-neutral-400 flex flex-wrap items-center justify-between gap-1">
-                      <span>Standard Route Tree Catalog ({ROUTE_PRESETS_CATALOG.length})</span>
-                      <span className="text-[10px] text-cyan-400/80 font-mono">Click to preview route on {selectedPlayer.label}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {ROUTE_PRESETS_CATALOG.map((rp) => {
-                        const isCurrent =
-                          selectedPlayer.quickRouteName === rp.name ||
-                          selectedPlayer.quickRouteName === rp.shortName;
-                        return (
-                          <button
-                            key={rp.name}
-                            type="button"
-                            disabled={readOnly}
-                            onClick={() => {
-                              handleApplyPreset(rp.name, routeDepth ?? undefined);
-                            }}
-                            data-testid={`catalog-route-${rp.shortName.toLowerCase()}`}
-                            className={`p-2 sm:p-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-start justify-between gap-2 cursor-pointer ${
-                              isCurrent
-                                ? "bg-cyan-500 text-black border-cyan-400 shadow-md font-extrabold"
-                                : "bg-black/60 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/10"
-                            }`}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-col items-start gap-1">
-                                <span className="font-bold break-words leading-snug">{rp.name}</span>
-                                <span
-                                  className={`text-[9px] px-1.5 py-0.2 rounded font-mono uppercase ${
-                                    isCurrent ? "bg-black/20 text-black" : "bg-white/10 text-neutral-400"
-                                  }`}
-                                >
-                                  {rp.category}
-                                </span>
-                              </div>
-                              <div
-                                className={`text-[11px] leading-relaxed mt-1 ${
-                                  isCurrent ? "text-black/80 font-medium" : "text-neutral-400 font-normal"
-                                }`}
-                              >
-                                {rp.description}
-                              </div>
-                            </div>
-                            {isCurrent && <Check className="w-4 h-4 text-black shrink-0 mt-0.5" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Bottom add preset shortcut inside menu */}
-                  <div className="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                    <span className="text-neutral-400 font-mono text-[10px]">
-                      {isDemo ? "⚡ Demo Mode: Presets are session-only" : `Capacity: ${customPresets.length}/20 custom presets`}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!selectedPlayer.route || selectedPlayer.route.length === 0) {
-                          alert(`Draw a route for ${selectedPlayer.label} on the field first, then click Add Preset.`);
-                          return;
-                        }
-                        setNewPresetName(`${selectedPlayer.label} Custom Route`);
-                        setIsSavePresetModalOpen(true);
-                      }}
-                      className="text-xs font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Save Current Route as Preset</span>
-                    </button>
-                  </div>
-                </div>
+                <RouteCatalogDrawer
+                  selectedPlayer={selectedPlayer}
+                  readOnly={readOnly}
+                  isDemo={isDemo}
+                  customPresets={customPresets}
+                  effectiveRouteDepth={effectiveRouteDepth}
+                  minRouteDepthYards={MIN_ROUTE_DEPTH_YARDS}
+                  maxRouteDepthYards={maxRouteDepthYards}
+                  isUsingRouteDefaultDepth={routeDepth === null && Boolean(currentCatalogRoute)}
+                  onClose={() => setIsPresetMenuOpen(false)}
+                  onDepthChange={handleDepthChange}
+                  onApplyPreset={(presetName) => handleApplyPreset(presetName, routeDepth ?? undefined)}
+                  onApplyCustomPreset={handleApplyCustomPreset}
+                  onDeleteCustomPreset={handleDeleteCustomPreset}
+                  onSaveCurrentRoute={() => {
+                    if (!selectedPlayer.route || selectedPlayer.route.length === 0) {
+                      alert(`Draw a route for ${selectedPlayer.label} on the field first, then click Add Preset.`);
+                      return;
+                    }
+                    setNewPresetName(`${selectedPlayer.label} Custom Route`);
+                    setIsSavePresetModalOpen(true);
+                  }}
+                />
               )}
             </div>
           ) : selectedPlayer?.side === "defense" ? (
@@ -3218,206 +3052,36 @@ export default function PlayCanvas({
 
       {/* MODAL: Save Route Preset to Team (Up to 20 additional presets) */}
       {isSavePresetModalOpen && selectedPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0B0F19] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                  <Bookmark className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black uppercase text-white">Save Route Preset</h3>
-                  <span className="text-[10px] text-neutral-400 font-mono">
-                    {customPresets.length}/20 Custom Presets for this Franchise
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSavePresetModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] uppercase font-bold text-neutral-300 block mb-1">
-                  Preset Name
-                </label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={newPresetName}
-                  onChange={(e) => setNewPresetName(e.target.value)}
-                  placeholder="e.g. Post-Corner, Wheel-Fade, Sluggo..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveCurrentRouteAsPreset();
-                  }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-emerald-500 text-white text-xs outline-none"
-                />
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-[11px] text-neutral-300 space-y-1">
-                <div className="flex items-center justify-between font-mono">
-                  <span className="text-neutral-400">Waypoints:</span>
-                  <span className="text-emerald-400 font-bold">{selectedPlayer.route?.length || 0} cuts/points</span>
-                </div>
-                {isDemo ? (
-                  <p className="text-[10px] text-amber-300/90 leading-relaxed pt-1 font-semibold">
-                    ⚡ Demo League Mode: This preset is stored in session memory and will not be saved to the database. Refreshing the tab will clear it.
-                  </p>
-                ) : (
-                  <p className="text-[10px] text-neutral-400 leading-relaxed pt-1">
-                    Once saved, this route preset is saved to this team and will be available for all plays so any receiver can run it.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
-              <button
-                type="button"
-                onClick={() => setIsSavePresetModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!newPresetName.trim()}
-                onClick={handleSaveCurrentRouteAsPreset}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50"
-              >
-                Save to Team ({customPresets.length}/20)
-              </button>
-            </div>
-          </div>
-        </div>
+        <SaveRoutePresetDialog
+          customPresetCount={customPresets.length}
+          waypointCount={selectedPlayer.route?.length || 0}
+          isDemo={isDemo}
+          presetName={newPresetName}
+          onPresetNameChange={setNewPresetName}
+          onSave={handleSaveCurrentRouteAsPreset}
+          onClose={() => setIsSavePresetModalOpen(false)}
+        />
       )}
 
       {/* MODAL: Coordinator Install Sheet / All Position Coaching Notes */}
       {isPositionNotesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0B0F19] border border-cyan-500/40 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black uppercase text-white tracking-wide">
-                    {play.name} • Position Notes & Read Progression
-                  </h3>
-                  <span className="text-[10px] text-neutral-400 font-mono">
-                    Install instructions & coaching notes for each position on field
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPositionNotesModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
-              {(play.type === "defense" ? defensePlayers : offensePlayers).map((p) => (
-                <div
-                  key={p.id}
-                  className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-2 hover:border-cyan-500/30 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-lg bg-cyan-500/20 border border-cyan-500/40 font-mono font-black text-cyan-300 text-xs flex items-center justify-center">
-                        {p.label}
-                      </span>
-                      <span className="text-xs font-bold text-white">{p.role}</span>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold text-neutral-400">
-                      Assignment:{" "}
-                      <strong className="text-cyan-400">
-                        {p.quickRouteName ||
-                          (p.route && p.route.length > 0
-                            ? "Custom Drawn Route"
-                            : p.coverageType?.toUpperCase() || "Default Alignment")}
-                      </strong>
-                    </span>
-                  </div>
-
-                  <textarea
-                    rows={2}
-                    disabled={readOnly}
-                    value={p.notes || ""}
-                    onChange={(e) => handleUpdatePlayerNotes(p.id, e.target.value)}
-                    placeholder={`e.g. Read free safety: if shading outside, break 2 steps inside. Checkdown option.`}
-                    className="w-full p-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none resize-none leading-relaxed"
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-end pt-3 border-t border-white/10 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsPositionNotesModalOpen(false)}
-                className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-cyan-500/20"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
+        <PositionNotesDialog
+          playName={play.name}
+          players={play.type === "defense" ? defensePlayers : offensePlayers}
+          readOnly={readOnly}
+          onUpdatePlayerNotes={handleUpdatePlayerNotes}
+          onClose={() => setIsPositionNotesModalOpen(false)}
+        />
       )}
 
       {/* MODAL: Coach General Playbook Scheme Notes */}
       {isPlayNotesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0B0F19] border border-white/20 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
-                  <MessageSquare className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black uppercase text-white">Coach Playbook Scheme Notes</h3>
-                  <span className="text-[10px] text-neutral-400 font-mono">
-                    High-level concept, QB progression & situational rules
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPlayNotesModalOpen(false)}
-                className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <textarea
-              rows={5}
-              disabled={readOnly}
-              value={play.notes || ""}
-              onChange={(e) => onChange({ ...play, notes: e.target.value })}
-              placeholder="e.g. Read safety rotation: if Cover 2, look to split the safeties with X. Checkdown to RB on 3rd step. Use in 3rd & long or 2-minute drill."
-              className="w-full p-3.5 rounded-2xl bg-black/60 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none resize-none leading-relaxed"
-            />
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
-              <button
-                type="button"
-                onClick={() => setIsPlayNotesModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-cyan-500/20"
-              >
-                Save Notes
-              </button>
-            </div>
-          </div>
-        </div>
+        <PlayNotesDialog
+          notes={play.notes || ""}
+          readOnly={readOnly}
+          onNotesChange={(notes) => onChange({ ...play, notes })}
+          onClose={() => setIsPlayNotesModalOpen(false)}
+        />
       )}
     </div>
   );

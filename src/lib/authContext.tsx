@@ -17,8 +17,8 @@ import {
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { cleanFirebaseConfigValue } from "./firebaseConfig";
-import { getSandboxPlayers, subscribeDemoSandbox, notifySandboxChange } from "./demoSandbox";
-import { isYorkTeam, YORK_TEAM_ID, YORK_ADMIN_EMAILS, YORK_LIONS_TEAM, YORK_LIONS_PLAYERS } from "./yorkTeamData";
+import { DEMO_TEAM_IDS, subscribeDemoSandbox, notifySandboxChange } from "./demoSandboxRuntime";
+import { isYorkTeam, YORK_TEAM_ID, YORK_ADMIN_EMAILS } from "./yorkStaff";
 import { requestPrivateData } from "./secureWrites";
 import { resolveConnectedAccount } from "./accountEmails";
 
@@ -190,21 +190,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Error looking up player by email:", e);
     }
 
-    // Fallback: Check demo sandbox players
-    try {
-      const sbPlayer = getSandboxPlayers().find((p) => {
-        const pEmails = Array.isArray(p.emails)
-          ? p.emails.map((e) => e.toLowerCase())
-          : p.email
-          ? [p.email.toLowerCase()]
-          : [];
-        return pEmails.includes(cleanEmail);
-      });
-      if (sbPlayer) return sbPlayer;
-    } catch {}
-
     // Fallback: Check York Lions players
     try {
+      const { YORK_LIONS_PLAYERS } = await import("./yorkTeamData");
       const yPlayer = YORK_LIONS_PLAYERS.find((p) => {
         const pEmails = Array.isArray(p.emails)
           ? p.emails.map((e) => e.toLowerCase())
@@ -215,6 +203,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       if (yPlayer) return yPlayer;
     } catch {}
+
+    // Demo identities are session-local; do not initialize fixtures for real accounts.
+    const demoParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const routeParts = typeof window !== "undefined" ? window.location.pathname.split("/") : [];
+    const isCustomerRoute =
+      (routeParts[1] === "teams" && Boolean(routeParts[2]) && !DEMO_TEAM_IDS.includes(routeParts[2])) ||
+      (routeParts[1] === "matches" && routeParts[2]?.includes("york"));
+    const canUseDemoPlayers = !isCustomerRoute && typeof window !== "undefined" && (
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ||
+      demoParams?.get("demo") === "true" || demoParams?.get("embed") === "true" ||
+      sessionStorage.getItem("flagos_demo_active") === "true"
+    );
+    if (canUseDemoPlayers) {
+      try {
+        const { getSandboxPlayers } = await import("./demoSandbox");
+        const sbPlayer = getSandboxPlayers().find((p) => {
+          const emails = Array.isArray(p.emails) ? p.emails : p.email ? [p.email] : [];
+          return emails.some((value) => value.toLowerCase() === cleanEmail);
+        });
+        if (sbPlayer) return sbPlayer;
+      } catch {}
+    }
 
     return null;
   };
@@ -236,12 +246,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Fallback: Check York Lions team admins & coaches
-    const yorkAdmins = [
-      ...YORK_ADMIN_EMAILS,
-      ...(Array.isArray(YORK_LIONS_TEAM.adminEmails) ? YORK_LIONS_TEAM.adminEmails : []),
-    ].map((e) => String(e).trim().toLowerCase());
+    const yorkAdmins = YORK_ADMIN_EMAILS.map((e) => e.trim().toLowerCase());
     if (yorkAdmins.includes(cleanEmail)) {
-      return { id: YORK_TEAM_ID, name: YORK_LIONS_TEAM.name };
+      return { id: YORK_TEAM_ID, name: "York Lions Women's Flag Football" };
     }
 
     return null;
@@ -263,12 +270,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       const version = ++authVersion;
       setUser(u);
+      setUserProfile(null);
+      setLoading(true);
       if (u) {
         const isPendingUnassignedAccount = !!u.email &&
           pendingAccountEmails.current.has(u.email.trim().toLowerCase());
         try {
           const userDocRef = doc(db, "users", u.uid);
-          const snap = await getDoc(userDocRef);
           const isEmailLeagueAdmin = !!(u.email && adminEmails.includes(u.email.toLowerCase()));
 
           if (isPendingUnassignedAccount) {
@@ -284,14 +292,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
 
           // Look up if this email is attached to any player or team
-          let matchingPlayer: any = null;
-          let matchingTeam: any = null;
-          if (u.email && u.emailVerified) {
-            const lookup = requestPrivateData<IdentityLookup>("lookup");
-            matchingPlayer = await findPlayerByEmail(u.email, lookup);
-            if (version !== authVersion) return;
-            matchingTeam = await findTeamByEmail(u.email, lookup);
-          }
+          const lookup = u.email && u.emailVerified
+            ? requestPrivateData<IdentityLookup>("lookup")
+            : undefined;
+          const [snap, [matchingPlayer, matchingTeam]] = await Promise.all([
+            getDoc(userDocRef),
+            lookup && u.email
+              ? Promise.all([findPlayerByEmail(u.email, lookup), findTeamByEmail(u.email, lookup)])
+              : Promise.resolve([null, null]),
+          ]);
           if (version !== authVersion) return;
 
           if (snap.exists()) {
@@ -358,7 +367,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      authVersion++;
+      unsubscribe();
+    };
   }, []);
 
   // Sync or reset dev role when demo session changes
@@ -394,6 +406,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let foundPlayer: any = null;
     if (playerId) {
       // First check demo sandbox players
+      const { getSandboxPlayers } = await import("./demoSandbox");
       const sbPlayer = getSandboxPlayers().find((p) => p.id === playerId);
       if (sbPlayer) {
         foundPlayer = sbPlayer;

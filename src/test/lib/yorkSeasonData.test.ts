@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDocs } from "firebase/firestore";
-import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
-import { YORK_LIONS_MATCHES, YORK_LIONS_PLAYS, saveYorkPlay } from "@/lib/yorkTeamData";
+import { loadYorkMatches, loadYorkMatchPlays, loadYorkSeasonData } from "@/lib/yorkSeasonData";
+import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 
 vi.mock("firebase/firestore", () => ({
   collection: vi.fn((_db, name) => name),
@@ -11,40 +11,89 @@ vi.mock("firebase/firestore", () => ({
   getDocs: vi.fn(),
 }));
 
-const snapshot = (records: Array<{ id: string }>) => ({
+const snapshot = (records: Array<Record<string, unknown> & { id: string }>) => ({
   docs: records.map((record) => ({ id: record.id, data: () => record })),
-});
+}) as Awaited<ReturnType<typeof getDocs>>;
 
-describe("York shared season data", () => {
+const match = { id: "shared-game", homeTeamId: "york_lions", date: "2026-10-18" };
+
+describe("York scoped public data loading", () => {
   beforeEach(() => {
     vi.mocked(getDocs).mockReset();
+    invalidatePublicTeamData();
   });
 
-  it("merges shared matches and plays with seed and local records across fresh sessions", async () => {
-    const match = { ...YORK_LIONS_MATCHES[0], id: "shared-independent-game", homeScore: 6 };
-    const play = { ...YORK_LIONS_PLAYS[0], id: "shared-touchdown", matchId: match.id, isTouchdown: true };
-    const local = { ...YORK_LIONS_PLAYS[0], id: "offline-touchdown" };
-    saveYorkPlay(local.matchId, local);
+  function mockMatches() {
     vi.mocked(getDocs)
-      .mockResolvedValueOnce(snapshot([...YORK_LIONS_MATCHES, match]) as Awaited<ReturnType<typeof getDocs>>)
-      .mockResolvedValueOnce(snapshot([]) as Awaited<ReturnType<typeof getDocs>>)
-      .mockResolvedValueOnce(snapshot([]) as Awaited<ReturnType<typeof getDocs>>)
-      .mockResolvedValueOnce(snapshot([play]) as Awaited<ReturnType<typeof getDocs>>);
-    const season = await loadYorkSeasonData();
-    expect(season.matches.find((record) => record.id === match.id)?.homeScore).toBe(6);
-    expect(season.plays.some((record) => record.id === play.id)).toBe(true);
-    expect(season.plays.some((record) => record.id === local.id)).toBe(true);
-    expect(season.plays.some((record) => record.id === YORK_LIONS_PLAYS[0].id)).toBe(true);
+      .mockResolvedValueOnce(snapshot([match]))
+      .mockResolvedValueOnce(snapshot([]))
+      .mockResolvedValueOnce(snapshot([]));
+  }
+
+  it("loads schedule matches without requesting any plays or fixtures", async () => {
+    mockMatches();
+    expect(await loadYorkMatches()).toEqual([match]);
+    expect(getDocs).toHaveBeenCalledTimes(3);
+    for (const [request] of vi.mocked(getDocs).mock.calls) {
+      expect(request).toContain("matches");
+      expect(request).not.toContain("plays");
+    }
   });
 
-  it("excludes remotely hidden seed matches and their plays", async () => {
-    const hidden = YORK_LIONS_MATCHES[0];
-    vi.mocked(getDocs).mockResolvedValue(snapshot([]) as Awaited<ReturnType<typeof getDocs>>);
-    vi.mocked(getDocs).mockResolvedValueOnce({
-      docs: [{ id: hidden.id, data: () => ({ ...hidden, isHidden: true }) }],
-    } as Awaited<ReturnType<typeof getDocs>>);
-    const season = await loadYorkSeasonData();
-    expect(season.matches.some((record) => record.id === hidden.id)).toBe(false);
-    expect(season.plays.some((record) => record.matchId === hidden.id)).toBe(false);
+  it("deduplicates concurrent and recently completed requests", async () => {
+    mockMatches();
+    const [first, second] = await Promise.all([loadYorkMatches(), loadYorkMatches()]);
+    expect(first).toEqual(second);
+    await loadYorkMatches();
+    expect(getDocs).toHaveBeenCalledTimes(3);
+  });
+
+  it("revalidates after a successful mutation or returning to the tab", async () => {
+    mockMatches();
+    await loadYorkMatches();
+    window.dispatchEvent(new Event("flagos-york-data-changed"));
+    mockMatches();
+    await loadYorkMatches();
+    expect(getDocs).toHaveBeenCalledTimes(6);
+    window.dispatchEvent(new Event("focus"));
+    mockMatches();
+    await loadYorkMatches();
+    expect(getDocs).toHaveBeenCalledTimes(9);
+  });
+
+  it("does not resurrect hidden, deleted or local fixture records", async () => {
+    vi.mocked(getDocs).mockResolvedValue(snapshot([]));
+    expect(await loadYorkSeasonData()).toEqual({ matches: [], plays: [] });
+    expect(getDocs).toHaveBeenCalledTimes(3);
+  });
+
+  it("excludes hidden and removed matches even when returned by another ownership query", async () => {
+    vi.mocked(getDocs)
+      .mockResolvedValueOnce(snapshot([match, { id: "match_york_western" }]))
+      .mockResolvedValueOnce(snapshot([{ ...match, isHidden: true }]))
+      .mockResolvedValueOnce(snapshot([]));
+    expect(await loadYorkMatches()).toEqual([]);
+  });
+
+  it("only downloads the requested game's plays", async () => {
+    mockMatches();
+    const play = { id: "corrected-play", matchId: match.id };
+    vi.mocked(getDocs).mockResolvedValueOnce(snapshot([play]));
+    expect(await loadYorkMatchPlays(match.id)).toEqual([play]);
+    expect(vi.mocked(getDocs).mock.calls[3][0]).toContainEqual(["matchId", "==", match.id]);
+  });
+
+  it("rejects a game outside York ownership before querying plays", async () => {
+    mockMatches();
+    await expect(loadYorkMatchPlays("another-team-game")).rejects.toThrow("not an active York match");
+    expect(getDocs).toHaveBeenCalledTimes(3);
+  });
+
+  it("surfaces errors and retries failed requests rather than caching a false empty season", async () => {
+    vi.mocked(getDocs).mockRejectedValue(new Error("Offline"));
+    await expect(loadYorkMatches()).rejects.toThrow("Offline");
+    vi.mocked(getDocs).mockReset();
+    mockMatches();
+    expect(await loadYorkMatches()).toEqual([match]);
   });
 });

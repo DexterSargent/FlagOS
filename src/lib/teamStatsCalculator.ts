@@ -471,10 +471,6 @@ export function calculateTeamComprehensiveStats(
   });
 
   const gp = completedMatches.length;
-  const winPct = gp > 0 ? (wins + 0.5 * ties) / gp : 0;
-  const diff = pf - pa;
-  const ppg = gp > 0 ? pf / gp : 0;
-  const dppg = gp > 0 ? pa / gp : 0;
 
   // Track plays
   let thirdDownAttempts = 0;
@@ -688,6 +684,55 @@ export function calculateTeamComprehensiveStats(
       }
     }
   });
+
+  return finalizeTeamComprehensiveStats({
+    gp, wins, losses, ties, pf, pa,
+    thirdDownAttempts, thirdDownConversions, fourthDownAttempts, fourthDownConversions, firstDowns,
+    defThirdDownAttempts, defThirdDownStops, defFourthDownAttempts, defFourthDownStops,
+    pat1Attempts, pat1Conversions, pat2Attempts, pat2Conversions,
+    totalTDs, passTDs, rushTDs, passAttempts, passCompletions, rushAttempts,
+    flags, sacks, interceptions, pbus, defTDs, safeties,
+    takeaways, giveaways, penalties, penaltyYards,
+  });
+}
+
+/** Additive counts that can be summed across games; every other stat is derived from these. */
+export const TEAM_COUNTING_STAT_KEYS = [
+  "gp", "wins", "losses", "ties", "pf", "pa",
+  "thirdDownAttempts", "thirdDownConversions", "fourthDownAttempts", "fourthDownConversions", "firstDowns",
+  "defThirdDownAttempts", "defThirdDownStops", "defFourthDownAttempts", "defFourthDownStops",
+  "pat1Attempts", "pat1Conversions", "pat2Attempts", "pat2Conversions",
+  "totalTDs", "passTDs", "rushTDs", "passAttempts", "passCompletions", "rushAttempts",
+  "flags", "sacks", "interceptions", "pbus", "defTDs", "safeties",
+  "takeaways", "giveaways", "penalties", "penaltyYards",
+] as const;
+
+export type TeamCountingStatKey = (typeof TEAM_COUNTING_STAT_KEYS)[number];
+export type TeamCountingStats = Record<TeamCountingStatKey, number>;
+
+export function emptyTeamCountingStats(): TeamCountingStats {
+  return Object.fromEntries(TEAM_COUNTING_STAT_KEYS.map((key) => [key, 0])) as TeamCountingStats;
+}
+
+export function toTeamCountingStats(stats: TeamComprehensiveStats): TeamCountingStats {
+  return Object.fromEntries(TEAM_COUNTING_STAT_KEYS.map((key) => [key, stats[key]])) as TeamCountingStats;
+}
+
+/** Derives rates and display strings from counts, so per-game counts can be combined without averaging percentages. */
+export function finalizeTeamComprehensiveStats(counts: TeamCountingStats): TeamComprehensiveStats {
+  const {
+    gp, wins, losses, ties, pf, pa,
+    thirdDownAttempts, thirdDownConversions, fourthDownAttempts, fourthDownConversions, firstDowns,
+    defThirdDownAttempts, defThirdDownStops, defFourthDownAttempts, defFourthDownStops,
+    pat1Attempts, pat1Conversions, pat2Attempts, pat2Conversions,
+    totalTDs, passTDs, rushTDs, passAttempts, passCompletions, rushAttempts,
+    flags, sacks, interceptions, pbus, defTDs, safeties,
+    takeaways, giveaways, penalties, penaltyYards,
+  } = counts;
+  const winPct = gp > 0 ? (wins + 0.5 * ties) / gp : 0;
+  const diff = pf - pa;
+  const ppg = gp > 0 ? pf / gp : 0;
+  const dppg = gp > 0 ? pa / gp : 0;
 
   const patTotalAttempts = pat1Attempts + pat2Attempts;
   const patTotalConversions = pat1Conversions + pat2Conversions;

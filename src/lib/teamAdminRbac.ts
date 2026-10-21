@@ -1,4 +1,4 @@
-import { isYorkTeam } from "./yorkTeamData";
+import { isYorkTeam } from "./yorkStaff";
 import { YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_COACH_ACCOUNTS } from "./yorkStaff";
 
 export interface TeamAdminAccount {

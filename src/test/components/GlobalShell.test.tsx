@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { lazy, Suspense, type ComponentType } from "react";
 import GlobalShell from "@/components/GlobalShell";
 
 const { usePathnameMock, useSearchParamsMock, mockUseAuth } = vi.hoisted(() => ({
@@ -23,6 +24,16 @@ vi.mock("@/components/LeagueHeader", () => ({
 
 vi.mock("@/components/LeagueFooter", () => ({
   default: () => <footer>League Footer</footer>,
+}));
+vi.mock("@/components/RoleSwitcherBar", () => ({ default: () => null }));
+vi.mock("@/components/LeagueCustomizerModal", () => ({ default: () => null }));
+vi.mock("next/dynamic", () => ({
+  default: (loader: () => Promise<{ default: ComponentType }>) => {
+    const Content = lazy(loader);
+    return function DynamicContent() {
+      return <Suspense fallback={null}><Content /></Suspense>;
+    };
+  },
 }));
 
 describe("GlobalShell", () => {
@@ -119,7 +130,7 @@ describe("GlobalShell", () => {
     expect(screen.queryByText("League Footer")).not.toBeInTheDocument();
   });
 
-  it("keeps the league header and footer when actively in a specific league", () => {
+  it("keeps the league header and footer when actively in a specific league", async () => {
     usePathnameMock.mockReturnValue("/league/default");
 
     render(
@@ -128,11 +139,11 @@ describe("GlobalShell", () => {
       </GlobalShell>
     );
 
-    expect(screen.getByText("League Header")).toBeInTheDocument();
+    expect(await screen.findByText("League Header")).toBeInTheDocument();
     expect(screen.getByText("League Footer")).toBeInTheDocument();
   });
 
-  it("keeps the league header on league schedule page for non-team users", () => {
+  it("keeps the league header on league schedule page for non-team users", async () => {
     usePathnameMock.mockReturnValue("/schedule");
 
     render(
@@ -141,7 +152,7 @@ describe("GlobalShell", () => {
       </GlobalShell>
     );
 
-    expect(screen.getByText("League Header")).toBeInTheDocument();
+    expect(await screen.findByText("League Header")).toBeInTheDocument();
     expect(screen.getByText("League Footer")).toBeInTheDocument();
   });
 });

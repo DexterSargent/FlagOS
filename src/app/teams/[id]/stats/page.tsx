@@ -6,36 +6,31 @@ import { ChevronLeft, Activity, Trophy, Crosshair, Shield, Flame } from "lucide-
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
-import {
-  getSandboxTeams,
-  getSandboxPlayers,
-  getSandboxMatches,
-  getSandboxPlays,
-  subscribeDemoSandbox,
-} from "@/lib/demoSandbox";
-import {
-  isYorkTeam,
-  getYorkTeamData,
-  getYorkTeamPlayers,
-  getYorkTeamMatches,
-  getYorkTeamPlays,
-  YORK_TEAM_ID,
-} from "@/lib/yorkTeamData";
-import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
+import { useDemoSandbox } from "@/lib/useDemoSandbox";
+import DemoLoadError from "@/components/DemoLoadError";
+import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
+import { getYorkTeamData, YORK_LIONS_TEAM } from "@/lib/yorkTeamProfile";
+import { loadTeamSeasonSummary, getPlayerNumber, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
   const isYork = isYorkTeam(teamId);
   const { settings, isDemoLeague } = useLeague();
+  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYork);
 
-  const [team, setTeam] = useState<any>(null);
+  const [team, setTeam] = useState<any>(() => isYork ? { ...YORK_LIONS_TEAM } : null);
   const [stats, setStats] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isYork);
+  const [statsLoading, setStatsLoading] = useState(isYork);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    setTeam(isYork ? { ...getYorkTeamData() } : null);
+    setStats([]);
+    setLoadError(null);
     const fetchData = async () => {
       try {
         let tObj: any = null;
@@ -45,25 +40,22 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
         if (isYork) {
           tObj = { ...getYorkTeamData() };
-          let hasSharedRoster = false;
-          try {
-            const [teamSnap, playersSnap] = await Promise.all([
-              getDoc(doc(db, "teams", teamId)),
-              getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
-            ]);
-            if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
-            hasSharedRoster = teamSnap.exists();
-            if (!playersSnap.empty) {
-              players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            }
-          } catch {}
-          if (players.length === 0 && !hasSharedRoster) {
-            players = getYorkTeamPlayers();
-          }
-          const season = await loadYorkSeasonData();
-          matches = season.matches;
-          plays = season.plays;
+          setStatsLoading(true);
+          const [teamSnap, summary] = await Promise.all([
+            getDoc(doc(db, "teams", teamId)),
+            loadTeamSeasonSummary(teamId),
+          ]);
+          if (cancelled) return;
+          if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
+          setTeam(tObj);
+          setStats(Object.entries(summary.playerStats).map(([name, player]) => ({ ...player, name, number: getPlayerNumber(summary, name) })));
+          setLoadError(null);
+          setStatsLoading(false);
+          setLoading(false);
+          return;
         } else if (isDemoLeague) {
+          if (!sandbox) return;
+          const { getSandboxTeams, getSandboxPlayers, getSandboxMatches, getSandboxPlays } = sandbox;
           tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
           const effectiveTeamId = tObj?.id || teamId;
           players = getSandboxPlayers().filter((p) => p.teamId === effectiveTeamId);
@@ -71,8 +63,22 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           plays = getSandboxPlays();
         } else {
           const teamSnap = await getDoc(doc(db, "teams", teamId));
+          if (cancelled) return;
           if (teamSnap.exists()) tObj = { id: teamSnap.id, ...teamSnap.data() };
           const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
+          if (tObj) setTeam(tObj);
+          setLoading(false);
+          setStatsLoading(true);
+          try {
+            const summary = await loadTeamSeasonSummary(teamId);
+            if (cancelled) return;
+            setStats(Object.entries(summary.playerStats).map(([name, player]) => ({ ...player, name, number: getPlayerNumber(summary, name) })));
+            setLoadError(null);
+            setStatsLoading(false);
+            return;
+          } catch (error) {
+            if (!(error instanceof TeamSeasonSummaryError) || error.status !== 404) throw error;
+          }
           const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
             getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
             getDocs(query(
@@ -93,6 +99,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           plays = playsSnap.docs.map((d) => d.data() as any);
         }
 
+        if (cancelled) return;
         if (tObj) setTeam(tObj);
 
         const statsMap: Record<string, any> = {};
@@ -218,17 +225,20 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         setLoadError(null);
       } catch (e) {
         console.error("Error fetching team stats:", e);
-        setLoadError("We couldn't load this team's stats. Check your connection and try again.");
+        if (!cancelled) setLoadError("We couldn't load this team's stats. Check your connection and try again.");
       }
+      if (cancelled) return;
+      setStatsLoading(false);
       setLoading(false);
     };
 
     fetchData();
-    if (isDemoLeague) {
-      const unsub = subscribeDemoSandbox(() => fetchData());
-      return () => unsub();
+    let unsubscribe: (() => void) | undefined;
+    if (isDemoLeague && !isYork && sandbox) {
+      unsubscribe = sandbox.subscribeDemoSandbox(() => fetchData());
     }
-  }, [teamId, isDemoLeague, reloadKey]);
+    return () => { cancelled = true; unsubscribe?.(); };
+  }, [teamId, isDemoLeague, reloadKey, isYork, sandbox]);
 
   const getTop3 = (key: string) => {
     const sorted = [...stats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
@@ -248,6 +258,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     { title: "Pass Breakups", key: "pbu", icon: Shield, color: "text-cyan-400" },
   ];
 
+  if (demoError) return <DemoLoadError retry={retryDemo} />;
   if (loading) {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
@@ -317,7 +328,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         </div>
 
         {/* 3-Column Bento Grid of Stat Leaders */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {statsLoading ? <div role="status" className="rounded-3xl bg-white/5 p-6 animate-pulse">Loading stat leaders...</div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {statCategories.map((cat, idx) => {
             const top3 = getTop3(cat.key);
 
@@ -361,7 +372,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
               </div>
             );
           })}
-        </div>
+        </div>}
       </div>
 
     </div>

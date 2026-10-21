@@ -1,6 +1,7 @@
 "use client";
 
 import { auth } from "@/lib/firebase";
+import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 
 export type SecureEntity =
   | "league"
@@ -52,6 +53,7 @@ export async function createSecureRecord<T extends Record<string, unknown>>(
     "Unable to save this record.",
   );
   if (!result.id) throw new Error("The secure write did not return a record ID.");
+  invalidatePublicTeamData();
   return result.id;
 }
 

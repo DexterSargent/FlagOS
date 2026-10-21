@@ -126,7 +126,42 @@ team stat-keeper route also renders read-only box scores for spectators.
 Roster and scheduling failures must not close the form as though a shared
 save succeeded. Offline play logging explicitly warns when a play exists
 only on the current device; it is not an automatic synchronization queue.
-Season totals merge seed, device-local and shared records by ID.
+Official schedules and season totals use shared Firestore records exclusively;
+deleted or hidden plays must not be resurrected from historical fixtures.
+Device-local play saves remain an explicitly warned offline recovery aid, not
+official season statistics. See [stat summary behavior](./team-stat-summaries.md).
+
+## Performance regression checks
+
+The public York portal renders branding and navigation before season statistics
+finish loading. Schedules request match documents only. Public team statistics
+use correction-aware game summaries; private leagues retain their existing
+Firestore-authorized reads rather than exposing data through a public API.
+
+Public requests are deduplicated and cached in memory for 30 seconds. Successful
+secure writes, York match/play saves, tab focus, and cross-tab storage changes
+invalidate that cache. Coach/account responses are never stored in this cache.
+Demo fixtures, help content, administrative panels, depth charts, and designer
+dialogs/catalog drawers load only when needed.
+
+Designer animation has a separate frame subscription: field markers and timeline
+update without rendering the sidebar on every frame. Route geometry is measured
+when players change. Dragging previews local drafts and commits once on release,
+including pointer cancellation, rather than writing on every pointer movement.
+
+Run the correction-aware persistence test against the isolated emulator:
+
+```powershell
+$env:FLAGOS_TEST_EMULATORS = "true"
+$env:FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080"
+npm test -- src/test/api/teamStatSummary.emulator.test.ts
+```
+
+For before/after browser measurements, use `next build` / `next start`, not
+development compilation timings. Compare uncached and warm navigations separately
+on the same device/network, recording JavaScript decoded/transfer bytes, Firestore
+requests, LCP, INP, and CLS. Targets are LCP <= 2.5 seconds, INP <= 200 ms, and
+CLS <= 0.1; a desktop viewport resize alone is not a mobile performance benchmark.
 
 Both live and clockless stat keepers rank player choices by the relevant
 season/current-game statistic, then numeric jersey number and name; team

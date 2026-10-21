@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useEffect, useState, useRef } from "react";
+import { use, useEffect, useState, useRef, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -39,31 +40,22 @@ import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { FlagOSText } from "@/components/FlagOSText";
-import {
-  getSandboxTeams,
-  updateSandboxTeam,
-  subscribeDemoSandbox,
-  getSandboxMatches,
-  getSandboxPlays,
-} from "@/lib/demoSandbox";
+import { useDemoSandbox } from "@/lib/useDemoSandbox";
+import DemoLoadError from "@/components/DemoLoadError";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette , getReadableTextColor } from "@/lib/teamColors";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
-import {
-  isYorkTeam,
-  getYorkTeamData,
-  YORK_TEAM_ID,
-  YORK_LIONS_TEAM,
-  getYorkTeamMatches,
-  getYorkTeamPlays,
-} from "@/lib/yorkTeamData";
+import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
+import { getYorkTeamData, YORK_LIONS_TEAM } from "@/lib/yorkTeamProfile";
 import {
   TEAM_STAT_DEFINITIONS,
   DEFAULT_VISIBLE_TEAM_STATS,
   calculateTeamComprehensiveStats,
+  type TeamComprehensiveStats,
 } from "@/lib/teamStatsCalculator";
-import TeamStatsCustomizerModal from "@/components/team/TeamStatsCustomizerModal";
-import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
+import { loadTeamSeasonSummary, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
+
+const TeamStatsCustomizerModal = dynamic(() => import("@/components/team/TeamStatsCustomizerModal"));
 
 const COLOR_PRESETS = [
   { name: "York Lions (Varsity)", primary: "#E31837", secondary: "#FFFFFF", tertiary: "#000000" },
@@ -80,6 +72,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const isYork = isYorkTeam(teamId);
 
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYork);
   const { canManageTeam, isLeagueAdmin, isTeamAdmin, isAdmin, isPlayer, playerTeamId, user } = useAuth();
   // Playbooks RBAC:
   // - League admins have NO access to opponent customer teams (confidential franchise strategy)
@@ -91,10 +84,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const canAccessPlaybook = (!isLeagueAdmin || isYork) && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
   const hasEditAccess = canManageTeam(teamId) || isLeagueAdmin;
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
-  const [team, setTeam] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [team, setTeam] = useState<any>(() => isYork ? { ...YORK_LIONS_TEAM } : null);
+  const [loading, setLoading] = useState(!isYork);
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
+  const [summaryStats, setSummaryStats] = useState<TeamComprehensiveStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(isYork);
+  const [statsError, setStatsError] = useState("");
+  const [statsReloadKey, setStatsReloadKey] = useState(0);
   const [visibleStatIds, setVisibleStatIds] = useState<string[]>(DEFAULT_VISIBLE_TEAM_STATS);
   const [isStatsCustomizerOpen, setIsStatsCustomizerOpen] = useState(false);
 
@@ -116,6 +113,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const [staffActionError, setStaffActionError] = useState("");
   const [staffActionSuccess, setStaffActionSuccess] = useState("");
   const [savingStaff, setSavingStaff] = useState(false);
+  const [privateSettingsReady, setPrivateSettingsReady] = useState(false);
 
   const isDexter = isDexterUser(user?.email);
   const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
@@ -140,6 +138,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   const handleAddCoachAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!privateSettingsReady) {
+      setStaffActionError("Coach settings must finish loading before staff can be changed.");
+      return;
+    }
     const cleanEmail = newAdminEmail.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes("@") || !cleanEmail.includes(".")) {
       setStaffActionError("Please enter a valid email address.");
@@ -157,7 +159,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
     try {
       if (!isYork && isDemoLeague) {
-        updateSandboxTeam(teamId, { adminEmails: nextList });
+        if (!sandbox) throw new Error("The demo is not loaded.");
+        sandbox.updateSandboxTeam(teamId, { adminEmails: nextList });
       } else {
         await createSecureRecord("team_private_update", {
           teamId,
@@ -178,6 +181,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   };
 
   const handleRemoveCoachAdmin = async (account: TeamAdminAccount) => {
+    if (!privateSettingsReady) {
+      setStaffActionError("Coach settings must finish loading before staff can be changed.");
+      return;
+    }
     if (account.primary || account.required) {
       setStaffActionError("The primary admin and configured York coaching staff cannot be removed here.");
       return;
@@ -193,7 +200,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
     try {
       if (!isYork && isDemoLeague) {
-        updateSandboxTeam(teamId, { adminEmails: nextList });
+        if (!sandbox) throw new Error("The demo is not loaded.");
+        sandbox.updateSandboxTeam(teamId, { adminEmails: nextList });
       } else {
         await createSecureRecord("team_private_update", {
           teamId,
@@ -212,7 +220,27 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     }
   };
 
-  // Prevent background main page from scrolling when modal is open
+  useEffect(() => {
+    setSummaryStats(null);
+    if (!isYork) {
+      setStatsLoading(false);
+      setStatsError("");
+      return;
+    }
+    let cancelled = false;
+    setStatsLoading(true);
+    setStatsError("");
+    loadTeamSeasonSummary(teamId).then((summary) => {
+      if (!cancelled) setSummaryStats(summary.teamStats);
+    }).catch((error: unknown) => {
+      console.error("Unable to load team season summary:", error);
+      if (!cancelled) setStatsError("Season statistics could not be loaded. Please retry.");
+    }).finally(() => {
+      if (!cancelled) setStatsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [teamId, isYork, statsReloadKey]);
+
   useEffect(() => {
     if (isEditModalOpen || isStatsCustomizerOpen || isStaffModalOpen) {
       const originalOverflow = document.body.style.overflow;
@@ -224,6 +252,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   }, [isEditModalOpen, isStatsCustomizerOpen, isStaffModalOpen]);
 
   useEffect(() => {
+    let cancelled = false;
+    setTeam(isYork ? { ...getYorkTeamData() } : null);
+    setLoading(!isYork);
+    setPrivateSettingsReady(false);
     const fetchTeam = async () => {
       // 1. Check York Lions standalone varsity team portal
       if (isYork) {
@@ -240,16 +272,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           const snap = await getDoc(doc(db, "teams", teamId));
           if (snap.exists()) {
             yData = { ...yData, ...(snap.data() as any) };
-            if (hasEditAccess) {
-              const privateData = await requestPrivateData<{
-                team: Record<string, unknown>;
-              }>("team", { teamId });
-              yData = { ...yData, ...privateData.team };
-            }
           }
         } catch (e) {
           console.warn("Using offline/seed York Lions team profile:", e);
         }
+        if (cancelled) return;
         setTeam(yData);
         setEditName(yData.name || "");
         setEditShortcode(yData.shortcode || "YORK");
@@ -259,11 +286,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         setEditPrimaryColor(palette.primary);
         setEditSecondaryColor(palette.secondary);
         setEditTertiaryColor(palette.tertiary);
-
-        // Load York Matches & Plays
-        const season = await loadYorkSeasonData();
-        setMatches(season.matches);
-        setPlays(season.plays);
 
         // Check custom stats display preference (defaulting to DEFAULT_VISIBLE_TEAM_STATS)
         let customStats: string[] | null = null;
@@ -281,10 +303,26 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         setVisibleStatIds(customStats && Array.isArray(customStats) ? customStats : DEFAULT_VISIBLE_TEAM_STATS);
 
         setLoading(false);
+        if (hasEditAccess) {
+          requestPrivateData<{ team: Record<string, unknown> }>("team", { teamId })
+            .then((privateData) => {
+              if (!cancelled) {
+                setTeam((current: Record<string, unknown>) => ({ ...current, ...privateData.team }));
+                setPrivateSettingsReady(true);
+              }
+            })
+            .catch((error: unknown) => {
+              console.error("Unable to load private team settings:", error);
+              if (!cancelled) setStaffActionError("Coach settings could not be loaded. Refresh before changing staff.");
+            });
+        }
         return;
       }
 
       if (isDemoLeague) {
+        if (!sandbox) return;
+        setPrivateSettingsReady(true);
+        const { getSandboxTeams, getSandboxMatches, getSandboxPlays } = sandbox;
         const tData = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
         if (tData && isRealTeam(tData)) {
           setTeam(tData);
@@ -319,30 +357,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       }
       try {
         const snap = await getDoc(doc(db, "teams", teamId));
+        if (cancelled) return;
         const tData = snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null;
         const leagueId = typeof tData?.leagueId === "string" ? tData.leagueId : "";
-        const [matchesSnap, playsSnap] = await Promise.all([
-          getDocs(query(
-            collection(db, "matches"),
-            where("leagueId", "==", leagueId),
-            where("isHidden", "!=", true),
-            limit(512),
-          )),
-          getDocs(query(
-            collection(db, "plays"),
-            where("leagueId", "==", leagueId),
-            where("isHidden", "!=", true),
-            limit(10_000),
-          )),
-        ]);
         if (snap.exists()) {
           const teamData: any = tData;
-          if (hasEditAccess) {
-            const privateData = await requestPrivateData<{
-              team: Record<string, unknown>;
-            }>("team", { teamId });
-            Object.assign(teamData, privateData.team);
-          }
           if (isRealTeam(teamData)) {
             setTeam(teamData);
             setEditName(teamData.name || "");
@@ -367,22 +386,60 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               customStats = teamData.visibleTeamStats;
             }
             setVisibleStatIds(customStats && Array.isArray(customStats) ? customStats : DEFAULT_VISIBLE_TEAM_STATS);
+            setLoading(false);
+            if (hasEditAccess) {
+              requestPrivateData<{ team: Record<string, unknown> }>("team", { teamId })
+                .then((privateData) => {
+                  if (!cancelled) {
+                    setTeam((current: Record<string, unknown>) => ({ ...current, ...privateData.team }));
+                    setPrivateSettingsReady(true);
+                  }
+                }).catch((error: unknown) => {
+                  console.error("Unable to load private team settings:", error);
+                  if (!cancelled) setStaffActionError("Coach settings could not be loaded. Refresh before changing staff.");
+                });
+            }
           }
         }
+        setStatsLoading(true);
+        try {
+          const summary = await loadTeamSeasonSummary(teamId);
+          if (!cancelled) setSummaryStats(summary.teamStats);
+          return;
+        } catch (error) {
+          if (!(error instanceof TeamSeasonSummaryError) || error.status !== 404) throw error;
+          // Private leagues retain their existing Firestore-authorized reads.
+        }
+        const [matchesSnap, playsSnap] = await Promise.all([
+          getDocs(query(collection(db, "matches"), where("leagueId", "==", leagueId), where("isHidden", "!=", true), limit(512))),
+          getDocs(query(collection(db, "plays"), where("leagueId", "==", leagueId), where("isHidden", "!=", true), limit(10_000))),
+        ]);
+        if (cancelled) return;
         setMatches(matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
         setPlays(playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
       } catch (e) {
         console.error("Error fetching team:", e);
+        if (!cancelled) setStatsError("Season statistics could not be loaded. Please retry.");
+      } finally {
+        if (!cancelled) {
+          setStatsLoading(false);
+          setLoading(false);
+        }
       }
-      setLoading(false);
     };
 
     fetchTeam();
-    if (isDemoLeague) {
-      const unsub = subscribeDemoSandbox(() => fetchTeam());
-      return () => unsub();
+    if (isDemoLeague && sandbox) {
+      const unsub = sandbox.subscribeDemoSandbox(() => fetchTeam());
+      return () => { cancelled = true; unsub(); };
     }
-  }, [teamId, isDemoLeague, isYork]);
+    return () => { cancelled = true; };
+  }, [teamId, isDemoLeague, isYork, hasEditAccess, sandbox, statsReloadKey]);
+
+  const comprehensiveStats = useMemo(() => summaryStats ?? calculateTeamComprehensiveStats(
+    teamId, matches, plays,
+    team ? { teamName: team.name, teamAliases: [getTeamShortcode(team)] } : undefined,
+  ), [summaryStats, teamId, matches, plays, team]);
 
   const handleSaveVisibleStats = async (newStatIds: string[]) => {
     const updatePayload = {
@@ -390,7 +447,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       updatedAt: new Date().toISOString(),
     };
     try {
-      if (isDemoLeague && !isYork) updateSandboxTeam(teamId, updatePayload);
+      if (isDemoLeague && !isYork) {
+        if (!sandbox) throw new Error("The demo is not loaded.");
+        sandbox.updateSandboxTeam(teamId, updatePayload);
+      }
       else await updateDoc(doc(db, "teams", teamId), updatePayload);
       setVisibleStatIds(newStatIds);
       localStorage.setItem(`flagos_team_stats_display_${teamId}`, JSON.stringify(newStatIds));
@@ -438,7 +498,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       }
 
       if (isDemoLeague) {
-        updateSandboxTeam(teamId, updatedData);
+        if (!sandbox) throw new Error("The demo is not loaded.");
+        sandbox.updateSandboxTeam(teamId, updatedData);
         setTeam((prev: any) => ({ ...prev, ...updatedData }));
         setIsEditModalOpen(false);
         setSaving(false);
@@ -459,6 +520,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     return deniedElement;
   }
 
+  if (demoError) return <DemoLoadError retry={retryDemo} />;
   if (loading) {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
@@ -488,7 +550,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const palette = resolveTeamColorPalette(team);
   const isTeamYork = isYork || isYorkTeam(team?.id);
   const isExplicitIndependent = isTeamYork || Boolean(team?.isIndependent) || Boolean(team?.isStandalone);
-  const isDemoTeamInSandbox = isDemoLeague || teamId.startsWith("team_") || getSandboxTeams().some((t) => t.id === teamId);
+  const isDemoTeamInSandbox = isDemoLeague || teamId.startsWith("team_") || Boolean(sandbox?.getSandboxTeams().some((t) => t.id === teamId));
   const targetLeagueId: string | null = !isExplicitIndependent
     ? (team?.leagueId || (isDemoTeamInSandbox ? (activeLeagueId || "default") : (activeLeagueId && activeLeagueId !== "default" ? activeLeagueId : null)))
     : null;
@@ -688,6 +750,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 </Link>
                 <button
                   type="button"
+                  disabled={!privateSettingsReady}
                   onClick={() => setIsStaffModalOpen(true)}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
                 >
@@ -708,13 +771,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Team Season Stats Banner (Customizable by Team Admin) */}
-        {(() => {
-          const stats = calculateTeamComprehensiveStats(
-            teamId,
-            matches,
-            plays,
-            team ? { teamName: team.name, teamAliases: [shortcode] } : undefined
-          );
+        {statsError && <div role="alert" className="w-full max-w-6xl mb-4 text-red-300">
+          {statsError} <button type="button" className="underline" onClick={() => setStatsReloadKey((key) => key + 1)}>Retry</button>
+        </div>}
+        {statsLoading && <div role="status" className="w-full max-w-6xl mb-8 rounded-3xl bg-white/5 p-6 animate-pulse">Loading season statistics...</div>}
+        {!statsLoading && !statsError && (() => {
+          const stats = comprehensiveStats;
 
           return (
             <div className="w-full max-w-6xl mb-8">
@@ -1296,21 +1358,16 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       )}
 
       {/* Team Stats Customizer Modal (Accessible to Team Admins & Staff) */}
-      <TeamStatsCustomizerModal
+      {isStatsCustomizerOpen && <TeamStatsCustomizerModal
         isOpen={isStatsCustomizerOpen}
         onClose={() => setIsStatsCustomizerOpen(false)}
         onSave={handleSaveVisibleStats}
         initialVisibleStats={visibleStatIds}
-        teamStats={calculateTeamComprehensiveStats(
-          teamId,
-          matches,
-          plays,
-          team ? { teamName: team.name, teamAliases: [shortcode] } : undefined
-        )}
+        teamStats={comprehensiveStats}
         teamName={team?.name || "Team"}
         primaryColor={palette.primary}
         secondaryColor={palette.secondary}
-      />
+      />}
 
       {/* Standalone / Paid Team Portal Footer with subtle Powered by FlagOS Disclaimer */}
       <footer className="relative z-10 w-full border-t border-white/10 bg-black/80 backdrop-blur-md py-8 px-6 text-xs text-neutral-400 mt-auto">

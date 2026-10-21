@@ -50,11 +50,12 @@ const mockDefensePlay: PlayDiagram = {
   zones: [],
 };
 
-function applyCatalogRoute(shortName: string) {
+// The route catalog drawer is lazy-loaded, so wait for its chunk after opening it.
+async function applyCatalogRoute(shortName: string) {
   if (!screen.queryByTestId("route-presets-catalog")) {
     fireEvent.click(screen.getByTestId("route-presets-toggle"));
   }
-  fireEvent.click(screen.getByTestId(`catalog-route-${shortName}`));
+  fireEvent.click(await screen.findByTestId(`catalog-route-${shortName}`));
 }
 
 function applyMotion(shortName: string) {
@@ -141,7 +142,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(screen.getByRole("textbox", { name: "Y coaching notes" })).toBeInTheDocument();
   });
 
-  it("keeps routes and motion behind two menu buttons instead of a sliding ribbon", () => {
+  it("keeps routes and motion behind two menu buttons instead of a sliding ribbon", async () => {
     render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
     expect(screen.queryByTestId("quick-route-slant")).toBeNull();
@@ -155,7 +156,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
     fireEvent.click(screen.getByTestId("route-presets-toggle"));
     expect(screen.queryByTestId("motion-menu")).toBeNull();
-    expect(screen.getByTestId("catalog-route-slant")).toBeDefined();
+    expect(await screen.findByTestId("catalog-route-slant")).toBeDefined();
     expect(screen.getByTestId("catalog-route-out")).toBeDefined();
   });
 
@@ -169,12 +170,12 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(screen.queryByText(/Route Assignment/)).not.toBeInTheDocument();
   });
 
-  it("applies a route at a custom depth", () => {
+  it("applies a route at a custom depth", async () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
     fireEvent.click(screen.getByTestId("route-presets-toggle"));
-    fireEvent.click(screen.getByLabelText("Increase route depth"));
+    fireEvent.click(await screen.findByLabelText("Increase route depth"));
     fireEvent.click(screen.getByLabelText("Increase route depth"));
     fireEvent.click(screen.getByTestId("catalog-route-out"));
 
@@ -206,11 +207,11 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(screen.queryByText(/Route Assignment/)).not.toBeInTheDocument();
   });
 
-  it("applies a route preset when clicking a quick-route button", () => {
+  it("applies a route preset when clicking a quick-route button", async () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
-    applyCatalogRoute("slant");
+    await applyCatalogRoute("slant");
 
     expect(handleChange).toHaveBeenCalled();
     const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
@@ -320,7 +321,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect((onChange.mock.lastCall![0] as PlayDiagram).zones).toHaveLength(0);
   });
 
-  it("toggles the route presets catalog drawer without clipping", () => {
+  it("toggles the route presets catalog drawer without clipping", async () => {
     const handleChange = vi.fn();
     render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
@@ -332,7 +333,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     fireEvent.click(toggleBtn);
 
     // Catalog should now be visible inline
-    const catalog = screen.getByTestId("route-presets-catalog");
+    const catalog = await screen.findByTestId("route-presets-catalog");
     expect(catalog).toBeDefined();
     expect(screen.getByText("Route Tree & Team Presets Catalog")).toBeDefined();
 
@@ -346,7 +347,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(postPlayer).toBeDefined();
   });
 
-  it("preserves pre-snap motion when applying a route preset and runs route from motion endpoint", () => {
+  it("preserves pre-snap motion when applying a route preset and runs route from motion endpoint", async () => {
     const handleChange = vi.fn();
     const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
@@ -364,7 +365,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     rerender(<PlayCanvas play={motionPlay} onChange={handleChange} />);
 
     // 2. Now apply a route preset (Slant) to the motion receiver
-    applyCatalogRoute("slant");
+    await applyCatalogRoute("slant");
 
     expect(handleChange).toHaveBeenCalled();
     const routedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
@@ -383,12 +384,12 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(playerWithBoth!.route![0].x).not.toBe(playerWithBoth!.x);
   });
 
-  it("re-anchors existing route preset to start from motion endpoint when pre-snap motion is added", () => {
+  it("re-anchors existing route preset to start from motion endpoint when pre-snap motion is added", async () => {
     const handleChange = vi.fn();
     const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={handleChange} />);
 
     // 1. Give player a route preset first (e.g. Slant)
-    applyCatalogRoute("slant");
+    await applyCatalogRoute("slant");
 
     const playWithSlant = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
     const slantedPlayer = playWithSlant.players.find((p) => p.quickRouteName === "Slant");

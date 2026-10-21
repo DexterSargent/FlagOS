@@ -4,8 +4,6 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/authContext";
 import { ThemeProvider } from "@/lib/themeContext";
 import { LeagueProvider } from "@/lib/leagueContext";
-import RoleSwitcherBar from "@/components/RoleSwitcherBar";
-import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
 import GlobalShell from "@/components/GlobalShell";
 import AuthGuard from "@/components/AuthGuard";
 
@@ -73,11 +71,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 >
                   Skip to main content
                 </a>
-                <RoleSwitcherBar />
                 <GlobalShell>
                   {children}
                 </GlobalShell>
-                <LeagueCustomizerModal />
               </AuthGuard>
             </LeagueProvider>
           </ThemeProvider>

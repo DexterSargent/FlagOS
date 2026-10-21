@@ -1,56 +1,9 @@
-import { DemoTeam, DemoPlayer, DemoMatch, DemoPlay } from "./demoSeedData";
+import type { DemoPlayer, DemoMatch, DemoPlay } from "./demoSeedData";
 import { applyFormationToSquad, ensureSquadMatchup } from "./playbookTypes";
-import { YORK_TEAM_ID, YORK_ADMIN_EMAILS } from "./yorkStaff";
+import { getYorkCustomMatches } from "./yorkMatchStorage";
+export { YORK_CUSTOM_MATCHES_KEY, REMOVED_YORK_MATCH_IDS, getYorkCustomMatches, saveYorkCustomMatch, deleteYorkCustomMatch } from "./yorkMatchStorage";
+export { YORK_LIONS_TEAM, getYorkTeamData } from "./yorkTeamProfile";
 export { YORK_TEAM_ID, YORK_TEAM_ALIASES, YORK_ADMIN_EMAILS, isYorkTeam } from "./yorkStaff";
-
-export const YORK_LIONS_TEAM: DemoTeam & Record<string, any> = {
-  id: YORK_TEAM_ID,
-  name: "York Lions Women's Flag Football",
-  shortcode: "YORK",
-  color: "#E31837",
-  primaryColor: "#E31837", // York Red
-  secondaryColor: "#FFFFFF", // White
-  tertiaryColor: "#000000", // Black
-  icon: "cat", // Lion
-  logoUrl: "",
-  coachName: "Dexter Sargent",
-  coachRole: "Head Coach",
-  assistantCoach: "Theo Brown",
-  assistantCoachRole: "Defensive Coordinator",
-  defensiveCoordinator: "Theo Brown",
-  defensiveCoordinatorRole: "Defensive Coordinator",
-  offensiveCoordinator: "Justin Fawcett",
-  offensiveCoordinatorRole: "Offensive Coordinator",
-  coachEmail: "dextersargent@gmail.com",
-  adminEmails: YORK_ADMIN_EMAILS,
-  isStandalone: true,
-  isFounderTeam: true,
-  isComplimentary: true,
-  createdAt: "2026-08-01T00:00:00.000Z",
-  subscription: {
-    status: "active",
-    plan: "team_pro",
-    planName: "Pro Team Subscription",
-    tier: "Founder Varsity Club",
-    isComplimentary: true,
-    isFounderTeam: true,
-    isStandalone: true,
-    monthlyFee: 0,
-    playbookLimit: 5,
-    billingCycle: "Complimentary Lifetime (Founder Club)",
-    renewsAt: "Lifetime",
-    features: [
-      "Dedicated Team Portal & Roster Hub",
-      "Up to 5 Custom Playbooks with Visual Route Designer",
-      "Pre-Snap Motion & Play Simulation Animations",
-      "Printable Wristband & Armband Inserts (8, 12, 16 plays)",
-      "Dynamic Play-by-Play Wizard (Clockless & Synchronous)",
-      "Public Live Game Box Scores & Down-by-Down Logs",
-      "Career Stat Tracking & Multi-Season Player Résumés",
-      "Autonomy for Tournaments & Non-League Exhibition Scrimmages",
-    ],
-  },
-};
 
 export const YORK_LIONS_PLAYERS: DemoPlayer[] = [
   {
@@ -7523,82 +7476,11 @@ export const YORK_LIONS_PLAYS: DemoPlay[] = [
 ];
 
 
-export function getYorkTeamData(): DemoTeam & Record<string, any> {
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("flagos_york_team_custom");
-      if (raw) {
-        const cached = JSON.parse(raw);
-        if (cached && typeof cached === "object" && !Array.isArray(cached)) {
-          const custom: Record<string, string> = {};
-          for (const key of ["name", "shortcode", "logoUrl", "icon", "color", "primaryColor", "secondaryColor", "tertiaryColor"]) {
-            if (typeof cached[key] === "string") custom[key] = cached[key];
-          }
-          return { ...YORK_LIONS_TEAM, ...custom };
-        }
-      }
-    } catch (error) {
-      console.warn("Unable to load York team preferences from this device:", error);
-    }
-  }
-  return YORK_LIONS_TEAM;
-}
-
 export function getYorkTeamPlayers(): DemoPlayer[] {
   return YORK_LIONS_PLAYERS;
 }
 
-export const YORK_CUSTOM_MATCHES_KEY = "flagos_york_matches";
 export const YORK_CUSTOM_PLAYS_KEY_PREFIX = "flagos_york_plays_";
-
-// Imported games whose play-by-play could not be reconciled with the final score.
-export const REMOVED_YORK_MATCH_IDS = new Set([
-  "match_york_canadore_2",
-  "match_york_waterloo_2",
-  "match_york_western",
-]);
-
-export function getYorkCustomMatches(): DemoMatch[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(YORK_CUSTOM_MATCHES_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((m) => !REMOVED_YORK_MATCH_IDS.has(m?.id)) : [];
-  } catch (e) {
-    console.warn("Failed to parse custom York matches:", e);
-    return [];
-  }
-}
-
-export function saveYorkCustomMatch(match: DemoMatch & Record<string, any>): void {
-  if (typeof window === "undefined" || !match?.id) return;
-  try {
-    const existing = getYorkCustomMatches();
-    const idx = existing.findIndex((m) => m.id === match.id);
-    let updated: DemoMatch[];
-    if (idx >= 0) {
-      updated = [...existing];
-      updated[idx] = { ...updated[idx], ...match };
-    } else {
-      updated = [...existing, match];
-    }
-    localStorage.setItem(YORK_CUSTOM_MATCHES_KEY, JSON.stringify(updated));
-  } catch (e) {
-    console.warn("Failed to save custom York match:", e);
-  }
-}
-
-export function deleteYorkCustomMatch(matchId: string): void {
-  if (typeof window === "undefined" || !matchId) return;
-  try {
-    const existing = getYorkCustomMatches();
-    const updated = existing.filter((m) => m.id !== matchId);
-    localStorage.setItem(YORK_CUSTOM_MATCHES_KEY, JSON.stringify(updated));
-  } catch (e) {
-    console.warn("Failed to delete custom York match:", e);
-  }
-}
 
 export function getYorkTeamMatches(): DemoMatch[] {
   if (typeof window === "undefined") {
@@ -7649,6 +7531,7 @@ export function saveYorkPlay(matchId: string, play: DemoPlay & Record<string, an
     const existing = getYorkCustomPlays(matchId);
     const updated = [...existing, play];
     localStorage.setItem(`${YORK_CUSTOM_PLAYS_KEY_PREFIX}${matchId}`, JSON.stringify(updated));
+    window.dispatchEvent(new Event("flagos-york-data-changed"));
     return true;
   } catch (e) {
     console.warn("Failed to save York play locally:", e);
@@ -7662,6 +7545,7 @@ export function deleteYorkPlay(matchId: string, playId: string): void {
     const existing = getYorkCustomPlays(matchId);
     const updated = existing.filter((p: any) => p.id !== playId);
     localStorage.setItem(`${YORK_CUSTOM_PLAYS_KEY_PREFIX}${matchId}`, JSON.stringify(updated));
+    window.dispatchEvent(new Event("flagos-york-data-changed"));
   } catch (e) {
     console.warn("Failed to delete York play locally:", e);
   }

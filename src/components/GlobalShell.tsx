@@ -2,10 +2,14 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
-import InteractiveDemoGuard from "@/components/InteractiveDemoGuard";
+import dynamic from "next/dynamic";
 import HelpGuide from "@/components/HelpGuide";
+import RoleSwitcherBar from "@/components/RoleSwitcherBar";
+import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
+
+const InteractiveDemoGuard = dynamic(() => import("./InteractiveDemoGuard"), { ssr: false });
+const LeagueHeader = dynamic(() => import("./LeagueHeader"));
+const LeagueFooter = dynamic(() => import("./LeagueFooter"));
 
 import { useAuth } from "@/lib/authContext";
 
@@ -73,13 +77,15 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-clip">
+      <RoleSwitcherBar />
       {showLeagueNav && <LeagueHeader />}
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-full overflow-x-clip">
         {children}
       </main>
       {showLeagueNav && <LeagueFooter />}
-      <InteractiveDemoGuard />
+      {isEmbedded && <InteractiveDemoGuard />}
       {!isEmbedded && !isLogin && !isAdminSandbox && !isLandingPage && <HelpGuide />}
+      <LeagueCustomizerModal />
     </div>
   );
 }

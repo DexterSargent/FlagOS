@@ -6,6 +6,11 @@ import { YORK_LIONS_PLAYERS } from "@/lib/yorkTeamData";
 import { getDepthFormations } from "@/lib/depthChart";
 import { createSecureRecord } from "@/lib/secureWrites";
 
+vi.mock("@/lib/teamSeasonSummary", () => ({
+  loadTeamSeasonSummary: vi.fn().mockResolvedValue({ teamStats: {}, playerStats: {} }),
+  buildRosterPlayerStats: vi.fn().mockReturnValue({}),
+}));
+
 vi.mock("@/lib/secureWrites", () => ({
   createSecureRecord: vi.fn().mockResolvedValue("player-id"),
   requestPrivateData: vi.fn(async (action: string) => action === "depth_chart"

@@ -1,15 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import {
-  getSandboxSettings,
-  updateSandboxSettings,
-  resetDemoSession as resetDemoSandboxHelper,
   subscribeDemoSandbox,
   isDemoLeague as checkIsDemoLeague,
-} from "./demoSandbox";
+} from "./demoSandboxRuntime";
 import { FLAGOS_LOGO } from "./brandTokens";
 import { auth } from "./firebase";
 import { createSecureRecord } from "./secureWrites";
@@ -327,7 +325,7 @@ interface LeagueContextType {
   }) => Promise<string>;
   subscription: LeagueSubscriptionInfo | null;
   isDemoLeague: boolean;
-  resetDemoSession: () => void;
+  resetDemoSession: () => void | Promise<void>;
   archiveLeague: (action: "pause_subscription" | "new_season") => Promise<void>;
   resumeSubscription: () => Promise<void>;
   isLeagueArchived: boolean;
@@ -415,7 +413,8 @@ const LeagueContext = createContext<LeagueContextType>({
   isLeagueReadOnly: false,
 });
 
-export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
+const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => {
+  const settingsRequest = useRef(0);
   const [settings, setSettings] = useState<LeagueSettings>(DEFAULT_LEAGUE_SETTINGS);
   const [activeLeagueId, setActiveLeagueId] = useState<string>("default");
   const [userLeagues, setUserLeagues] = useState<UserLeagueSummary[]>(DEFAULT_USER_LEAGUES);
@@ -460,18 +459,28 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Helper to load settings for a given league id
   const fetchSettingsForLeague = async (leagueId: string) => {
+    const request = ++settingsRequest.current;
+    const isCurrent = () => request === settingsRequest.current;
     if (checkIsDemoLeague(leagueId)) {
-      const sandboxSettings = getSandboxSettings();
-      setSettings(sandboxSettings);
-      setSubscription(DEFAULT_LEAGUE_SUBSCRIPTION);
-      applyThemeColors(sandboxSettings.primaryColor, sandboxSettings.accentColor, sandboxSettings.leagueName, sandboxSettings.seasonTitle);
-      return sandboxSettings;
+      try {
+        const { getSandboxSettings } = await import("./demoSandbox");
+        if (!isCurrent()) return null;
+        const sandboxSettings = getSandboxSettings();
+        setSettings(sandboxSettings);
+        setSubscription(DEFAULT_LEAGUE_SUBSCRIPTION);
+        applyThemeColors(sandboxSettings.primaryColor, sandboxSettings.accentColor, sandboxSettings.leagueName, sandboxSettings.seasonTitle);
+        return sandboxSettings;
+      } catch (err) {
+        if (isCurrent()) console.error("Failed to load demo settings:", err);
+        return null;
+      }
     }
 
     if (leagueId === "league_private_live") {
       try {
         const docRef = doc(db, "leagues", leagueId);
         const snap = await getDoc(docRef);
+        if (!isCurrent()) return null;
         if (snap.exists()) {
           const remoteData = snap.data() as Partial<LeagueSettings> & { subscription?: LeagueSubscriptionInfo };
           const merged: LeagueSettings = {
@@ -488,6 +497,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
           return merged;
         }
       } catch (err) {
+        if (!isCurrent()) return null;
         console.warn("Falling back to local private league settings:", err);
       }
       setSettings(PRIVATE_LIVE_LEAGUE_SETTINGS);
@@ -498,6 +508,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const docRef = doc(db, "leagues", leagueId);
       const snap = await getDoc(docRef);
+      if (!isCurrent()) return null;
       if (snap.exists()) {
         const remoteData = snap.data() as Partial<LeagueSettings> & { subscription?: LeagueSubscriptionInfo };
         const merged: LeagueSettings = {
@@ -516,6 +527,7 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
         return merged;
       }
     } catch (err) {
+      if (!isCurrent()) return null;
       console.error(`Failed to load settings for league ${leagueId}:`, err);
     }
     return null;
@@ -574,7 +586,12 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
 
     applyThemeColors(settings.primaryColor || DEFAULT_LEAGUE_SETTINGS.primaryColor, settings.accentColor || DEFAULT_LEAGUE_SETTINGS.accentColor, settings.leagueName, settings.seasonTitle);
 
-    fetchSettingsForLeague(initialLeagueId).then(() => setLoading(false));
+    const pending = fetchSettingsForLeague(initialLeagueId);
+    const request = settingsRequest.current;
+    void pending.then(() => {
+      if (request === settingsRequest.current) setLoading(false);
+    });
+    return () => { settingsRequest.current++; };
   }, []);
 
   const switchLeague = async (leagueId: string) => {
@@ -589,8 +606,10 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
       setSubscription(matchingLeague.subscription);
     }
 
-    await fetchSettingsForLeague(leagueId);
-    setLoading(false);
+    const pending = fetchSettingsForLeague(leagueId);
+    const request = settingsRequest.current;
+    await pending;
+    if (request === settingsRequest.current) setLoading(false);
   };
 
   const createLeague = async (data: {
@@ -679,18 +698,23 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Listen to sandbox reset/update events in demo mode
   useEffect(() => {
+    let disposed = false;
     const unsub = subscribeDemoSandbox(() => {
       if (checkIsDemoLeague(activeLeagueId)) {
-        const current = getSandboxSettings();
-        setSettings(current);
-        applyThemeColors(current.primaryColor, current.accentColor, current.leagueName, current.seasonTitle);
+        void import("./demoSandbox").then(({ getSandboxSettings }) => {
+          if (disposed) return;
+          const current = getSandboxSettings();
+          setSettings(current);
+          applyThemeColors(current.primaryColor, current.accentColor, current.leagueName, current.seasonTitle);
+        });
       }
     });
-    return () => unsub();
+    return () => { disposed = true; unsub(); };
   }, [activeLeagueId]);
 
   const updateSettings = async (newSettings: Partial<LeagueSettings>) => {
     if (checkIsDemoLeague(activeLeagueId)) {
+      const { updateSandboxSettings } = await import("./demoSandbox");
       const updated = updateSandboxSettings(newSettings);
       setSettings(updated);
       applyThemeColors(updated.primaryColor, updated.accentColor, updated.leagueName, updated.seasonTitle);
@@ -738,7 +762,8 @@ export const LeagueProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const resetDemoSession = () => {
+  const resetDemoSession = async () => {
+    const { resetDemoSession: resetDemoSandboxHelper, getSandboxSettings } = await import("./demoSandbox");
     resetDemoSandboxHelper();
     const pristine = getSandboxSettings();
     setSettings(pristine);
@@ -889,6 +914,18 @@ export function TeamLeagueScope({ teamId, children }: { teamId: string; children
       {children}
     </LeagueContext.Provider>
   );
+}
+
+// York has no parent league. Do not mount the persisted league's initializer on
+// its routes; leaving York restores the selected league from its existing cache.
+export function LeagueProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const teamId = pathname?.startsWith("/teams/") ? pathname.split("/")[2] : null;
+  const matchId = pathname?.startsWith("/matches/") ? pathname.split("/")[2] : null;
+  if (isYorkTeam(teamId) || matchId?.includes("york")) {
+    return <TeamLeagueScope teamId="york_lions">{children}</TeamLeagueScope>;
+  }
+  return <SelectedLeagueProvider>{children}</SelectedLeagueProvider>;
 }
 
 export const useLeague = () => useContext(LeagueContext);
