@@ -2491,7 +2491,7 @@ export default function PlayCanvas({
               }`}
             >
               {animating ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              <span>{animating ? "Pause" : progress >= 1 ? "Replay" : "Play Action"}</span>
+              <span>{animating ? "Pause" : progress >= 1 ? "Replay" : "Run Play"}</span>
             </button>
 
             <button
