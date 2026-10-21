@@ -514,10 +514,14 @@ export function calculateTeamComprehensiveStats(
       return;
     }
 
-    const isOffense = isTargetTeam(play.possessionTeamId);
+    const isOffense =
+      isTargetTeam(play.possessionTeamId) ||
+      isTargetTeam(play.possession) ||
+      isTargetTeam(play.teamId) ||
+      isTargetTeam(play.teamName);
     // Determine if team is in the game (either on offense or defense)
-    // If play has matchId, find the match
-    const playMatch = matches.find((m) => m.id === play.matchId);
+    // If play has matchId, find the match; fallback to matches[0] if single match provided
+    const playMatch = matches.find((m) => m.id === play.matchId) || (matches.length === 1 ? matches[0] : undefined);
     const isInvolved = isOffense || (playMatch && (isTargetTeam(playMatch.homeTeamId) || isTargetTeam(playMatch.awayTeamId)));
 
     if (!isInvolved && !isOffense) return;

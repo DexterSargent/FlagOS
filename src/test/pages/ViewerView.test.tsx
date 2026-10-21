@@ -209,4 +209,32 @@ describe("Live Game Spectator & Box Score Suite (ViewerView)", () => {
       expect(screen.getByText("Cole Hayes")).toBeInTheDocument();
     });
   });
+
+  it("switches to Team Stats tab and renders game team stats for the selected game", async () => {
+    await renderViewer();
+
+    const teamStatsBtn = screen.getByRole("button", { name: "Team Stats" });
+    expect(teamStatsBtn).toBeInTheDocument();
+
+    fireEvent.click(teamStatsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("game-team-stats")).toBeInTheDocument();
+      expect(screen.getByText("Head-to-Head Comparison")).toBeInTheDocument();
+      // Should show both teams
+      expect(screen.getAllByText("Apex Predators").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Cyber Knights").length).toBeGreaterThan(0);
+    });
+
+    // Toggle to Apex Predators breakdown
+    const homeBtn = screen.getByTestId("team-stats-view-home");
+    fireEvent.click(homeBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Apex Predators Game Breakdown")).toBeInTheDocument();
+      expect(screen.getByTestId("stat-card-firstDowns")).toBeInTheDocument();
+      expect(screen.getByTestId("stat-card-totalTDs")).toBeInTheDocument();
+    });
+  });
 });
+

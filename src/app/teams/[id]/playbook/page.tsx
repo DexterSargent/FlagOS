@@ -11,6 +11,7 @@ import {
   Copy,
   Printer,
   Check,
+  RefreshCw,
   Shield,
   Zap,
   Layers,
@@ -36,6 +37,7 @@ import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import dynamic from "next/dynamic";
 const PlayCanvas = dynamic(() => import("@/components/playbook/PlayCanvas"));
 import CreatePlaybookModal from "@/components/playbook/CreatePlaybookModal";
+import EditPlaybookModal from "@/components/playbook/EditPlaybookModal";
 import CreateFormationModal from "@/components/playbook/CreateFormationModal";
 import PrintArmbandModal from "@/components/playbook/PrintArmbandModal";
 import PlayQuestionsModal from "@/components/playbook/PlayQuestionsModal";
@@ -57,6 +59,8 @@ import { getSandboxTeams } from "@/lib/demoSandbox";
 import { isYorkTeam, getYorkTeamData, YORK_TEAM_ID } from "@/lib/yorkTeamData";
 import { includeYorkOffensivePlaybook } from "@/lib/yorkOffensivePlaybook";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
+import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
+import { useTeamColors } from "@/lib/teamColorContext";
 
 type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
 
@@ -70,7 +74,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const playersPerSide = settings?.rules?.playersOnField || 5;
 
+  const { palette: contextPalette, team: contextTeam } = useTeamColors();
   const [team, setTeam] = useState<any>(null);
+  const effectiveTeam = team || contextTeam;
+  const palette = resolveTeamColorPalette(effectiveTeam || contextPalette);
   const isDexter = isDexterUser(user?.email);
   const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
   const canDeletePlaybook = isPrimary;
@@ -122,8 +129,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Auto-Save State: collapses rapid edits into a 2.5s debounced write to keep DB writes low
+  type AutoSaveState = "saved" | "saving" | "unsaved" | "offline";
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveState>("saved");
+  const lastSavedSnapshotRef = useRef<string>("");
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadDoneRef = useRef<boolean>(false);
+
   // Modals
   const [isCreatePlaybookOpen, setIsCreatePlaybookOpen] = useState(false);
+  const [isEditPlaybookOpen, setIsEditPlaybookOpen] = useState(false);
+  const [editingPlaybook, setEditingPlaybook] = useState<Playbook | null>(null);
   const [isFormationModalOpen, setIsFormationModalOpen] = useState(false);
   const [editingFormation, setEditingFormation] = useState<FormationAlignment | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -337,12 +353,13 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           } catch {}
         }
 
+        lastSavedSnapshotRef.current = loadedSnapshot;
         if (paintedSnapshot === null) {
           setPlaybooks(loadedPlaybooks);
           selectFirstPlay(loadedPlaybooks);
         } else if (paintedSnapshot !== loadedSnapshot) {
           setPlaybooks((current) => {
-            // Keep edits made against the cached copy rather than discarding them.
+            // Keep edits made against the cached copy; auto-save will sync them.
             if (JSON.stringify(current) !== paintedSnapshot) return [...current];
             return loadedPlaybooks;
           });
@@ -350,7 +367,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             selectFirstPlay(loadedPlaybooks);
           }
         }
+        isInitialLoadDoneRef.current = true;
         loadedPlaybooksKeyRef.current = loadKey;
+        setAutoSaveStatus("saved");
       } catch (err) {
         console.error("Error loading playbooks:", err);
       }
@@ -381,28 +400,86 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     activePlaybook?.plays[0] ||
     null;
 
-  // Save Playbooks to Cloud (Firestore)
-  const handleSavePlaybooks = async () => {
-    if (!hasEditAccess) return;
+  // Flush pending auto-save immediately to Cloud (Firestore)
+  const flushAutoSave = async () => {
+    if (!hasEditAccess || isEmbedded || loading) return;
+    const currentSnapshot = JSON.stringify(playbooks);
+    if (currentSnapshot === lastSavedSnapshotRef.current) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    setAutoSaveStatus("saving");
     setSaving(true);
-    setSaveSuccess(false);
     try {
       if (typeof window !== "undefined") {
-        localStorage.setItem(`flagos_playbooks_${teamId}`, JSON.stringify(playbooks));
+        localStorage.setItem(`flagos_playbooks_${teamId}`, currentSnapshot);
       }
       await createSecureRecord("playbook", {
         teamId,
         playbooks,
         updatedAt: new Date().toISOString(),
       });
+      lastSavedSnapshotRef.current = currentSnapshot;
+      setAutoSaveStatus("saved");
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e) {
-      console.error("Failed to save playbooks:", e);
-      alert("Error saving playbooks to cloud. Local changes were saved.");
+      console.warn("Auto-save to cloud failed, saved locally:", e);
+      setAutoSaveStatus("offline");
     }
     setSaving(false);
   };
+
+  // Debounced Auto-Saver: persists immediately to localStorage, and syncs
+  // to Firestore after 2.5s of idle time. Eliminates high DB write volume.
+  useEffect(() => {
+    if (loading || !hasEditAccess || isEmbedded || !isInitialLoadDoneRef.current) return;
+
+    const currentSnapshot = JSON.stringify(playbooks);
+    if (currentSnapshot === lastSavedSnapshotRef.current) {
+      return;
+    }
+
+    setAutoSaveStatus("unsaved");
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        setAutoSaveStatus("saving");
+        await createSecureRecord("playbook", {
+          teamId,
+          playbooks,
+          updatedAt: new Date().toISOString(),
+        });
+        lastSavedSnapshotRef.current = currentSnapshot;
+        setAutoSaveStatus("saved");
+      } catch (err) {
+        console.warn("Auto-save to cloud failed, saved locally:", err);
+        setAutoSaveStatus("offline");
+      }
+    }, 2500);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [playbooks, loading, hasEditAccess, isEmbedded, teamId]);
+
+  // Flush pending auto-save when leaving or closing page
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (lastSavedSnapshotRef.current !== JSON.stringify(playbooks)) {
+        flushAutoSave();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [playbooks]);
 
   // Create Playbook
   const handleCreatePlaybook = (newPlaybook: Playbook) => {
@@ -418,6 +495,20 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     }
     // Drill into the new playbook's formations view immediately
     setViewLevel("formations");
+  };
+
+  // Update Playbook Details (title, unit type, squad format, description)
+  const handleUpdatePlaybook = (updatedPlaybook: Playbook) => {
+    if (!hasEditAccess) return;
+    const next = playbooks.map((b) => (b.id === updatedPlaybook.id ? updatedPlaybook : b));
+    setPlaybooks(next);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(`flagos_playbooks_${teamId}`, JSON.stringify(next));
+      } catch (e) {}
+    }
+    setIsEditPlaybookOpen(false);
+    setEditingPlaybook(null);
   };
 
   // Delete Playbook
@@ -961,8 +1052,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-10 left-10 w-[40rem] h-[40rem] bg-cyan-950/20 rounded-full blur-[180px]"></div>
-        <div className="absolute bottom-20 right-10 w-[35rem] h-[35rem] bg-blue-950/25 rounded-full blur-[180px]"></div>
+        <div className="absolute -top-40 -left-40 w-[40rem] h-[40rem] rounded-full mix-blend-screen filter blur-[160px] opacity-25 animate-pulse" style={{ backgroundColor: palette.primary }} />
+        <div className="absolute bottom-20 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[160px] opacity-20 animate-pulse delay-1000" style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }} />
       </div>
 
       <div className={`mx-auto ${
@@ -1028,7 +1119,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
-                    {teamName}&apos;s <span className="text-cyan-400">PlayBooks</span>
+                    {teamName}&apos;s <span style={{ color: palette.primary }}>PlayBooks</span>
                   </h1>
                   <p className="text-xs text-neutral-400 mt-0.5">
                     Select a playbook to manage custom formations and design plays. Up to {MAX_PLAYBOOKS_PER_TEAM} playbooks.
@@ -1092,7 +1183,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <button
                 type="button"
                 onClick={handleCreatePlayInFormationClick}
-                className="px-5 py-2.5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2"
+                className="px-5 py-2.5 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md"
+                style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#000000") }}
               >
                 <Plus className="w-4 h-4" />
                 <span>New Play</span>
@@ -1106,9 +1198,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 onClick={() => setIsCreatePlaybookOpen(true)}
                 className={`px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg ${
                   playbooks.length < MAX_PLAYBOOKS_PER_TEAM
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black shadow-cyan-500/20"
+                    ? "hover:opacity-90 shadow-lg cursor-pointer"
                     : "bg-white/5 text-neutral-500 border border-white/10 cursor-not-allowed"
                 }`}
+                style={playbooks.length < MAX_PLAYBOOKS_PER_TEAM ? { background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`, color: getReadableTextColor(palette.primary, "#000000") } : undefined}
               >
                 <Plus className="w-4 h-4" />
                 <span>Create a Playbook</span>
@@ -1123,7 +1216,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   setEditingFormation(null);
                   setIsFormationModalOpen(true);
                 }}
-                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/20"
+                className="px-5 py-2.5 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg"
+                style={{ background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`, color: getReadableTextColor(palette.primary, "#000000") }}
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Formation</span>
@@ -1141,26 +1235,39 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </button>
             )}
 
-            {/* Save to Cloud Button */}
+            {/* Auto-Save Cloud Status Indicator */}
             {hasEditAccess && (
               <button
-                onClick={handleSavePlaybooks}
-                disabled={saving}
-                className={`px-4 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2 ${
-                  saveSuccess
-                    ? "bg-emerald-500 text-black shadow-emerald-500/25"
-                    : "bg-white/10 hover:bg-white/20 text-white border border-white/15"
-                }`}
+                type="button"
+                onClick={flushAutoSave}
+                aria-label="Save to Cloud (Auto-save)"
+                title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
+                className="px-3.5 py-2 max-sm:px-2 max-sm:py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono flex items-center gap-2 transition-all hover:bg-white/10 cursor-pointer"
+                data-testid="autosave-status-badge"
               >
-                {saveSuccess ? (
+                {autoSaveStatus === "saving" ? (
                   <>
-                    <Check className="w-4 h-4" />
-                    <span>Saved!</span>
+                    <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                    <span className="text-cyan-300 font-semibold max-sm:hidden">Saving to Cloud...</span>
+                    <span className="text-cyan-300 font-semibold sm:hidden">Saving...</span>
+                  </>
+                ) : autoSaveStatus === "unsaved" ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="text-amber-300 max-sm:hidden">Unsaved changes</span>
+                    <span className="text-amber-300 sm:hidden">Unsaved</span>
+                  </>
+                ) : autoSaveStatus === "offline" ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-neutral-300 max-sm:hidden">Saved locally (offline)</span>
+                    <span className="text-neutral-300 sm:hidden">Offline</span>
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4" />
-                    <span>{saving ? "Saving..." : "Save to Cloud"}</span>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-neutral-300 max-sm:hidden">Saved to Cloud</span>
+                    <span className="text-neutral-300 sm:hidden">Saved</span>
                   </>
                 )}
               </button>
@@ -1215,15 +1322,33 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                           </span>
                         </div>
 
-                        {hasEditAccess && canDeletePlaybook && playbooks.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeletePlaybook(book.id, e)}
-                            className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-white/5 transition-colors"
-                            title="Delete playbook"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        {hasEditAccess && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              data-testid={`edit-playbook-btn-${book.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingPlaybook(book);
+                                setIsEditPlaybookOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors"
+                              title="Edit playbook details"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            {canDeletePlaybook && playbooks.length > 1 && (
+                              <button
+                                type="button"
+                                data-testid={`delete-playbook-btn-${book.id}`}
+                                onClick={(e) => handleDeletePlaybook(book.id, e)}
+                                className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-white/10 transition-colors"
+                                title="Delete playbook"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -1299,8 +1424,22 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   <span>All Playbooks</span>
                 </button>
                 <span className="text-xs text-neutral-500">•</span>
-                <span className="text-xs font-mono text-neutral-300">
-                  Formations in <strong className="text-white">{activePlaybook.title}</strong> ({activePlaybook.formations.length})
+                <span className="text-xs font-mono text-neutral-300 flex items-center gap-1.5">
+                  <span>Formations in <strong className="text-white">{activePlaybook.title}</strong> ({activePlaybook.formations.length})</span>
+                  {hasEditAccess && (
+                    <button
+                      type="button"
+                      data-testid="edit-active-playbook-btn"
+                      onClick={() => {
+                        setEditingPlaybook(activePlaybook);
+                        setIsEditPlaybookOpen(true);
+                      }}
+                      className="p-1 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors cursor-pointer"
+                      title="Edit playbook details"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </span>
               </div>
 
@@ -1470,9 +1609,25 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 <ChevronLeft className="w-4 h-4" />
                 Back to formations
               </button>
-              <span className="text-xs font-mono text-neutral-400">
-                {playsInActiveFormation.length} {playsInActiveFormation.length === 1 ? "Play" : "Plays"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-neutral-400">
+                  {playsInActiveFormation.length} {playsInActiveFormation.length === 1 ? "Play" : "Plays"} in <strong className="text-white">{activePlaybook.title}</strong>
+                </span>
+                {hasEditAccess && (
+                  <button
+                    type="button"
+                    data-testid="edit-playbook-level3-btn"
+                    onClick={() => {
+                      setEditingPlaybook(activePlaybook);
+                      setIsEditPlaybookOpen(true);
+                    }}
+                    className="p-1 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Edit playbook details"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {playsInActiveFormation.length === 0 ? (
@@ -1685,26 +1840,35 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     <span className="hidden md:inline">Print</span>
                   </button>
                 )}
+                {/* Auto-Save Status Indicator in Editor */}
                 {hasEditAccess && (
                   <button
-                    onClick={handleSavePlaybooks}
-                    aria-label={saveSuccess ? "Playbook saved" : saving ? "Saving playbook" : "Save playbook"}
-                    disabled={saving}
-                    className={`px-3 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5 cursor-pointer ${
-                      saveSuccess
-                        ? "bg-emerald-500 text-black shadow-emerald-500/25"
-                        : "bg-cyan-500 hover:bg-cyan-400 text-black border border-cyan-400"
-                    }`}
+                    type="button"
+                    onClick={flushAutoSave}
+                    aria-label={autoSaveStatus === "saving" ? "Saving playbook" : "Save playbook"}
+                    title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
+                    className="px-2.5 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl bg-white/5 border border-white/10 text-xs font-mono flex items-center gap-1.5 transition-all hover:bg-white/10 cursor-pointer"
+                    data-testid="editor-autosave-status-badge"
                   >
-                    {saveSuccess ? (
+                    {autoSaveStatus === "saving" ? (
                       <>
-                        <Check className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Saved!</span>
+                        <RefreshCw className="w-3 h-3 text-cyan-400 animate-spin" />
+                        <span className="text-cyan-300 hidden sm:inline">Saving to Cloud...</span>
+                      </>
+                    ) : autoSaveStatus === "unsaved" ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        <span className="text-amber-300 hidden sm:inline">Unsaved</span>
+                      </>
+                    ) : autoSaveStatus === "offline" ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                        <span className="text-neutral-400 hidden sm:inline">Saved locally</span>
                       </>
                     ) : (
                       <>
-                        <Save className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-neutral-400 hidden sm:inline">Saved to Cloud</span>
                       </>
                     )}
                   </button>
@@ -1738,6 +1902,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   onChange={handleUpdateActivePlay}
                   readOnly={!hasEditAccess}
                   playbook={activePlaybook}
+                  allPlaybooks={playbooks}
                 />
               ) : (
                 <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-8 text-center text-neutral-400">
@@ -1766,6 +1931,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         currentPlaybookCount={playbooks.length}
         onCreate={handleCreatePlaybook}
         defaultPlayersOnField={playersPerSide}
+      />
+
+      {/* MODAL 1B: Edit Playbook Details */}
+      <EditPlaybookModal
+        isOpen={isEditPlaybookOpen}
+        onClose={() => {
+          setIsEditPlaybookOpen(false);
+          setEditingPlaybook(null);
+        }}
+        playbook={editingPlaybook}
+        onSave={handleUpdatePlaybook}
       />
 
       {/* MODAL 2: Create / Edit Formation (with visual drag placement) */}

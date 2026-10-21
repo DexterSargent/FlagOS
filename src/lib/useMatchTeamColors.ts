@@ -31,6 +31,7 @@ export function useMatchTeamColors(match: MatchTeamColorSource | null, isDemo: b
       return subscribeDemoSandbox(refresh);
     }
     setTeams({});
+    if (!db) return;
     const ids = [...new Set([homeId, awayId].filter((id): id is string =>
       typeof id === "string" && !!id && !id.startsWith("opponent_"),
     ))];

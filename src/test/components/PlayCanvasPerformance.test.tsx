@@ -294,6 +294,121 @@ describe("PlayCanvas drag drafts", () => {
     expect(saved.players.find((p) => p.id === "d_fs")!.route).toEqual([{ x: 40, y: 25 }]);
   });
 
+  it("drags a defensive player's zone arrow and moves the attached zone with it", () => {
+    const onChange = vi.fn();
+    const zone = { id: "z_deep", name: "Deep Half", x: 30, y: 30, rx: 12, ry: 8, color: "#38BDF8" };
+    const defensePlay: PlayDiagram = {
+      ...play,
+      id: "perf_zone_arrow",
+      type: "defense",
+      zones: [zone],
+      players: [
+        ...play.players,
+        { id: "d_fs", label: "FS", role: "Safety", side: "defense", x: 30, y: 45, coverageType: "zone", zoneId: zone.id, route: [{ x: 30, y: 30 }] },
+        { id: "d_2", label: "D2", role: "Safety", side: "defense", x: 60, y: 50, route: [] },
+        { id: "d_3", label: "D3", role: "Corner", side: "defense", x: 18, y: 62, route: [] },
+        { id: "d_4", label: "D4", role: "Corner", side: "defense", x: 82, y: 62, route: [] },
+        { id: "d_5", label: "D5", role: "Rusher", side: "defense", x: 50, y: 57, route: [] },
+      ],
+    };
+    const { container } = render(<PlayCanvas play={defensePlay} onChange={onChange} />);
+    const svg = fieldSvg();
+    onChange.mockClear();
+
+    // Select the defensive player first
+    fireEvent.pointerDown(playerNode(container, "FS"), at(30, 45));
+    fireEvent.pointerUp(svg, at(30, 45));
+
+    // Find the waypoint handle circle at (30, 30) => cx=300, cy=210
+    const handle = [...container.querySelectorAll('circle[r="44"]')].find(
+      (circle) => circle.getAttribute("cx") === "300" && circle.getAttribute("cy") === "210"
+    )!;
+    expect(handle).toBeDefined();
+
+    // 17.5 is exactly 30 yards from losY 70 (70 - 30 * 1.75 = 17.5)
+    fireEvent.pointerDown(handle.parentElement!, at(30, 30));
+    fireEvent.pointerMove(svg, at(45, 17.5));
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(svg, at(45, 17.5));
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    const saved = onChange.mock.calls[0][0] as PlayDiagram;
+    expect(saved.zones).toEqual([{ ...zone, x: 45, y: 17.5 }]);
+    expect(saved.players.find((p) => p.id === "d_fs")!.route).toEqual([{ x: 45, y: 17.5 }]);
+  });
+
+  it("drags a defensive player's zone arrow directly via the path to move the attached zone", () => {
+    const onChange = vi.fn();
+    const zone = { id: "z_deep", name: "Deep Half", x: 30, y: 30, rx: 12, ry: 8, color: "#38BDF8" };
+    const defensePlay: PlayDiagram = {
+      ...play,
+      id: "perf_zone_arrow_direct",
+      type: "defense",
+      zones: [zone],
+      players: [
+        ...play.players,
+        { id: "d_fs", label: "FS", role: "Safety", side: "defense", x: 30, y: 45, coverageType: "zone", zoneId: zone.id, route: [{ x: 30, y: 30 }] },
+        { id: "d_2", label: "D2", role: "Safety", side: "defense", x: 60, y: 50, route: [] },
+        { id: "d_3", label: "D3", role: "Corner", side: "defense", x: 18, y: 62, route: [] },
+        { id: "d_4", label: "D4", role: "Corner", side: "defense", x: 82, y: 62, route: [] },
+        { id: "d_5", label: "D5", role: "Rusher", side: "defense", x: 50, y: 57, route: [] },
+      ],
+    };
+    const { container } = render(<PlayCanvas play={defensePlay} onChange={onChange} />);
+    const svg = fieldSvg();
+    onChange.mockClear();
+
+    // Directly click and drag the arrow path without pre-selecting the player
+    const arrowPath = [...container.querySelectorAll('path.cursor-move')].find(
+      (path) => path.getAttribute("stroke") === "#A855F7" || path.getAttribute("stroke") === "transparent"
+    )!;
+    expect(arrowPath).toBeDefined();
+
+    fireEvent.pointerDown(arrowPath, at(30, 30));
+    fireEvent.pointerMove(svg, at(50, 17.5));
+    fireEvent.pointerUp(svg, at(50, 17.5));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const saved = onChange.mock.calls[0][0] as PlayDiagram;
+    expect(saved.zones).toEqual([{ ...zone, x: 50, y: 17.5 }]);
+    expect(saved.players.find((p) => p.id === "d_fs")!.route).toEqual([{ x: 50, y: 17.5 }]);
+  });
+
+  it("moving a defensive player preserves arrow attachment to their zone", () => {
+    const onChange = vi.fn();
+    const zone = { id: "z_deep", name: "Deep Half", x: 30, y: 30, rx: 12, ry: 8, color: "#38BDF8" };
+    const defensePlay: PlayDiagram = {
+      ...play,
+      id: "perf_zone_player_drag",
+      type: "defense",
+      zones: [zone],
+      players: [
+        ...play.players,
+        { id: "d_fs", label: "FS", role: "Safety", side: "defense", x: 30, y: 45, coverageType: "zone", zoneId: zone.id, route: [{ x: 30, y: 30 }] },
+        { id: "d_2", label: "D2", role: "Safety", side: "defense", x: 60, y: 50, route: [] },
+        { id: "d_3", label: "D3", role: "Corner", side: "defense", x: 18, y: 62, route: [] },
+        { id: "d_4", label: "D4", role: "Corner", side: "defense", x: 82, y: 62, route: [] },
+        { id: "d_5", label: "D5", role: "Rusher", side: "defense", x: 50, y: 57, route: [] },
+      ],
+    };
+    const { container } = render(<PlayCanvas play={defensePlay} onChange={onChange} />);
+    const svg = fieldSvg();
+    onChange.mockClear();
+
+    fireEvent.pointerDown(playerNode(container, "FS"), at(30, 45));
+    fireEvent.pointerMove(svg, at(35, 48));
+    fireEvent.pointerUp(svg, at(35, 48));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const saved = onChange.mock.calls[0][0] as PlayDiagram;
+    const fs = saved.players.find((p) => p.id === "d_fs")!;
+    expect(fs.x).toBeCloseTo(35);
+    expect(fs.y).toBeCloseTo(48);
+    // Route must remain pointing to the zone at (30, 30) instead of drifting
+    expect(fs.route).toEqual([{ x: 30, y: 30 }]);
+  });
+
   it("flushes an in-progress drag if the designer unmounts", () => {
     const onChange = vi.fn();
     const { container, unmount } = render(<PlayCanvas play={play} onChange={onChange} />);
@@ -319,3 +434,254 @@ describe("PlayCanvas lazy route catalog", () => {
     await waitFor(() => expect(screen.queryByTestId("route-presets-catalog")).toBeNull());
   });
 });
+
+describe("PlayCanvas custom zone creation, shapes, and resizing", () => {
+  const defensePlay: PlayDiagram = {
+    ...play,
+    id: "defense_custom_zones",
+    type: "defense",
+    losY: 65,
+    players: [
+      ...play.players,
+      { id: "d_fs", label: "FS", role: "Safety", side: "defense", x: 50, y: 40, route: [] },
+      { id: "d_cb1", label: "CB1", role: "Corner", side: "defense", x: 20, y: 55, route: [] },
+      { id: "d_cb2", label: "CB2", role: "Corner", side: "defense", x: 80, y: 55, route: [] },
+      { id: "d_lb", label: "LB", role: "Linebacker", side: "defense", x: 50, y: 55, route: [] },
+      { id: "d_rush", label: "RUSH", role: "Rusher", side: "defense", x: 50, y: 58, route: [] },
+    ],
+    zones: [],
+  };
+
+  it("creates a custom box zone and renders a rectangle element on the field", () => {
+    const onChange = vi.fn();
+    const { container } = render(<PlayCanvas play={defensePlay} onChange={onChange} />);
+    onChange.mockClear();
+
+    const createBoxBtn = screen.getAllByTestId("create-custom-box-zone")[0];
+    expect(createBoxBtn).toBeInTheDocument();
+
+    fireEvent.click(createBoxBtn);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const updated = onChange.mock.calls[0][0] as PlayDiagram;
+    expect(updated.zones).toHaveLength(1);
+    const zone = updated.zones![0];
+    expect(zone.shape).toBe("rectangle");
+    expect(zone.name).toBe("Box Zone");
+    expect(zone.rx).toBe(16);
+    expect(zone.ry).toBe(8);
+
+    // Re-render with the created zone and check that an SVG <rect> is rendered
+    const { container: reContainer } = render(<PlayCanvas play={updated} onChange={vi.fn()} />);
+    const rectZone = reContainer.querySelector('g[data-testid^="zone-bubble-"] rect');
+    expect(rectZone).not.toBeNull();
+  });
+
+  it("allows switching zone shape between oval and rectangle in the customizer panel", () => {
+    const onChange = vi.fn();
+    const existingZone = {
+      id: "zone_custom_test",
+      name: "Custom Under",
+      x: 50,
+      y: 45,
+      rx: 15,
+      ry: 10,
+      color: "#8B5CF6",
+      shape: "ellipse" as const,
+    };
+    const playWithZone: PlayDiagram = {
+      ...defensePlay,
+      zones: [existingZone],
+    };
+
+    const { container } = render(<PlayCanvas play={playWithZone} onChange={onChange} />);
+    fieldSvg();
+
+    // Click on the zone to select it
+    const zoneGroup = container.querySelector(`[data-testid="zone-bubble-${existingZone.id}"]`)!;
+    expect(zoneGroup).toBeDefined();
+    fireEvent.pointerDown(zoneGroup, at(50, 45));
+
+    // Customizer panel should appear
+    expect(screen.getByTestId("zone-customizer-panel")).toBeInTheDocument();
+
+    // Click Rectangle button
+    const rectShapeBtn = screen.getByTestId("zone-shape-rectangle");
+    fireEvent.click(rectShapeBtn);
+
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
+    expect(lastCall.zones![0].shape).toBe("rectangle");
+
+    // Click Oval button
+    const ellipseShapeBtn = screen.getByTestId("zone-shape-ellipse");
+    fireEvent.click(ellipseShapeBtn);
+
+    const afterEllipseCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
+    expect(afterEllipseCall.zones![0].shape).toBe("ellipse");
+  });
+
+  it("adjusts zone width and depth via steppers and slider controls", () => {
+    const onChange = vi.fn();
+    const existingZone = {
+      id: "zone_size_test",
+      name: "Deep 1/3",
+      x: 50,
+      y: 35,
+      rx: 14,
+      ry: 8,
+      color: "#3B82F6",
+      shape: "rectangle" as const,
+    };
+    const playWithZone: PlayDiagram = {
+      ...defensePlay,
+      zones: [existingZone],
+    };
+
+    const { container } = render(<PlayCanvas play={playWithZone} onChange={onChange} />);
+    fieldSvg();
+    const zoneGroup = container.querySelector(`[data-testid="zone-bubble-${existingZone.id}"]`)!;
+    fireEvent.pointerDown(zoneGroup, at(50, 35));
+
+    expect(screen.getByTestId("zone-customizer-panel")).toBeInTheDocument();
+
+    // Widen width
+    fireEvent.click(screen.getByTestId("zone-width-increase"));
+    let updated = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
+    expect(updated.zones![0].rx).toBe(16);
+
+    // Deepen depth
+    fireEvent.click(screen.getByTestId("zone-depth-increase"));
+    updated = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
+    expect(updated.zones![0].ry).toBe(10);
+
+    // Make shallower (8 - 2 = 6)
+    fireEvent.click(screen.getByTestId("zone-depth-decrease"));
+    updated = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
+    expect(updated.zones![0].ry).toBe(6);
+
+    // Slider direct update
+    fireEvent.change(screen.getByTestId("zone-width-slider"), { target: { value: "24" } });
+    updated = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
+    expect(updated.zones![0].rx).toBe(24);
+  });
+
+  it("resizes zone width interactively using on-canvas east resize handle", () => {
+    const onChange = vi.fn();
+    const existingZone = {
+      id: "zone_drag_resize",
+      name: "Robber",
+      x: 50,
+      y: 40,
+      rx: 15,
+      ry: 10,
+      color: "#EC4899",
+      shape: "rectangle" as const,
+    };
+    const playWithZone: PlayDiagram = {
+      ...defensePlay,
+      zones: [existingZone],
+    };
+
+    const { container } = render(<PlayCanvas play={playWithZone} onChange={onChange} />);
+    const svg = fieldSvg();
+
+    // Select the zone
+    const zoneGroup = container.querySelector(`[data-testid="zone-bubble-${existingZone.id}"]`)!;
+    fireEvent.pointerDown(zoneGroup, at(50, 40));
+
+    // Resize handles should be present
+    const eastHandle = screen.getByTestId("zone-resize-handle-e");
+    expect(eastHandle).toBeInTheDocument();
+
+    onChange.mockClear();
+
+    // Drag the east handle from x=65 (50 + 15) to x=72 (deltaX = +7 => rx becomes 22)
+    fireEvent.pointerDown(eastHandle, at(65, 40));
+    fireEvent.pointerMove(svg, at(72, 40));
+    fireEvent.pointerUp(svg, at(72, 40));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const updated = onChange.mock.calls[0][0] as PlayDiagram;
+    expect(updated.zones![0].rx).toBe(22);
+  });
+
+  it("resizes zone depth interactively using on-canvas south resize handle", () => {
+    const onChange = vi.fn();
+    const existingZone = {
+      id: "zone_south_resize",
+      name: "Robber",
+      x: 50,
+      y: 40,
+      rx: 15,
+      ry: 10,
+      color: "#EC4899",
+      shape: "ellipse" as const,
+    };
+    const playWithZone: PlayDiagram = {
+      ...defensePlay,
+      zones: [existingZone],
+    };
+
+    const { container } = render(<PlayCanvas play={playWithZone} onChange={onChange} />);
+    const svg = fieldSvg();
+
+    // Select the zone
+    const zoneGroup = container.querySelector(`[data-testid="zone-bubble-${existingZone.id}"]`)!;
+    fireEvent.pointerDown(zoneGroup, at(50, 40));
+
+    const southHandle = screen.getByTestId("zone-resize-handle-s");
+    expect(southHandle).toBeInTheDocument();
+
+    onChange.mockClear();
+
+    // Drag the south handle from y=50 (40 + 10) to y=55 (deltaY = +5 => ry becomes 15)
+    fireEvent.pointerDown(southHandle, at(50, 50));
+    fireEvent.pointerMove(svg, at(50, 55));
+    fireEvent.pointerUp(svg, at(50, 55));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const updated = onChange.mock.calls[0][0] as PlayDiagram;
+    expect(updated.zones![0].ry).toBe(15);
+  });
+
+  it("resizes both width and depth using the southeast corner handle", () => {
+    const onChange = vi.fn();
+    const existingZone = {
+      id: "zone_se_resize",
+      name: "Box Half",
+      x: 50,
+      y: 35,
+      rx: 14,
+      ry: 8,
+      color: "#10B981",
+      shape: "rectangle" as const,
+    };
+    const playWithZone: PlayDiagram = {
+      ...defensePlay,
+      zones: [existingZone],
+    };
+
+    const { container } = render(<PlayCanvas play={playWithZone} onChange={onChange} />);
+    const svg = fieldSvg();
+
+    const zoneGroup = container.querySelector(`[data-testid="zone-bubble-${existingZone.id}"]`)!;
+    fireEvent.pointerDown(zoneGroup, at(50, 35));
+
+    const seHandle = screen.getByTestId("zone-resize-handle-se");
+    expect(seHandle).toBeInTheDocument();
+
+    onChange.mockClear();
+
+    // Drag SE handle (x: 50 + 14 = 64, y: 35 + 8 = 43) by +6 in x and +4 in y
+    fireEvent.pointerDown(seHandle, at(64, 43));
+    fireEvent.pointerMove(svg, at(70, 47));
+    fireEvent.pointerUp(svg, at(70, 47));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    const updated = onChange.mock.calls[0][0] as PlayDiagram;
+    expect(updated.zones![0].rx).toBe(20);
+    expect(updated.zones![0].ry).toBe(12);
+  });
+});
+

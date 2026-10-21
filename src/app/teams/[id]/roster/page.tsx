@@ -41,6 +41,8 @@ import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadTeamSeasonSummary, buildRosterPlayerStats, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 import type { TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
 import { getFormationPositions, getPlayerPositions, type DepthFormation } from "@/lib/depthChart";
+import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
+import { useTeamColors } from "@/lib/teamColorContext";
 
 const TeamDepthCharts = dynamic(() => import("@/components/TeamDepthCharts"), {
   loading: () => <p role="status">Loading depth charts...</p>,
@@ -53,7 +55,9 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const { canManageTeam, isLeagueAdmin, isTeamAdmin, user } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYorkTeam(teamId));
+  const { palette: contextPalette } = useTeamColors();
   const [team, setTeam] = useState<any>(null);
+  const palette = resolveTeamColorPalette(team || contextPalette);
   const [players, setPlayers] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [seasonTeamStats, setSeasonTeamStats] = useState<TeamComprehensiveStats | null>(null);
@@ -579,12 +583,21 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     );
   }
 
+
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
 
-      {/* Dynamic Background */}
+      {/* Dynamic Background styled to team colors */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
+        <div 
+          className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-25 animate-pulse"
+          style={{ backgroundColor: palette.primary }}
+        />
+        <div 
+          className="absolute top-40 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-20 animate-pulse delay-1000"
+          style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }}
+        />
       </div>
 
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
@@ -603,7 +616,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-cyan-400">
+              <div 
+                className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest"
+                style={{ color: palette.primary }}
+              >
                 <Users className="w-4 h-4" />
                 <span>Official Roster</span>
               </div>
@@ -648,8 +664,16 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all self-start md:self-auto ${
                 isRosterFull
                   ? "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-white/5 opacity-60"
-                  : "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] hover:-translate-y-0.5"
+                  : "hover:opacity-90 shadow-lg hover:-translate-y-0.5"
               }`}
+              style={
+                !isRosterFull
+                  ? {
+                      background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+                      color: getReadableTextColor(palette.primary, "#FFFFFF"),
+                    }
+                  : undefined
+              }
             >
               <UserPlus className="w-4 h-4" />
               <span>{isRosterFull ? `Roster Full (${maxRosterSize})` : "Add Player"}</span>
@@ -697,9 +721,17 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 onClick={() => setActiveTab("roster")}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "roster"
-                    ? "bg-cyan-500 text-black font-black shadow-md"
+                    ? "font-black shadow-md"
                     : "text-neutral-400 hover:text-white"
                 }`}
+                style={
+                  activeTab === "roster"
+                    ? {
+                        backgroundColor: palette.primary,
+                        color: getReadableTextColor(palette.primary, "#000000"),
+                      }
+                    : undefined
+                }
               >
                 Roster Table
               </button>
@@ -707,9 +739,17 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 onClick={() => setActiveTab("depth_chart")}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "depth_chart"
-                    ? "bg-emerald-500 text-black font-black shadow-md"
+                    ? "font-black shadow-md"
                     : "text-neutral-400 hover:text-white"
                 }`}
+                style={
+                  activeTab === "depth_chart"
+                    ? {
+                        backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary,
+                        color: getReadableTextColor(palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary, "#000000"),
+                      }
+                    : undefined
+                }
               >
                 Depth Chart
               </button>

@@ -11,6 +11,8 @@ import DemoLoadError from "@/components/DemoLoadError";
 import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
 import { getYorkTeamData, YORK_LIONS_TEAM } from "@/lib/yorkTeamProfile";
 import { loadTeamSeasonSummary, getPlayerNumber, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
+import { resolveTeamColorPalette } from "@/lib/teamColors";
+import { useTeamColors } from "@/lib/teamColorContext";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -19,7 +21,9 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const { settings, isDemoLeague } = useLeague();
   const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYork);
 
+  const { palette: contextPalette } = useTeamColors();
   const [team, setTeam] = useState<any>(() => isYork ? { ...YORK_LIONS_TEAM } : null);
+  const palette = resolveTeamColorPalette(team || contextPalette);
   const [stats, setStats] = useState<any[]>([]);
   const [loading, setLoading] = useState(!isYork);
   const [statsLoading, setStatsLoading] = useState(isYork);
@@ -295,14 +299,22 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     );
   }
 
+
   const teamName = team?.name || "Team";
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
 
-      {/* Dynamic Background */}
+      {/* Dynamic Background styled to team colors */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
+        <div 
+          className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-25 animate-pulse"
+          style={{ backgroundColor: palette.primary }}
+        />
+        <div 
+          className="absolute top-40 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-20 animate-pulse delay-1000"
+          style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }}
+        />
       </div>
 
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
@@ -317,12 +329,27 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
         {/* Header */}
         <div className="flex flex-col items-center text-center gap-3 mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs font-bold uppercase tracking-wider text-cyan-400">
+          <div 
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border shadow-lg"
+            style={{
+              backgroundColor: `${palette.primary}18`,
+              borderColor: `${palette.primary}40`,
+              color: palette.primary,
+            }}
+          >
             <Activity className="w-3.5 h-3.5" />
             <span>Leaderboards</span>
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight text-white">
-            {teamName} <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Stat Leaders</span>
+            {teamName}{" "}
+            <span 
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+              }}
+            >
+              Stat Leaders
+            </span>
           </h1>
           <p className="text-lg text-neutral-400 font-light">Top Performers of {teamName}</p>
         </div>
@@ -350,8 +377,8 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
                       <div key={player.name} className="flex items-center justify-between gap-3 group">
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           <span
-                            className={`w-6 shrink-0 text-center font-black ${rank === 0 ? "text-cyan-400 text-lg" : "text-neutral-500"
-                              }`}
+                            className={`w-6 shrink-0 text-center font-black ${rank === 0 ? "text-lg" : "text-neutral-500"}`}
+                            style={rank === 0 ? { color: palette.primary } : undefined}
                           >
                             #{rank + 1}
                           </span>

@@ -9,6 +9,7 @@ import {
   RoutePoint,
   RouteType,
   ZoneBubble,
+  ZoneShape,
   PlayDiagram,
   Playbook,
   DEFAULT_LOS_Y,
@@ -55,6 +56,9 @@ import {
   RotateCcw,
   RefreshCw,
   Plus,
+  Minus,
+  Square,
+  Circle,
   Trash2,
   Lock,
   Radio,
@@ -85,7 +89,12 @@ import {
   Layers,
   MessageSquare,
   HelpCircle,
+  FolderPlus,
 } from "lucide-react";
+import {
+  STANDARD_OFFENSIVE_PRESETS,
+  STANDARD_DEFENSIVE_PRESETS,
+} from "@/lib/opponentPlayPresets";
 
 const MIN_ROUTE_DEPTH_YARDS = 1;
 const MAX_ROUTE_DEPTH_YARDS = 25;
@@ -143,6 +152,7 @@ interface PlayCanvasProps {
   onChange: (updatedPlay: PlayDiagram) => void;
   readOnly?: boolean;
   playbook?: Playbook | null;
+  allPlaybooks?: Playbook[];
   onOpenQuestions?: () => void;
 }
 
@@ -151,6 +161,7 @@ export default function PlayCanvas({
   onChange: onPlayChange,
   readOnly = false,
   playbook,
+  allPlaybooks = [],
   onOpenQuestions,
 }: PlayCanvasProps) {
   // Pointer drags edit a local draft so the parent (and its localStorage persistence) only
@@ -232,6 +243,16 @@ export default function PlayCanvas({
     cursorStartY: number;
   } | null>(null);
 
+  const [draggedZoneResizeHandle, setDraggedZoneResizeHandle] = useState<string | null>(null);
+  const dragZoneResizeRef = useRef<{
+    zoneId: string;
+    handle: "e" | "w" | "s" | "n" | "se";
+    startRx: number;
+    startRy: number;
+    cursorStartX: number;
+    cursorStartY: number;
+  } | null>(null);
+
   // Active Tool Mode
   const [mode, setMode] = useState<"select" | "draw" | "man" | "zone">("select");
   const [defensiveZoneCategory, setDefensiveZoneCategory] =
@@ -273,19 +294,27 @@ export default function PlayCanvas({
   const [isPlayNotesModalOpen, setIsPlayNotesModalOpen] = useState(false);
   const [isCompactLandscape, setIsCompactLandscape] = useState(false);
 
-  // Close preset routes menu on outside click
+  // Opponent Play Selector State
+  const [isOpponentMenuOpen, setIsOpponentMenuOpen] = useState(false);
+  const [selectedOpponentPlayTitle, setSelectedOpponentPlayTitle] = useState<string>("");
+  const opponentMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close preset routes & opponent menu on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
         setIsPresetMenuOpen(false);
         setIsMotionMenuOpen(false);
       }
+      if (opponentMenuRef.current && !opponentMenuRef.current.contains(e.target as Node)) {
+        setIsOpponentMenuOpen(false);
+      }
     };
-    if (isPresetMenuOpen || isMotionMenuOpen) {
+    if (isPresetMenuOpen || isMotionMenuOpen || isOpponentMenuOpen) {
       document.addEventListener("mousedown", handleOutsideClick);
     }
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [isPresetMenuOpen, isMotionMenuOpen]);
+  }, [isPresetMenuOpen, isMotionMenuOpen, isOpponentMenuOpen]);
 
   useEffect(() => {
     const updateCompactLandscape = () => {
@@ -309,6 +338,12 @@ export default function PlayCanvas({
 
   // Selected player reference
   const selectedPlayer = (play.players || []).find((p) => p.id === selectedPlayerId) || null;
+
+  // Active zone reference: either directly selected zone, or zone attached to selected player
+  const activeZone =
+    (selectedZoneId ? play.zones?.find((z) => z.id === selectedZoneId) : null) ||
+    (selectedPlayer?.zoneId ? play.zones?.find((z) => z.id === selectedPlayer.zoneId) : null) ||
+    null;
 
   useEffect(() => {
     const assignedZone = STANDARD_DEFENSIVE_ZONES.find(
@@ -783,13 +818,73 @@ export default function PlayCanvas({
     }
   };
 
+  const handlePointerDownZoneResize = (
+    e: React.PointerEvent,
+    zoneId: string,
+    handle: "e" | "w" | "s" | "n" | "se"
+  ) => {
+    e.stopPropagation();
+    if (readOnly) return;
+    const coords = getSvgCoordinates(e);
+    if (!coords) return;
+    const zone = play.zones?.find((z) => z.id === zoneId);
+    if (!zone) return;
+
+    setSelectedZoneId(zoneId);
+    setDraggedZoneResizeHandle(handle);
+
+    dragZoneResizeRef.current = {
+      zoneId,
+      handle,
+      startRx: zone.rx,
+      startRy: zone.ry,
+      cursorStartX: coords.x,
+      cursorStartY: coords.y,
+    };
+
+    if (svgRef.current) {
+      try {
+        svgRef.current.setPointerCapture(e.pointerId);
+      } catch (err) {}
+    }
+  };
+
   // Pointer Move (Dragging with Strict LOS Clamping)
   const handlePointerMove = (e: React.PointerEvent) => {
     if (readOnly) return;
-    if (!draggedPlayerId && !draggedZoneId) return;
+    if (!draggedPlayerId && !draggedZoneId && !dragZoneResizeRef.current) return;
     const coords = getSvgCoordinates(e);
     if (!coords) return;
     const play = getDragBase();
+
+    // Resizing Zone Bubble
+    if (dragZoneResizeRef.current && play.zones) {
+      const { zoneId, handle, startRx, startRy, cursorStartX, cursorStartY } = dragZoneResizeRef.current;
+      const deltaX = coords.x - cursorStartX;
+      const deltaY = coords.y - cursorStartY;
+
+      let newRx = startRx;
+      let newRy = startRy;
+
+      if (handle === "e") {
+        newRx = Math.max(6, Math.min(38, Math.round((startRx + deltaX) * 10) / 10));
+      } else if (handle === "w") {
+        newRx = Math.max(6, Math.min(38, Math.round((startRx - deltaX) * 10) / 10));
+      } else if (handle === "s") {
+        newRy = Math.max(4, Math.min(26, Math.round((startRy + deltaY) * 10) / 10));
+      } else if (handle === "n") {
+        newRy = Math.max(4, Math.min(26, Math.round((startRy - deltaY) * 10) / 10));
+      } else if (handle === "se") {
+        newRx = Math.max(6, Math.min(38, Math.round((startRx + deltaX) * 10) / 10));
+        newRy = Math.max(4, Math.min(26, Math.round((startRy + deltaY) * 10) / 10));
+      }
+
+      const updatedZones = play.zones.map((z) =>
+        z.id === zoneId ? { ...z, rx: newRx, ry: newRy } : z
+      );
+      updateDragDraft({ ...play, zones: updatedZones });
+      return;
+    }
 
     // Dragging Player Starting Node
     if (draggedPlayerId && draggedWaypointIndex === null && dragStartRef.current) {
@@ -835,6 +930,12 @@ export default function PlayCanvas({
           y: Math.max(4, Math.min(96, Math.round((initialRoute[0].y + deltaY) * 10) / 10)),
         };
         updatedRoute = [bendPt, { x: qb.x, y: qb.y }];
+      } else if (player.side === "defense" && player.zoneId && play.zones) {
+        // Keep zone drop route anchored to its zone when moving the player alignment
+        const zone = play.zones.find((z) => z.id === player.zoneId);
+        if (zone) {
+          updatedRoute = [{ x: zone.x, y: zone.y }];
+        }
       }
 
       const updatedPlayers = play.players.map((p) => {
@@ -871,23 +972,58 @@ export default function PlayCanvas({
           Math.min(96, shouldSnap ? snapYToYard(rawY, losY) : Math.round(rawY * 10) / 10)
         ),
       };
-      setDraggedWaypointYards(getYardsFromLos(clampedPt.y, losY));
+
+      const draggedPlayer = play.players.find((p) => p.id === draggedPlayerId);
+      const attachedZoneId = draggedPlayer?.zoneId;
+      const isDefensiveZoneArrow =
+        draggedPlayer?.side === "defense" &&
+        Boolean(attachedZoneId) &&
+        !isMotionWp &&
+        Boolean(play.zones?.some((z) => z.id === attachedZoneId));
+
+      const targetPt = isDefensiveZoneArrow
+        ? {
+            x: Math.max(10, Math.min(90, Math.round(rawX * 10) / 10)),
+            y: Math.max(
+              6,
+              Math.min(losY - 2, shouldSnap ? snapYToYard(rawY, losY) : Math.round(rawY * 10) / 10)
+            ),
+          }
+        : clampedPt;
+
+      setDraggedWaypointYards(getYardsFromLos(targetPt.y, losY));
+
+      let updatedZones = play.zones;
+      if (isDefensiveZoneArrow && attachedZoneId && play.zones) {
+        updatedZones = play.zones.map((z) => {
+          if (z.id === attachedZoneId) {
+            return { ...z, x: targetPt.x, y: targetPt.y };
+          }
+          return z;
+        });
+      }
 
       const updatedPlayers = play.players.map((p) => {
         if (p.id === draggedPlayerId) {
           if (isMotionWp && p.motionPath) {
             const newMotion = [...p.motionPath];
-            newMotion[draggedWaypointIndex] = clampedPt;
+            newMotion[draggedWaypointIndex] = targetPt;
             return { ...p, motionPath: newMotion };
           } else if (!isMotionWp && p.route) {
             const newRoute = [...p.route];
-            newRoute[draggedWaypointIndex] = clampedPt;
+            newRoute[draggedWaypointIndex] = targetPt;
             return { ...p, route: newRoute };
+          }
+        } else if (isDefensiveZoneArrow && attachedZoneId && p.zoneId === attachedZoneId) {
+          if (p.route && p.route.length > 0) {
+            const otherRoute = [...p.route];
+            otherRoute[otherRoute.length - 1] = targetPt;
+            return { ...p, route: otherRoute };
           }
         }
         return p;
       });
-      updateDragDraft({ ...play, players: updatedPlayers });
+      updateDragDraft({ ...play, players: updatedPlayers, ...(updatedZones ? { zones: updatedZones } : {}) });
       return;
     }
 
@@ -914,6 +1050,46 @@ export default function PlayCanvas({
       updateDragDraft({ ...play, zones: updatedZones, players: attachedPlayers });
       return;
     }
+
+    // Resizing Zone (via edge/corner handles)
+    if (dragZoneResizeRef.current && play.zones) {
+      const { zoneId, handle, startRx, startRy, cursorStartX, cursorStartY } = dragZoneResizeRef.current;
+      const deltaX = coords.x - cursorStartX;
+      const deltaY = coords.y - cursorStartY;
+
+      let nextRx = startRx;
+      let nextRy = startRy;
+
+      if (handle === "e") {
+        nextRx = startRx + deltaX;
+      } else if (handle === "w") {
+        nextRx = startRx - deltaX;
+      } else if (handle === "s") {
+        nextRy = startRy + deltaY;
+      } else if (handle === "n") {
+        nextRy = startRy - deltaY;
+      } else if (handle === "se") {
+        nextRx = startRx + deltaX;
+        nextRy = startRy + deltaY;
+      }
+
+      const clampedRx = Math.max(5, Math.min(38, Math.round(nextRx * 10) / 10));
+      const clampedRy = Math.max(3, Math.min(26, Math.round(nextRy * 10) / 10));
+
+      const updatedZones = play.zones.map((z) => {
+        if (z.id === zoneId) {
+          return {
+            ...z,
+            rx: clampedRx,
+            ry: clampedRy,
+          };
+        }
+        return z;
+      });
+
+      updateDragDraft({ ...play, zones: updatedZones });
+      return;
+    }
   };
 
   // Release, cancel and lost capture all end the drag and persist the latest preview once.
@@ -923,9 +1099,11 @@ export default function PlayCanvas({
     setDraggedWaypointIndex(null);
     setDraggedZoneId(null);
     setDraggedWaypointYards(null);
+    setDraggedZoneResizeHandle(null);
     dragStartRef.current = null;
     dragWaypointRef.current = null;
     dragZoneRef.current = null;
+    dragZoneResizeRef.current = null;
     if (svgRef.current && e) {
       try {
         svgRef.current.releasePointerCapture(e.pointerId);
@@ -1246,18 +1424,24 @@ export default function PlayCanvas({
   };
 
   // Assign Zone to selected defender
-  const handleAssignZone = (zoneId: string) => {
-    if (readOnly || !selectedPlayer) return;
+  const handleAssignZone = (zoneId: string, targetPlayerId?: string) => {
+    const playerToAssign = targetPlayerId
+      ? play.players.find((p) => p.id === targetPlayerId)
+      : selectedPlayer;
+    if (readOnly || !playerToAssign) return;
     const zone = play.zones?.find((z) => z.id === zoneId);
     if (!zone) return;
 
     const updatedPlayers = play.players.map((p) => {
-      if (p.id === selectedPlayer.id) {
+      if (p.id === playerToAssign.id) {
         return {
           ...p,
           coverageType: "zone" as const,
           zoneId,
+          quickRouteName: zone.name,
           route: [{ x: zone.x, y: zone.y }],
+          manTargetId: undefined,
+          routeType: undefined,
         };
       }
       return p;
@@ -1351,10 +1535,9 @@ export default function PlayCanvas({
     onChange({ ...play, players: updatedPlayers });
   };
 
-  // Set rush for defender: auto-shows offense, draws line to QB, with bend point
+  // Set rush for defender: draws line to QB, with bend point (does NOT auto-show opponent)
   const handleSetPassRush = () => {
     if (readOnly || !selectedPlayer) return;
-    setShowOpposingSide(true); // Auto show offense so QB is visible
     setMode("select");
 
     const qb = play.players.find(
@@ -1424,30 +1607,277 @@ export default function PlayCanvas({
     onChange({ ...play, players: updatedPlayers });
   };
 
-  // Add a new Zone Bubble
-  const handleAddZoneBubble = (name = "Deep Zone", color = "#3B82F6") => {
+  // Add a new custom zone bubble (with custom shape: ellipse or rectangle)
+  const handleCreateCustomZone = (shape: ZoneShape = "ellipse", name?: string, color = "#8B5CF6") => {
     if (readOnly) return;
+    const defaultY = selectedPlayer
+      ? Math.max(8, Math.min(losY - 4, selectedPlayer.y - 12))
+      : losY - 18;
+    const defaultX = selectedPlayer ? selectedPlayer.x : 50;
+
     const newZone: ZoneBubble = {
-      id: `zone-${Date.now()}`,
-      name,
-      x: 50,
-      y: losY - 20,
-      rx: 18,
-      ry: 10,
+      id: `zone-custom-${Date.now()}`,
+      name: name || (shape === "rectangle" ? "Box Zone" : "Custom Zone"),
+      x: defaultX,
+      y: defaultY,
+      rx: shape === "rectangle" ? 16 : 18,
+      ry: shape === "rectangle" ? 8 : 10,
       color,
+      shape,
     };
-    const updatedZones = [...(play.zones || []), newZone];
-    onChange({ ...play, zones: updatedZones });
+
+    const nextZones = [...(play.zones || []), newZone];
+
+    let updatedPlayers = play.players;
+    if (selectedPlayer && selectedPlayer.side === "defense") {
+      updatedPlayers = play.players.map((p) =>
+        p.id === selectedPlayer.id
+          ? {
+              ...p,
+              coverageType: "zone" as const,
+              zoneId: newZone.id,
+              quickRouteName: newZone.name,
+              route: [{ x: newZone.x, y: newZone.y }],
+              manTargetId: undefined,
+              routeType: undefined,
+            }
+          : p
+      );
+    }
+
+    onChange({ ...play, zones: nextZones, players: updatedPlayers });
     setSelectedZoneId(newZone.id);
+  };
+
+  const handleUpdateZone = (zoneId: string, updates: Partial<ZoneBubble>) => {
+    if (readOnly) return;
+    const updatedZones = (play.zones || []).map((z) =>
+      z.id === zoneId ? { ...z, ...updates } : z
+    );
+    let updatedPlayers = play.players;
+    if (updates.name !== undefined) {
+      updatedPlayers = play.players.map((p) =>
+        p.zoneId === zoneId ? { ...p, quickRouteName: updates.name } : p
+      );
+    }
+    onChange({ ...play, zones: updatedZones, players: updatedPlayers });
+  };
+
+  const handleAddZoneBubble = (name = "Deep Zone", color = "#3B82F6") => {
+    handleCreateCustomZone("ellipse", name, color);
   };
 
   // Delete selected Zone Bubble
   const handleDeleteZone = (zoneId: string) => {
     if (readOnly) return;
     const updatedZones = (play.zones || []).filter((z) => z.id !== zoneId);
-    const updatedPlayers = play.players.map((p) => (p.zoneId === zoneId ? { ...p, zoneId: undefined, coverageType: undefined } : p));
+    const updatedPlayers = play.players.map((p) =>
+      p.zoneId === zoneId
+        ? {
+            ...p,
+            zoneId: undefined,
+            coverageType: undefined,
+            quickRouteName: undefined,
+            route: [],
+          }
+        : p
+    );
     onChange({ ...play, zones: updatedZones, players: updatedPlayers });
     setSelectedZoneId(null);
+  };
+
+  const renderZoneCustomizer = (zone: ZoneBubble) => {
+    return (
+      <div
+        data-testid="zone-customizer-panel"
+        className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-2.5 shadow-lg backdrop-blur-sm [@media(min-width:600px)_and_(max-height:450px)]:col-span-2"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span
+              className="w-3 h-3 rounded-full shrink-0 shadow-sm border border-white/20"
+              style={{ backgroundColor: zone.color }}
+            />
+            <span className="text-[11px] font-mono font-bold text-purple-300 uppercase tracking-wide truncate">
+              Zone Properties ({zone.shape === "rectangle" ? "Box" : "Oval"})
+            </span>
+          </div>
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => handleDeleteZone(zone.id)}
+            data-testid="delete-zone-btn"
+            className="text-neutral-400 hover:text-red-400 p-1 rounded-lg hover:bg-red-500/10 transition-colors text-xs flex items-center gap-1 cursor-pointer"
+            title="Delete this zone"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="text-[10px]">Delete</span>
+          </button>
+        </div>
+
+        {/* Zone Name Input */}
+        <div>
+          <label className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">
+            Zone Name
+          </label>
+          <input
+            type="text"
+            disabled={readOnly}
+            value={zone.name}
+            onChange={(e) => handleUpdateZone(zone.id, { name: e.target.value })}
+            placeholder="e.g. Deep 1/3, Robber, Flat Box"
+            data-testid="zone-name-input"
+            className="w-full bg-black/60 border border-white/20 rounded-lg px-2.5 py-1 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-400 font-medium"
+          />
+        </div>
+
+        {/* Shape Picker: Ellipse vs Rectangle */}
+        <div>
+          <label className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">
+            Shape
+          </label>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              disabled={readOnly}
+              data-testid="zone-shape-ellipse"
+              aria-pressed={(zone.shape || "ellipse") === "ellipse"}
+              onClick={() => handleUpdateZone(zone.id, { shape: "ellipse" })}
+              className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                (zone.shape || "ellipse") === "ellipse"
+                  ? "bg-purple-300 text-black border-purple-200 shadow-sm"
+                  : "bg-black/50 text-neutral-300 border-white/10 hover:text-white hover:bg-neutral-800"
+              }`}
+            >
+              <Circle className="w-3.5 h-3.5" />
+              <span>Oval / Bubble</span>
+            </button>
+            <button
+              type="button"
+              disabled={readOnly}
+              data-testid="zone-shape-rectangle"
+              aria-pressed={zone.shape === "rectangle"}
+              onClick={() => handleUpdateZone(zone.id, { shape: "rectangle" })}
+              className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
+                zone.shape === "rectangle"
+                  ? "bg-purple-300 text-black border-purple-200 shadow-sm"
+                  : "bg-black/50 text-neutral-300 border-white/10 hover:text-white hover:bg-neutral-800"
+              }`}
+            >
+              <Square className="w-3.5 h-3.5" />
+              <span>Box / Rectangle</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Width & Depth Steppers and Sliders */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <div className="flex justify-between items-center text-[10px] text-neutral-400 uppercase font-bold mb-1">
+              <span>Width</span>
+              <span className="text-white font-mono">{zone.rx}%</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={readOnly}
+                data-testid="zone-width-decrease"
+                onClick={() => handleUpdateZone(zone.id, { rx: Math.max(6, zone.rx - 2) })}
+                className="p-1 rounded bg-black/60 border border-white/15 text-neutral-300 hover:text-white cursor-pointer"
+                title="Narrow zone width"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <input
+                type="range"
+                disabled={readOnly}
+                min="6"
+                max="36"
+                step="1"
+                value={zone.rx}
+                data-testid="zone-width-slider"
+                onChange={(e) => handleUpdateZone(zone.id, { rx: Number(e.target.value) })}
+                className="w-full accent-purple-400 cursor-pointer"
+              />
+              <button
+                type="button"
+                disabled={readOnly}
+                data-testid="zone-width-increase"
+                onClick={() => handleUpdateZone(zone.id, { rx: Math.min(36, zone.rx + 2) })}
+                className="p-1 rounded bg-black/60 border border-white/15 text-neutral-300 hover:text-white cursor-pointer"
+                title="Widen zone width"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between items-center text-[10px] text-neutral-400 uppercase font-bold mb-1">
+              <span>Depth</span>
+              <span className="text-white font-mono">{zone.ry}%</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                disabled={readOnly}
+                data-testid="zone-depth-decrease"
+                onClick={() => handleUpdateZone(zone.id, { ry: Math.max(4, zone.ry - 2) })}
+                className="p-1 rounded bg-black/60 border border-white/15 text-neutral-300 hover:text-white cursor-pointer"
+                title="Make zone shallower"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <input
+                type="range"
+                disabled={readOnly}
+                min="4"
+                max="24"
+                step="1"
+                value={zone.ry}
+                data-testid="zone-depth-slider"
+                onChange={(e) => handleUpdateZone(zone.id, { ry: Number(e.target.value) })}
+                className="w-full accent-purple-400 cursor-pointer"
+              />
+              <button
+                type="button"
+                disabled={readOnly}
+                data-testid="zone-depth-increase"
+                onClick={() => handleUpdateZone(zone.id, { ry: Math.min(24, zone.ry + 2) })}
+                className="p-1 rounded bg-black/60 border border-white/15 text-neutral-300 hover:text-white cursor-pointer"
+                title="Make zone deeper"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Color Palette */}
+        <div>
+          <label className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">
+            Color
+          </label>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {["#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B", "#10B981", "#06B6D4", "#EF4444", "#6366F1"].map((c) => (
+              <button
+                key={c}
+                type="button"
+                disabled={readOnly}
+                onClick={() => handleUpdateZone(zone.id, { color: c })}
+                style={{ backgroundColor: c }}
+                title={`Set zone color to ${c}`}
+                className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                  zone.color === c
+                    ? "scale-125 border-white ring-2 ring-purple-400/50"
+                    : "border-black/50 opacity-80 hover:opacity-100 hover:scale-110"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Add extra player node (Offense or Defense, max activeSquadSize per side)
@@ -1503,6 +1933,83 @@ export default function PlayCanvas({
     const updatedPlayers = play.players.filter((p) => p.id !== playerId);
     onChange({ ...play, players: updatedPlayers });
     setSelectedPlayerId(null);
+  };
+
+  // Opposing playbooks available to populate from
+  const targetOppositeSide = play.type === "defense" ? "offense" : "defense";
+  const availableOpposingPlaybooks = useMemo(() => {
+    let books = (allPlaybooks || []).filter((b) => b.type === targetOppositeSide);
+    if (books.length === 0 && typeof window !== "undefined") {
+      try {
+        const local = localStorage.getItem(`flagos_playbooks_${teamId}`);
+        if (local) {
+          const parsed: Playbook[] = JSON.parse(local);
+          books = parsed.filter((b) => b.type === targetOppositeSide);
+        }
+      } catch (e) {}
+    }
+    return books;
+  }, [allPlaybooks, targetOppositeSide, teamId]);
+
+  const systemOpponentPresets = play.type === "defense" ? STANDARD_OFFENSIVE_PRESETS : STANDARD_DEFENSIVE_PRESETS;
+
+  // Populate an opponent play into the opposing side of the field
+  const handleSelectOpponentPlay = (opponentPlay: PlayDiagram, sourceBookTitle?: string) => {
+    if (readOnly) return;
+
+    if (play.type === "defense") {
+      // Current play is defense: populate offense from opponent play
+      const currentDefense = play.players.filter((p) => p.side === "defense");
+      const importedOffense = opponentPlay.players
+        .filter((p) => p.side === "offense")
+        .map((off, idx) => ({
+          ...off,
+          id: `opp-off-${idx}-${Date.now()}`,
+          side: "offense" as const,
+        }));
+
+      onChange({
+        ...play,
+        players: [...currentDefense, ...importedOffense],
+      });
+    } else {
+      // Current play is offense: populate defense and zones from opponent play
+      const currentOffense = play.players.filter((p) => p.side === "offense");
+      const importedDefense = opponentPlay.players
+        .filter((p) => p.side === "defense")
+        .map((def, idx) => ({
+          ...def,
+          id: `opp-def-${idx}-${Date.now()}`,
+          side: "defense" as const,
+        }));
+
+      const nextZones = opponentPlay.zones && opponentPlay.zones.length > 0 ? opponentPlay.zones : (play.zones || []);
+      onChange({
+        ...play,
+        players: [...currentOffense, ...importedDefense],
+        zones: nextZones,
+      });
+    }
+
+    setSelectedOpponentPlayTitle(sourceBookTitle ? `${sourceBookTitle}: ${opponentPlay.name}` : opponentPlay.name);
+    setShowOpposingSide(true);
+    setIsOpponentMenuOpen(false);
+  };
+
+  const handleResetOpponentAlignment = () => {
+    if (readOnly) return;
+    const sanitized = ensureSquadMatchup(
+      play.players.filter((p) => p.side === play.type),
+      losY,
+      activeSquadSize
+    );
+    onChange({
+      ...play,
+      players: sanitized,
+      zones: play.type === "defense" ? play.zones : [],
+    });
+    setSelectedOpponentPlayTitle("");
+    setIsOpponentMenuOpen(false);
   };
 
   // Route/motion geometry is measured once per players change; frames only interpolate.
@@ -1636,6 +2143,7 @@ export default function PlayCanvas({
             {/* Opposing Side Toggle */}
             <button
               type="button"
+              data-testid="toggle-opponent-btn"
               onClick={() => setShowOpposingSide((prev) => !prev)}
               className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                 showOpposingSide
@@ -1651,6 +2159,154 @@ export default function PlayCanvas({
               {showOpposingSide ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{showOpposingSide ? "Opponent On" : "Opponent Off"}</span>
             </button>
+
+            {/* Opponent Scheme Selector Dropdown (When Opponent is ON) */}
+            {showOpposingSide && (
+              <div ref={opponentMenuRef} className="relative">
+                <button
+                  type="button"
+                  data-testid="opponent-play-selector-btn"
+                  onClick={() => setIsOpponentMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-bold transition-all border bg-amber-500/15 border-amber-500/35 text-amber-200 hover:bg-amber-500/25 hover:text-white cursor-pointer"
+                  title={`Select opposing ${play.type === "defense" ? "offensive" : "defensive"} play to populate and run simulation against`}
+                >
+                  <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="max-w-[110px] sm:max-w-[160px] truncate">
+                    {selectedOpponentPlayTitle ? `Vs: ${selectedOpponentPlayTitle}` : `Choose Opponent Play`}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-amber-400" />
+                </button>
+
+                {isOpponentMenuOpen && (
+                  <div
+                    data-testid="opponent-plays-menu"
+                    className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 max-h-96 overflow-y-auto bg-[#0B0F19] border border-amber-500/30 rounded-2xl shadow-2xl p-2 z-50 space-y-2 scrollbar-thin text-white"
+                  >
+                    <div className="px-2 py-1 border-b border-white/10 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold block">
+                          Opposing {play.type === "defense" ? "Offense" : "Defense"} Scheme
+                        </span>
+                        <span className="text-[11px] text-neutral-400 block">
+                          Populate into field &amp; run to test coverage reads
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsOpponentMenuOpen(false)}
+                        className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Team's Other Playbooks */}
+                    {availableOpposingPlaybooks.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2 block font-bold">
+                          Your Team Playbooks:
+                        </span>
+                        {availableOpposingPlaybooks.map((book) => (
+                          <div key={book.id} className="space-y-1 bg-white/5 rounded-xl p-1.5">
+                            <div className="flex items-center gap-1.5 px-1.5 py-0.5 text-xs font-bold text-neutral-300">
+                              {book.type === "offense" ? (
+                                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                              ) : (
+                                <Shield className="w-3.5 h-3.5 text-purple-400" />
+                              )}
+                              <span className="truncate">{book.title}</span>
+                            </div>
+                            <div className="space-y-0.5 pl-2">
+                              {book.plays.length === 0 ? (
+                                <span className="text-[11px] text-neutral-500 italic block py-0.5 px-2">
+                                  No plays in this playbook yet
+                                </span>
+                              ) : (
+                                book.plays.map((oppPlay) => (
+                                  <button
+                                    key={oppPlay.id}
+                                    type="button"
+                                    data-testid={`select-opp-play-${oppPlay.id}`}
+                                    onClick={() => handleSelectOpponentPlay(oppPlay, book.title)}
+                                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-cyan-500/20 text-xs text-neutral-200 hover:text-white transition-colors flex items-center justify-between group cursor-pointer"
+                                  >
+                                    <span className="truncate font-semibold">{oppPlay.name}</span>
+                                    <span className="text-[10px] font-mono text-neutral-500 group-hover:text-cyan-300 shrink-0 ml-1">
+                                      {oppPlay.formation}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Standard System Presets */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2 block font-bold">
+                        Standard {play.type === "defense" ? "Offensive" : "Defensive"} Schemes:
+                      </span>
+                      {systemOpponentPresets.map((oppPlay) => (
+                        <button
+                          key={oppPlay.id}
+                          type="button"
+                          data-testid={`select-opp-preset-${oppPlay.id}`}
+                          onClick={() => handleSelectOpponentPlay(oppPlay, "Standard")}
+                          className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-amber-500/20 text-xs text-neutral-200 hover:text-white transition-colors flex items-center justify-between group cursor-pointer"
+                        >
+                          <span className="truncate font-semibold">{oppPlay.name}</span>
+                          <span className="text-[10px] font-mono text-neutral-500 group-hover:text-amber-300 shrink-0 ml-1">
+                            {oppPlay.formation}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Reset Button */}
+                    <div className="pt-1 border-t border-white/10">
+                      <button
+                        type="button"
+                        onClick={handleResetOpponentAlignment}
+                        className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-red-500/20 text-xs text-neutral-400 hover:text-red-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw className="w-3 h-3 text-red-400" />
+                        <span>Reset Opponent to Default Spots</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Custom Zone Quick Add Buttons for Defense */}
+            {(play.type === "defense" || showOpposingSide) && !readOnly && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleCreateCustomZone("ellipse")}
+                  data-testid="add-custom-oval-zone-btn"
+                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 hover:bg-purple-500/25 hover:text-white text-xs font-bold cursor-pointer transition-colors"
+                  title="Add custom oval zone bubble"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <Circle className="w-3 h-3" />
+                  <span className="hidden lg:inline">Oval Zone</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCreateCustomZone("rectangle")}
+                  data-testid="add-custom-box-zone-btn"
+                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 hover:bg-purple-500/25 hover:text-white text-xs font-bold cursor-pointer transition-colors"
+                  title="Add custom box/rectangle zone"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <Square className="w-3 h-3" />
+                  <span className="hidden lg:inline">Box Zone</span>
+                </button>
+              </div>
+            )}
 
             {/* Legal Alignment Status Badge */}
             {alignmentIssues.length === 0 ? (
@@ -1869,42 +2525,167 @@ export default function PlayCanvas({
             {/* ============================================================== */}
             {(play.type === "defense" || showOpposingSide) &&
               play.zones?.map((zone) => {
-              const isSelected = selectedZoneId === zone.id;
-              return (
-                <g
-                  key={zone.id}
-                  className="cursor-move"
-                  onPointerDown={(e) => handlePointerDownZone(e, zone.id)}
-                >
-                  <ellipse
-                    cx={(zone.x / 100) * 1000}
-                    cy={(zone.y / 100) * 700}
-                    rx={(zone.rx / 100) * 1000}
-                    ry={(zone.ry / 100) * 700}
-                    fill={zone.color}
-                    fillOpacity={isSelected ? 0.28 : 0.16}
-                    stroke={zone.color}
-                    strokeWidth={isSelected ? 3 : 1.5}
-                    strokeDasharray="6 4"
-                  />
-                  <text
-                    x={(zone.x / 100) * 1000}
-                    y={(zone.y / 100) * 700 + 4}
-                    fill="#FFFFFF"
-                    stroke="#07120D"
-                    strokeWidth="3"
-                    paintOrder="stroke"
-                    fontSize="13"
-                    fontWeight="800"
-                    textAnchor="middle"
-                    letterSpacing="1"
-                    className="select-none pointer-events-none drop-shadow"
+                const isSelected = selectedZoneId === zone.id;
+                const isRect = zone.shape === "rectangle";
+                const zoneColor = zone.color || "#8B5CF6";
+                const cx = (zone.x / 100) * 1000;
+                const cy = (zone.y / 100) * 700;
+                const rx = (zone.rx / 100) * 1000;
+                const ry = (zone.ry / 100) * 700;
+
+                return (
+                  <g
+                    key={zone.id}
+                    data-testid={`zone-bubble-${zone.id}`}
+                    onPointerDown={(e) => handlePointerDownZone(e, zone.id)}
                   >
-                    {zone.name}
-                  </text>
-                </g>
-              );
-            })}
+                    {/* Zone Boundary Body */}
+                    <g
+                      className="cursor-move"
+                      onPointerDown={(e) => handlePointerDownZone(e, zone.id)}
+                    >
+                      {isRect ? (
+                        <rect
+                          x={cx - rx}
+                          y={cy - ry}
+                          width={rx * 2}
+                          height={ry * 2}
+                          rx="14"
+                          fill={zoneColor}
+                          fillOpacity={isSelected ? 0.32 : 0.18}
+                          stroke={zoneColor}
+                          strokeWidth={isSelected ? 3 : 1.5}
+                          strokeDasharray="6 4"
+                        />
+                      ) : (
+                        <ellipse
+                          cx={cx}
+                          cy={cy}
+                          rx={rx}
+                          ry={ry}
+                          fill={zoneColor}
+                          fillOpacity={isSelected ? 0.32 : 0.18}
+                          stroke={zoneColor}
+                          strokeWidth={isSelected ? 3 : 1.5}
+                          strokeDasharray="6 4"
+                        />
+                      )}
+                      <text
+                        x={cx}
+                        y={cy + 4}
+                        fill="#FFFFFF"
+                        stroke="#07120D"
+                        strokeWidth="3"
+                        paintOrder="stroke"
+                        fontSize="13"
+                        fontWeight="800"
+                        textAnchor="middle"
+                        letterSpacing="1"
+                        className="select-none pointer-events-none drop-shadow"
+                      >
+                        {zone.name}
+                      </text>
+                    </g>
+
+                    {/* Interactive Resize Handles when Zone is Selected */}
+                    {!readOnly && isSelected && (
+                      <g data-testid={`zone-resize-handles-${zone.id}`}>
+                        {/* East Handle (Horizontal width rx) */}
+                        <g
+                          className="cursor-ew-resize"
+                          data-testid="zone-resize-handle-e"
+                          onPointerDown={(e) => handlePointerDownZoneResize(e, zone.id, "e")}
+                        >
+                          <circle cx={cx + rx} cy={cy} r="28" fill="transparent" />
+                          <circle
+                            cx={cx + rx}
+                            cy={cy}
+                            r="7"
+                            fill="#FFFFFF"
+                            stroke={zoneColor}
+                            strokeWidth="2.5"
+                            className="drop-shadow"
+                          />
+                        </g>
+
+                        {/* West Handle (Horizontal width rx) */}
+                        <g
+                          className="cursor-ew-resize"
+                          data-testid="zone-resize-handle-w"
+                          onPointerDown={(e) => handlePointerDownZoneResize(e, zone.id, "w")}
+                        >
+                          <circle cx={cx - rx} cy={cy} r="28" fill="transparent" />
+                          <circle
+                            cx={cx - rx}
+                            cy={cy}
+                            r="7"
+                            fill="#FFFFFF"
+                            stroke={zoneColor}
+                            strokeWidth="2.5"
+                            className="drop-shadow"
+                          />
+                        </g>
+
+                        {/* South Handle (Vertical height ry) */}
+                        <g
+                          className="cursor-ns-resize"
+                          data-testid="zone-resize-handle-s"
+                          onPointerDown={(e) => handlePointerDownZoneResize(e, zone.id, "s")}
+                        >
+                          <circle cx={cx} cy={cy + ry} r="28" fill="transparent" />
+                          <circle
+                            cx={cx}
+                            cy={cy + ry}
+                            r="7"
+                            fill="#FFFFFF"
+                            stroke={zoneColor}
+                            strokeWidth="2.5"
+                            className="drop-shadow"
+                          />
+                        </g>
+
+                        {/* North Handle (Vertical height ry) */}
+                        <g
+                          className="cursor-ns-resize"
+                          data-testid="zone-resize-handle-n"
+                          onPointerDown={(e) => handlePointerDownZoneResize(e, zone.id, "n")}
+                        >
+                          <circle cx={cx} cy={cy - ry} r="28" fill="transparent" />
+                          <circle
+                            cx={cx}
+                            cy={cy - ry}
+                            r="7"
+                            fill="#FFFFFF"
+                            stroke={zoneColor}
+                            strokeWidth="2.5"
+                            className="drop-shadow"
+                          />
+                        </g>
+
+                        {/* South-East Corner Handle (Both width rx and height ry) */}
+                        <g
+                          className="cursor-nwse-resize"
+                          data-testid="zone-resize-handle-se"
+                          onPointerDown={(e) => handlePointerDownZoneResize(e, zone.id, "se")}
+                        >
+                          <circle cx={cx + rx} cy={cy + ry} r="28" fill="transparent" />
+                          <rect
+                            x={cx + rx - 6}
+                            y={cy + ry - 6}
+                            width="12"
+                            height="12"
+                            rx="3"
+                            fill="#FFFFFF"
+                            stroke={zoneColor}
+                            strokeWidth="2.5"
+                            className="drop-shadow"
+                          />
+                        </g>
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
 
             {/* ============================================================== */}
             {/* MAN COVERAGE DOTTED LOCK LINES                                 */}
@@ -2004,6 +2785,8 @@ export default function PlayCanvas({
               const isSelected = selectedPlayerId === player.id;
               const isOffense = player.side === "offense";
               const isRush = player.routeType === "rush" || player.coverageType === "rush";
+              const isZoneDefender = player.side === "defense" && Boolean(player.zoneId);
+              const isDraggableArrow = !readOnly && (isRush || isZoneDefender);
 
               const hasMotion = isOffense && playerHasMotion(player);
               const motionPts = hasMotion ? getPlayerMotionPath(player) : null;
@@ -2132,6 +2915,24 @@ export default function PlayCanvas({
                           strokeLinejoin="round"
                         />
                       )}
+                      {/* Invisible wider hit area for easy drag targeting */}
+                      {isDraggableArrow && (
+                        <path
+                          d={routePathStr}
+                          fill="none"
+                          stroke="transparent"
+                          strokeWidth="28"
+                          strokeLinecap="round"
+                          className="cursor-move"
+                          onPointerDown={(e) => {
+                            if (isRush) {
+                              handlePointerDownWaypoint(e, player.id, 0);
+                            } else if (isZoneDefender && player.route && player.route.length > 0) {
+                              handlePointerDownWaypoint(e, player.id, player.route.length - 1);
+                            }
+                          }}
+                        />
+                      )}
                       <path
                         d={routePathStr}
                         fill="none"
@@ -2140,10 +2941,13 @@ export default function PlayCanvas({
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         markerEnd={markerId}
-                        className={isRush && !readOnly ? "cursor-move" : undefined}
+                        className={isDraggableArrow ? "cursor-move" : undefined}
                         onPointerDown={(e) => {
-                          if (isRush && !readOnly) {
+                          if (readOnly) return;
+                          if (isRush) {
                             handlePointerDownWaypoint(e, player.id, 0);
+                          } else if (isZoneDefender && player.route && player.route.length > 0) {
+                            handlePointerDownWaypoint(e, player.id, player.route.length - 1);
                           }
                         }}
                       />
@@ -2268,7 +3072,7 @@ export default function PlayCanvas({
                         cy={py}
                         r="25"
                         fill="none"
-                        stroke={isIllegal ? "#EF4444" : isOffense ? "#3ca505" : "#A855F7"}
+                        stroke={isIllegal ? "#EF4444" : isOffense ? "var(--team-primary, #3ca505)" : "#A855F7"}
                         strokeWidth="2.5"
                         strokeOpacity="0.9"
                       />
@@ -2277,7 +3081,7 @@ export default function PlayCanvas({
                         cy={py}
                         r="30"
                         fill="none"
-                        stroke={isIllegal ? "#EF4444" : isOffense ? "#3ca505" : "#A855F7"}
+                        stroke={isIllegal ? "#EF4444" : isOffense ? "var(--team-primary, #3ca505)" : "#A855F7"}
                         strokeWidth="1.5"
                         strokeOpacity="0.4"
                       />
@@ -2313,7 +3117,7 @@ export default function PlayCanvas({
                         : isSelected
                         ? "#FFFFFF"
                         : isOffense
-                        ? "#38BDF8"
+                        ? "var(--team-primary, #38BDF8)"
                         : "#A855F7"
                     }
                     strokeWidth={isSelected ? 3 : 2}
@@ -2373,6 +3177,94 @@ export default function PlayCanvas({
                         ⚡ MOTION
                       </text>
                     </g>
+                  )}
+
+                  {/* Open / Covered indicator during simulation against opponent */}
+                  {showOpposingSide && isOffense && player.route && player.route.length > 0 && (
+                    (() => {
+                      const defenders = play.players.filter((p) => p.side === "defense");
+                      if (defenders.length === 0) return null;
+                      let minDistanceYards = 999;
+                      for (const def of defenders) {
+                        const defPos = getAnimatedPlayerPos(def, progress);
+                        const dx = (animPos.x - defPos.x) * 0.533;
+                        const dy = (animPos.y - defPos.y) / 1.75;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < minDistanceYards) minDistanceYards = dist;
+                      }
+                      const isOpen = minDistanceYards >= 3.5;
+                      const isTight = minDistanceYards < 2.2;
+                      if (!animating && progress === 0) return null;
+
+                      return (
+                        <g>
+                          {isOpen && (
+                            <g data-testid={`open-receiver-${player.id}`}>
+                              <circle
+                                cx={px}
+                                cy={py}
+                                r="26"
+                                fill="none"
+                                stroke="#10B981"
+                                strokeWidth="2.5"
+                                className="animate-pulse"
+                                opacity="0.9"
+                              />
+                              <g transform={`translate(${px}, ${py - 25})`}>
+                                <rect
+                                  x="-25"
+                                  y="-9"
+                                  width="50"
+                                  height="18"
+                                  rx="9"
+                                  fill="#064E3B"
+                                  stroke="#10B981"
+                                  strokeWidth="1.5"
+                                  className="drop-shadow-lg"
+                                />
+                                <text
+                                  x="0"
+                                  y="3.5"
+                                  fill="#A7F3D0"
+                                  fontSize="8.5"
+                                  fontWeight="900"
+                                  textAnchor="middle"
+                                  className="select-none pointer-events-none"
+                                >
+                                  OPEN
+                                </text>
+                              </g>
+                            </g>
+                          )}
+                          {isTight && (
+                            <g data-testid={`covered-receiver-${player.id}`} transform={`translate(${px}, ${py - 25})`}>
+                              <rect
+                                x="-28"
+                                y="-9"
+                                width="56"
+                                height="18"
+                                rx="9"
+                                fill="#4C0519"
+                                stroke="#F43F5E"
+                                strokeWidth="1.5"
+                                className="drop-shadow-lg"
+                              />
+                              <text
+                                x="0"
+                                y="3.5"
+                                fill="#FECDD3"
+                                fontSize="8"
+                                fontWeight="900"
+                                textAnchor="middle"
+                                className="select-none pointer-events-none"
+                              >
+                                COVERED
+                              </text>
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })()
                   )}
 
                   {/* Man Coverage target indicator around receivers when DB is highlighted in Man mode */}
@@ -2948,6 +3840,7 @@ export default function PlayCanvas({
 
                 <button
                   type="button"
+                  data-testid="set-pass-rush-btn"
                   disabled={readOnly}
                   onClick={handleSetPassRush}
                   aria-pressed={selectedPlayer.coverageType === "rush"}
@@ -3014,6 +3907,39 @@ export default function PlayCanvas({
                   );
                 })}
               </div>
+
+              {/* Custom Zone Creation Options */}
+              <div className="pt-2 border-t border-white/10 space-y-1.5 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2">
+                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                  <span>Custom Zones</span>
+                  <span className="text-[10px] text-neutral-400 normal-case font-normal">Shape & size controls</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    data-testid="create-custom-oval-zone"
+                    onClick={() => handleCreateCustomZone("ellipse")}
+                    className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
+                  >
+                    <Circle className="w-3.5 h-3.5" />
+                    <span>+ Custom Oval</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    data-testid="create-custom-box-zone"
+                    onClick={() => handleCreateCustomZone("rectangle")}
+                    className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    <span>+ Custom Box</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Inspector / Customizer Panel for Active Zone */}
+              {activeZone && renderZoneCustomizer(activeZone)}
             </div>
           ) : play.type !== "defense" ? (
             <div className="space-y-2">
@@ -3043,8 +3969,135 @@ export default function PlayCanvas({
               </div>
             </div>
           ) : (
-            <div className="text-xs text-neutral-400 py-1 font-mono">
-              Select a defensive player to assign zone, man, or rush.
+            <div className="space-y-2">
+              {activeZone ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-neutral-300 font-mono py-1">
+                    <span className="flex items-center gap-1.5 text-purple-300 font-bold">
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Customizing Zone: {activeZone.name}</span>
+                    </span>
+                    <span className="text-[11px] text-neutral-400">
+                      Drag to move or resize on field
+                    </span>
+                  </div>
+                  {renderZoneCustomizer(activeZone)}
+                  <div className="pt-1.5">
+                    <div className="text-[10px] text-neutral-400 uppercase font-bold mb-1">
+                      Assign Defender to this Zone
+                    </div>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      {defensePlayers.map((p) => {
+                        const isAssigned = p.zoneId === activeZone.id;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              if (isAssigned) {
+                                const updatedPlayers = play.players.map((pl) =>
+                                  pl.id === p.id
+                                    ? {
+                                        ...pl,
+                                        zoneId: undefined,
+                                        coverageType: undefined,
+                                        quickRouteName: undefined,
+                                        route: [],
+                                      }
+                                    : pl
+                                );
+                                onChange({ ...play, players: updatedPlayers });
+                              } else {
+                                handleAssignZone(activeZone.id, p.id);
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                              isAssigned
+                                ? "bg-purple-300 text-black border-purple-200 shadow-sm"
+                                : "bg-black/40 text-neutral-300 border-white/10 hover:text-white hover:bg-neutral-800"
+                            }`}
+                          >
+                            <span>{p.label} ({p.role})</span>
+                            {isAssigned && <Check className="w-3 h-3 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 py-1">
+                  <div className="flex items-center justify-between text-xs text-neutral-300 font-mono">
+                    <span className="flex items-center gap-1.5 text-purple-300 font-bold">
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Defensive Zone Coverage:</span>
+                    </span>
+                    <span className="text-[11px] text-neutral-400 hidden sm:inline">
+                      Select a player or create custom zones
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={readOnly}
+                      data-testid="create-custom-oval-zone"
+                      onClick={() => handleCreateCustomZone("ellipse")}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
+                    >
+                      <Circle className="w-3.5 h-3.5" />
+                      <span>+ Custom Oval Zone</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={readOnly}
+                      data-testid="create-custom-box-zone"
+                      onClick={() => handleCreateCustomZone("rectangle")}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
+                    >
+                      <Square className="w-3.5 h-3.5" />
+                      <span>+ Custom Box Zone</span>
+                    </button>
+                  </div>
+                  {play.zones && play.zones.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                      <span className="text-[10px] text-neutral-400 font-mono">Zones:</span>
+                      {play.zones.map((z) => (
+                        <button
+                          key={z.id}
+                          type="button"
+                          onClick={() => setSelectedZoneId(z.id)}
+                          className="px-2 py-1 rounded-md text-[10px] font-bold bg-white/5 hover:bg-purple-500/20 text-neutral-300 hover:text-purple-300 border border-white/10 flex items-center gap-1 cursor-pointer"
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: z.color }}
+                          />
+                          <span>{z.name}</span>
+                          <span className="text-[9px] opacity-70 uppercase font-mono">
+                            ({z.shape === "rectangle" ? "Box" : "Oval"})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin pt-1">
+                    <span className="text-[11px] text-neutral-400 font-mono shrink-0">Defenders:</span>
+                    {defensePlayers.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelectedPlayerId(p.id)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white/5 hover:bg-purple-500/20 text-neutral-300 hover:text-purple-300 border border-white/10 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <span>{p.label}</span>
+                        {p.coverageType && (
+                          <span className="text-[10px] opacity-75 capitalize">({p.coverageType})</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

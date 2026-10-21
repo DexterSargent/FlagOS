@@ -24,6 +24,7 @@ import { getYorkMatch, getYorkTeamPlaysForMatch, isYorkMatch } from "@/lib/yorkT
 import { isTrackablePlayer } from "@/lib/opponentPlaceholder";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor, getTeamBadgeStyle } from "@/lib/teamColors";
+import GameTeamStats from "@/components/match/GameTeamStats";
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -54,7 +55,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const homeAccent = getReadableTextColor("#0A0A0A", homeColors.primary);
   const [plays, setPlays] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'play-by-play' | 'box-score'>('play-by-play');
+  const [activeTab, setActiveTab] = useState<'play-by-play' | 'box-score' | 'team-stats'>('play-by-play');
   const [boxScoreTab, setBoxScoreTab] = useState<'home' | 'away'>('home');
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       const sp = new URLSearchParams(window.location.search);
       if (sp.get("embed") === "true") setIsEmbedded(true);
       const tabParam = sp.get("tab");
-      if (tabParam === "box-score" || tabParam === "play-by-play") {
+      if (tabParam === "box-score" || tabParam === "play-by-play" || tabParam === "team-stats") {
         setActiveTab(tabParam);
       }
     }
@@ -555,6 +556,13 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           >
             Live Box Score
           </button>
+          <button
+            onClick={() => setActiveTab('team-stats')}
+            style={activeTab === "team-stats" ? { color: homeAccent, borderColor: homeAccent } : undefined}
+            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'team-stats' ? 'border-b-2' : 'text-neutral-500 hover:text-white'}`}
+          >
+            Team Stats
+          </button>
         </div>
       </div>
 
@@ -673,6 +681,10 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                 </table>
               </div>
             </div>
+          )}
+
+          {activeTab === 'team-stats' && (
+            <GameTeamStats matchData={effectiveMatchData} plays={plays} isDemo={isDemoMatch} />
           )}
         </div>
       </div>

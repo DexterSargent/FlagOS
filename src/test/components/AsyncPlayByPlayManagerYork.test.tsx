@@ -262,4 +262,13 @@ describe("AsyncPlayByPlayManager York Lions Match Loading", () => {
       flaggers: ["Sonia Cabral"],
     })));
   });
+
+  it("renders the Team Stats tab next to play-by-play and box score and presents game team stats", async () => {
+    render(<AsyncPlayByPlayManager matchId="match_york_mcmaster" />);
+    const teamStatsBtn = await screen.findByRole("button", { name: "Team Stats" });
+    expect(teamStatsBtn).toBeInTheDocument();
+    fireEvent.click(teamStatsBtn);
+    expect(await screen.findByRole("region", { name: "Individual game team stats" })).toBeInTheDocument();
+    expect(screen.getByTestId("game-team-stats")).toBeInTheDocument();
+  });
 });

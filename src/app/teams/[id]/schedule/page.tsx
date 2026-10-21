@@ -20,6 +20,8 @@ import {
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadYorkMatches } from "@/lib/yorkSeasonData";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
+import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
+import { useTeamColors } from "@/lib/teamColorContext";
 
 // Date-only strings parse as UTC and display a day early in western time zones.
 function localMatchDate(value: string): Date {
@@ -34,7 +36,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYork);
 
   const { canManageTeam, isLeagueAdmin, user } = useAuth();
+  const { palette: contextPalette } = useTeamColors();
   const [team, setTeam] = useState<any>(() => isYork ? { ...YORK_LIONS_TEAM } : null);
+  const palette = resolveTeamColorPalette(team || contextPalette);
   const [allTeams, setAllTeams] = useState<Record<string, any>>({});
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -312,15 +316,23 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const pastMatches = matches.filter((m) => m.status === "completed" || m.status === "Final");
   const upcomingMatches = matches.filter((m) => m.status !== "completed" && m.status !== "Final");
 
+
   const teamName = team?.name || "Team";
   const hasManagementAccess = canManageTeam(teamId) || isLeagueAdmin;
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
 
-      {/* Dynamic Background */}
+      {/* Dynamic Background styled to team colors */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15"></div>
+        <div 
+          className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-25 animate-pulse"
+          style={{ backgroundColor: palette.primary }}
+        />
+        <div 
+          className="absolute top-40 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-20 animate-pulse delay-1000"
+          style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }}
+        />
       </div>
 
       <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
@@ -337,7 +349,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-400 mb-2">
+            <div 
+              className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2"
+              style={{ color: palette.primary }}
+            >
               <Calendar className="w-4 h-4" />
               <span>Official Schedule</span>
             </div>
@@ -351,7 +366,11 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           {canScheduleMatches && (
             <button
               onClick={() => setIsScheduleModalOpen(true)}
-              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-3 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
+              style={{
+                background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+                color: getReadableTextColor(palette.primary, "#000000"),
+              }}
             >
               <Plus className="w-4 h-4 shrink-0" />
               <span>Schedule Game<span className="hidden sm:inline"> (Named Opponent)</span></span>
@@ -363,7 +382,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         <div className="grid grid-cols-1 gap-8">
           {/* Upcoming Games */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2.5 text-lg font-black uppercase tracking-wider text-emerald-400">
+            <div 
+              className="flex items-center gap-2.5 text-lg font-black uppercase tracking-wider"
+              style={{ color: palette.primary }}
+            >
               <Clock className="w-5 h-5" />
               <span>Upcoming Games</span>
             </div>

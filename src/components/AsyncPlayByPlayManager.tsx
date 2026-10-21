@@ -80,6 +80,7 @@ import {
   isOpponentPlaceholder,
   isTrackablePlayer,
 } from "@/lib/opponentPlaceholder";
+import GameTeamStats from "@/components/match/GameTeamStats";
 
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
@@ -175,7 +176,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [playResult, setPlayResult] = useState<string>("");
 
   // View tabs
-  const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score">("tracker");
+  const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score" | "team-stats">("tracker");
   const playEntryRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (playEntryRef.current) playEntryRef.current.scrollTop = 0;
@@ -1237,6 +1238,14 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           >
             Box Score
           </button>
+          <button
+            onClick={() => setActiveTab("team-stats")}
+            className={`px-2 sm:px-3 py-2 rounded-lg transition-all ${
+              activeTab === "team-stats" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Team Stats
+          </button>
         </div>
       </header>
 
@@ -2032,6 +2041,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               </table>
             </div>
           </div>
+        )}
+
+        {/* TAB 4: TEAM STATS */}
+        {activeTab === "team-stats" && (
+          <GameTeamStats matchData={matchData} plays={plays} isDemo={isDemo} />
         )}
       </main>
 

@@ -489,6 +489,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         await updateDoc(doc(db, "teams", teamId), updatedData);
         if (typeof window !== "undefined") {
           localStorage.setItem("flagos_york_team_custom", JSON.stringify(updatedData));
+          window.dispatchEvent(new CustomEvent("flagos_team_updated", { detail: updatedData }));
         }
         Object.assign(YORK_LIONS_TEAM, updatedData);
         setTeam((prev: any) => ({ ...prev, ...updatedData }));
@@ -500,6 +501,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       if (isDemoLeague) {
         if (!sandbox) throw new Error("The demo is not loaded.");
         sandbox.updateSandboxTeam(teamId, updatedData);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("flagos_team_updated", { detail: updatedData }));
+        }
         setTeam((prev: any) => ({ ...prev, ...updatedData }));
         setIsEditModalOpen(false);
         setSaving(false);
@@ -507,6 +511,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       }
 
       await updateDoc(doc(db, "teams", teamId), updatedData);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("flagos_team_updated", { detail: updatedData }));
+      }
       setTeam((prev: any) => ({ ...prev, ...updatedData }));
       setIsEditModalOpen(false);
     } catch (e) {
@@ -877,10 +884,25 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           {/* Bento 1: Schedule */}
           <Link
             href={`/teams/${teamId}/schedule`}
-            className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 hover:border-cyan-500/50 overflow-hidden shadow-xl hover:-translate-y-1"
+            className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 overflow-hidden shadow-xl hover:-translate-y-1"
+            style={{
+              borderColor: undefined,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${palette.primary}80`)}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <CalendarDays className="w-8 h-8 text-white mb-4 group-hover:text-cyan-400 transition-colors" />
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{
+                background: `linear-gradient(135deg, ${palette.primary}20, transparent)`,
+              }}
+            />
+            <CalendarDays
+              className="w-8 h-8 text-white mb-4 transition-colors"
+              style={{ color: undefined }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = palette.primary)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+            />
             <h3 className="text-xl font-black mb-1.5 uppercase tracking-wide">Schedule</h3>
             <p className="text-neutral-400 text-xs leading-relaxed">
               Upcoming games, box scores, and live game tracking.
@@ -890,10 +912,21 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           {/* Bento 2: Team Roster */}
           <Link
             href={`/teams/${teamId}/roster`}
-            className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 hover:border-cyan-500/50 overflow-hidden shadow-xl hover:-translate-y-1"
+            className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 overflow-hidden shadow-xl hover:-translate-y-1"
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${palette.primary}80`)}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <Users className="w-8 h-8 text-white mb-4 group-hover:text-cyan-400 transition-colors" />
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{
+                background: `linear-gradient(135deg, ${palette.primary}20, transparent)`,
+              }}
+            />
+            <Users
+              className="w-8 h-8 text-white mb-4 transition-colors"
+              onMouseEnter={(e) => (e.currentTarget.style.color = palette.primary)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+            />
             <h3 className="text-xl font-black mb-1.5 uppercase tracking-wide">Team</h3>
             <p className="text-neutral-400 text-xs leading-relaxed">
               Official roster and team stats.
@@ -903,10 +936,21 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           {/* Bento 3: Stat Leaders */}
           <Link
             href={`/teams/${teamId}/stats`}
-            className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 hover:border-cyan-500/50 overflow-hidden shadow-xl hover:-translate-y-1"
+            className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 overflow-hidden shadow-xl hover:-translate-y-1"
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${palette.primary}80`)}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <Activity className="w-8 h-8 text-white mb-4 group-hover:text-cyan-400 transition-colors" />
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{
+                background: `linear-gradient(135deg, ${palette.primary}20, transparent)`,
+              }}
+            />
+            <Activity
+              className="w-8 h-8 text-white mb-4 transition-colors"
+              onMouseEnter={(e) => (e.currentTarget.style.color = palette.primary)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+            />
             <h3 className="text-xl font-black mb-1.5 uppercase tracking-wide">Stat Leaders</h3>
             <p className="text-neutral-400 text-xs leading-relaxed">
               Top performers in each statistical category.
@@ -917,10 +961,21 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           {canAccessPlaybook && (
             <Link
               href={`/teams/${teamId}/playbook`}
-              className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 hover:border-cyan-500/50 overflow-hidden shadow-xl hover:-translate-y-1"
+              className="group relative flex flex-col p-6 rounded-3xl bg-neutral-950/60 border border-white/5 backdrop-blur-md hover:bg-neutral-900 transition-all duration-300 overflow-hidden shadow-xl hover:-translate-y-1"
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${palette.primary}80`)}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <BookOpen className="w-8 h-8 text-white mb-4 group-hover:scale-110 transition-transform" />
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{
+                  background: `linear-gradient(135deg, ${palette.primary}20, transparent)`,
+                }}
+              />
+              <BookOpen
+                className="w-8 h-8 text-white mb-4 group-hover:scale-110 transition-transform"
+                onMouseEnter={(e) => (e.currentTarget.style.color = palette.primary)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "")}
+              />
               <h3 className="text-xl font-black mb-1.5 uppercase tracking-wide">Playbooks</h3>
               <p className="text-neutral-400 text-xs leading-relaxed">
                 Design and study offensive and defensive playbooks.

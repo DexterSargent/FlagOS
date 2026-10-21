@@ -9,6 +9,8 @@ export interface RoutePoint {
   y: number; // percentage down field (0 - 100, smaller y = further downfield towards endzone)
 }
 
+export type ZoneShape = "ellipse" | "rectangle";
+
 export interface ZoneBubble {
   id: string;
   name: string; // e.g. "Deep 1/3", "Flat", "Hook/Curl", "Deep 1/2", "Under", "Spy"
@@ -17,6 +19,7 @@ export interface ZoneBubble {
   rx: number; // horizontal radius in %
   ry: number; // vertical radius in %
   color: string;
+  shape?: ZoneShape;
 }
 
 export interface StandardZoneTemplate {
@@ -30,6 +33,7 @@ export interface StandardZoneTemplate {
   rx: number;
   ry: number;
   description: string;
+  shape?: ZoneShape;
 }
 
 export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [

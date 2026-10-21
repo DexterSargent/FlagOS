@@ -150,20 +150,36 @@ export default function MiniPlayDiagram({
 
       {/* Defensive Zones */}
       {(play.type === "defense" || showOpposingSide) &&
-        play.zones?.map((z) => (
-          <ellipse
-            key={z.id}
-            cx={(z.x / 100) * 1000}
-            cy={(z.y / 100) * 700}
-            rx={(z.rx / 100) * 1000}
-            ry={(z.ry / 100) * 700}
-            fill={z.color}
-            fillOpacity={isLight ? 0.15 : 0.22}
-            stroke={z.color}
-            strokeWidth="1.5"
-            strokeDasharray="4 3"
-          />
-        ))}
+        play.zones?.map((z) =>
+          z.shape === "rectangle" ? (
+            <rect
+              key={z.id}
+              x={((z.x - z.rx) / 100) * 1000}
+              y={((z.y - z.ry) / 100) * 700}
+              width={((z.rx * 2) / 100) * 1000}
+              height={((z.ry * 2) / 100) * 700}
+              rx="8"
+              fill={z.color}
+              fillOpacity={isLight ? 0.15 : 0.22}
+              stroke={z.color}
+              strokeWidth="1.5"
+              strokeDasharray="4 3"
+            />
+          ) : (
+            <ellipse
+              key={z.id}
+              cx={(z.x / 100) * 1000}
+              cy={(z.y / 100) * 700}
+              rx={(z.rx / 100) * 1000}
+              ry={(z.ry / 100) * 700}
+              fill={z.color}
+              fillOpacity={isLight ? 0.15 : 0.22}
+              stroke={z.color}
+              strokeWidth="1.5"
+              strokeDasharray="4 3"
+            />
+          )
+        )}
 
       {/* Man Lock Lines (Visible when both sides are shown) */}
       {showOpposingSide &&
