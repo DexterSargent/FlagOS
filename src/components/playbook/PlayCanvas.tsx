@@ -1606,7 +1606,6 @@ export default function PlayCanvas({
               title="Open general coaching notes & scheme progression"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>Notes</span>
             </button>
 
             {/* Coach Q&A Button */}
