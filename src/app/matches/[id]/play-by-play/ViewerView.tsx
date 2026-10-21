@@ -20,7 +20,7 @@ import {
   subscribeDemoSandbox,
   isDemoMatch as checkIsDemoMatch,
 } from "@/lib/demoSandbox";
-import { getYorkMatch, getYorkTeamPlaysForMatch, isYorkMatch } from "@/lib/yorkTeamData";
+import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import { isTrackablePlayer } from "@/lib/opponentPlaceholder";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor, getTeamBadgeStyle } from "@/lib/teamColors";
@@ -40,7 +40,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     return false;
   });
 
-  const isDemoMatch = !isYorkMatch(matchId) && (isDemoLeague || isEmbedded || checkIsDemoMatch(matchId, activeLeagueId));
+  const isDemoMatch = isDemoMatchId(matchId) && (isDemoLeague || isEmbedded || checkIsDemoMatch(matchId, activeLeagueId));
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess({
     isPrivateOverride: matchId.startsWith("match_live_"),
@@ -270,7 +270,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const downsPerSeries = settings?.rules?.downsPerSeries || 4;
 
   const formatPlaySentence = (play: any) => {
-    const ctxMatch: any = matchData || getYorkMatch(matchId);
+    const ctxMatch: any = matchData;
     return formatPlaySentenceEngine(play, {
       homeTeamName: ctxMatch?.homeTeamName,
       awayTeamName: ctxMatch?.awayTeamName,
@@ -292,18 +292,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     const unsub = onSnapshot(doc(db, "matches", matchId), (docSnap) => {
       if (docSnap.exists()) {
         setMatchData(docSnap.data());
-      } else {
-        const ym = getYorkMatch(matchId);
-        if (ym) setMatchData(ym);
       }
     }, (err) => {
       console.warn("ViewerView match snapshot warning:", err);
-      const ym = getYorkMatch(matchId);
-      if (ym) setMatchData(ym);
-      else {
-        const m = getSandboxMatch(matchId);
-        if (m) setMatchData(m);
-      }
+      const m = getSandboxMatch(matchId);
+      if (m) setMatchData(m);
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
@@ -331,13 +324,6 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     );
     const unsub = onSnapshot(q, (snap) => {
       const p = snap.docs.map(d => d.data());
-      if (p.length === 0) {
-        const yp = getYorkTeamPlaysForMatch(matchId);
-        if (yp.length > 0) {
-          setPlays(yp);
-          return;
-        }
-      }
       p.sort((a, b) => {
         const tA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
         const tB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
@@ -346,13 +332,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       setPlays(p);
     }, (err) => {
       console.warn("ViewerView plays snapshot warning:", err);
-      const yp = getYorkTeamPlaysForMatch(matchId);
-      if (yp.length > 0) {
-        setPlays(yp);
-      } else {
-        const pList = getSandboxPlays(matchId);
-        setPlays(pList);
-      }
+      setPlays(getSandboxPlays(matchId));
     });
     return () => unsub();
   }, [matchId, isDemoMatch]);
@@ -361,7 +341,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     return deniedElement;
   }
 
-  const effectiveMatchData = matchData || getYorkMatch(matchId);
+  const effectiveMatchData = matchData;
 
   if (!effectiveMatchData) {
     return (

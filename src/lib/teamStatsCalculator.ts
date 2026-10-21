@@ -430,13 +430,6 @@ export function calculateTeamComprehensiveStats(
     if (options?.teamAliases && options.teamAliases.some((alias) => alias.toLowerCase() === idOrName.toLowerCase())) {
       return true;
     }
-    // York aliases
-    if (
-      (teamId === "york_lions" || teamId === "team_york" || teamId === "york" || teamId === "yuwffl_lions") &&
-      (idOrName === "york_lions" || idOrName === "team_york" || idOrName === "york" || idOrName === "yuwffl_lions" || idOrName === "York Lions" || idOrName === "York Lions Women's Flag Football")
-    ) {
-      return true;
-    }
     return false;
   };
 

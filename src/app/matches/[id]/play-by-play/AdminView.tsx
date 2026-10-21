@@ -34,7 +34,7 @@ import {
   isDemoMatch,
 } from "@/lib/demoSandbox";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
-import { getYorkMatch, getYorkTeamPlaysForMatch, getYorkTeamPlayers, isYorkMatch } from "@/lib/yorkTeamData";
+import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -51,7 +51,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     return false;
   });
 
-  const isDemo = !isYorkMatch(matchId) && (isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId));
+  const isDemo = isDemoMatchId(matchId) && (isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId));
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess({
     isPrivateOverride: matchId.startsWith("match_live_"),
@@ -204,10 +204,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         );
         const snap = await getDocs(q);
         pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        if (pList.length === 0) {
-          const yp = getYorkTeamPlaysForMatch(matchId);
-          if (yp.length > 0) pList = yp;
-        }
       }
       setMatchPlaysList(pList);
       if (pList.length > 0) {
@@ -333,18 +329,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           try {
             const matchDoc = await getDoc(doc(db, "matches", matchId));
             if (!matchDoc.exists()) {
-              const ym = getYorkMatch(matchId);
-              if (ym) {
-                mData = ym;
-                allP = getYorkTeamPlayers();
-              } else {
-                mData = getSandboxMatch(matchId);
-                if (!mData) {
-                  setLoadingData(false);
-                  return;
-                }
-                allP = getSandboxPlayers();
+              mData = getSandboxMatch(matchId);
+              if (!mData) {
+                setLoadingData(false);
+                return;
               }
+              allP = getSandboxPlayers();
             } else {
               mData = matchDoc.data() as any;
               const rosterTeamId = mData.managingTeamId || mData.homeTeamId || mData.awayTeamId;
@@ -359,18 +349,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             }
           } catch (err) {
             console.warn("Unable to fetch live match from Firestore, falling back to local/sandbox:", err);
-            const ym = getYorkMatch(matchId);
-            if (ym) {
-              mData = ym;
-              allP = getYorkTeamPlayers();
-            } else {
-              mData = getSandboxMatch(matchId);
-              if (!mData) {
-                setLoadingData(false);
-                return;
-              }
-              allP = getSandboxPlayers();
+            mData = getSandboxMatch(matchId);
+            if (!mData) {
+              setLoadingData(false);
+              return;
             }
+            allP = getSandboxPlayers();
           }
         }
 

@@ -25,7 +25,7 @@ import {
   getSandboxPlays,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import { YORK_TEAM_ID, isYorkTeam } from "@/lib/yorkTeamData";
+import { isStandaloneTeam } from "@/lib/demoSandboxRuntime";
 
 interface Team {
   id: string;
@@ -102,7 +102,7 @@ export default function TeamsPage() {
     setLoading(true);
     if (isEffectiveDemo) {
       const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-      const t = baseTeams.filter((team) => !isYorkTeam(team.id)).sort((a, b) => a.name.localeCompare(b.name));
+      const t = [...baseTeams].sort((a, b) => a.name.localeCompare(b.name));
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();
@@ -121,7 +121,7 @@ export default function TeamsPage() {
       ));
       const tData = teamsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as Team))
-        .filter(t => isRealTeam(t) && !isYorkTeam(t.id) && (!((t as any).leagueId) || (t as any).leagueId === activeLeagueId));
+        .filter(t => isRealTeam(t) && !isStandaloneTeam(t as any) && (t as any).leagueId === activeLeagueId);
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
 
@@ -130,9 +130,7 @@ export default function TeamsPage() {
         where("leagueId", "==", activeLeagueId),
         limit(1920),
       ));
-      const pData = playersSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Player))
-        .filter((player) => !isYorkTeam(player.teamId));
+      const pData = playersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
       setPlayers(pData);
 
       const matchesSnap = await getDocs(query(
@@ -145,9 +143,6 @@ export default function TeamsPage() {
         .map(d => ({ id: d.id, ...d.data() } as any))
         .filter(m =>
           !m.isHidden &&
-          !String(m.id).startsWith("match_york_") &&
-          !isYorkTeam(m.homeTeamId) &&
-          !isYorkTeam(m.awayTeamId) &&
           (!m.leagueId || m.leagueId === activeLeagueId)
         );
       setMatches(mData);
@@ -158,14 +153,12 @@ export default function TeamsPage() {
         where("isHidden", "!=", true),
         limit(10_000),
       ));
-      const playData = playsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter((play: any) => !String(play.matchId).startsWith("match_york_"));
+      const playData = playsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setPlays(playData);
     } catch (e) {
       console.warn("Unable to fetch live teams data, falling back to sandbox:", e);
       const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-      const t = baseTeams.filter((team) => !isYorkTeam(team.id)).sort((a, b) => a.name.localeCompare(b.name));
+      const t = [...baseTeams].sort((a, b) => a.name.localeCompare(b.name));
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();
@@ -182,7 +175,7 @@ export default function TeamsPage() {
     if (isEffectiveDemo) {
       const unsub = subscribeDemoSandbox(() => {
         const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-        const t = baseTeams.filter((team) => !isYorkTeam(team.id)).sort((a, b) => a.name.localeCompare(b.name));
+        const t = [...baseTeams].sort((a, b) => a.name.localeCompare(b.name));
         setTeams(t);
         setPlayers(getSandboxPlayers() as unknown as Player[]);
         setMatches(getSandboxMatches());
@@ -403,7 +396,7 @@ export default function TeamsPage() {
     .filter(p => p.teamId === activeTeamId)
     .sort((a, b) => a.playerName.localeCompare(b.playerName));
 
-  const competitiveTeams = teams.filter((team) => isRealTeam(team) && !isYorkTeam(team.id));
+  const competitiveTeams = teams.filter((team) => isRealTeam(team));
   const freeAgentPlayers = players.filter(
     (p) =>
       p.status === "Free Agent" ||
@@ -654,72 +647,6 @@ export default function TeamsPage() {
 
           /* GRID VIEW */
           <div className="space-y-12 animate-in fade-in zoom-in-95 duration-300">
-            {!isEffectiveDemo && (
-            <div className="bg-gradient-to-r from-red-950/40 via-neutral-900/60 to-black border border-red-500/30 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-red-600/20 text-red-300 text-xs font-mono font-bold border border-red-500/30">
-                      Standalone Pro Team Portal
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-mono font-bold border border-emerald-500/30">
-                      Complimentary (Free Lifetime)
-                    </span>
-                    <span className="text-neutral-500 text-xs">•</span>
-                    <span className="text-xs text-neutral-300 font-semibold">Founder Varsity Club</span>
-                  </div>
-
-                  <div>
-                    <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight uppercase">
-                      York Lions Women&apos;s Flag Football
-                    </h3>
-                    <p className="text-xs md:text-sm text-neutral-300 max-w-2xl mt-1 leading-relaxed">
-                      Official digital headquarters for the York Lions varsity club. Includes private depth chart, 12-player roster, up to 5 custom playbooks with pre-snap motion, and clockless scrimmage stat tracking.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-400">
-                    <div>
-                      <span className="text-neutral-500">Coaches: </span>
-                      <strong className="text-white">Dexter Harvey</strong> (Head Coach &amp; DC) &amp; <strong className="text-white">Theo</strong> (OC)
-                    </div>
-                    <div>
-                      <span className="text-neutral-500">Roster: </span>
-                      <strong className="text-white">12 Varsity Players</strong>
-                    </div>
-                    <div>
-                      <span className="text-neutral-500">Tier: </span>
-                      <strong className="text-emerald-400">Pro Team Subscription ($0/mo)</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
-                  <Link
-                    href={`/teams/${YORK_TEAM_ID}`}
-                    className="flex-1 sm:flex-initial px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-[1.02]"
-                  >
-                    <span>Open Team Portal</span>
-                    <ArrowRightLeft className="w-4 h-4" />
-                  </Link>
-                  <Link
-                    href={`/teams/${YORK_TEAM_ID}/playbook`}
-                    className="flex-1 sm:flex-initial px-4 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-white/10"
-                  >
-                    <span>Playbooks</span>
-                  </Link>
-                  <Link
-                    href={`/teams/${YORK_TEAM_ID}/roster`}
-                    className="flex-1 sm:flex-initial px-4 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all border border-white/10"
-                  >
-                    <span>Roster</span>
-                  </Link>
-                </div>
-              </div>
-            </div>
-            )}
-
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold uppercase tracking-wide text-neutral-300 flex items-center gap-2">

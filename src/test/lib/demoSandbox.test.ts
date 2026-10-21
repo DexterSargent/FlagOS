@@ -16,12 +16,6 @@ import {
   setSandboxMatches,
   resetDemoSession,
 } from "@/lib/demoSandbox";
-import {
-  YORK_LIONS_MATCHES,
-  YORK_LIONS_PLAYS,
-  YORK_LIONS_PLAYERS,
-  YORK_LIONS_TEAM,
-} from "@/lib/yorkTeamData";
 
 describe("demoSandbox", () => {
   beforeEach(() => {
@@ -141,22 +135,11 @@ describe("demoSandbox", () => {
       expect(names).not.toContain("free agents");
     });
 
-    it("keeps standalone York data out of demo league collections, including saved sessions", () => {
-      sessionStorage.setItem("flagos_demo_initialized_2026_nfl_v3", "true");
-      sessionStorage.setItem("flagos_demo_team_branding_v2", "1");
-      sessionStorage.setItem("flagos_demo_teams", JSON.stringify([YORK_LIONS_TEAM]));
-      sessionStorage.setItem("flagos_demo_players", JSON.stringify(YORK_LIONS_PLAYERS));
-      sessionStorage.setItem("flagos_demo_matches", JSON.stringify(YORK_LIONS_MATCHES));
-      sessionStorage.setItem("flagos_demo_plays", JSON.stringify(YORK_LIONS_PLAYS));
-
-      expect(getSandboxTeams().some((team) => team.id === YORK_LIONS_TEAM.id)).toBe(false);
-      expect(getSandboxPlayers().some((player) => player.teamId === YORK_LIONS_TEAM.id)).toBe(false);
-      expect(getSandboxMatches().some((match) =>
-        match.id.startsWith("match_york_") ||
-        match.homeTeamId === YORK_LIONS_TEAM.id ||
-        match.awayTeamId === YORK_LIONS_TEAM.id
-      )).toBe(false);
-      expect(getSandboxPlays().some((play) => play.matchId.startsWith("match_york_"))).toBe(false);
+    it("never injects independent customer records into the demo fixtures", () => {
+      expect(getSandboxTeams().some((team) => team.id === "falcons")).toBe(false);
+      expect(getSandboxPlayers().some((player) => player.teamId === "falcons")).toBe(false);
+      expect(getSandboxMatches().some((match) => match.homeTeamId === "falcons" || match.awayTeamId === "falcons")).toBe(false);
+      expect(getSandboxMatch("customer-match")).toBeUndefined();
     });
 
     it("uses NFL primary colors and numbered names for shared NFL cities", () => {

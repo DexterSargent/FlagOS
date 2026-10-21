@@ -420,36 +420,37 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     });
   });
 
-  it("STRICT RBAC RULE 7: York Lions rostered player has strictly VIEW-ONLY access (cannot edit plays or create playbooks)", async () => {
+  it("STRICT RBAC RULE 7: independent team rostered player has strictly VIEW-ONLY access (cannot edit plays or create playbooks)", async () => {
     mockAuth.isLeagueAdmin = false;
     mockAuth.isPlayer = true;
-    mockAuth.playerTeamId = "york_lions";
+    mockAuth.playerTeamId = "falcons";
     mockAuth.isTeamAdmin = vi.fn(() => false);
     mockAuth.canManageTeam = vi.fn(() => false);
 
     delete (window as any).location;
-    window.location = new URL("http://localhost:3000/teams/york_lions/playbook") as any;
+    window.location = new URL("http://localhost:3000/teams/falcons/playbook") as any;
 
-    await renderPage("york_lions");
+    vi.mocked(getDoc).mockResolvedValueOnce({ exists: () => true, id: "falcons", data: () => ({ name: "Falcons", subscription: { status: "active" } }) } as any);
+    await renderPage("falcons");
 
     await waitFor(() => {
-      expect(screen.getAllByText(/York Lions/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Falcons/i).length).toBeGreaterThan(0);
       expect(screen.getByText("Player View Only")).toBeInTheDocument();
-      // Player should NOT have edit controls even on York
+      // Player should NOT have edit controls on an independent team
       expect(screen.queryByRole("button", { name: /Create a Playbook/i })).toBeNull();
       expect(screen.queryByRole("button", { name: /Save to Cloud/i })).toBeNull();
     });
 
   });
 
-  it("does not put York into demo or embedded mode from visitor flags", async () => {
+  it("does not put an independent team into demo or embedded mode from visitor flags", async () => {
       mockAuth.isTeamAdmin = vi.fn(() => false);
       mockAuth.canManageTeam = vi.fn(() => false);
       sessionStorage.setItem("flagos_demo_active", "true");
       delete (window as any).location;
-      window.location = new URL("http://localhost:3000/teams/york_lions/playbook?demo=true&embed=true") as any;
+      window.location = new URL("http://localhost:3000/teams/falcons/playbook?demo=true&embed=true") as any;
       try {
-        await renderPage("york_lions");
+        await renderPage("falcons");
         expect(await screen.findByText("Sign In as Player / Coach")).toBeInTheDocument();
         expect(screen.queryByRole("textbox", { name: "Play name" })).not.toBeInTheDocument();
       } finally {

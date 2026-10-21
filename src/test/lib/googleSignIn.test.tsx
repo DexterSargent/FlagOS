@@ -3,6 +3,8 @@ import { FirebaseError } from "firebase/app";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/lib/authContext";
 import { useState } from "react";
+import { requestPrivateData } from "@/lib/secureWrites";
+vi.mock("@/lib/secureWrites", () => ({ requestPrivateData: vi.fn(async () => ({ players: [], teams: [] })) }));
 
 vi.mock("@/lib/accountEmails", () => ({
   resolveConnectedAccount: vi.fn(async (user) => user),
@@ -66,6 +68,7 @@ describe("Google sign-in", () => {
 
   beforeEach(() => {
     vi.stubGlobal("confirm", vi.fn(() => false));
+    vi.mocked(requestPrivateData).mockResolvedValue({ players: [], teams: [] });
     popupMock.mockReset();
     redirectMock.mockReset();
     authStateCallback.current = null;
@@ -100,11 +103,12 @@ describe("Google sign-in", () => {
     expect(screen.getByLabelText("user")).toHaveTextContent("google-user");
   });
 
-  it.each([true, false])("only returns the York destination for verified staff (verified=%s)", async (emailVerified) => {
-    popupMock.mockResolvedValue({ user: { uid: "york-coach", email: "tbrown99@my.yorku.ca", emailVerified } });
+  it.each([true, false])("only returns a managed team destination from verified server lookup (verified=%s)", async (emailVerified) => {
+    vi.mocked(requestPrivateData).mockResolvedValue({ players: [], teams: [{ id: "falcons", name: "Falcons" }] });
+    popupMock.mockResolvedValue({ user: { uid: "team-coach", email: "assistant@falcons.com", emailVerified } });
     render(<AuthProvider><GoogleSignInHarness /></AuthProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Google sign-in" }));
-    await waitFor(() => expect(screen.getByLabelText("result")).toHaveTextContent(emailVerified ? "/teams/york_lions" : "success"));
+    await waitFor(() => expect(screen.getByLabelText("result")).toHaveTextContent(emailVerified ? "/teams/falcons" : "success"));
   });
 
   it("shows recovery instructions rather than falling back to a broken redirect", async () => {

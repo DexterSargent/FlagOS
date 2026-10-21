@@ -35,8 +35,7 @@ import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets"
 import { useLeague } from "@/lib/leagueContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
-import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
-import { getYorkTeamData } from "@/lib/yorkTeamProfile";
+import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadTeamSeasonSummary, buildRosterPlayerStats, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 import type { TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
@@ -50,11 +49,11 @@ const TeamDepthCharts = dynamic(() => import("@/components/TeamDepthCharts"), {
 
 export default function TeamRosterPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
-  const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
+  const teamId = unwrappedParams.id;
 
   const { canManageTeam, isLeagueAdmin, isTeamAdmin, user } = useAuth();
   const { settings, isDemoLeague } = useLeague();
-  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYorkTeam(teamId));
+  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague);
   const { palette: contextPalette } = useTeamColors();
   const [team, setTeam] = useState<any>(null);
   const palette = resolveTeamColorPalette(team || contextPalette);
@@ -63,7 +62,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [seasonTeamStats, setSeasonTeamStats] = useState<TeamComprehensiveStats | null>(null);
   const [playerStats, setPlayerStats] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(isYorkTeam(teamId));
+  const [statsLoading, setStatsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [privateRosterReady, setPrivateRosterReady] = useState(false);
   const requestVersion = useRef(0);
@@ -101,52 +100,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       let mList: any[] = [];
       let playList: any[] = [];
 
-      if (isYorkTeam(teamId)) {
-        tObj = { ...getYorkTeamData() };
-        let hasSharedRoster = false;
-        try {
-          const [teamSnap, playersSnap] = await Promise.all([
-            getDoc(doc(db, "teams", teamId)),
-            getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
-          ]);
-          if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
-          hasSharedRoster = teamSnap.exists();
-          pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-          console.warn("Using offline/seed York Lions roster data:", e);
-        }
-        if (pList.length === 0 && !hasSharedRoster) {
-          pList = (await import("@/lib/yorkTeamData")).getYorkTeamPlayers();
-        }
-        if (version !== requestVersion.current) return;
-        setTeam(tObj);
-        setPlayers([...pList].sort((a, b) => a.playerName.localeCompare(b.playerName)));
-        setLoading(false);
-        if (isTeamOrLeagueAdmin) {
-          requestPrivateData<{
-            team: Record<string, unknown>;
-            players: Record<string, { email?: string; emails?: string[] }>;
-          }>("team", { teamId }).then((privateData) => {
-            if (version !== requestVersion.current) return;
-            setTeam((current: Record<string, unknown>) => ({ ...current, ...privateData.team }));
-            setPlayers((current) => current.map((player) => ({ ...player, ...(privateData.players[player.id] || {}) })));
-            setPrivateRosterReady(true);
-          }).catch((error: unknown) => {
-            console.error("Unable to load private roster settings:", error);
-            if (version === requestVersion.current) setLoadError("Coach roster settings could not be loaded. Refresh before editing.");
-          });
-        }
-        setStatsLoading(true);
-        loadTeamSeasonSummary(teamId).then((summary) => {
-          if (version !== requestVersion.current) return;
-          setSeasonTeamStats(summary.teamStats);
-          setPlayerStats(buildRosterPlayerStats(summary, pList.map((player) => player.playerName)));
-        }).catch((error: unknown) => {
-          console.error("Unable to load roster statistics:", error);
-          if (version === requestVersion.current) setLoadError("Season statistics could not be loaded. Refresh to retry.");
-        }).finally(() => { if (version === requestVersion.current) setStatsLoading(false); });
-        return;
-      } else if (isDemoLeague) {
+      if (isDemoLeague) {
         if (!sandbox) return;
         setPrivateRosterReady(true);
         const { getSandboxTeams, getSandboxPlayers, getSandboxMatches, getSandboxPlays } = sandbox;
@@ -190,22 +144,28 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         } catch (error) {
           if (!(error instanceof TeamSeasonSummaryError) || error.status !== 404) throw error;
         }
-        const [matchesSnap, playsSnap] = await Promise.all([
-          getDocs(query(
-            collection(db, "matches"),
-            where("leagueId", "==", leagueId),
-            where("isHidden", "!=", true),
-            limit(512),
-          )),
-          getDocs(query(
-            collection(db, "plays"),
-            where("leagueId", "==", leagueId),
-            where("isHidden", "!=", true),
-            limit(10_000),
-          )),
-        ]);
-        mList = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-        playList = playsSnap.docs.map((d) => d.data() as any);
+        if (!leagueId) {
+          const season = await loadTeamSeasonData(teamId);
+          mList = season.matches;
+          playList = season.plays;
+        } else {
+          const [matchesSnap, playsSnap] = await Promise.all([
+            getDocs(query(
+              collection(db, "matches"),
+              where("leagueId", "==", leagueId),
+              where("isHidden", "!=", true),
+              limit(512),
+            )),
+            getDocs(query(
+              collection(db, "plays"),
+              where("leagueId", "==", leagueId),
+              where("isHidden", "!=", true),
+              limit(10_000),
+            )),
+          ]);
+          mList = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+          playList = playsSnap.docs.map((d) => d.data() as any);
+        }
       }
 
       if (version !== requestVersion.current) return;
@@ -343,7 +303,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     setLoadError("");
     fetchData();
     let unsubscribe: (() => void) | undefined;
-    if (isDemoLeague && !isYorkTeam(teamId) && sandbox) {
+    if (isDemoLeague && sandbox) {
       unsubscribe = sandbox.subscribeDemoSandbox(() => fetchData());
     }
     return () => { requestVersion.current++; unsubscribe?.(); };
@@ -371,7 +331,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean);
 
-      if (isDemoLeague && !isYorkTeam(teamId)) {
+      if (isDemoLeague) {
         if (!sandbox) throw new Error("The demo is not loaded.");
         const newPlayerObj = sandbox.addSandboxPlayer({
           playerName: newPlayerName.trim(),
@@ -470,7 +430,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         email: parsedEmails[0] || "",
       };
 
-      if (isDemoLeague && !isYorkTeam(teamId)) {
+      if (isDemoLeague) {
         if (!sandbox) throw new Error("The demo is not loaded.");
         sandbox.updateSandboxPlayer(editingPlayer.id, updatedFields);
         setPlayers((prev) =>
@@ -509,7 +469,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     if (!confirm(`Are you sure you want to remove "${playerName}" from the roster?`)) return;
 
     try {
-      if (isDemoLeague && !isYorkTeam(teamId)) {
+      if (isDemoLeague) {
         if (!sandbox) throw new Error("The demo is not loaded.");
         sandbox.deleteSandboxPlayer(playerId);
         setPlayers((prev) => prev.filter((p) => p.id !== playerId));
@@ -926,7 +886,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         ) : null}
         <div hidden={activeTab !== "depth_chart"}>
           <TeamDepthCharts teamId={teamId} players={players} canManage={!!canManageTeam(teamId)} signedIn={!!user}
-            isDemo={isDemoLeague && !isYorkTeam(teamId)} showStats={showStats} playerStats={playerStats} onFormations={setDepthFormations} />
+            isDemo={isDemoLeague} showStats={showStats} playerStats={playerStats} onFormations={setDepthFormations} />
         </div>
       </div>
       </div>

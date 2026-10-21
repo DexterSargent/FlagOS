@@ -7,7 +7,6 @@ import {
   getSandboxPlays,
   addSandboxPlay,
   updateSandboxMatch,
-  isDemoLeague,
   isDemoMatch,
 } from "./demoSandbox";
 import { SEED_DEMO_PLAYERS, SEED_DEMO_TEAMS } from "./demoSeedData";
@@ -123,8 +122,7 @@ export async function simulateFullGame(
   }
 ): Promise<SimulatedGameResult> {
   const isDemo =
-    options?.isDemo ??
-    (isDemoLeague(options?.leagueId) || isDemoMatch(matchId, options?.leagueId));
+    options?.isDemo ?? isDemoMatch(matchId, options?.leagueId);
 
   let matchData: any = null;
 

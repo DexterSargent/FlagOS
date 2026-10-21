@@ -12,8 +12,7 @@ import {
   SEED_DEMO_PLAYS,
 } from "./demoSeedData";
 import { getGeneratedSeasonPlays } from "./demoPlayGenerator";
-import { isYorkTeam, YORK_LIONS_MATCHES, YORK_LIONS_PLAYS } from "./yorkTeamData";
-import { DEMO_EVENT, isDemoLeague, notifySandboxChange } from "./demoSandboxRuntime";
+import { DEMO_EVENT, isDemoLeague, isDemoMatchId, notifySandboxChange } from "./demoSandboxRuntime";
 export { DEMO_EVENT, isDemoLeague, notifySandboxChange, subscribeDemoSandbox } from "./demoSandboxRuntime";
 
 export type { DemoTeam, DemoPlayer, DemoMatch, DemoPlay };
@@ -53,6 +52,8 @@ export const isDemoMatch = (matchId?: string | null, leagueId?: string | null): 
       // ignore
     }
   }
+  // Persisted matches are real even when they belong to a league-free team.
+  if (matchId && !isDemoMatchId(matchId)) return false;
   if (leagueId && !isDemoLeague(leagueId)) return false;
   if (isDemoLeague(leagueId)) return true;
   if (!matchId) return false;
@@ -60,8 +61,7 @@ export const isDemoMatch = (matchId?: string | null, leagueId?: string | null): 
   if (
     matchId.startsWith("match_demo_") ||
     matchId.startsWith("match_w") ||
-    matchId.startsWith("match_playoff_") ||
-    matchId.startsWith("match_york_")
+    matchId.startsWith("match_playoff_")
   ) {
     return true;
   }
@@ -221,7 +221,6 @@ export const getSandboxTeams = (): DemoTeam[] => {
   const filterActual = (list: DemoTeam[]) =>
     list.filter(
       (t) =>
-        !isYorkTeam(t.id) &&
         !(t as DemoTeam & { isStandalone?: boolean }).isStandalone &&
         t.id !== "team_free_agents" &&
         t.name?.trim().toLowerCase() !== "free agent" &&
@@ -282,13 +281,13 @@ export const deleteSandboxTeam = (id: string): void => {
 
 export const getSandboxPlayers = (): DemoPlayer[] => {
   initDemoSandbox();
-  const baseline = SEED_DEMO_PLAYERS.filter((player) => !isYorkTeam(player.teamId));
+  const baseline = SEED_DEMO_PLAYERS;
   if (typeof window === "undefined") return baseline;
   const raw = sessionStorage.getItem(KEY_PLAYERS);
   if (raw) {
     try {
       const stored = JSON.parse(raw);
-      return stored.filter((player: DemoPlayer) => !isYorkTeam(player.teamId));
+      return stored;
     } catch {}
   }
   return baseline;
@@ -358,10 +357,7 @@ export const getSandboxMatches = (): DemoMatch[] => {
   for (const m of list) {
     if (
       m.id === "match_demo_1" ||
-      m.id === "match_demo_3" ||
-      m.id.startsWith("match_york_") ||
-      isYorkTeam(m.homeTeamId) ||
-      isYorkTeam(m.awayTeamId)
+      m.id === "match_demo_3"
     ) continue;
     const matchupKey = `${m.week || ""}_${m.homeTeamId || ""}_${m.awayTeamId || ""}`;
     if (!seenIds.has(m.id) && !seenMatchups.has(matchupKey)) {
@@ -379,10 +375,6 @@ export const getSandboxMatches = (): DemoMatch[] => {
 };
 
 export const getSandboxMatch = (id: string): DemoMatch | undefined => {
-  if (id.startsWith("match_york_")) {
-    const ym = YORK_LIONS_MATCHES.find((m) => m.id === id);
-    if (ym) return ym;
-  }
   const matches = getSandboxMatches();
   const canonicalId = id === "match_demo_1" ? "match_w16_11" : id === "match_demo_3" ? "match_w16_12" : id;
   const m = matches.find((match) => match.id === canonicalId || match.id === id);
@@ -478,10 +470,6 @@ export const clearSandboxMatches = (): void => {
 
 export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
   initDemoSandbox();
-  if (matchId && matchId.startsWith("match_york_")) {
-    const yPlays = YORK_LIONS_PLAYS.filter((p) => p.matchId === matchId);
-    if (yPlays.length > 0) return yPlays;
-  }
   const baselineSeasonPlays = getGeneratedSeasonPlays();
   const combinedBaseline = [...baselineSeasonPlays, ...SEED_DEMO_PLAYS];
 
@@ -505,9 +493,7 @@ export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
   // Combine baseline season plays with session additions/overrides
   const playMap = new Map<string, DemoPlay>();
   combinedBaseline.forEach((p) => playMap.set(p.id, p));
-  sessionPlays
-    .filter((play) => !play.matchId.startsWith("match_york_"))
-    .forEach((p) => playMap.set(p.id, p));
+  sessionPlays.forEach((p) => playMap.set(p.id, p));
   const all = Array.from(playMap.values());
 
   if (matchId) {

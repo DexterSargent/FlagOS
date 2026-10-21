@@ -56,20 +56,19 @@ import {
   ensure5v5Matchup
 } from "@/lib/playbookTypes";
 import { getSandboxTeams } from "@/lib/demoSandbox";
-import { isYorkTeam, getYorkTeamData, YORK_TEAM_ID } from "@/lib/yorkTeamData";
-import { includeYorkOffensivePlaybook } from "@/lib/yorkOffensivePlaybook";
+import { requestPrivateData } from "@/lib/secureWrites";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
+import { isDemoTeamId } from "@/lib/demoSandboxRuntime";
 
 type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
 
 export default function TeamPlaybookPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
-  const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
-  const isYork = isYorkTeam(teamId);
+  const teamId = unwrappedParams.id;
 
-  const { canManageTeam, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, playerData, loading: authLoading } = useAuth();
+  const { canManageTeam, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, userProfile, playerData, loading: authLoading } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const playersPerSide = settings?.rules?.playersOnField || 5;
@@ -79,7 +78,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const effectiveTeam = team || contextTeam;
   const palette = resolveTeamColorPalette(effectiveTeam || contextPalette);
   const isDexter = isDexterUser(user?.email);
-  const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
+  // Admin emails are private, so the head-coach check reads them from team_private.
+  const [privateTeam, setPrivateTeam] = useState<{ adminEmails?: string[]; coachEmail?: string } | null>(null);
+  const isPrimary = isPrimaryTeamAdmin(user?.email, { ...(team || {}), ...(privateTeam || {}) }, isDexter);
   const canDeletePlaybook = isPrimary;
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [activePlaybookId, setActivePlaybookId] = useState<string>("");
@@ -87,18 +88,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const [activePlayId, setActivePlayId] = useState<string>("");
   const [isQuestionsModalOpen, setIsQuestionsModalOpen] = useState(false);
 
-  const isDemoTeam =
-    !teamId.startsWith("team_live_") &&
-    (teamId === "team_apex" ||
-      teamId === "team_cyber" ||
-      teamId === "team_raptors" ||
-      teamId === "team_vipers" ||
-      teamId === "demo" ||
-      teamId.startsWith("team_demo_") ||
-      (teamId.startsWith("team_") && !teamId.startsWith("team_live_")));
+  const isDemoTeam = isDemoTeamId(teamId);
 
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    if (isYork) return false;
+  const [demoRequested, setIsDemoMode] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
       return sp.get("demo") === "true" || sp.get("embed") === "true" || isDemoTeam || sessionStorage.getItem("flagos_demo_active") === "true";
@@ -106,13 +98,15 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     return isDemoTeam;
   });
 
-  const [isEmbedded, setIsEmbedded] = useState<boolean>(() => {
-    if (isYork) return false;
+  const [embeddedRequested, setIsEmbedded] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return new URLSearchParams(window.location.search).get("embed") === "true";
     }
     return false;
   });
+
+  const isDemoMode = isDemoTeam && demoRequested;
+  const isEmbedded = isDemoTeam && embeddedRequested;
 
   // Embedded demos and existing studio links open directly in the editor.
   const [viewLevel, setViewLevel] = useState<PlaybookViewLevel>(() => {
@@ -148,17 +142,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
-      if (!isYork && (sp.get("demo") === "true" || isDemoTeam || isDemoLeague)) {
+      if (sp.get("demo") === "true" || isDemoTeam || isDemoLeague) {
         setIsDemoMode(true);
       }
-      if (!isYork && sp.get("embed") === "true") {
+      if (sp.get("embed") === "true") {
         setIsEmbedded(true);
         setViewLevel("editor");
       }
     }
-  }, [teamId, isDemoTeam, isDemoLeague, isYork]);
+  }, [teamId, isDemoTeam, isDemoLeague]);
 
-  const isEffectDemo = !isYork && (isDemoLeague || isDemoTeam || isDemoMode);
+  const isEffectDemo = isDemoTeam;
 
   // Strict Playbook RBAC:
   // 1. League admins have NO access to customer team playbooks (competitive integrity & strategic confidentiality policy)
@@ -166,16 +160,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // 3. Players strictly have VIEW-ONLY access to their team: players CANNOT edit plays, formations, or playbooks,
   //    but CAN post questions for their coach on individual plays.
   // 4. Opponent coaches, opponent players, spectators, and unauthenticated users have NO access
-  // 5. York Lions follows the same rules as every other independent team.
   // Note: isEmbedded allows the interactive showcase on the marketing landing page (/page.tsx) to demo the studio
   const isTeamAdminForThisTeam = isTeamAdmin(teamId);
-  const isRosteredPlayerOnTeam = isPlayer && (playerTeamId === teamId || (isYork && isYorkTeam(playerTeamId)));
+  const isRosteredPlayerOnTeam = isPlayer && playerTeamId === teamId;
   const isOpponentCoach = isTeamAdmin() && !isTeamAdminForThisTeam;
   const isOpponentPlayer = isPlayer && !isRosteredPlayerOnTeam;
 
   // League admins are strictly forbidden from viewing or modifying customer playbooks,
   // unless they are explicitly listed as an admin of this team.
-  const isListedTeamAdmin = !!user?.email && Array.isArray(team?.adminEmails) && team.adminEmails.some((e: string) => String(e).trim().toLowerCase() === user.email!.trim().toLowerCase());
+  // The server-verified identity lookup lists the teams this account coaches; team_private admin emails confirm it.
+  const isListedTeamAdmin = userProfile?.managedTeamId === teamId || !!userProfile?.managedTeamIds?.includes(teamId) ||
+    (!!user?.email && Array.isArray(team?.adminEmails) && team.adminEmails.some((e: string) => String(e).trim().toLowerCase() === user.email!.trim().toLowerCase()));
   const isBlockedLeagueAdmin = !isEmbedded && isLeagueAdmin && !isListedTeamAdmin;
 
   // Edit access: strictly team admins/coaches of THIS team (or embedded marketing demo).
@@ -198,6 +193,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }, [activePlaybookId]);
   const hasPlaybookAccess = isEmbedded || (!isBlockedLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam));
 
+  const canLoadPrivateTeam = !isEmbedded && !isEffectDemo && hasEditAccess;
+  useEffect(() => {
+    setPrivateTeam(null);
+    if (!canLoadPrivateTeam) return;
+    let cancelled = false;
+    requestPrivateData<{ team: { adminEmails?: string[]; coachEmail?: string } }>("team", { teamId })
+      .then((data) => { if (!cancelled) setPrivateTeam(data.team); })
+      .catch((error: unknown) => console.warn("Unable to load private team settings:", error));
+    return () => { cancelled = true; };
+  }, [teamId, canLoadPrivateTeam, user?.uid]);
+
   // 1. Fetch Team & Playbooks from Firestore / LocalStorage
   useEffect(() => {
     const loadKey = `${teamId}|${isEmbedded}`;
@@ -209,17 +215,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     };
 
     const loadTeam = async () => {
-      if (isYork) {
-        const yTeam = getYorkTeamData();
-        let yData: any = { ...yTeam, id: yTeam.id, name: yTeam.name, shortcode: yTeam.shortcode || "YORK", adminEmails: yTeam.adminEmails };
-        if (typeof window !== "undefined") {
-          try {
-            const cached = localStorage.getItem("flagos_york_team_custom");
-            if (cached) yData = { ...yData, ...JSON.parse(cached) };
-          } catch {}
-        }
-        return yData;
-      }
       if (isEmbedded) return resolveSandboxTeam("Kansas City", "KC");
       try {
         const teamSnap = await getDoc(doc(db, "teams", teamId));
@@ -269,10 +264,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
     const normalizePlaybooks = (source: Playbook[] | null): Playbook[] => {
       const hasSavedPlaybooks = !!source && source.length > 0;
-      let books = hasSavedPlaybooks ? source! : createDefaultPlaybooks(teamId, playersPerSide);
-      if (isYork) {
-        books = includeYorkOffensivePlaybook(books, teamId, !hasSavedPlaybooks);
-      }
+      const books = hasSavedPlaybooks ? source! : createDefaultPlaybooks(teamId, playersPerSide);
       // Guarantee squad format for every play (respecting book.playersOnField or league rules)
       return books.map((book) => {
         const bookSquad = book.playersOnField || playersPerSide;
@@ -297,7 +289,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       if (matchingPlay) {
         setActivePlayId(matchingPlay.id);
       }
-      if (isEmbedded || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true")) {
+      if (isEmbedded) {
         setViewLevel("editor");
       }
     };

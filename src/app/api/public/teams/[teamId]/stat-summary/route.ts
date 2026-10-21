@@ -7,7 +7,6 @@ import {
   TeamSummaryError,
   type PublicTeamSeasonSummary,
 } from "@/lib/teamStatSummaryService";
-import { isYorkTeam } from "@/lib/yorkStaff";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +34,7 @@ export async function GET(request: Request, context: { params: Promise<{ teamId:
   try {
     const { teamId } = await context.params;
     if (typeof teamId !== "string" || !teamId || teamId.length > 128) return unavailable();
-    const token = isYorkTeam(teamId) ? null : await optionalToken(request);
+    const token = await optionalToken(request);
     if (token === "invalid") {
       return Response.json({ error: "Your session could not be verified. Sign in again." }, { status: 401, headers: noStore });
     }
@@ -46,12 +45,13 @@ export async function GET(request: Request, context: { params: Promise<{ teamId:
         headers: { ...noStore, "Retry-After": "60" },
       });
     }
-    // Public-league team data is readable by any signed-in user under the Firestore rules.
-    if (!isYorkTeam(teamId) && !token) {
-      return Response.json({ error: "Sign in to view this team's stats." }, { status: 401, headers: noStore });
-    }
     const scope = await resolveSummaryTeamScope(adminDb, teamId);
     if (!scope) return unavailable();
+    // Public-league team data is readable by any signed-in user under the Firestore rules;
+    // public independent teams are readable by anyone.
+    if (scope.requiresSignIn && !token) {
+      return Response.json({ error: "Sign in to view this team's stats." }, { status: 401, headers: noStore });
+    }
     let pending = inFlight.get(scope.teamId);
     if (!pending) {
       pending = buildPublicTeamSeasonSummary(adminDb, scope).finally(() => inFlight.delete(scope.teamId));

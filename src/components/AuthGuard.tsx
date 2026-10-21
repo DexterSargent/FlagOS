@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield, PlayCircle } from "lucide-react";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
-import { isYorkTeam } from "@/lib/yorkStaff";
+import { isDemoTeamId, useTeamRecord } from "@/lib/teamRecord";
 
 // The only pages publicly accessible without being logged in to an authorized email
 const PUBLIC_ROUTES = ["/", "/pricing", "/login"];
@@ -26,14 +26,18 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, userProfile, isPlayer, isAuthorized, loading, logout } = useAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
-  const isYorkRoute = pathname.startsWith("/teams/") && isYorkTeam(pathname.split("/")[2]);
-  const isPublicYorkRoute = isYorkRoute &&
+  const routeTeamId = pathname.startsWith("/teams/") ? pathname.split("/")[2] || null : null;
+  const isCustomerTeamRoute = !!routeTeamId && !isDemoTeamId(routeTeamId);
+  const { team: routeTeam, resolved: routeTeamResolved } = useTeamRecord(routeTeamId, isCustomerTeamRoute);
+  // Teams that publish their profile expose read-only pages to signed-out visitors.
+  const isPublicTeamRoute = isCustomerTeamRoute && routeTeam?.visibility === "public" &&
     /^\/teams\/[^/]+(?:\/(?:schedule|roster|stats)|\/matches\/[^/]+\/stat-keeper)?\/?$/.test(pathname);
+  const awaitingTeam = isCustomerTeamRoute && !routeTeam && !routeTeamResolved;
 
   // Synchronous client/server evaluation:
   // Is this the interactive demo sandbox where all features should be explored without signing in?
   const isDemo = useMemo(() => {
-    if (isYorkRoute) return false;
+    if (isCustomerTeamRoute) return false;
     // 1. Explicit demo routes
     if (
       pathname.startsWith("/league/default") ||
@@ -58,11 +62,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     return false;
-  }, [pathname, isDemoLeague, activeLeagueId, isYorkRoute]);
+  }, [pathname, isDemoLeague, activeLeagueId, isCustomerTeamRoute]);
 
   // Synchronous embed evaluation
   const isEmbedShowcase = useMemo(() => {
-    if (isYorkRoute) return false;
+    if (isCustomerTeamRoute) return false;
     if (typeof window !== "undefined") {
       try {
         const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
@@ -70,10 +74,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       } catch {}
     }
     return false;
-  }, [pathname, isYorkRoute]);
+  }, [pathname, isCustomerTeamRoute]);
 
   // Determine if current path is strictly public
-  const isPublic = PUBLIC_ROUTES.includes(pathname) || isPublicYorkRoute;
+  const isPublic = PUBLIC_ROUTES.includes(pathname) || isPublicTeamRoute;
 
   // Synchronously persist demo state so subsequent sub-page navigations stay in sandbox
   useEffect(() => {
@@ -87,12 +91,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Redirect unauthenticated visitors on private real leagues
   useEffect(() => {
-    if (!isPublic && !isEmbedShowcase && !isDemo && !loading && !user && !isPlayer) {
+    if (!isPublic && !isEmbedShowcase && !isDemo && !loading && !awaitingTeam && !user && !isPlayer) {
       if (typeof window !== "undefined") {
         router.push(`/login?redirect=${encodeURIComponent(pathname + window.location.search)}`);
       }
     }
-  }, [isPublic, isEmbedShowcase, isDemo, loading, user, isPlayer, pathname, router]);
+  }, [isPublic, isEmbedShowcase, isDemo, loading, awaitingTeam, user, isPlayer, pathname, router]);
 
   // If public route, valid showcase preview frame, or demo sandbox, GRANT IMMEDIATE ACCESS!
   // Zero database writes, zero sign-in required.
@@ -101,7 +105,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   // Still checking Firebase Auth / Firestore verification for real leagues
-  if (loading) {
+  if (loading || (awaitingTeam && !user)) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-emerald-600/15 rounded-full blur-[140px] pointer-events-none" />

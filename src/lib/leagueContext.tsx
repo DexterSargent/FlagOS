@@ -11,7 +11,15 @@ import {
 import { FLAGOS_LOGO } from "./brandTokens";
 import { auth } from "./firebase";
 import { createSecureRecord } from "./secureWrites";
-import { isYorkTeam } from "./yorkStaff";
+import {
+  getCachedMatchTeamId,
+  isDemoMatchId,
+  isDemoTeamId,
+  isStandaloneTeam,
+  loadMatchTeamId,
+  useTeamRecord,
+  type TeamRecord,
+} from "./teamRecord";
 
 export interface LeagueRules {
   playersOnField: number;          // e.g. 4, 5, 6, 7, 8 (default: 5)
@@ -864,38 +872,44 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
   );
 };
 
-const YORK_INDEPENDENT_SETTINGS: LeagueSettings = {
-  ...DEFAULT_LEAGUE_SETTINGS,
-  leagueName: "York Lions Women's Flag Football",
-  shortcode: "YORK",
-  tagline: "Independent Varsity Club",
-  logoUrl: "",
-  icon: "cat",
-  primaryColor: "#E31837",
-  accentColor: "#FFFFFF",
-  themePreset: "custom",
-  defaultLocation: "York Turf Field 1",
-  contactEmail: "",
-  rulebookTitle: "IFAF 5v5 Flag Football Rules",
-  rules: { ...IFAF_5V5_RULES },
-  playoffFormat: undefined,
-};
-
-function rejectIndependentLeagueMutation(): never {
-  throw new Error("York is an independent team. League settings and demo actions do not apply to this team.");
+function independentTeamSettings(team: TeamRecord | null, teamId: string): LeagueSettings {
+  const data = team || { id: teamId };
+  return {
+    ...DEFAULT_LEAGUE_SETTINGS,
+    leagueName: typeof data.name === "string" && data.name ? data.name : DEFAULT_LEAGUE_SETTINGS.leagueName,
+    shortcode: typeof data.shortcode === "string" ? data.shortcode : "",
+    tagline: typeof data.tagline === "string" && data.tagline ? data.tagline : "Independent Team",
+    logoUrl: typeof data.logoUrl === "string" ? data.logoUrl : "",
+    icon: typeof data.icon === "string" && data.icon ? data.icon : DEFAULT_LEAGUE_SETTINGS.icon,
+    primaryColor: data.primaryColor || data.color || DEFAULT_LEAGUE_SETTINGS.primaryColor,
+    accentColor: data.secondaryColor || DEFAULT_LEAGUE_SETTINGS.accentColor,
+    themePreset: "custom",
+    defaultLocation: typeof data.defaultLocation === "string" ? data.defaultLocation : "",
+    contactEmail: "",
+    rulebookTitle: typeof data.rulebookTitle === "string" && data.rulebookTitle ? data.rulebookTitle : "IFAF 5v5 Flag Football Rules",
+    rules: { ...IFAF_5V5_RULES, ...(data.rules && typeof data.rules === "object" ? data.rules : {}) },
+    playoffFormat: undefined,
+  };
 }
 
-export function TeamLeagueScope({ teamId, children }: { teamId: string; children: React.ReactNode }) {
-  const league = useContext(LeagueContext);
-  if (!isYorkTeam(teamId)) return <>{children}</>;
+function rejectIndependentLeagueMutation(): never {
+  throw new Error("This is an independent team. League settings and demo actions do not apply to this team.");
+}
 
+function IndependentTeamLeague({ teamId, team, loading, children }: {
+  teamId: string;
+  team: TeamRecord | null;
+  loading: boolean;
+  children: React.ReactNode;
+}) {
+  const league = useContext(LeagueContext);
   return (
     <LeagueContext.Provider value={{
       ...league,
-      settings: YORK_INDEPENDENT_SETTINGS,
+      settings: independentTeamSettings(team, teamId),
       activeLeagueId: "",
       isDemoLeague: false,
-      loading: false,
+      loading,
       subscription: null,
       isLeagueArchived: false,
       isSubscriptionPastDue: false,
@@ -916,14 +930,58 @@ export function TeamLeagueScope({ teamId, children }: { teamId: string; children
   );
 }
 
-// York has no parent league. Do not mount the persisted league's initializer on
-// its routes; leaving York restores the selected league from its existing cache.
+/** Scopes league context to a standalone team; league teams keep their league context. */
+export function TeamLeagueScope({ teamId, children }: { teamId: string; children: React.ReactNode }) {
+  const isCustomerTeam = !isDemoTeamId(teamId);
+  const { team, resolved } = useTeamRecord(teamId, isCustomerTeam);
+  if (!isCustomerTeam || (team && !isStandaloneTeam(team))) return <>{children}</>;
+  return <IndependentTeamLeague teamId={teamId} team={team} loading={!resolved && !team}>{children}</IndependentTeamLeague>;
+}
+
+// Real team and match routes resolve their owning team before choosing a league
+// context so the persisted demo league never initializes on customer routes.
+function CustomerRouteLeague({ teamId: routeTeamId, matchId, children }: {
+  teamId: string | null;
+  matchId: string | null;
+  children: React.ReactNode;
+}) {
+  const [matchTeam, setMatchTeam] = useState(() => ({
+    matchId,
+    teamId: matchId ? getCachedMatchTeamId(matchId) : null,
+    resolved: !matchId,
+  }));
+  const currentMatchTeam = matchTeam.matchId === matchId
+    ? matchTeam
+    : { matchId, teamId: matchId ? getCachedMatchTeamId(matchId) : null, resolved: !matchId };
+
+  useEffect(() => {
+    if (!matchId) return;
+    let cancelled = false;
+    loadMatchTeamId(matchId)
+      .then((teamId) => { if (!cancelled) setMatchTeam({ matchId, teamId, resolved: true }); })
+      .catch(() => { if (!cancelled) setMatchTeam((prev) => ({ matchId, teamId: prev.matchId === matchId ? prev.teamId : null, resolved: true })); });
+    return () => { cancelled = true; };
+  }, [matchId]);
+
+  const teamId = routeTeamId || currentMatchTeam.teamId;
+  const customerTeam = !!teamId && !isDemoTeamId(teamId);
+  const { team, resolved } = useTeamRecord(teamId, customerTeam);
+  const isLeagueTeam = !!team && !isStandaloneTeam(team);
+  const unresolvedMatch = !!matchId && currentMatchTeam.resolved && !customerTeam;
+  if (isLeagueTeam || unresolvedMatch) return <SelectedLeagueProvider>{children}</SelectedLeagueProvider>;
+  return (
+    <IndependentTeamLeague teamId={teamId || ""} team={team} loading={!team && (!resolved || !currentMatchTeam.resolved)}>
+      {children}
+    </IndependentTeamLeague>
+  );
+}
+
 export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const teamId = pathname?.startsWith("/teams/") ? pathname.split("/")[2] : null;
-  const matchId = pathname?.startsWith("/matches/") ? pathname.split("/")[2] : null;
-  if (isYorkTeam(teamId) || matchId?.includes("york")) {
-    return <TeamLeagueScope teamId="york_lions">{children}</TeamLeagueScope>;
+  const teamId = pathname?.startsWith("/teams/") ? pathname.split("/")[2] || null : null;
+  const matchId = pathname?.startsWith("/matches/") ? pathname.split("/")[2] || null : null;
+  if ((teamId && !isDemoTeamId(teamId)) || (matchId && !isDemoMatchId(matchId))) {
+    return <CustomerRouteLeague teamId={teamId} matchId={teamId ? null : matchId}>{children}</CustomerRouteLeague>;
   }
   return <SelectedLeagueProvider>{children}</SelectedLeagueProvider>;
 }

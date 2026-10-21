@@ -11,7 +11,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox, isDemoMatch } from "@/lib/demoSandbox";
-import { getYorkMatch, isYorkMatch, isYorkTeam } from "@/lib/yorkTeamData";
+import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
   const { isLeagueAdmin, canManageTeam, loading } = useAuth();
@@ -29,7 +29,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
     return false;
   });
 
-  const isDemo = !isYorkMatch(matchId) && (isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId));
+  const isDemo = isDemoMatchId(matchId) && (isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId));
 
   useEffect(() => {
     const loadMatch = async () => {
@@ -44,23 +44,13 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
         if (snap.exists()) {
           setMatchData(snap.data());
         } else {
-          const ym = getYorkMatch(matchId);
-          if (ym) {
-            setMatchData(ym);
-          } else {
-            const m = getSandboxMatch(matchId);
-            if (m) setMatchData(m);
-          }
-        }
-      } catch (err) {
-        console.warn("Unable to load remote match from Firestore, falling back to local/sandbox:", err);
-        const ym = getYorkMatch(matchId);
-        if (ym) {
-          setMatchData(ym);
-        } else {
           const m = getSandboxMatch(matchId);
           if (m) setMatchData(m);
         }
+      } catch (err) {
+        console.warn("Unable to load remote match from Firestore, falling back to local/sandbox:", err);
+        const m = getSandboxMatch(matchId);
+        if (m) setMatchData(m);
       }
       setIsFetching(false);
     };
@@ -96,9 +86,11 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   }
 
   // Embedded demos change presentation/data sources, not the role required to manage a game.
-  const isYorkGame = isYorkMatch(matchId) || isYorkTeam(matchData?.managingTeamId);
-  const canAdministerMatch = isYorkGame
-    ? !!canManageTeam?.(matchData?.managingTeamId || "york_lions")
+  // Games managed by a league-free team are administered by that team's coaches.
+  const isTeamManagedGame = !isDemo && !!matchData?.managingTeamId &&
+    (!matchData?.leagueId || matchData?.isStandalone === true || matchData?.isIndependent === true);
+  const canAdministerMatch = isTeamManagedGame
+    ? !!canManageTeam?.(matchData.managingTeamId)
     : isLeagueAdmin || (!!matchData?.isIndependent && !!canManageTeam?.(matchData.managingTeamId));
 
   if (canAdministerMatch && modeInitialized && matchData?.status !== "completed") {

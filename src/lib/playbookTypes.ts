@@ -292,6 +292,8 @@ export interface Playbook {
   description?: string;
   // Prevent seed-category migrations from overwriting later coach corrections.
   seedCategoryVersion?: number;
+  // Formations act as play categories: no stock formations are offered and choosing one keeps player positions.
+  formationsAreCategories?: boolean;
   formations: FormationAlignment[];
   plays: PlayDiagram[];
   createdAt: string;

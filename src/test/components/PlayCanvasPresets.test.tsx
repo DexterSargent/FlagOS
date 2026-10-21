@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
 import { PlayDiagram } from "@/lib/playbookTypes";
-import { createYorkOffensivePlaybook } from "@/lib/yorkOffensivePlaybook";
+import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 
 vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({
@@ -118,8 +118,8 @@ describe("Man coverage animation", () => {
 });
 
 describe("PlayCanvas Route Presets Suite", () => {
-  it("moves York plays between OC categories without resetting player alignments or routes", () => {
-    const book = createYorkOffensivePlaybook("york_lions");
+  it("moves plays between custom categories without resetting player alignments or routes", () => {
+    const book = { ...createDefaultPlaybooks("falcons")[0], formationsAreCategories: true, formations: [{ id: "run", name: "Run", side: "offense" as const }, { id: "pass", name: "Pass", side: "offense" as const }], plays: [mockOffensePlay] };
     const play = book.plays[0];
     const onChange = vi.fn();
     render(<PlayCanvas play={play} onChange={onChange} playbook={book} />);

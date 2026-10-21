@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useLeague } from "@/lib/leagueContext";
-import { YORK_OFFENSIVE_PLAYBOOK_ID } from "@/lib/yorkOffensivePlaybook";
 import {
   PlayerNode,
   RoutePoint,
@@ -483,7 +482,7 @@ export default function PlayCanvas({
       ...(playbook?.formations?.map((f) => f.name) || []),
       ...(playbook?.plays?.map((p) => p.formation) || []),
       play.formation,
-      ...(playbook?.id === YORK_OFFENSIVE_PLAYBOOK_ID
+      ...(playbook?.formationsAreCategories
         ? []
         : play.type === "defense"
         ? ["Cover 2 Zone", "Cover 1 Man", "Cover 3 Cloud", "Goal Line Tight"]
@@ -2057,13 +2056,13 @@ export default function PlayCanvas({
                     const customForm = prompt("Enter new formation name for this playbook:");
                     if (customForm && customForm.trim()) {
                       const trimmedForm = customForm.trim();
-                      const updated = playbook?.id === YORK_OFFENSIVE_PLAYBOOK_ID
+                      const updated = playbook?.formationsAreCategories
                         ? play.players
                         : applyFormationToSquad(play.players, trimmedForm, play.type, losY);
                       onChange({ ...play, formation: trimmedForm, players: updated });
                     }
                   } else {
-                    const updated = playbook?.id === YORK_OFFENSIVE_PLAYBOOK_ID
+                    const updated = playbook?.formationsAreCategories
                       ? play.players
                       : applyFormationToSquad(play.players, val, play.type, losY);
                     onChange({ ...play, formation: val, players: updated });

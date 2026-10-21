@@ -1,6 +1,3 @@
-import { isYorkTeam } from "./yorkStaff";
-import { YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS, YORK_COACH_ACCOUNTS } from "./yorkStaff";
-
 export interface TeamAdminAccount {
   id: string;
   name: string;
@@ -14,9 +11,7 @@ export function getTeamAdminAccounts(team: {
   id?: string; adminEmails?: string[]; coachEmail?: string; adminAccountIds?: Record<string, string>;
 } | null | undefined): TeamAdminAccount[] {
   const emails = getTeamAdminEmails(team);
-  const accounts: TeamAdminAccount[] = isYorkTeam(team?.id)
-    ? YORK_COACH_ACCOUNTS.map((coach, index) => ({ ...coach, emails: [...coach.emails], primary: index === 0, required: true }))
-    : [];
+  const accounts: TeamAdminAccount[] = [];
   for (const email of emails) {
     const linkedId = team?.adminAccountIds?.[email];
     const known = accounts.find((account) => account.emails.includes(email) ||
@@ -49,10 +44,9 @@ export function isDexterUser(email?: string | null): boolean {
  * Checks whether the current user is considered the primary team admin (Head Coach).
  *
  * Rules:
- * 1. Dexter Sargent (platform owner & York founder) is always authorized as primary admin.
+ * 1. The platform owner is always authorized as primary admin.
  * 2. If the team has an adminEmails list, the FIRST entry (adminEmails[0]) is the primary admin.
- * 3. Fallback for York Lions: Dexter is primary admin.
- * 4. Fallback for teams without adminEmails: team.coachEmail matches the user's email.
+ * 3. Fallback for teams without adminEmails: team.coachEmail matches the user's email.
  *
  * RBAC specification:
  * - All authorized team admins can manage the team, edit details, log plays, add players, create playbooks, and schedule games.
@@ -68,7 +62,6 @@ export function isPrimaryTeamAdmin(
   if (isDexterUser(userEmail)) return true;
   if (!userEmail) return false;
   const cleanEmail = userEmail.trim().toLowerCase();
-  if (isYorkTeam(team?.id) && YORK_HEAD_COACH_EMAILS.includes(cleanEmail)) return true;
 
   const adminEmails = Array.isArray(team?.adminEmails)
     ? team.adminEmails.map((e) => String(e).trim().toLowerCase()).filter(Boolean)
@@ -76,11 +69,6 @@ export function isPrimaryTeamAdmin(
 
   if (adminEmails.length > 0) {
     return adminEmails[0] === cleanEmail;
-  }
-
-  // Fallback for York Lions
-  if (team?.id && isYorkTeam(team.id)) {
-    return isDexterUser(cleanEmail);
   }
 
   // Fallback if coachEmail is set
@@ -93,16 +81,11 @@ export function isPrimaryTeamAdmin(
 
 /**
  * Normalizes and extracts all team admin emails for a team.
- * Guarantees that York Lions has dextersargent@gmail.com as the initial primary admin.
  */
 export function getTeamAdminEmails(team: { id?: string; adminEmails?: string[]; coachEmail?: string } | null | undefined): string[] {
   const existing = Array.isArray(team?.adminEmails)
     ? team.adminEmails.map((e) => String(e).trim().toLowerCase()).filter(Boolean)
     : [];
-
-  if (team?.id && isYorkTeam(team.id)) {
-    return [...new Set([...YORK_ADMIN_EMAILS, ...existing])];
-  }
 
   if (existing.length === 0 && team?.coachEmail) {
     return [team.coachEmail.trim().toLowerCase()];

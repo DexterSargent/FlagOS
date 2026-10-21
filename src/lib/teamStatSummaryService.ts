@@ -12,7 +12,6 @@ import {
   type TeamIdentity,
 } from "./teamSeasonAggregation";
 import type { TeamComprehensiveStats } from "./teamStatsCalculator";
-import { isYorkTeam, YORK_TEAM_ALIASES, YORK_TEAM_ID } from "./yorkStaff";
 
 /**
  * Server-side, correction-aware team season summaries.
@@ -72,39 +71,37 @@ export interface SummaryTeamScope extends TeamIdentity {
   requiresSignIn: boolean;
 }
 
-export const YORK_PUBLIC_SCOPE: SummaryTeamScope = {
-  teamId: YORK_TEAM_ID,
-  teamName: "York Lions Women's Flag Football",
-  aliases: [...YORK_TEAM_ALIASES, "York Lions", "York Lions Women's Flag Football"],
-  matchTeamIds: [...YORK_TEAM_ALIASES],
-  requiresSignIn: false,
-};
-
 const TEAM_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
 /**
  * Resolves the summary scope for a team, or null when its stats are not publicly readable.
- * York is public by rule; other teams qualify only when their league document has
- * visibility "public" (the rules' isPublicLeague), which also requires a signed-in caller.
+ * Independent (league-free) teams qualify when the team document has visibility "public"
+ * and no PII (the rules' public team read), and are readable without signing in. League teams
+ * qualify only when their league document has visibility "public" (the rules' isPublicLeague),
+ * which also requires a signed-in caller.
  */
 export async function resolveSummaryTeamScope(db: Firestore, teamId: string): Promise<SummaryTeamScope | null> {
-  if (isYorkTeam(teamId)) return YORK_PUBLIC_SCOPE;
   if (!TEAM_ID_PATTERN.test(teamId)) return null;
   const team = await db.collection("teams").doc(teamId).get();
-  const leagueId = team.exists ? team.get("leagueId") : undefined;
-  if (typeof leagueId !== "string" || !TEAM_ID_PATTERN.test(leagueId)) return null;
-  const league = await db.collection("leagues").doc(leagueId).get();
-  if (!league.exists || league.get("visibility") !== "public") return null;
+  if (!team.exists) return null;
   const name = team.get("name") || team.get("teamName");
   const shortcode = team.get("shortcode");
-  return {
+  const identity = {
     teamId,
     teamName: typeof name === "string" ? name : undefined,
     aliases: typeof shortcode === "string" && shortcode ? [shortcode] : [],
     matchTeamIds: [teamId],
-    leagueId,
-    requiresSignIn: true,
   };
+  const leagueId = team.get("leagueId");
+  if (!leagueId) {
+    const isPublicTeam = team.get("visibility") === "public" &&
+      TEAM_PII_FIELDS.every((field) => team.get(field) === undefined);
+    return isPublicTeam ? { ...identity, requiresSignIn: false } : null;
+  }
+  if (typeof leagueId !== "string" || !TEAM_ID_PATTERN.test(leagueId)) return null;
+  const league = await db.collection("leagues").doc(leagueId).get();
+  if (!league.exists || league.get("visibility") !== "public") return null;
+  return { ...identity, leagueId, requiresSignIn: true };
 }
 
 type TimestampLike = { seconds: number; nanoseconds: number } | undefined | null;
@@ -185,7 +182,7 @@ async function readCachedSummaries(db: Firestore, identity: SummaryTeamScope, ma
 
 /**
  * Reads projected roster labels under the same conditions as the players rules:
- * York players need a York team doc that is public and PII-free (isPublicYorkPlayer);
+ * independent-team players need a team doc that is public and PII-free;
  * league players need the team's public league (isPublicLeague). Player docs with
  * email fields are excluded (hasNoPlayerPii).
  */

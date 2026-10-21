@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/security/private/route";
-import { YORK_ADMIN_EMAILS, YORK_TEAM_ALIASES, YORK_TEAM_ID } from "@/lib/yorkStaff";
+const TEAM_ADMIN_EMAILS = ["head@falcons.com", "assistant@falcons.com"];
 
 const {
   verifyIdTokenMock,
@@ -197,27 +197,38 @@ describe("private-data API", () => {
     expect(response.status).not.toBe(429);
   });
 
-  it.each(YORK_ADMIN_EMAILS)("discovers York for requested coach %s without legacy email fields", async (email) => {
+  it.each(TEAM_ADMIN_EMAILS)("discovers a stored independent team for coach %s", async (email) => {
     verifyIdTokenMock.mockResolvedValue({ ...token, email });
+    collectionMock.mockImplementation((name: string) => ({
+      where: (field: string, _op: string, value: string) => ({ limit: () => ({ get: async () => ({ docs: name === "team_private" && field === "adminEmails" && value === email
+        ? [{ id: "falcons", data: () => ({ adminEmails: TEAM_ADMIN_EMAILS }) }] : [] }) }) }),
+    }));
+    getAllMock.mockResolvedValue([{ id: "falcons", exists: true, data: () => ({ name: "Falcons", subscription: { status: "active" } }), get: (field: string) => field === "name" ? "Falcons" : undefined }]);
     const response = await POST(request({ action: "lookup", data: {} }));
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      data: { teams: [{ id: YORK_TEAM_ID, name: "York Lions Women's Flag Football" }] },
-    });
-    expect(getAllMock).toHaveBeenCalledWith(
-      ...YORK_TEAM_ALIASES.map((id) => expect.objectContaining({ path: `teams/${id}` })),
-    );
+    expect(await response.json()).toMatchObject({ data: { teams: [{ id: "falcons", name: "Falcons" }] } });
   });
 
-  it.each(YORK_TEAM_ALIASES)("allows requested coaches to read private York alias %s without a team document", async (teamId) => {
-    verifyIdTokenMock.mockResolvedValue({ ...token, email: " THEOBROWN24@ICLOUD.COM " });
-    const response = await POST(request({ action: "team", data: { teamId } }));
+  it.each(TEAM_ADMIN_EMAILS)("allows stored independent team coach %s to read private contacts", async (email) => {
+    verifyIdTokenMock.mockResolvedValue({ ...token, email });
+    documentGetMock.mockImplementation(async (path: string) => ({
+      exists: ["teams/falcons", "team_private/falcons"].includes(path),
+      data: () => path === "teams/falcons" ? { name: "Falcons", subscription: { status: "active" } }
+        : path === "team_private/falcons" ? { adminEmails: TEAM_ADMIN_EMAILS } : undefined,
+    }));
+    const response = await POST(request({ action: "team", data: { teamId: "falcons" } }));
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ data: { team: { adminEmails: YORK_ADMIN_EMAILS } } });
+    expect(await response.json()).toMatchObject({ data: { team: { adminEmails: TEAM_ADMIN_EMAILS } } });
+  });
+
+  it("does not invent a team or grant access when its document is missing", async () => {
+    verifyIdTokenMock.mockResolvedValue({ ...token, email: TEAM_ADMIN_EMAILS[0] });
+    const response = await POST(request({ action: "team", data: { teamId: "missing-team" } }));
+    expect(response.status).toBe(404);
   });
 
   it("accepts a lookup request without a data object", async () => {
-    verifyIdTokenMock.mockResolvedValue({ ...token, email: "tbrown99@my.yorku.ca" });
+    verifyIdTokenMock.mockResolvedValue({ ...token, email: "assistant@falcons.com" });
     const response = await POST(request({ action: "lookup" }));
     expect(response.status).toBe(200);
   });
@@ -228,13 +239,13 @@ describe("private-data API", () => {
   });
 
   it("does not grant a requested coach platform administration", async () => {
-    verifyIdTokenMock.mockResolvedValue({ ...token, email: "dexters4@my.yorku.ca" });
+    verifyIdTokenMock.mockResolvedValue({ ...token, email: "head@falcons.com" });
     const response = await POST(request({ action: "admin_overview", data: {} }));
     expect(response.status).toBe(403);
   });
 
   it("does not grant a requested coach another team's private data", async () => {
-    verifyIdTokenMock.mockResolvedValue({ ...token, email: "fawcett1@my.yorku.ca" });
+    verifyIdTokenMock.mockResolvedValue({ ...token, email: "other@falcons.com" });
     const response = await POST(request({ action: "team", data: { teamId: "team-1" } }));
     expect(response.status).toBe(403);
   });

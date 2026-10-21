@@ -12,7 +12,7 @@ import { renderFlagOS } from "@/components/FlagOSText";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxMatch, deleteSandboxPlaysForMatch, subscribeDemoSandbox } from "@/lib/demoSandbox";
-import { getYorkMatch, isYorkMatch } from "@/lib/yorkTeamData";
+import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getTeamBadgeStyle } from "@/lib/teamColors";
 
@@ -21,7 +21,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
-  const isDemo = isDemoLeague && !isYorkMatch(matchId);
+  const isDemo = isDemoLeague && isDemoMatchId(matchId);
   const { user, isLeagueAdmin, canManageTeam, isPlatformAdmin } = useAuth();
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess({
@@ -141,7 +141,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     const fetchMatch = async () => {
       if (isDemo) {
-        const m = getSandboxMatch(matchId) || getYorkMatch(matchId);
+        const m = getSandboxMatch(matchId);
         if (m) setMatchData(m);
         setLoading(false);
         return;
@@ -150,14 +150,9 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
         const docSnap = await getDoc(doc(db, "matches", matchId));
         if (docSnap.exists()) {
           setMatchData(docSnap.data());
-        } else {
-          const ym = getYorkMatch(matchId);
-          if (ym) setMatchData(ym);
         }
       } catch (error) {
         console.error("Error fetching match:", error);
-        const ym = getYorkMatch(matchId);
-        if (ym) setMatchData(ym);
       }
       setLoading(false);
     };

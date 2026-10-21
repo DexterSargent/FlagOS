@@ -274,15 +274,20 @@ describe("Platform management page", () => {
     expect(await screen.findByText("Customer Team")).toBeInTheDocument();
   });
 
-  it("renders York Lions as an independent team in the platform admin portal", async () => {
+  it("renders stored independent teams without injecting synthetic records", async () => {
+    mockRequestPrivateData.mockResolvedValue({ leagues: {}, teams: {}, records: {
+      leagues: [], teams: [{ id: "falcons", name: "Falcons", shortcode: "FAL", subscription: { status: "active" } }],
+    } });
     render(<PlatformAdminPage />);
-
-    expect(await screen.findByText("York Lions Women's Flag Football")).toBeInTheDocument();
-    expect(screen.getByText(/YORK/)).toBeInTheDocument();
+    expect(await screen.findByText("Falcons")).toBeInTheDocument();
     expect(screen.getByText("Independent Teams (1)")).toBeInTheDocument();
-    const manageLinks = screen.getAllByRole("link", { name: /Manage team/i });
-    const yorkLink = manageLinks.find((link) => link.getAttribute("href") === "/teams/york_lions");
-    expect(yorkLink).toBeDefined();
-    expect(yorkLink).toHaveAttribute("href", "/teams/york_lions");
+    expect(screen.getByRole("link", { name: /Manage team/i })).toHaveAttribute("href", "/teams/falcons");
+  });
+
+  it("does not invent an independent team when none is stored", async () => {
+    mockRequestPrivateData.mockResolvedValue({ leagues: {}, teams: {}, records: { leagues: [], teams: [] } });
+    render(<PlatformAdminPage />);
+    await waitFor(() => expect(mockRequestPrivateData).toHaveBeenCalled());
+    expect(screen.queryByRole("link", { name: /Manage team/i })).not.toBeInTheDocument();
   });
 });

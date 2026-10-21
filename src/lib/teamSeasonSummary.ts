@@ -6,7 +6,6 @@ import {
 import { TEAM_COUNTING_STAT_KEYS, type TeamComprehensiveStats } from "./teamStatsCalculator";
 import { cachedPublicTeamRequest } from "./publicTeamCache";
 import { auth } from "./firebase";
-import { isYorkTeam } from "./yorkStaff";
 
 export type { PlayerSeasonStats } from "./teamSeasonAggregation";
 
@@ -18,7 +17,7 @@ export interface TeamRosterLabel {
 
 /** Response contract of GET /api/public/teams/{teamId}/stat-summary. */
 export interface TeamSeasonSummary {
-  /** Canonical team ID the summary was built for (York aliases resolve to "york_lions"). */
+  /** Team ID the summary was built for. */
   teamId: string;
   schemaVersion: number;
   generatedAt: string;
@@ -67,8 +66,8 @@ function isTeamSeasonSummary(value: unknown): value is TeamSeasonSummary {
 
 async function fetchTeamSeasonSummary(teamId: string): Promise<TeamSeasonSummary> {
   const headers: Record<string, string> = { accept: "application/json" };
-  // Non-York teams are only readable by signed-in users (public leagues), as in the Firestore rules.
-  const user = isYorkTeam(teamId) ? null : auth.currentUser;
+  // League teams are only readable by signed-in users (public leagues), as in the Firestore rules.
+  const user = auth.currentUser;
   if (user) headers.Authorization = `Bearer ${await user.getIdToken()}`;
   let response: Response;
   try {
@@ -97,15 +96,15 @@ async function fetchTeamSeasonSummary(teamId: string): Promise<TeamSeasonSummary
  * Loads correction-aware public season stats for a team.
  * Responses are shared through the public team cache (cleared on focus, storage and
  * flagos-*-data-changed events); pass { fresh: true } to bypass it, e.g. right after a stat edit.
- * York is public; other teams require a signed-in user and a league whose visibility is public.
+ * Public independent teams are open to everyone; league teams require a signed-in user and a league whose visibility is public.
  * Throws TeamSeasonSummaryError (status 0 for network failures, 401 when sign-in is required,
  * 404 when the team's stats are not public, 429/503 when busy).
  */
 export function loadTeamSeasonSummary(teamId: string, options?: { fresh?: boolean }): Promise<TeamSeasonSummary> {
   if (options?.fresh) return fetchTeamSeasonSummary(teamId);
-  // Non-York responses depend on the signed-in account, so they are cached per uid: a response
+  // Responses can depend on the signed-in account, so they are cached per uid: a response
   // fetched while signed in is never served after sign-out or to a different account.
-  const viewer = isYorkTeam(teamId) ? "public" : auth.currentUser?.uid || "anonymous";
+  const viewer = auth.currentUser?.uid || "anonymous";
   return cachedPublicTeamRequest(`team-season-summary:${viewer}:${teamId}`, () => fetchTeamSeasonSummary(teamId));
 }
 

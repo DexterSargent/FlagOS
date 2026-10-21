@@ -12,7 +12,6 @@ export function cachedPublicTeamRequest<T>(key: string, load: () => Promise<T>):
     listening = true;
     window.addEventListener("focus", invalidatePublicTeamData);
     window.addEventListener("storage", invalidatePublicTeamData);
-    window.addEventListener("flagos-york-data-changed", invalidatePublicTeamData);
     window.addEventListener("flagos-public-data-changed", invalidatePublicTeamData);
   }
   const existing = entries.get(key);

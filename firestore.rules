@@ -14,53 +14,60 @@ service cloud.firestore {
         request.auth.token.email == 'dextersargent@gmail.com';
     }
 
-    // York fixtures are public only when explicitly visible. Staff access is
-    // team-scoped and never changes the platform administrator allowlist.
-    function isYorkTeam(teamId) {
-      return teamId is string && teamId.lower() in [
-        'york_lions', 'team_york', 'york', 'yuwffl_lions', 'york_wffl'
-      ];
-    }
-
-    function isYorkStaff(teamId) {
-      return signedIn() && isYorkTeam(teamId) &&
-        request.auth.token.email.lower() in [
-          'dextersargent@gmail.com', 'dexters4@my.yorku.ca',
-          'tbrown99@my.yorku.ca', 'theobrown24@icloud.com', 'theoren911@gmail.com',
-          'fawcett1@my.yorku.ca', 'justinfawcett93@gmail.com'
-        ];
-    }
-
-    function isYorkHeadCoach(teamId) {
-      return signedIn() && isYorkTeam(teamId) &&
-        request.auth.token.email.lower() in [
-          'dextersargent@gmail.com', 'dexters4@my.yorku.ca'
-        ];
-    }
-
-    function isPublicYorkMatch(data) {
-      return data.get('isHidden', true) == false &&
-        (isYorkTeam(data.get('homeTeamId', '')) ||
-          isYorkTeam(data.get('awayTeamId', '')) ||
-          isYorkTeam(data.get('managingTeamId', '')));
-    }
-
-    function isPublicYorkTeamData(teamId, data) {
-      return isYorkTeam(teamId) && hasNoTeamPii(data) &&
+    // Independent (league-free) teams can opt into a public portal by setting
+    // visibility to 'public'. PII lives only in team_private/player_private.
+    function isPublicIndependentTeamData(data) {
+      return hasNoTeamPii(data) &&
+        data.get('leagueId', '') == '' &&
         data.get('visibility', '') == 'public';
     }
 
-    function isPublicYorkPlayer(data) {
-      let teamPath = /databases/$(database)/documents/teams/$(data.get('teamId', ''));
-      return hasNoPlayerPii(data) && isYorkTeam(data.get('teamId', '')) &&
-        exists(teamPath) && isPublicYorkTeamData(data.get('teamId', ''), get(teamPath).data);
+    function isPublicIndependentTeam(teamId) {
+      let teamPath = /databases/$(database)/documents/teams/$(teamId);
+      return teamId is string && teamId != '' &&
+        exists(teamPath) && isPublicIndependentTeamData(get(teamPath).data);
     }
 
-    function isPublicYorkPlay(data) {
+    function isPublicTeamMatch(data) {
+      return data.get('isHidden', true) == false &&
+        data.get('leagueId', '') == '' &&
+        isPublicIndependentTeam(data.get('managingTeamId', ''));
+    }
+
+    function isPublicTeamPlayer(data) {
+      return hasNoPlayerPii(data) &&
+        data.get('leagueId', '') == '' &&
+        isPublicIndependentTeam(data.get('teamId', ''));
+    }
+
+    function isPublicTeamPlay(data) {
       let matchPath = /databases/$(database)/documents/matches/$(data.get('matchId', ''));
       // A match can subsequently be hidden, so its visibility remains authoritative.
       return data.get('isHidden', true) == false &&
-        exists(matchPath) && isPublicYorkMatch(get(matchPath).data);
+        exists(matchPath) && isPublicTeamMatch(get(matchPath).data);
+    }
+
+    // The head coach is the first listed admin email (or the legacy coachEmail).
+    function isPrimaryTeamAdmin(teamId) {
+      let privateTeamPath = /databases/$(database)/documents/team_private/$(teamId);
+      return isPlatformAdmin() ||
+        (signedIn() && teamId is string && teamId != '' && exists(privateTeamPath) &&
+          (
+            (get(privateTeamPath).data.get('adminEmails', []) is list &&
+              get(privateTeamPath).data.get('adminEmails', []).size() > 0 &&
+              get(privateTeamPath).data.adminEmails[0] is string &&
+              get(privateTeamPath).data.adminEmails[0].lower() == request.auth.token.email.lower()) ||
+            (get(privateTeamPath).data.get('adminEmails', []).size() == 0 &&
+              get(privateTeamPath).data.get('coachEmail', '') is string &&
+              get(privateTeamPath).data.get('coachEmail', '').lower() == request.auth.token.email.lower())
+          ));
+    }
+
+    function isLeagueAdminOfTeam(teamId) {
+      let teamPath = /databases/$(database)/documents/teams/$(teamId);
+      return teamId is string && teamId != '' && exists(teamPath) &&
+        get(teamPath).data.get('leagueId', '') != '' &&
+        isLeagueAdmin(get(teamPath).data.get('leagueId', ''));
     }
 
     function isPublicLeaguePlay(data) {
@@ -70,23 +77,10 @@ service cloud.firestore {
         exists(matchPath) && get(matchPath).data.get('isHidden', true) == false;
     }
 
-    function isYorkSeedMatch(matchId, data) {
-      return matchId in [
-          'match_york_mcmaster', 'match_york_waterloo', 'match_york_ottawa',
-          'match_york_canadore', 'match_york_laurier'
-        ] &&
-        data.get('managingTeamId', '') == 'york_lions' &&
-        data.get('homeTeamId', '') == 'york_lions' &&
-        data.get('awayTeamId', '') == 'opponent_' + matchId.replace('match_york_', '') &&
-        data.get('leagueId', '') == '' &&
-        isYorkStaff('york_lions') &&
-        (data.get('isHidden', true) == false || isYorkHeadCoach('york_lions'));
-    }
-
     function isTeamAdmin(teamId) {
       let teamPath = /databases/$(database)/documents/teams/$(teamId);
       let privateTeamPath = /databases/$(database)/documents/team_private/$(teamId);
-      return isPlatformAdmin() || isYorkStaff(teamId) ||
+      return isPlatformAdmin() ||
         (signedIn() &&
           teamId is string &&
           (
@@ -302,7 +296,7 @@ service cloud.firestore {
     }
 
     match /teams/{teamId} {
-      allow get: if isPublicYorkTeamData(teamId, resource.data) ||
+      allow get: if isPublicIndependentTeamData(resource.data) ||
         (signedIn() && hasNoTeamPii(resource.data) &&
         (isPlatformAdmin() || isTeamAdmin(teamId) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
@@ -322,13 +316,12 @@ service cloud.firestore {
         allow read: if isTeamAdmin(teamId) || isLeagueAdmin(get(/databases/$(database)/documents/teams/$(teamId)).data.leagueId);
         allow create, update: if false;
         allow delete: if metaId == 'playbook' &&
-          (!isYorkTeam(teamId) || isYorkHeadCoach(teamId)) &&
-          (isTeamAdmin(teamId) || isLeagueAdmin(get(/databases/$(database)/documents/teams/$(teamId)).data.leagueId));
+          (isPrimaryTeamAdmin(teamId) || isLeagueAdminOfTeam(teamId));
       }
     }
 
     match /players/{playerId} {
-      allow get: if isPublicYorkPlayer(resource.data) ||
+      allow get: if isPublicTeamPlayer(resource.data) ||
         (signedIn() && hasNoPlayerPii(resource.data) &&
         (isPlatformAdmin() ||
           isPlayerOwner(playerId) ||
@@ -336,7 +329,7 @@ service cloud.firestore {
           (resource.data.teamId is string && resource.data.teamId != '' && isTeamAdmin(resource.data.teamId)) ||
           isPublicLeague(resource.data.leagueId)));
       allow list: if hasBoundedListLimit(1920) &&
-        (isPublicYorkPlayer(resource.data) ||
+        (isPublicTeamPlayer(resource.data) ||
         (signedIn() && hasNoPlayerPii(resource.data) &&
         (isPlatformAdmin() ||
           isPlayerOwner(playerId) ||
@@ -356,40 +349,40 @@ service cloud.firestore {
     }
 
     match /matches/{matchId} {
-      allow get: if isPublicYorkMatch(resource.data) || (signedIn() &&
+      allow get: if isPublicTeamMatch(resource.data) || (signedIn() &&
         (isPlatformAdmin() ||
           (resource.data.managingTeamId is string && isTeamAdmin(resource.data.managingTeamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
           (resource.data.isHidden != true && isPublicLeague(resource.data.leagueId))));
       allow list: if hasBoundedListLimit(512) &&
-        (isPublicYorkMatch(resource.data) || (signedIn() &&
+        (isPublicTeamMatch(resource.data) || (signedIn() &&
         (isPlatformAdmin() ||
           (resource.data.managingTeamId is string && isTeamAdmin(resource.data.managingTeamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
           (resource.data.isHidden != true && isPublicLeague(resource.data.leagueId)))));
-      allow create: if isYorkSeedMatch(matchId, request.resource.data) &&
-        isValidMatch(request.resource.data);
+      allow create: if false;
       allow update: if isValidMatch(request.resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'createdAt', 'isPublicYork', 'isStandalone', 'leagueId', 'homeTeamId', 'awayTeamId', 'managingTeamId'
+          'createdAt', 'isStandalone', 'leagueId', 'homeTeamId', 'awayTeamId', 'managingTeamId'
         ]) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isHidden']) ||
-          isYorkHeadCoach(resource.data.get('managingTeamId', ''))) &&
+          isPrimaryTeamAdmin(resource.data.get('managingTeamId', '')) ||
+          (resource.data.get('leagueId', '') != '' && isLeagueAdmin(resource.data.get('leagueId', '')))) &&
         canManageMatch(matchId);
       allow delete: if canManageMatch(matchId) &&
-        (!isYorkTeam(resource.data.get('managingTeamId', '')) ||
-          isYorkHeadCoach(resource.data.get('managingTeamId', '')));
+        (isPrimaryTeamAdmin(resource.data.get('managingTeamId', '')) ||
+          (resource.data.get('leagueId', '') != '' && isLeagueAdmin(resource.data.get('leagueId', ''))));
     }
 
     match /plays/{playId} {
-      allow get: if isPublicYorkPlay(resource.data) || (signedIn() &&
+      allow get: if isPublicTeamPlay(resource.data) || (signedIn() &&
         (isPlatformAdmin() ||
           (resource.data.teamId is string && isTeamAdmin(resource.data.teamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
           (resource.data.matchId is string && canManageMatch(resource.data.matchId)) ||
           isPublicLeaguePlay(resource.data)));
       allow list: if hasBoundedListLimit(10000) &&
-        (isPublicYorkPlay(resource.data) || (signedIn() &&
+        (isPublicTeamPlay(resource.data) || (signedIn() &&
         (isPlatformAdmin() ||
           (resource.data.teamId is string && isTeamAdmin(resource.data.teamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
@@ -398,7 +391,7 @@ service cloud.firestore {
       allow create: if false;
       allow update: if isValidPlay(request.resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'createdAt', 'matchId', 'leagueId', 'teamId', 'managingTeamId', 'isHidden', 'isPublicYork'
+          'createdAt', 'matchId', 'leagueId', 'teamId', 'managingTeamId', 'isHidden'
         ]) &&
         (canManageTeam(resource.data.teamId, resource.data.leagueId) ||
           canManageMatch(resource.data.matchId));
@@ -419,7 +412,7 @@ service cloud.firestore {
       allow create: if false;
       allow update: if isValidPlay(request.resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'createdAt', 'matchId', 'leagueId', 'teamId', 'managingTeamId', 'isHidden', 'isPublicYork'
+          'createdAt', 'matchId', 'leagueId', 'teamId', 'managingTeamId', 'isHidden'
         ]) &&
         (canManageTeam(resource.data.teamId, resource.data.leagueId) ||
           canManageMatch(resource.data.matchId));

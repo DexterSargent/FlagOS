@@ -18,7 +18,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { DEMO_TEAM_IDS, subscribeDemoSandbox, notifySandboxChange } from "./demoSandboxRuntime";
-import { isYorkTeam, YORK_TEAM_ID, YORK_ADMIN_EMAILS } from "./yorkStaff";
 import { requestPrivateData } from "./secureWrites";
 import { resolveConnectedAccount } from "./accountEmails";
 
@@ -29,9 +28,15 @@ type IdentityLookup = {
   players: Array<{ id: string; email?: string; emails?: string[]; [key: string]: any }>;
 };
 
-function getSuccessfulLoginResult(user: User): LoginResult {
-  const isYorkCoach = user.emailVerified && YORK_ADMIN_EMAILS.includes(user.email?.toLowerCase() || "");
-  return { success: true, defaultPath: isYorkCoach ? `/teams/${YORK_TEAM_ID}` : undefined };
+async function getSuccessfulLoginResult(user: User): Promise<LoginResult> {
+  if (!user.emailVerified || !user.email) return { success: true };
+  try {
+    const { teams } = await requestPrivateData<IdentityLookup>("lookup");
+    const team = teams.find((entry) => entry.id !== "team_free_agents");
+    return { success: true, defaultPath: team ? `/teams/${team.id}` : undefined };
+  } catch {
+    return { success: true };
+  }
 }
 
 const getAuthErrorMessage = (error: unknown): string => {
@@ -222,26 +227,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Error looking up player by email:", e);
     }
 
-    // Fallback: Check York Lions players
-    try {
-      const { YORK_LIONS_PLAYERS } = await import("./yorkTeamData");
-      const yPlayer = YORK_LIONS_PLAYERS.find((p) => {
-        const pEmails = Array.isArray(p.emails)
-          ? p.emails.map((e) => e.toLowerCase())
-          : p.email
-          ? [p.email.toLowerCase()]
-          : [];
-        return pEmails.includes(cleanEmail);
-      });
-      if (yPlayer) return yPlayer;
-    } catch {}
-
     // Demo identities are session-local; do not initialize fixtures for real accounts.
     const demoParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
     const routeParts = typeof window !== "undefined" ? window.location.pathname.split("/") : [];
     const isCustomerRoute =
-      (routeParts[1] === "teams" && Boolean(routeParts[2]) && !DEMO_TEAM_IDS.includes(routeParts[2])) ||
-      (routeParts[1] === "matches" && routeParts[2]?.includes("york"));
+      routeParts[1] === "teams" && Boolean(routeParts[2]) && !DEMO_TEAM_IDS.includes(routeParts[2]);
     const canUseDemoPlayers = !isCustomerRoute && typeof window !== "undefined" && (
       window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" ||
       demoParams?.get("demo") === "true" || demoParams?.get("embed") === "true" ||
@@ -264,7 +254,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Helper to find team matching a coach or admin email address
   const findTeamByEmail = async (email: string, lookup?: Promise<IdentityLookup>): Promise<{ id: string; name: string } | null> => {
     if (!email) return null;
-    const cleanEmail = email.trim().toLowerCase();
     try {
       const results = await (lookup || requestPrivateData<IdentityLookup>("lookup"));
       const matchingTeam = results.teams.find((team) =>
@@ -275,12 +264,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (matchingTeam) return matchingTeam;
     } catch (e) {
       console.error("Error looking up team by email:", e);
-    }
-
-    // Fallback: Check York Lions team admins & coaches
-    const yorkAdmins = YORK_ADMIN_EMAILS.map((e) => e.trim().toLowerCase());
-    if (yorkAdmins.includes(cleanEmail)) {
-      return { id: YORK_TEAM_ID, name: "York Lions Women's Flag Football" };
     }
 
     return null;
@@ -337,6 +320,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               : Promise.resolve([null, null]),
           ]);
           if (version !== authVersion) return;
+          const managedTeamIds = lookup
+            ? (await lookup.catch(() => ({ teams: [] as IdentityLookup["teams"] }))).teams.map((team) => team.id)
+            : [];
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
@@ -354,6 +340,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
             if (matchingTeam) {
               data.managedTeamId = matchingTeam.id;
+              data.managedTeamIds = managedTeamIds;
             }
             writeCachedProfile(u.uid, data);
             setUserProfile(data);
@@ -385,6 +372,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               playerTeamId: matchingPlayer?.teamId,
               playerData: matchingPlayer,
               managedTeamId: matchingTeam?.id,
+              managedTeamIds: matchingTeam ? managedTeamIds : undefined,
             };
             writeCachedProfile(u.uid, createdProfile);
             setUserProfile(createdProfile);
@@ -638,18 +626,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Determine effective role & player properties
   const isDexter = !!user?.emailVerified && !!user.email && ["dextersargent@gmail.com", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
-  const isYorkCoach = !!user?.emailVerified && !!user.email &&
-    YORK_ADMIN_EMAILS.includes(user.email.trim().toLowerCase());
   // Explicitly chosen role in dev Role Switcher takes precedence so admins/devs can simulate any persona
   const effectiveRole: UserRole =
-    lockedEmbedRole || devRole || (isDexter ? "league_admin" : isYorkCoach ? "team_admin" : (userProfile?.role || "user"));
+    lockedEmbedRole || devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));
   const isPlatformAdmin = isDexter || (!!user?.email && adminEmails.includes(user.email.trim().toLowerCase()));
   const effectiveTeamId: string | null =
     lockedEmbedRole === "team_admin"
       ? (typeof window !== "undefined" && window.location.pathname.split("/teams/")[1]?.split("/")[0]) || "team_kc"
       : (effectiveRole === "player"
           ? devTeamId || userProfile?.playerTeamId || null
-          : devTeamId || (isYorkCoach ? YORK_TEAM_ID : userProfile?.managedTeamId) || null);
+          : devTeamId || userProfile?.managedTeamId || null);
 
   const effectivePlayerId: string | null =
     effectiveRole === "player" ? devPlayerId || userProfile?.playerId || null : null;
@@ -665,10 +651,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isTeamAdmin = (teamId?: string) => {
     if (lockedEmbedRole === "team_admin") return true;
     if (isDexter) return true;
-    if (isYorkCoach && (!teamId || isYorkTeam(teamId))) return true;
     if (effectiveRole === "team_admin") {
       if (!teamId) return true;
-      if (effectiveTeamId && (effectiveTeamId === teamId || (isYorkTeam(effectiveTeamId) && isYorkTeam(teamId)))) return true;
+      if (effectiveTeamId === teamId) return true;
       if (userProfile?.managedTeamIds?.includes(teamId)) return true;
     }
     return false;

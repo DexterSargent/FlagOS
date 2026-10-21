@@ -3,8 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
-import { getYorkTeamData, YORK_LIONS_TEAM } from "@/lib/yorkTeamProfile";
+import { isDemoTeamId, isStandaloneTeam, useTeamRecord } from "@/lib/teamRecord";
 import { getSandboxTeams } from "@/lib/demoSandbox";
 import {
   DEFAULT_TEAM_COLOR_PALETTE,
@@ -19,7 +18,7 @@ import {
 export interface TeamColorContextValue {
   team: any | null;
   palette: TeamColorPalette;
-  isYork: boolean;
+  isStandalone: boolean;
   loading: boolean;
   badgeStyle: { color: string; backgroundColor: string; borderColor: string };
   getReadableTextColor: (background: string, preferred: string) => string;
@@ -28,14 +27,14 @@ export interface TeamColorContextValue {
 const TeamColorContext = createContext<TeamColorContextValue>({
   team: null,
   palette: DEFAULT_TEAM_COLOR_PALETTE,
-  isYork: false,
+  isStandalone: false,
   loading: false,
   badgeStyle: getTeamBadgeStyle(null),
   getReadableTextColor,
 });
 
 export function TeamColorScope({
-  teamId: rawTeamId,
+  teamId,
   initialTeam,
   children,
 }: {
@@ -43,114 +42,37 @@ export function TeamColorScope({
   initialTeam?: any;
   children: React.ReactNode;
 }) {
-  const teamId = isYorkTeam(rawTeamId) ? YORK_TEAM_ID : rawTeamId;
-  const isYork = isYorkTeam(teamId);
+  const isDemo = isDemoTeamId(teamId);
+  const record = useTeamRecord(teamId, !isDemo && !initialTeam);
+  const [demoTeam, setDemoTeam] = useState<any>(null);
+  const [demoLoading, setDemoLoading] = useState<boolean>(isDemo && !initialTeam);
 
-  const [team, setTeam] = useState<any>(() => {
-    if (initialTeam) return initialTeam;
-    if (isYork) {
-      let yData: any = { ...getYorkTeamData() };
-      if (typeof window !== "undefined") {
-        try {
-          const cached = localStorage.getItem("flagos_york_team_custom");
-          if (cached) yData = { ...yData, ...JSON.parse(cached) };
-        } catch {}
-      }
-      return yData;
-    }
-    return null;
-  });
-
-  const [loading, setLoading] = useState<boolean>(!initialTeam && !isYork);
-
-  // Load team details
   useEffect(() => {
+    if (!isDemo || initialTeam) return;
     let cancelled = false;
-
-    const loadData = async () => {
-      try {
-        if (isYork) {
-          let yData: any = { ...getYorkTeamData() };
-          if (typeof window !== "undefined") {
-            try {
-              const cached = localStorage.getItem("flagos_york_team_custom");
-              if (cached) yData = { ...yData, ...JSON.parse(cached) };
-            } catch {}
-          }
-          try {
-            const snap = await getDoc(doc(db, "teams", teamId));
-            if (snap.exists() && !cancelled) {
-              yData = { ...yData, ...snap.data() };
-            }
-          } catch {}
-          if (!cancelled) {
-            setTeam(yData);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // Demo team check
-        const isDemo =
-          !teamId.startsWith("team_live_") &&
-          (teamId === "team_apex" ||
-            teamId === "team_cyber" ||
-            teamId === "team_raptors" ||
-            teamId === "team_vipers" ||
-            teamId === "demo" ||
-            teamId.startsWith("team_demo_") ||
-            (teamId.startsWith("team_") && !teamId.startsWith("team_live_")));
-
-        if (isDemo) {
-          const demoTeams = getSandboxTeams();
-          const found = demoTeams.find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
-          if (found && !cancelled) {
-            setTeam(found);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Live team from Firestore
-        const snap = await getDoc(doc(db, "teams", teamId));
-        if (cancelled) return;
-        if (snap.exists()) {
-          setTeam({ id: snap.id, ...snap.data() });
-        }
-      } catch (e) {
-        console.warn("Could not load team for TeamColorScope:", e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    loadData();
-
-    // Listen to real-time custom updates (when user changes colors in edit modal)
+    const found = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
+    if (found) {
+      setDemoTeam(found);
+      setDemoLoading(false);
+      return;
+    }
+    getDoc(doc(db, "teams", teamId))
+      .then((snap) => { if (!cancelled && snap.exists()) setDemoTeam({ id: snap.id, ...snap.data() }); })
+      .catch((e) => console.warn("Could not load team for TeamColorScope:", e))
+      .finally(() => { if (!cancelled) setDemoLoading(false); });
     const handleCustomUpdate = (e: any) => {
-      if (e?.detail) {
-        setTeam((prev: any) => ({ ...prev, ...e.detail }));
-      }
+      if (e?.detail) setDemoTeam((prev: any) => ({ ...prev, ...e.detail }));
     };
-
-    const handleStorage = (e: StorageEvent) => {
-      if (isYork && e.key === "flagos_york_team_custom" && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          setTeam((prev: any) => ({ ...prev, ...parsed }));
-        } catch {}
-      }
-    };
-
     window.addEventListener("flagos_team_updated", handleCustomUpdate);
-    window.addEventListener("storage", handleStorage);
-
     return () => {
       cancelled = true;
       window.removeEventListener("flagos_team_updated", handleCustomUpdate);
-      window.removeEventListener("storage", handleStorage);
     };
-  }, [teamId, isYork]);
+  }, [teamId, isDemo, initialTeam]);
+
+  const team = initialTeam || (isDemo ? demoTeam : record.team);
+  const loading = !initialTeam && (isDemo ? demoLoading : !record.team && !record.resolved);
+  const standalone = isStandaloneTeam(team);
 
   const palette = useMemo(() => resolveTeamColorPalette(team), [team]);
   const cssVars = useMemo(() => getTeamCssVariables(palette), [palette]);
@@ -184,12 +106,12 @@ export function TeamColorScope({
     () => ({
       team,
       palette,
-      isYork,
+      isStandalone: standalone,
       loading,
       badgeStyle,
       getReadableTextColor,
     }),
-    [team, palette, isYork, loading, badgeStyle]
+    [team, palette, standalone, loading, badgeStyle]
   );
 
   return (

@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { getSandboxTeams, subscribeDemoSandbox } from "./demoSandbox";
-import { getYorkTeamData, isYorkTeam, YORK_TEAM_ID } from "./yorkTeamData";
 import { resolveTeamColorPalette, type TeamColorSource } from "./teamColors";
 
 export interface MatchTeamColorSource {
@@ -36,7 +35,7 @@ export function useMatchTeamColors(match: MatchTeamColorSource | null, isDemo: b
       typeof id === "string" && !!id && !id.startsWith("opponent_"),
     ))];
     const unsubscribes = ids.map((id) => onSnapshot(
-      doc(db, "teams", isYorkTeam(id) ? YORK_TEAM_ID : id),
+      doc(db, "teams", id),
       (snapshot) => {
         if (snapshot.exists()) setTeams((previous) => ({ ...previous, [id]: snapshot.data() }));
       },
@@ -54,7 +53,7 @@ export function useMatchTeamColors(match: MatchTeamColorSource | null, isDemo: b
       tertiaryColor: match?.[`${side}TeamTertiaryColor`],
     };
     return resolveTeamColorPalette(
-      (id && teams[id]) || (isYorkTeam(id) ? getYorkTeamData() : fallback),
+      (id && teams[id]) || fallback,
     );
   };
   return { home: palette("home"), away: palette("away") };

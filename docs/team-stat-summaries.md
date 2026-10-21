@@ -32,7 +32,8 @@ never includes team, player or match documents.
 Roster labels come from a projected `players` query (`select("playerName", "number",
 "teamId", "leagueId", "email", "emails")`) under the same conditions as the players rules:
 
-- York players need a York team document with `visibility: "public"` and no team PII fields.
+- Independent-team players need a league-free team document with `visibility: "public"`
+  and no team PII fields (`adminEmails`, `coachEmail`, `adminEmail`, or `email`).
 - League players must belong to the team's public league.
 - Documents carrying `email` or `emails` are skipped. Those values are read only to apply
   this check and are never returned.
@@ -42,10 +43,13 @@ such as `logoUrl` are never transferred. The roster is capped at 500 players.
 
 ## Access
 
-- York aliases are public, as in the Firestore rules (`isPublicYorkMatch`/`isPublicYorkPlay`).
-- Other teams require a signed-in caller (the helper sends the Firebase ID token) and a
-  team whose league has `visibility: "public"` (the rules' `isPublicLeague`). Other teams
-  return 404, and their admins keep using the existing authenticated client reads.
+- Public independent teams (no `leagueId`) require no sign-in when their stored team
+  document has `visibility: "public"` and contains none of the team PII fields above.
+  Only the exact stored team ID is used; no hardcoded teams or team-ID aliases exist.
+- League teams require a signed-in caller (the helper sends the Firebase ID token) and
+  a team whose league has `visibility: "public"` (the rules' `isPublicLeague`).
+- Missing teams, private independent teams, independent team documents containing PII,
+  and teams in non-public leagues return 404. Their admins keep using authenticated reads.
 - Only matches with `isHidden == false` and plays with `isHidden == false` count. For
   league teams, matches and plays must also belong to the team's league.
 - Requests are limited to 30 per minute per IP or account, and 300 per minute per server
@@ -104,16 +108,17 @@ read in full because the score, status and DNP fields feed the summary. The gain
 
 Cutting read counts further would require trusting write-side invalidation or a TTL, which
 this design avoids on purpose. The client helper adds a 30-second in-memory cache. It is
-cleared on window focus, on `storage` events and on the `flagos-york-data-changed` and
-`flagos-public-data-changed` events. Non-York entries are keyed by the signed-in uid, so a response fetched while signed in is
+cleared on window focus, on `storage` events and on the
+`flagos-public-data-changed` event. All entries are keyed by the signed-in uid (or
+`anonymous`), so a response fetched while signed in is
 never served after sign-out or to another account, and failed requests are never cached.
 After a stat edit, use `{ fresh: true }` or dispatch
-one of those events.
+`flagos-public-data-changed`.
 
 ## Limits
 
 The service handles up to 64 completed games per team and 1,000 plays per game. Beyond
 those limits it returns 503 rather than partial totals.
 
-The server reads only Firestore, so York seed fixtures and device-local plays that exist
-only in `yorkTeamData`/localStorage are not included.
+The server reads only stored Firestore documents. Demo seed fixtures and device-local
+plays that exist only in localStorage are not included.

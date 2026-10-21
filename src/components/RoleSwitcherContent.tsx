@@ -7,8 +7,7 @@ import { useAuth, UserRole } from "@/lib/authContext";
 import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye, ArrowLeft } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
-import { DEMO_TEAM_IDS } from "@/lib/demoSandboxRuntime";
-import { isYorkMatch, isYorkTeam } from "@/lib/yorkTeamData";
+import { DEMO_TEAM_IDS, isDemoMatchId, isDemoTeamId } from "@/lib/demoSandboxRuntime";
 import { isDexterUser } from "@/lib/teamAdminRbac";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -52,18 +51,18 @@ export default function RoleSwitcherContent() {
   const isDemoTeam = Boolean(
     teamIdFromPath &&
     isDemoLeague &&
-    !isYorkTeam(teamIdFromPath) &&
     DEMO_TEAM_IDS.includes(teamIdFromPath)
   );
 
   const isNonDemoTeamPage = isTeamPage && Boolean(teamIdFromPath) && !isDemoTeam;
 
-  // York Lions is a production customer team: never show demo chrome on its team or game pages.
+  // Production customer teams never show demo chrome on their team or game pages.
   const matchIdFromPath = pathname?.startsWith("/matches/") ? pathname.split("/matches/")[1]?.split("/")[0] : null;
-  const isYorkPage = isYorkTeam(teamIdFromPath) || isYorkMatch(matchIdFromPath);
+  const isCustomerPage = Boolean(
+    (teamIdFromPath && !isDemoTeamId(teamIdFromPath)) || (matchIdFromPath && !isDemoMatchId(matchIdFromPath)),
+  );
 
-  // Non-demo team pages (customer teams) MUST NOT have a role switcher unless signed in as Dexter
-  const isPageRoleSwitcherAllowed = !isYorkPage && (!isNonDemoTeamPage || isPlatformOwner);
+  const isPageRoleSwitcherAllowed = !isCustomerPage && !isNonDemoTeamPage;
 
   const isEligibleHost = !isEmbed && (isLocalOrEmbed || isPlatformOwner || isDemoLeague);
   const isChromeLessPage =
@@ -105,7 +104,6 @@ export default function RoleSwitcherContent() {
     const loadData = () => {
       try {
         const tList = getSandboxTeams()
-          .filter((team) => !isYorkTeam(team.id))
           .map((t) => ({ id: t.id, name: t.name }));
         tList.sort((a, b) => a.name.localeCompare(b.name));
         setTeams(tList);

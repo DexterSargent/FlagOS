@@ -4,21 +4,15 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Calendar, Clock, MapPin, Trophy, History, PlayCircle, Shield, Plus, X, Sparkles, Timer, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where, deleteDoc, setDoc, limit } from "firebase/firestore";
-import { createSecureRecord } from "@/lib/secureWrites";
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where, deleteDoc, updateDoc, limit } from "firebase/firestore";
+import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
-import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
-import { getYorkTeamData, YORK_LIONS_TEAM } from "@/lib/yorkTeamProfile";
-import {
-  saveYorkCustomMatch,
-  deleteYorkCustomMatch,
-} from "@/lib/yorkMatchStorage";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
-import { loadYorkMatches } from "@/lib/yorkSeasonData";
+import { loadTeamManagedMatches } from "@/lib/teamSeasonData";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
@@ -30,14 +24,13 @@ function localMatchDate(value: string): Date {
 
 export default function TeamSchedulePage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
-  const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
-  const isYork = isYorkTeam(teamId);
+  const teamId = unwrappedParams.id;
   const { settings, activeLeagueId, isDemoLeague } = useLeague();
-  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYork);
+  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague);
 
   const { canManageTeam, isLeagueAdmin, user } = useAuth();
   const { palette: contextPalette } = useTeamColors();
-  const [team, setTeam] = useState<any>(() => isYork ? { ...YORK_LIONS_TEAM } : null);
+  const [team, setTeam] = useState<any>(null);
   const palette = resolveTeamColorPalette(team || contextPalette);
   const [allTeams, setAllTeams] = useState<Record<string, any>>({});
   const [matches, setMatches] = useState<any[]>([]);
@@ -46,7 +39,23 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const isDexter = isDexterUser(user?.email);
   const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
   const canScheduleMatches = isLeagueAdmin || canManageTeam(teamId);
-  const canDeleteMatch = isPrimary || (!isYork && isLeagueAdmin);
+  // Independent teams own their games; only league teams defer deletion to league admins.
+  const isIndependentTeam = !isDemoLeague && !!team && !team.leagueId;
+  const canDeleteMatch = isPrimary || (!isIndependentTeam && isLeagueAdmin);
+
+  // Admin emails live in team_private, so the primary-coach check needs the private settings.
+  const hasTeam = !!team;
+  useEffect(() => {
+    if (isDemoLeague || !hasTeam || !canManageTeam(teamId)) return;
+    let cancelled = false;
+    requestPrivateData<{ team: Record<string, unknown> }>("team", { teamId })
+      .then((privateData) => {
+        if (!cancelled) setTeam((current: Record<string, unknown> | null) => current ? { ...current, ...privateData.team } : current);
+      })
+      .catch((error: unknown) => console.warn("Unable to load private team settings:", error));
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, isDemoLeague, hasTeam, user?.uid]);
 
   // Match Scheduling Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -54,7 +63,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [isHostHome, setIsHostHome] = useState(true);
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
   const [matchTime, setMatchTime] = useState("14:00");
-  const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "York Turf Field 1");
+  const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "");
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
 
@@ -77,7 +86,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     if (!canScheduleMatches) return;
     if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
 
-    if (isDemoLeague && !isYork) {
+    if (isDemoLeague) {
       if (!sandbox) {
         setScheduleError("The demo is not loaded. Please retry.");
         return;
@@ -88,15 +97,14 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       return;
     }
 
-    if (isYork) {
+    if (isIndependentTeam) {
+      // Team-managed games are hidden rather than erased so their play history stays recoverable.
       try {
-        const match = matches.find((record) => record.id === matchId);
-        await setDoc(doc(db, "matches", matchId), { ...match, isHidden: true }, { merge: true });
-        deleteYorkCustomMatch(matchId);
+        await updateDoc(doc(db, "matches", matchId), { isHidden: true });
         invalidatePublicTeamData();
         setMatches((prev) => prev.filter((m) => m.id !== matchId));
       } catch (err) {
-        console.error("Could not delete York match:", err);
+        console.error("Could not delete team match:", err);
         setScheduleError("The game could not be deleted from the server. No deletion was confirmed.");
       }
       return;
@@ -137,7 +145,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         matchdayIndex: 1,
       };
 
-      if (isDemoLeague && !isYork) {
+      if (isDemoLeague) {
         if (!sandbox) throw new Error("The demo is not loaded.");
         sandbox.addSandboxMatch(newMatchDoc);
         setOpponentName("");
@@ -153,10 +161,6 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
       const createdMatch = { id: createdId, ...newMatchDoc };
       invalidatePublicTeamData();
-
-      if (isYork) {
-        saveYorkCustomMatch(createdMatch);
-      }
 
       setMatches((prev) => {
         const exists = prev.some((m) => m.id === createdMatch.id);
@@ -177,27 +181,6 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
     const fetchData = async () => {
-      if (isYork) {
-        try {
-          const [snap, combinedMatches] = await Promise.all([
-            getDoc(doc(db, "teams", teamId)),
-            loadYorkMatches(),
-          ]);
-          if (cancelled) return;
-          const currentTeam = { ...getYorkTeamData(), ...(snap.exists() ? snap.data() : {}) };
-          setTeam(currentTeam);
-          setAllTeams({ [currentTeam.id]: currentTeam });
-          setMatches([...combinedMatches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
-          setScheduleError("");
-        } catch (error) {
-          console.error("Unable to load York schedule:", error);
-          if (!cancelled) setScheduleError("The schedule could not be loaded. Refresh to retry; no offline results are shown.");
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-        return;
-      }
-
       if (isDemoLeague) {
         if (!sandbox) return;
         const { getSandboxTeams, getSandboxMatches, subscribeDemoSandbox } = sandbox;
@@ -229,6 +212,17 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           ? { id: teamSnap.id, ...teamSnap.data() } as { id: string; name?: string; leagueId?: unknown }
           : null;
         const leagueId = typeof teamData?.leagueId === "string" ? teamData.leagueId : "";
+        if (teamData && !leagueId) {
+          const teamMatches = await loadTeamManagedMatches(teamId);
+          if (cancelled) return;
+          if (isRealTeam(teamData)) setTeam(teamData);
+          else setTeam(null);
+          setAllTeams({ [teamData.id]: teamData });
+          setMatches([...teamMatches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+          setScheduleError("");
+          setLoading(false);
+          return;
+        }
         const allTeamsSnap = await getDocs(query(
           collection(db, "teams"),
           where("leagueId", "==", leagueId),
@@ -276,6 +270,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         return;
       } catch (e) {
         console.error("Error fetching team schedule:", e);
+        if (cancelled) return;
+        setScheduleError("The schedule could not be loaded. Please try again.");
         setLoading(false);
       }
     };
@@ -299,9 +295,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   if (!team || !isRealTeam(team)) {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
-        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
-        <p className="text-neutral-400 mb-6 max-w-md">
-          The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team.
+        <h2 className="text-3xl font-black mb-4">{scheduleError ? "Schedule Unavailable" : "Team Not Found"}</h2>
+        <p role={scheduleError ? "alert" : undefined} className="text-neutral-400 mb-6 max-w-md">
+          {scheduleError || "The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team."}
         </p>
         <Link
           href="/teams"
@@ -491,7 +487,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
                       <div className="mt-5 pt-4 border-t border-white/5">
                         <Link
-                          href={canScheduleMatches || isYork ? statKeeperUrl : `/matches/${m.id}/play-by-play${isDemoLeague ? "?demo=true" : ""}`}
+                          href={canScheduleMatches || isIndependentTeam ? statKeeperUrl : `/matches/${m.id}/play-by-play${isDemoLeague ? "?demo=true" : ""}`}
                           className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm border ${
                             canScheduleMatches && isAsyncMatch
                               ? "bg-emerald-500/10 hover:bg-emerald-500 text-emerald-300 hover:text-black border-emerald-500/30 hover:border-emerald-500"

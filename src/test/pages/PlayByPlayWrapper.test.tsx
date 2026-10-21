@@ -4,11 +4,11 @@ import { Suspense } from "react";
 import PlayByPlayWrapper from "@/app/matches/[id]/play-by-play/page";
 
 const { authState } = vi.hoisted(() => ({
-  authState: { isLeagueAdmin: false, loading: false, managesYork: false },
+  authState: { isLeagueAdmin: false, loading: false, managesTeam: false },
 }));
 
 vi.mock("@/lib/authContext", () => ({
-  useAuth: () => ({ ...authState, canManageTeam: (teamId: string) => authState.managesYork && teamId === "york_lions" }),
+  useAuth: () => ({ ...authState, canManageTeam: (teamId: string) => authState.managesTeam && teamId === "falcons" }),
 }));
 
 vi.mock("@/lib/leagueContext", () => ({
@@ -18,7 +18,7 @@ vi.mock("@/lib/leagueContext", () => ({
 vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(),
-  getDoc: vi.fn().mockResolvedValue({ exists: () => false }),
+  getDoc: vi.fn().mockResolvedValue({ exists: () => true, data: () => ({ managingTeamId: "falcons", homeTeamId: "falcons", awayTeamId: "opponent_visitors", isIndependent: true, isAsyncStatKeeping: true, status: "in_progress" }) }),
 }));
 
 vi.mock("@/lib/demoSandbox", () => ({
@@ -94,23 +94,23 @@ describe("PlayByPlayWrapper role access", () => {
     expect(await screen.findByText("async manager")).toBeInTheDocument();
   });
 
-  it("keeps York's watch link read-only for spectators, even with demo=true", async () => {
-    window.history.replaceState({}, "", "/matches/match_york_laurier/play-by-play?demo=true");
+  it("keeps an independent team's watch link read-only for spectators, even with demo=true", async () => {
+    window.history.replaceState({}, "", "/matches/customer-game/play-by-play?demo=true");
     authState.isLeagueAdmin = false;
-    authState.managesYork = false;
+    authState.managesTeam = false;
     await act(async () => {
-      render(<Suspense fallback="loading"><PlayByPlayWrapper params={Promise.resolve({ id: "match_york_laurier" })} /></Suspense>);
+      render(<Suspense fallback="loading"><PlayByPlayWrapper params={Promise.resolve({ id: "customer-game" })} /></Suspense>);
     });
     expect(await screen.findByText("viewer")).toBeInTheDocument();
     expect(screen.queryByText("async manager")).not.toBeInTheDocument();
   });
 
-  it("opens York's async keeper for authorized York coaches", async () => {
-    window.history.replaceState({}, "", "/matches/match_york_laurier/play-by-play");
+  it("opens an independent team's async keeper for its authorized coaches", async () => {
+    window.history.replaceState({}, "", "/matches/customer-game/play-by-play");
     authState.isLeagueAdmin = false;
-    authState.managesYork = true;
+    authState.managesTeam = true;
     await act(async () => {
-      render(<Suspense fallback="loading"><PlayByPlayWrapper params={Promise.resolve({ id: "match_york_laurier" })} /></Suspense>);
+      render(<Suspense fallback="loading"><PlayByPlayWrapper params={Promise.resolve({ id: "customer-game" })} /></Suspense>);
     });
     expect(await screen.findByText("async manager")).toBeInTheDocument();
   });

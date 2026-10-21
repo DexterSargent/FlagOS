@@ -21,19 +21,19 @@ describe("shared match team palettes", () => {
     listeners.clear();
   });
 
-  it("uses York's actual seed colors when the team document is unavailable", () => {
-    const { result } = renderHook(() => useMatchTeamColors({ homeTeamId: "team_york" }, false));
-    expect(result.current.home).toEqual({ primary: "#E31837", secondary: "#FFFFFF", tertiary: "#000000" });
-    expect(listeners.has("york_lions")).toBe(true);
+  it("uses stored match colors when the team document is unavailable", () => {
+    const { result } = renderHook(() => useMatchTeamColors({ homeTeamId: "falcons", homeTeamPrimaryColor: "#112233", homeTeamSecondaryColor: "#FFFFFF", homeTeamTertiaryColor: "#000000" }, false));
+    expect(result.current.home).toEqual({ primary: "#112233", secondary: "#FFFFFF", tertiary: "#000000" });
+    expect(listeners.has("falcons")).toBe(true);
   });
 
   it("updates live and restores the latest saved colors on a new view mount", () => {
-    records.set("york_lions", { primaryColor: "#990000", secondaryColor: "#FFFFFF", tertiaryColor: "#FFCC00" });
-    const match = { homeTeamId: "york_lions", awayTeamId: "opponent_external", homeTeamPrimaryColor: "#000000" };
+    records.set("falcons", { primaryColor: "#990000", secondaryColor: "#FFFFFF", tertiaryColor: "#FFCC00" });
+    const match = { homeTeamId: "falcons", awayTeamId: "opponent_external", homeTeamPrimaryColor: "#000000" };
     const first = renderHook(() => useMatchTeamColors(match, false));
     expect(first.result.current.home.primary).toBe("#990000");
-    records.set("york_lions", { primaryColor: "#123456", secondaryColor: "#EEEEEE", tertiaryColor: "#FFCC00" });
-    act(() => listeners.get("york_lions")?.({ exists: () => true, data: () => records.get("york_lions") || {} }));
+    records.set("falcons", { primaryColor: "#123456", secondaryColor: "#EEEEEE", tertiaryColor: "#FFCC00" });
+    act(() => listeners.get("falcons")?.({ exists: () => true, data: () => records.get("falcons") || {} }));
     expect(first.result.current.home.primary).toBe("#123456");
     first.unmount();
     const second = renderHook(() => useMatchTeamColors(match, false));

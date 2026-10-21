@@ -121,7 +121,7 @@ import { GET } from "@/app/api/public/teams/[teamId]/stat-summary/route";
 import {
   buildPublicTeamSeasonSummary,
   GAME_SUMMARY_COLLECTION,
-  YORK_PUBLIC_SCOPE,
+  resolveSummaryTeamScope,
 } from "@/lib/teamStatSummaryService";
 import {
   buildRosterPlayerStats,
@@ -137,34 +137,34 @@ import { getPlayerSeasonStats } from "@/lib/teamSeasonAggregation";
 const db = fake as any;
 let ip = 0;
 
-function seedYork() {
+function seedIndependentTeam() {
   fake.store.clear();
   fake.fullPlayReads = 0;
   fake.metadataReads = 0;
   fake.failGetAll = false;
   fake.failCommit = false;
   fake.beforeFullRead = null;
-  fake.put("matches/m1", { status: "completed", isHidden: false, homeTeamId: "york_lions", awayTeamId: "opp", homeScore: 14, awayScore: 7, didNotPlay: ["Dana"], coachNotes: "private" });
-  fake.put("matches/m2", { status: "completed", isHidden: false, homeTeamId: "opp2", awayTeamId: "york", homeScore: 6, awayScore: 0 });
-  fake.put("matches/m3", { status: "scheduled", isHidden: false, homeTeamId: "york_lions", awayTeamId: "opp3" });
-  fake.put("plays/a", { matchId: "m1", isHidden: false, possessionTeamId: "york_lions", playType: "Pass", qbPlayerId: "Quinn", receiverPlayerId: "Riley", passOutcome: "Complete", isTouchdown: true });
-  fake.put("plays/b", { matchId: "m1", isHidden: false, possessionTeamId: "york_lions", playType: "Pass", qbPlayerId: "Quinn", receiverPlayerId: "Riley", passOutcome: "Complete", isConversion: true, conversionAttempt: 1, conversionSuccess: true });
-  fake.put("plays/c", { matchId: "m1", isHidden: true, possessionTeamId: "york_lions", playType: "Run", runnerPlayerId: "Riley", isTouchdown: true });
+  fake.put("matches/m1", { status: "completed", isHidden: false, homeTeamId: "falcons", awayTeamId: "opp", homeScore: 14, awayScore: 7, didNotPlay: ["Dana"], coachNotes: "private" });
+  fake.put("matches/m2", { status: "completed", isHidden: false, homeTeamId: "opp2", awayTeamId: "falcons", homeScore: 6, awayScore: 0 });
+  fake.put("matches/m3", { status: "scheduled", isHidden: false, homeTeamId: "falcons", awayTeamId: "opp3" });
+  fake.put("plays/a", { matchId: "m1", isHidden: false, possessionTeamId: "falcons", playType: "Pass", qbPlayerId: "Quinn", receiverPlayerId: "Riley", passOutcome: "Complete", isTouchdown: true });
+  fake.put("plays/b", { matchId: "m1", isHidden: false, possessionTeamId: "falcons", playType: "Pass", qbPlayerId: "Quinn", receiverPlayerId: "Riley", passOutcome: "Complete", isConversion: true, conversionAttempt: 1, conversionSuccess: true });
+  fake.put("plays/c", { matchId: "m1", isHidden: true, possessionTeamId: "falcons", playType: "Run", runnerPlayerId: "Riley", isTouchdown: true });
   fake.put("plays/d", { matchId: "m2", isHidden: false, possessionTeamId: "opp2", playType: "Pass", passOutcome: "Interception", defenders: ["Dana"], isPick6: true });
-  fake.put("plays/e", { matchId: "m1", possessionTeamId: "york_lions", playType: "Run", runnerPlayerId: "Riley" });
-  fake.put("teams/york_lions", { name: "York Lions", visibility: "public", logoUrl: "data:big" });
-  fake.put("teams/york", { name: "Old York", visibility: "private" });
-  fake.put("players/p1", { teamId: "york_lions", playerName: "Quinn", number: "12", notes: "private note", experience: "secret" });
-  fake.put("players/p2", { teamId: "york_lions", playerName: "Bench", number: "7" });
-  fake.put("players/p3", { teamId: "york_lions", playerName: "Riley" });
-  fake.put("players/p4", { teamId: "york_lions", playerName: "Leaky", number: "9", email: "leaky@example.com" });
-  fake.put("players/p5", { teamId: "york", playerName: "Hidden Team", number: "3" });
+  fake.put("plays/e", { matchId: "m1", possessionTeamId: "falcons", playType: "Run", runnerPlayerId: "Riley" });
+  fake.put("teams/falcons", { name: "Falcons", visibility: "public", logoUrl: "data:big" });
+  fake.put("teams/private-team", { name: "Other Team", visibility: "private" });
+  fake.put("players/p1", { teamId: "falcons", playerName: "Quinn", number: "12", notes: "private note", experience: "secret" });
+  fake.put("players/p2", { teamId: "falcons", playerName: "Bench", number: "7" });
+  fake.put("players/p3", { teamId: "falcons", playerName: "Riley" });
+  fake.put("players/p4", { teamId: "falcons", playerName: "Leaky", number: "9", email: "leaky@example.com" });
+  fake.put("players/p5", { teamId: "private-team", playerName: "Hidden Team", number: "3" });
 }
 
-const build = () => buildPublicTeamSeasonSummary(db, YORK_PUBLIC_SCOPE);
+const build = async () => buildPublicTeamSeasonSummary(db, (await resolveSummaryTeamScope(db, "falcons"))!);
 
 describe("team stat summary service", () => {
-  beforeEach(seedYork);
+  beforeEach(seedIndependentTeam);
 
   it("builds from explicitly visible plays and persists fingerprinted game summaries", async () => {
     const summary = await build();
@@ -176,7 +176,7 @@ describe("team stat summary service", () => {
     expect(summary.playerStats.Riley).toMatchObject({ rushAtt: 0, rushTD: 0, receptions: 1 });
     expect(summary.playerStats.Dana).toMatchObject({ int: 1, defTD: 1, gamesPlayed: 1 });
     expect(summary.cache).toEqual({ hits: 0, misses: 2 });
-    const stored = fake.store.get(`${GAME_SUMMARY_COLLECTION}/york_lions__m1`)!.data;
+    const stored = fake.store.get(`${GAME_SUMMARY_COLLECTION}/falcons__m1`)!.data;
     expect(stored.fingerprint).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(summary)).not.toMatch(/coachNotes|private|email/);
   });
@@ -214,7 +214,7 @@ describe("team stat summary service", () => {
 
   it("rebuilds when the cache cannot be read or contains an invalid entry", async () => {
     await build();
-    fake.patch(`${GAME_SUMMARY_COLLECTION}/york_lions__m1`, { summary: { bogus: true } });
+    fake.patch(`${GAME_SUMMARY_COLLECTION}/falcons__m1`, { summary: { bogus: true } });
     expect((await build()).cache).toEqual({ hits: 1, misses: 1 });
     fake.failGetAll = true;
     const summary = await build();
@@ -226,14 +226,14 @@ describe("team stat summary service", () => {
     fake.failCommit = true;
     const summary = await build();
     expect(summary.playerStats.Quinn.passTD).toBe(1);
-    expect(fake.store.has(`${GAME_SUMMARY_COLLECTION}/york_lions__m1`)).toBe(false);
+    expect(fake.store.has(`${GAME_SUMMARY_COLLECTION}/falcons__m1`)).toBe(false);
   });
 
   it("never caches when plays change mid-read and refuses after repeated conflicts", async () => {
     let counter = 0;
     fake.beforeFullRead = () => fake.put(`plays/racing_${counter++}`, { matchId: "m1", isHidden: false });
     await expect(build()).rejects.toMatchObject({ status: 503 });
-    expect(fake.store.has(`${GAME_SUMMARY_COLLECTION}/york_lions__m1`)).toBe(false);
+    expect(fake.store.has(`${GAME_SUMMARY_COLLECTION}/falcons__m1`)).toBe(false);
   });
 
   it("serves cache hits from metadata projections without reading play fields", async () => {
@@ -280,8 +280,10 @@ describe("team stat summary service", () => {
     ]);
     expect(fake.rosterFields).toEqual(["playerName", "number", "teamId", "leagueId", "email", "emails"]);
     expect(JSON.stringify(summary)).not.toMatch(/private note|secret|leaky|Hidden Team|data:big/);
-    fake.patch("teams/york_lions", { coachEmail: "coach@example.com" });
-    expect((await build()).roster).toEqual([]);
+    const scope = (await resolveSummaryTeamScope(db, "falcons"))!;
+    fake.patch("teams/falcons", { coachEmail: "coach@example.com" });
+    expect((await buildPublicTeamSeasonSummary(db, scope)).roster).toEqual([]);
+    expect(await resolveSummaryTeamScope(db, "falcons")).toBeNull();
   });
 });
 
@@ -294,7 +296,7 @@ function get(teamId: string, headers: Record<string, string> = {}) {
 
 describe("team stat summary API", () => {
   beforeEach(() => {
-    seedYork();
+    seedIndependentTeam();
     fake.put("teams/team_a", { name: "Alpha", shortcode: "ALP", leagueId: "public_league", coachEmail: "coach@example.com" });
     fake.put("teams/team_b", { name: "Beta", leagueId: "private_league" });
     fake.put("leagues/public_league", { visibility: "public" });
@@ -306,17 +308,29 @@ describe("team stat summary API", () => {
     verifyIdTokenMock.mockResolvedValue({ uid: "viewer" });
   });
 
-  it("returns York summaries publicly with no-store and only numeric stats", async () => {
-    const response = await get("york");
+  it("returns public independent team summaries publicly with no-store and only numeric stats", async () => {
+    const response = await get("falcons");
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     const { data } = await response.json();
-    expect(data.teamId).toBe("york_lions");
+    expect(data.teamId).toBe("falcons");
     expect(Object.keys(data).sort()).toEqual(["cache", "completedGames", "didNotPlayCounts", "games", "generatedAt", "playerStats", "roster", "schemaVersion", "teamId", "teamStats"]);
     expect(JSON.stringify(data)).not.toMatch(/coach@|coachNotes/);
   });
 
-  it("requires sign-in and a public league for other teams", async () => {
+  it.each(["adminEmails", "coachEmail", "adminEmail", "email"])("does not publish an independent team carrying %s", async (field) => {
+    fake.patch("teams/falcons", { [field]: field === "adminEmails" ? ["coach@example.com"] : "coach@example.com" });
+    expect((await get("falcons")).status).toBe(404);
+    expect(fake.fullPlayReads).toBe(0);
+  });
+
+  it("does not publish private independent teams or invent aliases", async () => {
+    expect((await get("private-team")).status).toBe(404);
+    expect((await get("falcons-old")).status).toBe(404);
+    expect(fake.fullPlayReads).toBe(0);
+  });
+
+  it("requires sign-in and a public league for league teams", async () => {
     expect((await get("team_a")).status).toBe(401);
     const response = await get("team_a", { authorization: "Bearer token" });
     expect(response.status).toBe(200);
@@ -333,7 +347,7 @@ describe("team stat summary API", () => {
   it("maps failures to generic errors without leaking details", async () => {
     const spy = vi.spyOn(fake, "runTransaction").mockRejectedValueOnce(new Error("internal secret"));
     const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
-    const response = await get("york_lions");
+    const response = await get("falcons");
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "Unable to load team stats." });
     spy.mockRestore();
@@ -344,7 +358,7 @@ describe("team stat summary API", () => {
     const headers = { "x-forwarded-for": "203.0.113.9" };
     const statuses: number[] = [];
     for (let i = 0; i < 31; i += 1) {
-      statuses.push((await GET(new Request("http://localhost/x", { headers }), { params: Promise.resolve({ teamId: "york" }) })).status);
+      statuses.push((await GET(new Request("http://localhost/x", { headers }), { params: Promise.resolve({ teamId: "falcons" }) })).status);
     }
     expect(statuses.slice(0, 30).every((status) => status === 200)).toBe(true);
     expect(statuses[30]).toBe(429);
@@ -353,7 +367,7 @@ describe("team stat summary API", () => {
 
 describe("loadTeamSeasonSummary client helper", () => {
   beforeEach(() => {
-    seedYork();
+    seedIndependentTeam();
     invalidatePublicTeamData();
   });
 
@@ -362,8 +376,8 @@ describe("loadTeamSeasonSummary client helper", () => {
       const teamId = decodeURIComponent(String(input).split("/")[4]);
       return get(teamId);
     });
-    const summary = await loadTeamSeasonSummary("york_lions");
-    expect(fetchMock).toHaveBeenCalledWith("/api/public/teams/york_lions/stat-summary", expect.objectContaining({ cache: "no-store" }));
+    const summary = await loadTeamSeasonSummary("falcons");
+    expect(fetchMock).toHaveBeenCalledWith("/api/public/teams/falcons/stat-summary", expect.objectContaining({ cache: "no-store" }));
     expect(summary.teamStats.recordFormatted).toBe("1-1-0");
     expect(buildRosterPlayerStats(summary, ["Quinn", "Bench"])).toMatchObject({
       Quinn: { passTD: 1, gamesPlayed: 2 },
@@ -375,14 +389,14 @@ describe("loadTeamSeasonSummary client helper", () => {
     expect(formatPlayerLabel(summary, "Quinn")).toBe("#12 Quinn");
     expect(formatPlayerLabel(summary, "Riley")).toBe("Riley");
     expect(getPlayerNumber(summary, "Bench")).toBe("7");
-    await loadTeamSeasonSummary("york_lions");
+    await loadTeamSeasonSummary("falcons");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    await loadTeamSeasonSummary("york_lions", { fresh: true });
+    await loadTeamSeasonSummary("falcons", { fresh: true });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     fetchMock.mockRestore();
   });
 
-  it("scopes cached non-York responses to the signed-in uid", async () => {
+  it("scopes cached league-team responses to the signed-in uid", async () => {
     fake.put("teams/team_a", { name: "Alpha", leagueId: "public_league" });
     fake.put("leagues/public_league", { visibility: "public" });
     verifyIdTokenMock.mockImplementation(async (token: string) => ({ uid: token.replace("token-", "") }));
@@ -415,9 +429,9 @@ describe("loadTeamSeasonSummary client helper", () => {
       .mockResolvedValueOnce(Response.json({ error: "Busy" }, { status: 503 }))
       .mockResolvedValueOnce(Response.json({ data: { teamId: "x" } }))
       .mockRejectedValueOnce(new TypeError("offline"));
-    await expect(loadTeamSeasonSummary("york", { fresh: true })).rejects.toMatchObject({ status: 503, message: "Busy" });
-    await expect(loadTeamSeasonSummary("york", { fresh: true })).rejects.toMatchObject({ status: 502 });
-    await expect(loadTeamSeasonSummary("york", { fresh: true })).rejects.toBeInstanceOf(TeamSeasonSummaryError);
+    await expect(loadTeamSeasonSummary("falcons", { fresh: true })).rejects.toMatchObject({ status: 503, message: "Busy" });
+    await expect(loadTeamSeasonSummary("falcons", { fresh: true })).rejects.toMatchObject({ status: 502 });
+    await expect(loadTeamSeasonSummary("falcons", { fresh: true })).rejects.toBeInstanceOf(TeamSeasonSummaryError);
     fetchMock.mockRestore();
   });
 });

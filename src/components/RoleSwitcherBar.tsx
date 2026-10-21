@@ -5,8 +5,7 @@ import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
-import { DEMO_TEAM_IDS, subscribeDemoSandbox } from "@/lib/demoSandboxRuntime";
-import { isYorkTeam } from "@/lib/yorkStaff";
+import { DEMO_TEAM_IDS, isDemoMatchId, isDemoTeamId, subscribeDemoSandbox } from "@/lib/demoSandboxRuntime";
 import { isDexterUser } from "@/lib/teamAdminRbac";
 
 const RoleSwitcherContent = dynamic(() => import("./RoleSwitcherContent"), { ssr: false });
@@ -29,9 +28,11 @@ export default function RoleSwitcherBar() {
   const owner = isDexterUser(user?.email);
   const demoTeam = Boolean(teamId && isDemoLeague && DEMO_TEAM_IDS.includes(teamId));
   const embedded = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true";
+  // Real customer team and game pages never show demo chrome.
+  const customerPage = Boolean((teamId && !isDemoTeamId(teamId)) || (matchId && !isDemoMatchId(matchId)));
   const allowed = !embedded && (localOrDemo || owner || isDemoLeague) &&
-    !isYorkTeam(teamId) && !matchId?.includes("york") &&
-    (!teamId || demoTeam || owner) &&
+    !customerPage &&
+    (!teamId || demoTeam) &&
     pathname !== "/" && pathname !== "/pricing" && pathname !== "/login" && pathname !== "/my-story" &&
     !pathname?.includes("/play-by-play") &&
     !(pathname === "/admin" || (pathname?.startsWith("/admin/") && !pathname.startsWith("/admin/sandbox")));

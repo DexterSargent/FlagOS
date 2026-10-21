@@ -63,17 +63,7 @@ import {
 } from "@/lib/demoSandbox";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
-import {
-  getYorkMatch,
-  getYorkTeamPlayers,
-  getYorkTeamPlaysForMatch,
-  saveYorkPlay,
-  deleteYorkPlay,
-  saveYorkCustomMatch,
-  isYorkTeam,
-  isYorkMatch,
-  YORK_TEAM_ID,
-} from "@/lib/yorkTeamData";
+import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import {
   OPPONENT_QB_PLACEHOLDER,
   displayPlayerName,
@@ -94,8 +84,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
   const { canManageTeam, isLeagueAdmin, loading: authLoading } = useAuth();
-  // York games are real team data and must never route through the demo sandbox.
-  const isDemo = !isYorkMatch(matchId) && (isDemoLeague || matchId?.startsWith("match_demo_"));
+  // Persisted team games are real data and must never route through the demo sandbox.
+  const isDemo = isDemoMatchId(matchId) && (isDemoLeague || matchId?.startsWith("match_demo_"));
   const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
@@ -110,10 +100,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [loadingData, setLoadingData] = useState(true);
   const [matchStatus, setMatchStatus] = useState<string>("scheduled");
   const [matchData, setMatchData] = useState<any>(null);
-  const managingTeamId = matchData?.managingTeamId ||
-    (isYorkMatch(matchId) ? YORK_TEAM_ID : matchData?.homeTeamId);
+  const managingTeamId = matchData?.managingTeamId || matchData?.homeTeamId;
   const canEdit = !authLoading && (
-    !!canManageTeam?.(managingTeamId) || (!isYorkMatch(matchId) && isLeagueAdmin)
+    !!canManageTeam?.(managingTeamId) || ((isDemo || !!matchData?.leagueId) && isLeagueAdmin)
   );
   const canTrackPlays = canEdit && matchStatus !== "completed";
 
@@ -223,25 +212,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           }
 
           if (!mData) {
-            const yMatch = getYorkMatch(matchId);
-            if (yMatch) {
-              mData = { ...yMatch };
-            }
-          }
-
-          if (!mData) {
             mData = getSandboxMatches().find((m: any) => m.id === matchId);
-          }
-
-          if (!mData && typeof window !== "undefined") {
-            try {
-              const raw = localStorage.getItem("flagos_york_matches");
-              if (raw) {
-                const list = JSON.parse(raw);
-                const found = list.find((m: any) => m.id === matchId);
-                if (found) mData = { ...found };
-              }
-            } catch {}
           }
 
           if (!mData) {
@@ -262,23 +233,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
             }
           } catch (e) {
             console.warn("Could not load players from Firestore:", e);
-          }
-
-          if (
-            mData.homeTeamId === YORK_TEAM_ID ||
-            mData.awayTeamId === YORK_TEAM_ID ||
-            isYorkTeam(mData.homeTeamId) ||
-            isYorkTeam(mData.awayTeamId) ||
-            isYorkTeam(mData.managingTeamId) ||
-            matchId.startsWith("match_york_")
-          ) {
-            const yPlayers = getYorkTeamPlayers();
-            const existingNames = new Set(allP.map((p: any) => p.playerName || p.name));
-            for (const yp of yPlayers) {
-              if (!existingNames.has(yp.playerName)) {
-                allP.push(yp);
-              }
-            }
           }
         }
 
@@ -367,25 +321,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           console.warn("Could not query Firestore plays:", e);
           firestoreFailed = true;
         }
-
-        if (isYorkMatch(matchId)) {
-          const merged = new Map(getYorkTeamPlaysForMatch(matchId).map((play) => [play.id, play]));
-          for (const play of pList) {
-            if (play.isHidden) merged.delete(play.id);
-            else merged.set(play.id, play);
-          }
-          pList = Array.from(merged.values()).sort((a, b) =>
-            String(a.timestamp || "").localeCompare(String(b.timestamp || "")),
-          );
-        } else if (pList.length === 0) {
-          const yorkPlays = getYorkTeamPlaysForMatch(matchId);
-          if (yorkPlays && yorkPlays.length > 0) {
-            pList = yorkPlays;
-          }
-        }
       }
       setPlaysError(
-        firestoreFailed && pList.length === 0 && !isYorkMatch(matchId)
+        firestoreFailed && pList.length === 0
           ? "Couldn't reach the server to load plays. Showing nothing until the connection is restored."
           : null
       );
@@ -466,12 +404,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         console.warn("Could not save match state to Firestore, saving locally:", err);
         setSaveNotice({ kind: "warning", message: "Game state could not be synced. Changes are on this device only." });
       });
-      if (matchData) {
-        saveYorkCustomMatch({
-          ...matchData,
-          ...updatedMatchState,
-        });
-      }
     }, 800);
     return () => clearTimeout(saveState);
   }, [currentDown, possession, homeScore, awayScore, half, firstHalfStartPossession, loadingData, matchStatus, isDemo, matchData, canEdit]);
@@ -496,12 +428,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       await setDoc(doc(db, "matches", matchId), { subs: newSubs }, { merge: true });
     } catch (e) {
       console.warn("Error saving sub to match Firestore, saving locally:", e);
-    }
-    if (matchData) {
-      saveYorkCustomMatch({
-        ...matchData,
-        subs: newSubs,
-      });
     }
   };
 
@@ -562,12 +488,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         ...finalUpdate,
         completedAt: serverTimestamp(),
       }, { merge: true });
-      if (matchData) {
-        saveYorkCustomMatch({
-          ...matchData,
-          ...finalUpdate,
-        });
-      }
       setMatchStatus("completed");
       setActiveTab("play-by-play");
       setStep("IDLE");
@@ -736,11 +656,6 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       loadPlays();
       return;
     }
-    const fullPlay = {
-      ...playData,
-      matchId,
-      timestamp: new Date().toISOString(),
-    };
     try {
       await createSecureRecord("play", {
         ...playData,
@@ -748,16 +663,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       });
       setSaveNotice(null);
     } catch (e) {
-      console.warn("Error logging play to Firestore, saving locally:", e);
-      const savedLocally = saveYorkPlay(matchId, {
-        ...fullPlay,
-        id: `play_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      });
-      setSaveNotice(
-        savedLocally
-          ? { kind: "warning", message: "Couldn't reach the server — this play was saved on this device only." }
-          : { kind: "error", message: "This play could not be saved. Check your connection and log it again." }
-      );
+      console.warn("Error logging play to Firestore:", e);
+      setSaveNotice({ kind: "error", message: "This play could not be saved. Check your connection and log it again." });
     }
     loadPlays();
   };
@@ -974,16 +881,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         loadPlays();
         alert("Last play undone successfully.");
       } else {
-        const localPlays = getYorkTeamPlaysForMatch(matchId);
-        if (localPlays.length > 0) {
-          const lastPlay = localPlays[localPlays.length - 1];
-          deleteYorkPlay(matchId, lastPlay.id);
-          resetPlayForm();
-          loadPlays();
-          alert("Last play undone successfully.");
-        } else {
-          alert("No plays found to undo.");
-        }
+        alert("No plays found to undo.");
       }
     } catch (e) {
       console.error("Error undoing play:", e);

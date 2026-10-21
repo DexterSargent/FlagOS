@@ -8,31 +8,29 @@ import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/
 import { useLeague } from "@/lib/leagueContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
-import { isYorkTeam, YORK_TEAM_ID } from "@/lib/yorkStaff";
-import { getYorkTeamData, YORK_LIONS_TEAM } from "@/lib/yorkTeamProfile";
+import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 import { loadTeamSeasonSummary, getPlayerNumber, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 import { resolveTeamColorPalette } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
-  const teamId = isYorkTeam(unwrappedParams.id) ? YORK_TEAM_ID : unwrappedParams.id;
-  const isYork = isYorkTeam(teamId);
+  const teamId = unwrappedParams.id;
   const { settings, isDemoLeague } = useLeague();
-  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague && !isYork);
+  const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague);
 
   const { palette: contextPalette } = useTeamColors();
-  const [team, setTeam] = useState<any>(() => isYork ? { ...YORK_LIONS_TEAM } : null);
+  const [team, setTeam] = useState<any>(null);
   const palette = resolveTeamColorPalette(team || contextPalette);
   const [stats, setStats] = useState<any[]>([]);
-  const [loading, setLoading] = useState(!isYork);
-  const [statsLoading, setStatsLoading] = useState(isYork);
+  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    setTeam(isYork ? { ...getYorkTeamData() } : null);
+    setTeam(null);
     setStats([]);
     setLoadError(null);
     const fetchData = async () => {
@@ -42,22 +40,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         let matches: any[] = [];
         let plays: any[] = [];
 
-        if (isYork) {
-          tObj = { ...getYorkTeamData() };
-          setStatsLoading(true);
-          const [teamSnap, summary] = await Promise.all([
-            getDoc(doc(db, "teams", teamId)),
-            loadTeamSeasonSummary(teamId),
-          ]);
-          if (cancelled) return;
-          if (teamSnap.exists()) tObj = { ...tObj, ...teamSnap.data() };
-          setTeam(tObj);
-          setStats(Object.entries(summary.playerStats).map(([name, player]) => ({ ...player, name, number: getPlayerNumber(summary, name) })));
-          setLoadError(null);
-          setStatsLoading(false);
-          setLoading(false);
-          return;
-        } else if (isDemoLeague) {
+        if (isDemoLeague) {
           if (!sandbox) return;
           const { getSandboxTeams, getSandboxPlayers, getSandboxMatches, getSandboxPlays } = sandbox;
           tObj = getSandboxTeams().find((t) => t.id === teamId || (teamId === "team_apex" && t.id === "team_kc"));
@@ -83,24 +66,34 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           } catch (error) {
             if (!(error instanceof TeamSeasonSummaryError) || error.status !== 404) throw error;
           }
-          const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
-            getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
-            getDocs(query(
-              collection(db, "matches"),
-              where("leagueId", "==", leagueId),
-              where("isHidden", "!=", true),
-              limit(512),
-            )),
-            getDocs(query(
-              collection(db, "plays"),
-              where("leagueId", "==", leagueId),
-              where("isHidden", "!=", true),
-              limit(10_000),
-            )),
-          ]);
-          players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-          plays = playsSnap.docs.map((d) => d.data() as any);
+          if (!leagueId) {
+            const [playersSnap, season] = await Promise.all([
+              getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
+              loadTeamSeasonData(teamId),
+            ]);
+            players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            matches = season.matches;
+            plays = season.plays;
+          } else {
+            const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
+              getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
+              getDocs(query(
+                collection(db, "matches"),
+                where("leagueId", "==", leagueId),
+                where("isHidden", "!=", true),
+                limit(512),
+              )),
+              getDocs(query(
+                collection(db, "plays"),
+                where("leagueId", "==", leagueId),
+                where("isHidden", "!=", true),
+                limit(10_000),
+              )),
+            ]);
+            players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            plays = playsSnap.docs.map((d) => d.data() as any);
+          }
         }
 
         if (cancelled) return;
@@ -153,7 +146,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           const isEligible = (name: string) => name && statsMap[name];
           // Offensive stats only count on our possessions, defensive stats only on theirs.
           const possTeam = play.possessionTeamId;
-          const weHaveBall = !possTeam || possTeam === targetTeamId || (isYork && isYorkTeam(possTeam));
+          const weHaveBall = !possTeam || possTeam === targetTeamId;
 
           const isConversionPlay = Boolean(
             play.isConversion === true ||
@@ -238,11 +231,11 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
     fetchData();
     let unsubscribe: (() => void) | undefined;
-    if (isDemoLeague && !isYork && sandbox) {
+    if (isDemoLeague && sandbox) {
       unsubscribe = sandbox.subscribeDemoSandbox(() => fetchData());
     }
     return () => { cancelled = true; unsubscribe?.(); };
-  }, [teamId, isDemoLeague, reloadKey, isYork, sandbox]);
+  }, [teamId, isDemoLeague, reloadKey, sandbox]);
 
   const getTop3 = (key: string) => {
     const sorted = [...stats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);

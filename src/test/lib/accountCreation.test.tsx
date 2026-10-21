@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "@/lib/authContext";
-import { YORK_ADMIN_EMAILS } from "@/lib/yorkStaff";
+import { requestPrivateData } from "@/lib/secureWrites";
+const TEAM_ADMIN_EMAILS = ["head@falcons.com", "assistant@falcons.com"];
 
 const {
   createUserWithEmailAndPasswordMock,
@@ -83,14 +84,15 @@ function CoachHarness() {
   const { role, isPlatformAdmin, managedTeamId, canManageTeam } = useAuth();
   return <output>{JSON.stringify({
     role, isPlatformAdmin, managedTeamId,
-    york: canManageTeam("york_lions"),
-    alias: canManageTeam("team_york"),
+    team: canManageTeam("falcons"),
+    second: canManageTeam("hawks"),
     other: canManageTeam("team_other"),
   })}</output>;
 }
 
 describe("AuthProvider account creation", () => {
   beforeEach(() => {
+    vi.mocked(requestPrivateData).mockResolvedValue({ players: [], teams: [] });
     authStateCallback.current = null;
     createUserWithEmailAndPasswordMock.mockReset();
     updateProfileMock.mockReset();
@@ -155,17 +157,18 @@ describe("AuthProvider account creation", () => {
     });
   });
 
-  it.each(YORK_ADMIN_EMAILS.filter((email) => email !== "dextersargent@gmail.com"))(
-    "grants verified %s York-only coach access without platform privileges",
+  it.each(TEAM_ADMIN_EMAILS)(
+    "grants verified %s independent team coach access without platform privileges",
     async (email) => {
+      vi.mocked(requestPrivateData).mockResolvedValue({ players: [], teams: [{ id: "falcons", name: "Falcons" }, { id: "hawks", name: "Hawks" }] });
       render(<AuthProvider><CoachHarness /></AuthProvider>);
       await act(async () => {
         await authStateCallback.current?.({ uid: "coach", email, emailVerified: true });
       });
       const state = JSON.parse(screen.getByRole("status").textContent || "{}");
       expect(state).toEqual({
-        role: "team_admin", isPlatformAdmin: false, managedTeamId: "york_lions",
-        york: true, alias: true, other: false,
+        role: "team_admin", isPlatformAdmin: false, managedTeamId: "falcons",
+        team: true, second: true, other: false,
       });
     },
   );
@@ -174,11 +177,11 @@ describe("AuthProvider account creation", () => {
     render(<AuthProvider><CoachHarness /></AuthProvider>);
     await act(async () => {
       await authStateCallback.current?.({
-        uid: "unverified-coach", email: "tbrown99@my.yorku.ca", emailVerified: false,
+        uid: "unverified-coach", email: "assistant@falcons.com", emailVerified: false,
       });
     });
     const state = JSON.parse(screen.getByRole("status").textContent || "{}");
-    expect(state.york).toBe(false);
+    expect(state.team).toBe(false);
     expect(state.isPlatformAdmin).toBe(false);
   });
 });

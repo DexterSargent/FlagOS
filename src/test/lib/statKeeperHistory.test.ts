@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDocs, where } from "firebase/firestore";
 import { loadStatKeeperHistory } from "@/lib/statKeeperHistory";
-import { loadYorkSeasonData } from "@/lib/yorkSeasonData";
+import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 
 vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("firebase/firestore", () => ({
@@ -11,8 +11,8 @@ vi.mock("firebase/firestore", () => ({
 vi.mock("@/lib/demoSandbox", () => ({
   getSandboxPlays: () => [{ id: "current", matchId: "demo" }, { id: "past", matchId: "older" }],
 }));
-vi.mock("@/lib/yorkSeasonData", () => ({
-  loadYorkSeasonData: vi.fn().mockResolvedValue({
+vi.mock("@/lib/teamSeasonData", () => ({
+  loadTeamSeasonData: vi.fn().mockResolvedValue({
     plays: [{ id: "current", matchId: "independent" }, { id: "past", matchId: "previous" }],
   }),
 }));
@@ -20,11 +20,11 @@ vi.mock("@/lib/yorkSeasonData", () => ({
 describe("shared stat keeper history", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("loads York's season even without a league ID and excludes current plays", async () => {
-    expect(await loadStatKeeperHistory({ id: "independent", homeTeamId: "team_york" }, false)).toEqual([
+  it("loads an independent team's season even without a league ID and excludes current plays", async () => {
+    expect(await loadStatKeeperHistory({ id: "independent", homeTeamId: "falcons", managingTeamId: "falcons" }, false)).toEqual([
       { id: "past", matchId: "previous" },
     ]);
-    expect(loadYorkSeasonData).toHaveBeenCalledOnce();
+    expect(loadTeamSeasonData).toHaveBeenCalledWith("falcons");
     expect(getDocs).not.toHaveBeenCalled();
   });
 

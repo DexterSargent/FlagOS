@@ -3,7 +3,7 @@ import { FieldValue, Query, Transaction } from "firebase-admin/firestore";
 import { DecodedIdToken } from "firebase-admin/auth";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
-import { isYorkTeam, YORK_ADMIN_EMAILS, YORK_HEAD_COACH_EMAILS } from "@/lib/yorkStaff";
+import { accountEmailKey } from "@/lib/accountEmailKey";
 import { validateDepthCharts } from "@/lib/depthChart";
 
 export const runtime = "nodejs";
@@ -202,12 +202,37 @@ async function isTeamAdmin(
   const privateTeam = await transaction.get(adminDb.doc(`team_private/${teamId}`));
   const privateData = privateTeam.data() || {};
   return {
-    allowed: (!!data && isTeamAdminData(data, token)) || isTeamAdminData(privateData, token) ||
-      (isYorkTeam(teamId) && token.email_verified === true && YORK_ADMIN_EMAILS.includes(normalizeEmail(token.email))),
+    allowed: (!!data && isTeamAdminData(data, token)) || isTeamAdminData(privateData, token),
     leagueId: typeof data?.leagueId === "string" ? data.leagueId : "",
-    exists: team.exists || isYorkTeam(teamId),
-    standalone: isYorkTeam(teamId) || data?.isStandalone === true,
+    exists: team.exists,
+    standalone: data?.isStandalone === true,
   };
+}
+
+// The primary admin (head coach) is adminEmails[0], falling back to coachEmail.
+// Addresses linked to the same account share that role.
+async function isPrimaryTeamAdmin(
+  transaction: Transaction,
+  teamId: string,
+  token: DecodedIdToken,
+): Promise<boolean> {
+  const [privateTeam, publicTeam] = await Promise.all([
+    transaction.get(adminDb.doc(`team_private/${teamId}`)),
+    transaction.get(adminDb.doc(`teams/${teamId}`)),
+  ]);
+  const teamData = privateTeam.data() || publicTeam.data() || {};
+  const primaryEmail = Array.isArray(teamData.adminEmails) && teamData.adminEmails[0]
+    ? normalizeEmail(String(teamData.adminEmails[0]))
+    : normalizeEmail(typeof teamData.coachEmail === "string" ? teamData.coachEmail : "");
+  const email = normalizeEmail(token.email);
+  if (!primaryEmail || !email) return false;
+  if (primaryEmail === email) return true;
+  const [primaryLink, userLink] = await Promise.all([
+    transaction.get(adminDb.doc(`account_email_addresses/${accountEmailKey(primaryEmail)}`)),
+    transaction.get(adminDb.doc(`account_email_addresses/${accountEmailKey(email)}`)),
+  ]);
+  const primaryUid = primaryLink.get("accountUid");
+  return typeof primaryUid === "string" && primaryUid === userLink.get("accountUid");
 }
 
 async function authorizeWrite(
@@ -375,24 +400,8 @@ async function authorizeWrite(
     const team = teamId ? await isTeamAdmin(transaction, teamId, token) : { allowed: false, leagueId: "" };
     const leagueId = typeof playerData.leagueId === "string" ? playerData.leagueId : team.leagueId;
     const leagueAdmin = leagueId && await isLeagueAdmin(transaction, leagueId, token);
-    let isPrimaryTeamAdmin = false;
-    if (teamId) {
-      const [privateTeam, publicTeam] = await Promise.all([
-        transaction.get(adminDb.doc(`team_private/${teamId}`)),
-        transaction.get(adminDb.doc(`teams/${teamId}`)),
-      ]);
-      const teamData = privateTeam.data() || publicTeam.data() || {};
-      const primaryEmail = Array.isArray(teamData.adminEmails)
-        ? normalizeEmail(String(teamData.adminEmails[0] || ""))
-        : "";
-      const coachEmail = normalizeEmail(typeof teamData.coachEmail === "string" ? teamData.coachEmail : "");
-      isPrimaryTeamAdmin = isYorkTeam(teamId)
-        ? YORK_HEAD_COACH_EMAILS.includes(normalizeEmail(token.email))
-        : primaryEmail
-        ? primaryEmail === normalizeEmail(token.email)
-        : !!coachEmail && coachEmail === normalizeEmail(token.email);
-    }
-    if (!isPlatformAdmin(token) && !leagueAdmin && (!team.allowed || !isPrimaryTeamAdmin)) {
+    const isPrimary = !!teamId && await isPrimaryTeamAdmin(transaction, teamId, token);
+    if (!isPlatformAdmin(token) && !leagueAdmin && (!team.allowed || !isPrimary)) {
       fail("You do not have permission to delete this player.", 403);
     }
     data.teamId = teamId;
@@ -439,9 +448,6 @@ async function authorizeWrite(
       ? matchData.managingTeamId
       : typeof matchData.homeTeamId === "string" ? matchData.homeTeamId : "";
     data.isHidden = matchData.isHidden === true;
-    data.isPublicYork = !data.isHidden &&
-      [matchData.homeTeamId, matchData.awayTeamId, matchData.managingTeamId]
-        .some((id) => typeof id === "string" && isYorkTeam(id));
     if (typeof matchData.leagueId === "string" && matchData.leagueId &&
       await isLeagueAdmin(transaction, matchData.leagueId, token)) return;
     const teamIds = [matchData.homeTeamId, matchData.awayTeamId, matchData.managingTeamId]
@@ -470,16 +476,17 @@ async function authorizeWrite(
     const teamId = data.teamId;
     if (!isDocumentId(teamId)) fail("A valid team ID is required.");
     const team = await isTeamAdmin(transaction, teamId, token);
-    if (!team.allowed && !(team.leagueId && await isLeagueAdmin(transaction, team.leagueId, token))) {
+    const leagueAdmin = !!team.leagueId && await isLeagueAdmin(transaction, team.leagueId, token);
+    if (!team.allowed && !leagueAdmin) {
       fail("You do not have permission to update this playbook.", 403);
     }
-    if (isYorkTeam(teamId) && !YORK_HEAD_COACH_EMAILS.includes(normalizeEmail(token.email))) {
+    if (!isPlatformAdmin(token) && !leagueAdmin && !(await isPrimaryTeamAdmin(transaction, teamId, token))) {
       const current = await transaction.get(adminDb.doc(`teams/${teamId}/meta/playbook`));
       const books = current.data()?.playbooks;
       const nextBooks = data.playbooks as Record<string, unknown>[];
       if (Array.isArray(books) && books.some((book) =>
         !nextBooks.some((next) => next.id === book.id))) {
-        fail("Only the head coach can delete a York playbook.", 403);
+        fail("Only the head coach can delete a playbook.", 403);
       }
     }
     return;
@@ -626,11 +633,6 @@ function buildRecord(entity: Entity, data: Record<string, unknown>): Record<stri
   }
   if (entity === "play") record.timestamp = FieldValue.serverTimestamp();
   if (entity === "match" && typeof record.isHidden !== "boolean") record.isHidden = false;
-  if (entity === "match") {
-    record.isPublicYork = record.isHidden === false &&
-      [record.homeTeamId, record.awayTeamId, record.managingTeamId]
-        .some((id) => typeof id === "string" && isYorkTeam(id));
-  }
   if (entity !== "playbook") record.createdAt = FieldValue.serverTimestamp();
   return record;
 }
@@ -925,7 +927,6 @@ export async function POST(request: Request) {
             matchId: data.matchId,
             leagueId: data.leagueId,
             isHidden: data.isHidden === true,
-            isPublicYork: data.isPublicYork === true,
             managingTeamId: data.managingTeamId,
             timestamp: FieldValue.serverTimestamp(),
             createdAt: FieldValue.serverTimestamp(),
@@ -1009,12 +1010,7 @@ export async function POST(request: Request) {
         createdId = leagueId;
       } else {
         const recordCollection = getRecordCollection(requestedEntity);
-        const generatedRef = adminDb.collection(recordCollection).doc();
-        // York clients identify persisted games by ID before team data is cached.
-        const recordRef = requestedEntity === "match" && data.isStandalone === true &&
-          isYorkTeam(String(data.managingTeamId || ""))
-          ? adminDb.doc(`matches/match_york_${generatedRef.id}`)
-          : generatedRef;
+        const recordRef = adminDb.collection(recordCollection).doc();
         const record = buildRecord(requestedEntity, data);
         transaction.create(recordRef, record);
         if (requestedEntity === "league") {
