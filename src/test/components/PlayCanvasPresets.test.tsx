@@ -64,6 +64,58 @@ function applyMotion(shortName: string) {
   fireEvent.click(screen.getByTestId(`quick-route-${shortName}-motion`));
 }
 
+describe("Man coverage animation", () => {
+  function position(container: HTMLElement, label: string) {
+    const text = [...container.querySelectorAll("svg text")].find((node) => node.textContent === label)!;
+    const badge = text.parentElement!.querySelector('circle[r="18"]')!;
+    return { x: Number(badge.getAttribute("cx")) / 10, y: Number(badge.getAttribute("cy")) / 7 };
+  }
+
+  const receiver = {
+    ...mockOffensePlay.players[2],
+    route: [{ x: 15, y: 50 }, { x: 50, y: 50 }],
+  };
+  const defender = {
+    ...mockDefensePlay.players.find((player) => player.id === "p_cb1")!,
+    coverageType: "man" as const,
+    manTargetId: receiver.id,
+    route: [{ x: 90, y: 10 }],
+  };
+
+  it.each([0, 0.25, 0.5, 0.75, 1])("mirrors the receiver exactly at timeline progress %s", (progress) => {
+    const play = { ...mockDefensePlay, players: [receiver, defender] };
+    const { container } = render(<PlayCanvas play={play} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByTitle("Show opposing offense"));
+    fireEvent.change(screen.getByRole("slider", { name: "Animation timeline" }), { target: { value: progress } });
+    const recPos = position(container, "X");
+    const dbPos = position(container, "CB1");
+    expect(dbPos.x - recPos.x).toBeCloseTo(defender.x - receiver.x);
+    expect(dbPos.y - recPos.y).toBeCloseTo(defender.y - receiver.y);
+    if (progress > 0) expect(dbPos).not.toEqual({ x: defender.x, y: defender.y });
+  });
+
+  it.each([0.175, 0.35, 0.675, 1])("mirrors pre-snap motion and the post-snap route at %s", (progress) => {
+    const motionReceiver = { ...receiver, motionPath: [{ x: 35, y: 70 }], motionName: "Jet Motion" };
+    const play = { ...mockDefensePlay, players: [motionReceiver, defender] };
+    const { container } = render(<PlayCanvas play={play} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByTitle("Show opposing offense"));
+    fireEvent.change(screen.getByRole("slider", { name: "Animation timeline" }), { target: { value: progress } });
+    const recPos = position(container, "X");
+    const dbPos = position(container, "CB1");
+    expect(dbPos.x - recPos.x).toBeCloseTo(defender.x - receiver.x);
+    expect(dbPos.y - recPos.y).toBeCloseTo(defender.y - receiver.y);
+  });
+
+  it("preserves normal routing for an unresolved or defensive man target", () => {
+    const play = { ...mockDefensePlay, players: [receiver, { ...defender, manTargetId: "missing" }] };
+    const { container, rerender } = render(<PlayCanvas play={play} onChange={vi.fn()} />);
+    fireEvent.change(screen.getByRole("slider", { name: "Animation timeline" }), { target: { value: 1 } });
+    expect(position(container, "CB1")).toEqual({ x: 90, y: 10 });
+    rerender(<PlayCanvas play={{ ...play, players: [receiver, { ...defender, manTargetId: defender.id }] }} onChange={vi.fn()} />);
+    expect(position(container, "CB1")).toEqual({ x: 90, y: 10 });
+  });
+});
+
 describe("PlayCanvas Route Presets Suite", () => {
   it("moves York plays between OC categories without resetting player alignments or routes", () => {
     const book = createYorkOffensivePlaybook("york_lions");

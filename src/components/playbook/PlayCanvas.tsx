@@ -1454,6 +1454,16 @@ export default function PlayCanvas({
 
   // Calculate animated position of player given progress (0 to 1)
   const getAnimatedPlayerPos = (player: PlayerNode): { x: number; y: number } => {
+    if (player.side === "defense" && player.coverageType === "man" && player.manTargetId) {
+      const receiver = play.players.find((target) => target.id === player.manTargetId && target.side === "offense");
+      if (receiver) {
+        const receiverPos = getAnimatedPlayerPos(receiver);
+        return {
+          x: player.x + receiverPos.x - receiver.x,
+          y: player.y + receiverPos.y - receiver.y,
+        };
+      }
+    }
     const isOffense = player.side === "offense";
     const hasMotion = isOffense && playerHasMotion(player);
     const motionPts = hasMotion ? getPlayerMotionPath(player) : null;
