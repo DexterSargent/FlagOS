@@ -3,14 +3,13 @@
 import { useMemo, useState } from "react";
 import {
   calculateTeamComprehensiveStats,
-  TEAM_STAT_DEFINITIONS,
+  GAME_TEAM_STAT_DEFINITIONS,
   TeamStatDefinition,
   StatCategory,
 } from "@/lib/teamStatsCalculator";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
-import { getReadableTextColor, getTeamBadgeStyle } from "@/lib/teamColors";
+import { getAccentOnDark, getReadableTextColor } from "@/lib/teamColors";
 import { TeamLogo } from "@/components/TeamAssets";
-import { Shield, Zap, TrendingUp, Award, Activity, Flag } from "lucide-react";
 
 export interface GameTeamStatsProps {
   matchData: any;
@@ -18,15 +17,32 @@ export interface GameTeamStatsProps {
   isDemo?: boolean;
 }
 
+// Single-game categories; "record" only carries points for/against/differential here.
 const CATEGORY_TABS: { id: "all" | StatCategory; label: string }[] = [
-  { id: "all", label: "All Stats" },
-  { id: "downs", label: "Downs & Situational" },
+  { id: "all", label: "All" },
+  { id: "record", label: "Scoring" },
   { id: "offense", label: "Offense" },
+  { id: "downs", label: "Downs" },
   { id: "defense", label: "Defense" },
-  { id: "discipline", label: "Discipline & Margins" },
-  { id: "pats", label: "PAT Efficiency" },
-  { id: "record", label: "Scoring & Record" },
+  { id: "pats", label: "PATs" },
+  { id: "discipline", label: "Discipline" },
 ];
+
+const CATEGORY_ORDER: StatCategory[] = ["record", "offense", "downs", "defense", "pats", "discipline"];
+const CATEGORY_TITLES: Record<StatCategory, string> = {
+  record: "Scoring",
+  offense: "Offense",
+  downs: "Downs & Situational",
+  defense: "Defense",
+  pats: "PAT Efficiency",
+  discipline: "Turnovers & Discipline",
+};
+
+function parseNumericValue(val: string | number): number | null {
+  if (typeof val === "number") return Number.isFinite(val) ? val : null;
+  const match = String(val).match(/[+-]?\d+(\.\d+)?/);
+  return match ? parseFloat(match[0]) : null;
+}
 
 export default function GameTeamStats({ matchData, plays, isDemo = false }: GameTeamStatsProps) {
   const [selectedView, setSelectedView] = useState<"comparison" | "home" | "away">("comparison");
@@ -40,12 +56,13 @@ export default function GameTeamStats({ matchData, plays, isDemo = false }: Game
   const { home: homeColors, away: awayColors } = useMatchTeamColors(matchData, isDemo);
   const homeText = getReadableTextColor(homeColors.secondary, homeColors.primary);
   const awayText = getReadableTextColor(awayColors.secondary, awayColors.primary);
+  const homeAccent = getAccentOnDark(homeColors);
+  const awayAccent = getAccentOnDark(awayColors);
 
-  // Live or completed score resolution
   const homeScore = matchData?.matchState?.homeScore ?? matchData?.homeScore ?? 0;
   const awayScore = matchData?.matchState?.awayScore ?? matchData?.awayScore ?? 0;
+  const isFinal = matchData?.status === "completed" || matchData?.status === "Final";
 
-  // Single game object scoped for comprehensive calculator
   const scopedMatch = useMemo(
     () => ({
       ...matchData,
@@ -61,7 +78,6 @@ export default function GameTeamStats({ matchData, plays, isDemo = false }: Game
     [matchData, homeScore, awayScore, homeTeamId, awayTeamId, homeTeamName, awayTeamName]
   );
 
-  // Calculate comprehensive stats for both squads for this individual game
   const homeStats = useMemo(
     () =>
       calculateTeamComprehensiveStats(homeTeamId, [scopedMatch], plays, {
@@ -80,155 +96,120 @@ export default function GameTeamStats({ matchData, plays, isDemo = false }: Game
     [awayTeamId, scopedMatch, plays, awayTeamName]
   );
 
-  // Filter stat definitions according to category selector
   const filteredDefs = useMemo(() => {
-    if (selectedCategory === "all") return TEAM_STAT_DEFINITIONS;
-    return TEAM_STAT_DEFINITIONS.filter((d) => d.category === selectedCategory);
+    if (selectedCategory === "all") return GAME_TEAM_STAT_DEFINITIONS;
+    return GAME_TEAM_STAT_DEFINITIONS.filter((d) => d.category === selectedCategory);
   }, [selectedCategory]);
 
-  // Group definitions by category for structured comparison
-  const groupedDefs = useMemo(() => {
-    const groups: { category: StatCategory; label: string; defs: TeamStatDefinition[] }[] = [];
-    const categories: StatCategory[] = ["downs", "offense", "defense", "discipline", "pats", "record"];
-
-    categories.forEach((cat) => {
-      const defs = filteredDefs.filter((d) => d.category === cat);
-      if (defs.length > 0) {
-        groups.push({
-          category: cat,
-          label: defs[0].categoryLabel,
-          defs,
-        });
-      }
-    });
-    return groups;
-  }, [filteredDefs]);
-
-  // Numeric extraction helper for comparison highlight
-  const parseNumericValue = (val: string | number): number | null => {
-    if (typeof val === "number") return val;
-    const match = String(val).match(/([+-]?\d+(\.\d+)?)/);
-    return match ? parseFloat(match[0]) : null;
-  };
+  const groupedDefs = useMemo(
+    () =>
+      CATEGORY_ORDER.map((category) => ({
+        category,
+        label: CATEGORY_TITLES[category],
+        defs: filteredDefs.filter((d) => d.category === category),
+      })).filter((group) => group.defs.length > 0),
+    [filteredDefs]
+  );
 
   const isHomeLeading = (def: TeamStatDefinition): boolean | null => {
     const hVal = parseNumericValue(def.getValue(homeStats));
     const aVal = parseNumericValue(def.getValue(awayStats));
     if (hVal === null || aVal === null || hVal === aVal) return null;
-
-    // Lower is better for points allowed, penalties, and giveaways
-    if (def.id === "pa" || def.id === "dppg" || def.id === "penalties" || def.id === "penaltyYards" || def.id === "giveaways") {
-      return hVal < aVal;
-    }
-    return hVal > aVal;
+    return def.lowerIsBetter ? hVal < aVal : hVal > aVal;
   };
+
+  const homeWon = homeScore > awayScore;
+  const awayWon = awayScore > homeScore;
+
+  const viewOptions = [
+    { id: "comparison" as const, label: "Compare", accent: "#FFFFFF" },
+    { id: "home" as const, label: homeTeamName, accent: homeAccent },
+    { id: "away" as const, label: awayTeamName, accent: awayAccent },
+  ];
 
   return (
     <div
       role="region"
       aria-label="Individual game team stats"
       data-testid="game-team-stats"
-      className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pb-6 scrollbar-thin text-white"
+      className="flex-1 min-h-0 space-y-3 sm:space-y-4 overflow-y-auto overscroll-contain pb-6 scrollbar-thin text-white"
     >
-      {/* MATCH SUMMARY SCOREBOARD BANNER */}
-      <div className="bg-neutral-900 border border-white/10 rounded-2xl p-3 sm:p-4 shadow-xl">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-          {/* Home Team */}
-          <div
-            className="flex items-center gap-3 flex-1 min-w-0 p-2 sm:p-2.5 rounded-xl border border-white/5 transition-all"
-            style={{ backgroundColor: `${homeColors.secondary}20`, borderColor: `${homeColors.primary}40` }}
-          >
-            <TeamLogo teamName={homeTeamName} className="w-8 h-8 sm:w-10 sm:h-10 shrink-0" isDemo={isDemo} primaryColor={homeText} />
-            <div className="min-w-0 flex-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block truncate">Home Team</span>
-              <span className="text-sm sm:text-base font-black truncate block text-white">{homeTeamName}</span>
-            </div>
-            <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white px-2">
-              {homeScore}
+      {/* Scoreboard */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-neutral-950 shadow-xl">
+        <div className="flex h-1" aria-hidden="true">
+          <div className="flex-1" style={{ backgroundColor: homeAccent }} />
+          <div className="flex-1" style={{ backgroundColor: awayAccent }} />
+        </div>
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.12]"
+          aria-hidden="true"
+          style={{ background: `linear-gradient(90deg, ${homeAccent} 0%, transparent 45%, transparent 55%, ${awayAccent} 100%)` }}
+        />
+        <div className="relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-4 px-3 py-3 sm:px-5 sm:py-4">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <TeamLogo teamName={homeTeamName} className="h-8 w-8 sm:h-11 sm:w-11 shrink-0" isDemo={isDemo} primaryColor={homeText} />
+            <div className="min-w-0">
+              <span className="block text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-neutral-500">Home</span>
+              <span className="block truncate text-xs sm:text-base font-black" title={homeTeamName}>{homeTeamName}</span>
             </div>
           </div>
-
-          <div className="text-xs font-mono font-black uppercase text-neutral-500 px-1 shrink-0">VS</div>
-
-          {/* Away Team */}
-          <div
-            className="flex items-center gap-3 flex-1 min-w-0 p-2 sm:p-2.5 rounded-xl border border-white/5 transition-all flex-row-reverse sm:flex-row"
-            style={{ backgroundColor: `${awayColors.secondary}20`, borderColor: `${awayColors.primary}40` }}
-          >
-            <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white px-2">
-              {awayScore}
+          <div className="flex flex-col items-center px-1">
+            <div className="flex items-center gap-1.5 sm:gap-3 font-mono font-black tabular-nums text-2xl sm:text-4xl leading-none">
+              <span className={awayWon ? "text-neutral-500" : "text-white"}>{homeScore}</span>
+              <span className="text-neutral-600 text-lg sm:text-2xl">&ndash;</span>
+              <span className={homeWon ? "text-neutral-500" : "text-white"}>{awayScore}</span>
             </div>
-            <div className="min-w-0 flex-1 text-right sm:text-left">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 block truncate">Away Team</span>
-              <span className="text-sm sm:text-base font-black truncate block text-white">{awayTeamName}</span>
+            <span className="mt-1 whitespace-nowrap text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-neutral-500">
+              {isFinal ? "Final" : "Live"} &middot; {plays.length} plays
+            </span>
+          </div>
+          <div className="flex min-w-0 flex-row-reverse items-center gap-2 sm:gap-3 text-right">
+            <TeamLogo teamName={awayTeamName} className="h-8 w-8 sm:h-11 sm:w-11 shrink-0" isDemo={isDemo} primaryColor={awayText} />
+            <div className="min-w-0">
+              <span className="block text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-neutral-500">Away</span>
+              <span className="block truncate text-xs sm:text-base font-black" title={awayTeamName}>{awayTeamName}</span>
             </div>
-            <TeamLogo teamName={awayTeamName} className="w-8 h-8 sm:w-10 sm:h-10 shrink-0" isDemo={isDemo} primaryColor={awayText} />
           </div>
         </div>
       </div>
 
-      {/* VIEW SELECTOR & CATEGORY FILTERS */}
-      <div className="flex flex-col gap-2.5">
-        {/* Main View Mode Selector (Comparison vs Home Breakdown vs Away Breakdown) */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 p-1 bg-neutral-900/90 border border-white/10 rounded-xl">
-            <button
-              type="button"
-              data-testid="team-stats-view-comparison"
-              onClick={() => setSelectedView("comparison")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                selectedView === "comparison"
-                  ? "bg-emerald-500 text-black shadow-md font-black"
-                  : "text-neutral-400 hover:text-white"
-              }`}
-            >
-              Head-to-Head Comparison
-            </button>
-            <button
-              type="button"
-              data-testid="team-stats-view-home"
-              onClick={() => setSelectedView("home")}
-              style={selectedView === "home" ? getTeamBadgeStyle({ primaryColor: homeColors.primary, secondaryColor: homeColors.secondary }) : undefined}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                selectedView === "home"
-                  ? "shadow-md"
-                  : "bg-transparent border-transparent text-neutral-400 hover:text-white"
-              }`}
-            >
-              {homeTeamName}
-            </button>
-            <button
-              type="button"
-              data-testid="team-stats-view-away"
-              onClick={() => setSelectedView("away")}
-              style={selectedView === "away" ? getTeamBadgeStyle({ primaryColor: awayColors.primary, secondaryColor: awayColors.secondary }) : undefined}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                selectedView === "away"
-                  ? "shadow-md"
-                  : "bg-transparent border-transparent text-neutral-400 hover:text-white"
-              }`}
-            >
-              {awayTeamName}
-            </button>
-          </div>
-
-          <div className="text-[11px] font-mono text-neutral-400">
-            {plays.length} Total Plays Logged
-          </div>
+      {/* View selector & category filters */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-neutral-900/90 p-1" role="tablist" aria-label="Team stats view">
+          {viewOptions.map((option) => {
+            const active = selectedView === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-testid={`team-stats-view-${option.id}`}
+                onClick={() => setSelectedView(option.id)}
+                title={option.label}
+                className={`min-w-0 truncate rounded-lg px-2 py-1.5 text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                  active ? "bg-white/10 text-white shadow-inner" : "text-neutral-400 hover:text-white"
+                }`}
+                style={active ? { boxShadow: `inset 0 -2px 0 ${option.accent}` } : undefined}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Category Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
           {CATEGORY_TABS.map((cat) => (
             <button
               key={cat.id}
               type="button"
               data-testid={`category-filter-${cat.id}`}
+              aria-pressed={selectedCategory === cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all border cursor-pointer ${
+              className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer ${
                 selectedCategory === cat.id
-                  ? "bg-white/20 text-white border-white/30"
-                  : "bg-neutral-900 border-white/5 text-neutral-400 hover:text-white hover:border-white/10"
+                  ? "border-white/30 bg-white text-black"
+                  : "border-white/10 bg-neutral-900 text-neutral-400 hover:border-white/20 hover:text-white"
               }`}
             >
               {cat.label}
@@ -237,150 +218,121 @@ export default function GameTeamStats({ matchData, plays, isDemo = false }: Game
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODE 1: HEAD-TO-HEAD COMPARISON VIEW                                      */}
-      {/* ========================================================================= */}
+      {/* Head-to-head comparison */}
       {selectedView === "comparison" && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {groupedDefs.map((group) => (
-            <div
+            <section
               key={group.category}
-              className="bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden shadow-lg"
+              aria-label={group.label}
+              className="overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/80 shadow-lg"
             >
-              {/* Category Header */}
-              <div className="bg-neutral-800/60 px-4 py-2.5 border-b border-white/10 flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-neutral-300">
-                  {group.label}
+              <div className="flex items-center justify-between gap-2 border-b border-white/5 px-3 py-2 sm:px-4">
+                <span className="truncate text-[11px] font-mono font-bold uppercase tracking-widest text-white/80" title={homeTeamName}>
+                  <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: homeAccent }} />
+                  <span className="hidden sm:inline">{homeTeamName}</span>
                 </span>
-                <span className="text-[10px] font-mono text-neutral-500 uppercase">
-                  {group.defs.length} Metrics
+                <h3 className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-white">{group.label}</h3>
+                <span className="truncate text-right text-[11px] font-mono font-bold uppercase tracking-widest text-white/80" title={awayTeamName}>
+                  <span className="hidden sm:inline">{awayTeamName}</span>
+                  <span className="ml-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: awayAccent }} />
                 </span>
               </div>
 
-              {/* Table of Metrics */}
               <div className="divide-y divide-white/5">
                 {group.defs.map((def) => {
                   const hVal = def.getValue(homeStats);
                   const aVal = def.getValue(awayStats);
                   const lead = isHomeLeading(def);
+                  const hNum = Math.max(0, parseNumericValue(hVal) ?? 0);
+                  const aNum = Math.max(0, parseNumericValue(aVal) ?? 0);
+                  const scale = Math.max(hNum, aNum) || 1;
 
                   return (
                     <div
                       key={def.id}
                       data-testid={`comparison-row-${def.id}`}
-                      className="p-3 sm:p-3.5 flex items-center justify-between gap-2 sm:gap-4 hover:bg-white/[0.02] transition-colors"
+                      className="px-3 py-2.5 sm:px-4 sm:py-3"
+                      title={def.description}
                     >
-                      {/* Home Value */}
-                      <div className="w-24 sm:w-32 shrink-0 text-left">
+                      <div className="flex items-baseline justify-between gap-2">
                         <span
-                          className={`text-sm sm:text-base font-mono font-black ${
-                            lead === true
-                              ? "text-emerald-400 drop-shadow-sm font-extrabold"
-                              : lead === false
-                              ? "text-neutral-400 font-semibold"
-                              : "text-white"
+                          className={`w-16 sm:w-24 shrink-0 font-mono tabular-nums text-sm sm:text-base ${
+                            lead === true ? "font-black text-white" : lead === false ? "font-semibold text-neutral-500" : "font-bold text-neutral-200"
                           }`}
                         >
                           {hVal}
                         </span>
-                      </div>
-
-                      {/* Metric Name & Description */}
-                      <div className="flex-1 min-w-0 text-center px-1">
-                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                          <span className="text-xs sm:text-sm font-bold text-white tracking-wide">
-                            {def.label}
-                          </span>
-                          <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.2 rounded bg-white/5 text-neutral-400">
-                            {def.shortLabel}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-neutral-400 line-clamp-1 hidden sm:block mt-0.5">
-                          {def.description}
+                        <span className="min-w-0 flex-1 truncate text-center text-[11px] sm:text-xs font-semibold uppercase tracking-wide text-neutral-400">
+                          {def.label}
                         </span>
-                      </div>
-
-                      {/* Away Value */}
-                      <div className="w-24 sm:w-32 shrink-0 text-right">
                         <span
-                          className={`text-sm sm:text-base font-mono font-black ${
-                            lead === false
-                              ? "text-emerald-400 drop-shadow-sm font-extrabold"
-                              : lead === true
-                              ? "text-neutral-400 font-semibold"
-                              : "text-white"
+                          className={`w-16 sm:w-24 shrink-0 text-right font-mono tabular-nums text-sm sm:text-base ${
+                            lead === false ? "font-black text-white" : lead === true ? "font-semibold text-neutral-500" : "font-bold text-neutral-200"
                           }`}
                         >
                           {aVal}
                         </span>
                       </div>
+                      <div className="mt-1.5 flex gap-1" aria-hidden="true">
+                        <div className="flex h-1.5 flex-1 justify-end overflow-hidden rounded-l-full bg-white/[0.06]">
+                          <div
+                            className="h-full rounded-l-full transition-all duration-500"
+                            style={{ width: `${(hNum / scale) * 100}%`, backgroundColor: homeAccent, opacity: lead === false ? 0.4 : 1 }}
+                          />
+                        </div>
+                        <div className="flex h-1.5 flex-1 overflow-hidden rounded-r-full bg-white/[0.06]">
+                          <div
+                            className="h-full rounded-r-full transition-all duration-500"
+                            style={{ width: `${(aNum / scale) * 100}%`, backgroundColor: awayAccent, opacity: lead === true ? 0.4 : 1 }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODE 2 & 3: TEAM STAT CARDS GRID (MATCHING TEAM DASHBOARD EXACTLY)        */}
-      {/* ========================================================================= */}
-      {(selectedView === "home" || selectedView === "away") && (
-        <div className="space-y-4">
-          {(() => {
-            const isHome = selectedView === "home";
-            const teamName = isHome ? homeTeamName : awayTeamName;
-            const targetStats = isHome ? homeStats : awayStats;
-            const targetColors = isHome ? homeColors : awayColors;
+      {/* Single-team breakdown */}
+      {(selectedView === "home" || selectedView === "away") && (() => {
+        const isHome = selectedView === "home";
+        const teamName = isHome ? homeTeamName : awayTeamName;
+        const targetStats = isHome ? homeStats : awayStats;
+        const accent = isHome ? homeAccent : awayAccent;
 
-            return (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-neutral-900 border border-white/10">
-                  <div className="flex items-center gap-2">
-                    <TeamLogo teamName={teamName} className="w-6 h-6 shrink-0" isDemo={isDemo} />
-                    <span className="text-sm font-bold text-white">{teamName} Game Breakdown</span>
-                  </div>
-                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300">
-                    {filteredDefs.length} Stats
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {filteredDefs.map((def) => {
-                    const value = def.getValue(targetStats);
-
-                    return (
-                      <div
-                        key={def.id}
-                        data-testid={`stat-card-${def.id}`}
-                        className="p-3.5 rounded-2xl bg-neutral-900/90 border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between group/card relative overflow-hidden shadow-md"
-                      >
-                        <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-neutral-400 truncate">
-                            {def.shortLabel}
-                          </span>
-                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-white/5 text-neutral-400">
-                            {def.category}
-                          </span>
-                        </div>
-                        <div className="my-1">
-                          <div className="text-lg sm:text-xl font-black font-mono tracking-tight text-white group-hover/card:text-cyan-300 transition-colors">
-                            {value}
-                          </div>
-                        </div>
-                        <div className="text-[11px] text-neutral-400 font-medium line-clamp-1" title={def.description}>
-                          {def.label}
-                        </div>
+        return (
+          <div className="space-y-3">
+            {groupedDefs.map((group) => (
+              <section key={group.category} aria-label={`${teamName} ${group.label}`} className="space-y-2">
+                <h3 className="flex items-center gap-2 px-1 text-[11px] font-black uppercase tracking-widest text-neutral-400">
+                  <span className="h-3 w-1 rounded-full" style={{ backgroundColor: accent }} />
+                  {group.label}
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                  {group.defs.map((def) => (
+                    <div
+                      key={def.id}
+                      data-testid={`stat-card-${def.id}`}
+                      title={def.description}
+                      className="relative overflow-hidden rounded-xl border border-white/10 bg-neutral-900/90 p-3 shadow-md"
+                    >
+                      <div className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: accent }} aria-hidden="true" />
+                      <div className="font-mono text-xl sm:text-2xl font-black tabular-nums tracking-tight text-white">
+                        {def.getValue(targetStats)}
                       </div>
-                    );
-                  })}
+                      <div className="mt-0.5 text-[11px] font-semibold leading-tight text-neutral-400">{def.label}</div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
+              </section>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }

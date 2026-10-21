@@ -50,6 +50,16 @@ export function getReadableTextColor(background: string, preferred: string): str
   return contrastRatio(bg, 0) >= contrastRatio(bg, 1) ? "#000000" : "#FFFFFF";
 }
 
+/** First team colour that stays legible on a near-black surface, for accents, bars and highlights. */
+export function getAccentOnDark(palette: TeamColorPalette, surface = "#0A0A0A"): string {
+  const bg = luminance(surface) ?? 0;
+  const candidate = [palette.primary, palette.secondary, palette.tertiary].find((color) => {
+    const lum = luminance(color);
+    return lum !== null && contrastRatio(bg, lum) >= 3;
+  });
+  return candidate || "#FFFFFF";
+}
+
 export function getTeamBadgeStyle(team?: TeamColorSource | null): {
   color: string;
   backgroundColor: string;

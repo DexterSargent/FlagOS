@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Activity, Trophy, Crosshair, Shield, Flame } from "lucide-react";
+import { ChevronLeft, Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
@@ -10,7 +10,8 @@ import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 import { loadTeamSeasonSummary, getPlayerNumber, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
-import { resolveTeamColorPalette } from "@/lib/teamColors";
+import { getAccentOnDark, getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors";
+import { calculateTeamComprehensiveStats, type TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
 import { useTeamColors } from "@/lib/teamColorContext";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,6 +24,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const [team, setTeam] = useState<any>(null);
   const palette = resolveTeamColorPalette(team || contextPalette);
   const [stats, setStats] = useState<any[]>([]);
+  const [teamStats, setTeamStats] = useState<TeamComprehensiveStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     let cancelled = false;
     setTeam(null);
     setStats([]);
+    setTeamStats(null);
     setLoadError(null);
     const fetchData = async () => {
       try {
@@ -59,6 +62,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           try {
             const summary = await loadTeamSeasonSummary(teamId);
             if (cancelled) return;
+            setTeamStats(summary.teamStats);
             setStats(Object.entries(summary.playerStats).map(([name, player]) => ({ ...player, name, number: getPlayerNumber(summary, name) })));
             setLoadError(null);
             setStatsLoading(false);
@@ -219,6 +223,10 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         });
 
         setStats(Object.values(statsMap));
+        setTeamStats(calculateTeamComprehensiveStats(targetTeamId, matches, plays, {
+          teamName: tObj?.name,
+          teamAliases: [targetTeamId, tObj?.name].filter(Boolean),
+        }));
         setLoadError(null);
       } catch (e) {
         console.error("Error fetching team stats:", e);
@@ -242,24 +250,39 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     return sorted.slice(0, 3);
   };
 
-  const statCategories = [
-    { title: "Total Touchdowns", key: "totalTDs", icon: Trophy, color: "text-yellow-400" },
-    { title: "Passing TDs", key: "passTD", icon: Crosshair, color: "text-cyan-400" },
-    { title: "Completions", key: "passComp", icon: Crosshair, color: "text-sky-400" },
-    { title: "Receptions", key: "receptions", icon: Activity, color: "text-blue-400" },
-    { title: "Receiving TDs", key: "recTD", icon: Activity, color: "text-blue-400" },
-    { title: "Rushing TDs", key: "rushTD", icon: Flame, color: "text-emerald-400" },
-    { title: "Flags", key: "flagPulls", icon: Shield, color: "text-amber-400" },
-    { title: "Sacks", key: "sacks", icon: Shield, color: "text-orange-500" },
-    { title: "Interceptions", key: "int", icon: Shield, color: "text-purple-400" },
-    { title: "Pass Breakups", key: "pbu", icon: Shield, color: "text-cyan-400" },
+  const accent = getAccentOnDark(palette);
+  const badgeText = getReadableTextColor(palette.primary, palette.secondary);
+
+  const sections: { title: string; icon: LucideIcon; categories: LeaderCategory[] }[] = [
+    {
+      title: "Offense",
+      icon: Zap,
+      categories: [
+        { title: "Total Touchdowns", key: "totalTDs", icon: Trophy },
+        { title: "Passing TDs", key: "passTD", icon: Crosshair },
+        { title: "Completions", key: "passComp", icon: Target },
+        { title: "Receptions", key: "receptions", icon: Hand },
+        { title: "Receiving TDs", key: "recTD", icon: Activity },
+        { title: "Rushing TDs", key: "rushTD", icon: Flame },
+      ],
+    },
+    {
+      title: "Defense",
+      icon: Shield,
+      categories: [
+        { title: "Flags Pulled", key: "flagPulls", icon: Shield },
+        { title: "Sacks", key: "sacks", icon: ShieldAlert },
+        { title: "Interceptions", key: "int", icon: Hand },
+        { title: "Pass Breakups", key: "pbu", icon: Shield },
+      ],
+    },
   ];
 
   if (demoError) return <DemoLoadError retry={retryDemo} />;
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center font-sans">
+        <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" style={{ borderTopColor: accent }}></div>
       </div>
     );
   }
@@ -294,107 +317,180 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
 
   const teamName = team?.name || "Team";
+  const hasAnyLeader = sections.some((section) => section.categories.some((cat) => getTop3(cat.key).length > 0));
+  const snapshot = teamStats && teamStats.gp > 0
+    ? [
+        { label: "Record", value: teamStats.recordFormatted },
+        { label: "Points For", value: teamStats.pf },
+        { label: "Points Against", value: teamStats.pa },
+        { label: "Point Diff", value: teamStats.diffFormatted },
+        { label: "Touchdowns", value: teamStats.totalTDs },
+        { label: "Takeaways", value: teamStats.takeaways },
+      ]
+    : [];
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
+    <div className="min-h-screen bg-black text-white font-sans relative flex flex-col">
+      <div
+        className="absolute inset-x-0 top-0 h-80 pointer-events-none"
+        aria-hidden="true"
+        style={{ background: `radial-gradient(ellipse 80% 100% at 50% 0%, ${accent}2E 0%, transparent 70%)` }}
+      />
 
-      {/* Dynamic Background styled to team colors */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div 
-          className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-25 animate-pulse"
-          style={{ backgroundColor: palette.primary }}
-        />
-        <div 
-          className="absolute top-40 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-20 animate-pulse delay-1000"
-          style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }}
-        />
-      </div>
-
-      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
-        {/* Navigation */}
+      <div className="max-w-6xl mx-auto relative z-10 flex-1 w-full px-4 py-5 sm:px-6 sm:py-8 md:px-10 space-y-6 sm:space-y-8">
         <Link
           href={`/teams/${teamId}`}
-          className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
+          className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 text-xs sm:text-sm font-semibold max-w-full"
         >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Back to {teamName} Portal
+          <ChevronLeft className="w-4 h-4 mr-1 shrink-0" />
+          <span className="truncate">Back to {teamName}</span>
         </Link>
 
         {/* Header */}
-        <div className="flex flex-col items-center text-center gap-3 mb-12">
-          <div 
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-md border shadow-lg"
-            style={{
-              backgroundColor: `${palette.primary}18`,
-              borderColor: `${palette.primary}40`,
-              color: palette.primary,
-            }}
+        <header className="flex flex-col items-center text-center gap-2">
+          <span
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest border"
+            style={{ backgroundColor: `${accent}1A`, borderColor: `${accent}55`, color: accent }}
           >
             <Activity className="w-3.5 h-3.5" />
-            <span>Leaderboards</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight text-white">
-            {teamName}{" "}
-            <span 
-              className="bg-clip-text text-transparent"
-              style={{
-                backgroundImage: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
-              }}
-            >
-              Stat Leaders
-            </span>
+            Season Leaderboards
+          </span>
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight leading-tight">
+            <span className="text-white">{teamName}</span>{" "}
+            <span style={{ color: accent }}>Stat Leaders</span>
           </h1>
-          <p className="text-lg text-neutral-400 font-light">Top Performers of {teamName}</p>
-        </div>
+          {teamStats && teamStats.gp > 0 && (
+            <p className="text-xs sm:text-sm text-neutral-400 font-medium">
+              {teamStats.gp} completed {teamStats.gp === 1 ? "game" : "games"}
+            </p>
+          )}
+        </header>
 
-        {/* 3-Column Bento Grid of Stat Leaders */}
-        {statsLoading ? <div role="status" className="rounded-3xl bg-white/5 p-6 animate-pulse">Loading stat leaders...</div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {statCategories.map((cat, idx) => {
-            const top3 = getTop3(cat.key);
-
-            return (
-              <div
-                key={idx}
-                className="bg-neutral-900/70 border border-white/5 rounded-3xl p-4 sm:p-6 flex flex-col hover:border-white/15 transition-all shadow-xl backdrop-blur-md"
-              >
-                <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-                  <div className={`p-2 bg-white/5 rounded-xl ${cat.color}`}>
-                    <cat.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-lg font-black uppercase tracking-wider text-white">{cat.title}</h3>
-                </div>
-
-                <div className="flex-1 flex flex-col gap-4">
-                  {top3.length > 0 ? (
-                    top3.map((player, rank) => (
-                      <div key={player.name} className="flex items-center justify-between gap-3 group">
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                          <span
-                            className={`w-6 shrink-0 text-center font-black ${rank === 0 ? "text-lg" : "text-neutral-500"}`}
-                            style={rank === 0 ? { color: palette.primary } : undefined}
-                          >
-                            #{rank + 1}
-                          </span>
-                          <span className="font-bold text-neutral-300 group-hover:text-white transition-colors text-sm min-w-0 truncate" title={player.name}>
-                            {player.name}{" "}
-                            {player.number && <span className="text-neutral-600 font-normal ml-1">#{player.number}</span>}
-                          </span>
-                        </div>
-                        <span className={`shrink-0 font-black text-2xl tabular-nums ${rank === 0 ? "text-white" : "text-neutral-400"}`}>
-                          {player[cat.key]}
-                        </span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-neutral-500 font-medium text-xs text-center py-6">No recorded stats yet</div>
-                  )}
-                </div>
+        {/* Season snapshot */}
+        {!statsLoading && snapshot.length > 0 && (
+          <section aria-label="Season snapshot" className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
+            {snapshot.map((tile) => (
+              <div key={tile.label} className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 bg-neutral-900/80 px-2 py-2.5 sm:px-3 sm:py-3.5 text-center">
+                <div className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: accent }} aria-hidden="true" />
+                <div className="font-mono text-lg sm:text-2xl font-black tabular-nums whitespace-nowrap">{tile.value}</div>
+                <div className="mt-0.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-500 whitespace-nowrap">{tile.label}</div>
               </div>
-            );
-          })}
-        </div>}
+            ))}
+          </section>
+        )}
+
+        {statsLoading ? (
+          <div role="status" aria-label="Loading stat leaders" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="h-48 rounded-2xl border border-white/5 bg-neutral-900/70 animate-pulse" />
+            ))}
+            <span className="sr-only">Loading stat leaders...</span>
+          </div>
+        ) : !hasAnyLeader ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-neutral-900/50 px-6 py-12 text-center">
+            <Trophy className="mx-auto mb-3 h-10 w-10 text-neutral-600" />
+            <h2 className="text-lg font-black uppercase tracking-wider">No stats yet</h2>
+            <p className="mt-1 text-sm text-neutral-400">Leaders will appear here once {teamName} finishes a game with tracked plays.</p>
+          </div>
+        ) : (
+          sections.map((section) => (
+            <section key={section.title} aria-label={`${section.title} leaders`} className="space-y-3">
+              <h2 className="flex items-center gap-2 text-sm sm:text-base font-black uppercase tracking-widest text-white">
+                <section.icon className="h-4 w-4" style={{ color: accent }} />
+                {section.title}
+                <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {section.categories.map((cat) => (
+                  <LeaderCard
+                    key={cat.key}
+                    category={cat}
+                    leaders={getTop3(cat.key)}
+                    accent={accent}
+                    badgeBackground={palette.primary}
+                    badgeText={badgeText}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface LeaderCategory {
+  title: string;
+  key: string;
+  icon: LucideIcon;
+}
+
+function initials(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
+}
+
+function LeaderCard({
+  category,
+  leaders,
+  accent,
+  badgeBackground,
+  badgeText,
+}: {
+  category: LeaderCategory;
+  leaders: any[];
+  accent: string;
+  badgeBackground: string;
+  badgeText: string;
+}) {
+  const [leader, ...rest] = leaders;
+  const max = leader ? Number(leader[category.key]) || 1 : 1;
+  const Icon = category.icon;
+
+  return (
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/80 shadow-lg">
+      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-2.5">
+        <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} />
+        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white truncate">{category.title}</h3>
       </div>
 
+      {leader ? (
+        <>
+          <div className="flex items-center gap-3 px-4 py-3.5" style={{ background: `linear-gradient(90deg, ${accent}1F, transparent)` }}>
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-black text-base shadow-md"
+              style={{ backgroundColor: badgeBackground, color: badgeText }}
+              aria-hidden="true"
+            >
+              {leader.number ? `#${leader.number}` : initials(leader.name)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Leader</div>
+              <div className="truncate font-black text-white" title={leader.name}>{leader.name}</div>
+            </div>
+            <div className="shrink-0 font-mono text-3xl font-black tabular-nums text-white">{leader[category.key]}</div>
+          </div>
+          <div className="flex-1 space-y-2.5 px-4 pb-3.5 pt-1">
+            {rest.map((player, index) => (
+              <div key={player.name}>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="w-5 shrink-0 text-xs font-black text-neutral-500">{index + 2}</span>
+                    <span className="truncate font-semibold text-neutral-300" title={player.name}>{player.name}</span>
+                    {player.number && <span className="shrink-0 text-xs text-neutral-600">#{player.number}</span>}
+                  </div>
+                  <span className="shrink-0 font-mono font-black tabular-nums text-neutral-300">{player[category.key]}</span>
+                </div>
+                <div className="ml-7 mt-1 h-1 overflow-hidden rounded-full bg-white/5" aria-hidden="true">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, ((Number(player[category.key]) || 0) / max) * 100)}%`, backgroundColor: accent, opacity: 0.55 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-1 items-center justify-center px-4 py-8 text-xs font-medium text-neutral-500">No recorded stats yet</div>
+      )}
     </div>
   );
 }

@@ -220,7 +220,7 @@ describe("Live Game Spectator & Box Score Suite (ViewerView)", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("game-team-stats")).toBeInTheDocument();
-      expect(screen.getByText("Head-to-Head Comparison")).toBeInTheDocument();
+      expect(screen.getByTestId("team-stats-view-comparison")).toHaveAttribute("aria-selected", "true");
       // Should show both teams
       expect(screen.getAllByText("Apex Predators").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Cyber Knights").length).toBeGreaterThan(0);
@@ -231,7 +231,7 @@ describe("Live Game Spectator & Box Score Suite (ViewerView)", () => {
     fireEvent.click(homeBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Apex Predators Game Breakdown")).toBeInTheDocument();
+      expect(screen.getByTestId("team-stats-view-home")).toHaveAttribute("aria-selected", "true");
       expect(screen.getByTestId("stat-card-firstDowns")).toBeInTheDocument();
       expect(screen.getByTestId("stat-card-totalTDs")).toBeInTheDocument();
     });

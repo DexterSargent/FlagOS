@@ -98,12 +98,17 @@ export interface TeamStatDefinition {
   categoryLabel: string;
   description: string;
   getValue: (stats: TeamComprehensiveStats) => string | number;
+  /** Multi-game aggregate (record, averages) that is meaningless for a single game. */
+  seasonOnly?: boolean;
+  /** Smaller values are better (points allowed, penalties, giveaways). */
+  lowerIsBetter?: boolean;
 }
 
 export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   // Core Record & Scoring
   {
     id: "record",
+    seasonOnly: true,
     label: "Record (W-L-T)",
     shortLabel: "REC",
     category: "record",
@@ -113,6 +118,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   },
   {
     id: "winPct",
+    seasonOnly: true,
     label: "Win Percentage",
     shortLabel: "WIN%",
     category: "record",
@@ -131,6 +137,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   },
   {
     id: "pa",
+    lowerIsBetter: true,
     label: "Points Allowed (PA)",
     shortLabel: "PA",
     category: "record",
@@ -149,6 +156,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   },
   {
     id: "ppg",
+    seasonOnly: true,
     label: "Points Per Game (PPG)",
     shortLabel: "PPG",
     category: "record",
@@ -158,6 +166,8 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   },
   {
     id: "dppg",
+    lowerIsBetter: true,
+    seasonOnly: true,
     label: "Defensive PPG Allowed (DPPG)",
     shortLabel: "DPPG",
     category: "record",
@@ -375,6 +385,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   },
   {
     id: "giveaways",
+    lowerIsBetter: true,
     label: "Total Giveaways",
     shortLabel: "GIVEAWAYS",
     category: "discipline",
@@ -384,6 +395,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   },
   {
     id: "penalties",
+    lowerIsBetter: true,
     label: "Penalties Committed",
     shortLabel: "PENALTIES",
     category: "discipline",
@@ -393,6 +405,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
   },
   {
     id: "penaltyYards",
+    lowerIsBetter: true,
     label: "Penalty Yards",
     shortLabel: "PEN YDS",
     category: "discipline",
@@ -417,6 +430,9 @@ const formatPct = (made: number, att: number): string => {
 /**
  * Calculates all possible team stats from completed matches and play-by-play logs.
  */
+/** Stats that describe a single game (excludes record, win % and per-game averages). */
+export const GAME_TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = TEAM_STAT_DEFINITIONS.filter((def) => !def.seasonOnly);
+
 export function calculateTeamComprehensiveStats(
   teamId: string,
   matches: any[] = [],

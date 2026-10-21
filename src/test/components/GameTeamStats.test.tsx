@@ -101,7 +101,8 @@ describe("GameTeamStats Component", () => {
     // Switch to Titans breakdown
     fireEvent.click(screen.getByTestId("team-stats-view-home"));
 
-    expect(screen.getByText("Titans Game Breakdown")).toBeInTheDocument();
+    expect(screen.getByTestId("team-stats-view-home")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("region", { name: "Titans Scoring" })).toBeInTheDocument();
     // In breakdown view, cards are displayed for each stat definition
     expect(screen.getByTestId("stat-card-firstDowns")).toBeInTheDocument();
     expect(screen.getByTestId("stat-card-thirdDownPct")).toBeInTheDocument();
@@ -110,7 +111,8 @@ describe("GameTeamStats Component", () => {
     // Switch to Spartans breakdown
     fireEvent.click(screen.getByTestId("team-stats-view-away"));
 
-    expect(screen.getByText("Spartans Game Breakdown")).toBeInTheDocument();
+    expect(screen.getByTestId("team-stats-view-away")).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("region", { name: "Spartans Defense" })).toBeInTheDocument();
     expect(screen.getByTestId("stat-card-fourthDownPct")).toBeInTheDocument();
   });
 
@@ -135,5 +137,25 @@ describe("GameTeamStats Component", () => {
     fireEvent.click(screen.getByTestId("category-filter-all"));
     expect(screen.getByTestId("comparison-row-sacks")).toBeInTheDocument();
     expect(screen.getByTestId("comparison-row-totalTDs")).toBeInTheDocument();
+  });
+
+  it("omits season-only aggregates like record, win % and per-game averages", () => {
+    render(<GameTeamStats matchData={mockMatchData} plays={mockPlays} isDemo={true} />);
+
+    for (const id of ["record", "winPct", "ppg", "dppg"]) {
+      expect(screen.queryByTestId(`comparison-row-${id}`)).toBeNull();
+    }
+    expect(screen.queryByText(/win %/i)).toBeNull();
+
+    fireEvent.click(screen.getByTestId("category-filter-record"));
+    expect(screen.getByTestId("category-filter-record")).toHaveTextContent("Scoring");
+    expect(screen.getByTestId("comparison-row-pf")).toBeInTheDocument();
+    expect(screen.getByTestId("comparison-row-pa")).toBeInTheDocument();
+    expect(screen.getByTestId("comparison-row-diff")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("team-stats-view-home"));
+    expect(screen.queryByTestId("stat-card-winPct")).toBeNull();
+    expect(screen.queryByTestId("stat-card-ppg")).toBeNull();
+    expect(screen.getByTestId("stat-card-pf")).toBeInTheDocument();
   });
 });
