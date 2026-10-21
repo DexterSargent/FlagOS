@@ -163,6 +163,7 @@ export default function PlayCanvas({
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
   const [draggedWaypointIndex, setDraggedWaypointIndex] = useState<number | null>(null);
+  const [draggedWaypointIsMotion, setDraggedWaypointIsMotion] = useState(false);
   const [draggedZoneId, setDraggedZoneId] = useState<string | null>(null);
 
   // Smooth drag tracking refs to eliminate snapping/jittering
@@ -693,6 +694,7 @@ export default function PlayCanvas({
     setSelectedPlayerId(playerId);
     setDraggedPlayerId(playerId);
     setDraggedWaypointIndex(wpIndex);
+    setDraggedWaypointIsMotion(isMotionWp);
 
     dragWaypointRef.current = {
       startX: wp.x,
@@ -902,6 +904,7 @@ export default function PlayCanvas({
       // Holding and dragging after the tap keeps adjusting the new point and shows its depth
       setDraggedPlayerId(selectedPlayer.id);
       setDraggedWaypointIndex(currentRoute.length - 1);
+      setDraggedWaypointIsMotion(false);
       setDraggedWaypointYards(getYardsFromLos(newPoint.y, losY));
       dragWaypointRef.current = {
         startX: newPoint.x,
@@ -2458,7 +2461,7 @@ export default function PlayCanvas({
               draggedWaypointIndex !== null &&
               (() => {
                 const dragged = play.players.find((p) => p.id === draggedPlayerId);
-                const pt = (dragWaypointRef.current?.isMotionWp ? dragged?.motionPath : dragged?.route)?.[
+                const pt = (draggedWaypointIsMotion ? dragged?.motionPath : dragged?.route)?.[
                   draggedWaypointIndex
                 ];
                 if (!pt) return null;
