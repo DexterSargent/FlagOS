@@ -176,7 +176,7 @@ export function PlayerView({
             {myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) && (
               <Link
                 href={`/teams/${myPlayerTeam.id}/playbook`}
-                className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2"
+                className="px-4 py-2.5 bg-emerald-600 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center gap-2"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Team Playbook</span>
@@ -212,9 +212,9 @@ export function PlayerView({
 
             <Link
               href="/profile"
-              className="px-4 py-2.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 text-xs font-bold uppercase tracking-wider rounded-xl border border-cyan-500/30 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 bg-cyan-950/40 hover:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 text-xs font-bold uppercase tracking-wider rounded-xl border border-cyan-500/30 transition-all flex items-center gap-2"
             >
-              <User className="w-4 h-4 text-cyan-400" />
+              <User className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
               <span>My Profile & Themes</span>
             </Link>
           </div>
@@ -672,7 +672,7 @@ export function PlayerView({
                           <td className="py-2.5 font-bold text-white flex items-center gap-1.5">
                             <span>{p.playerName}</span>
                             {isCurrentActivePlayer && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/30 text-emerald-300 border border-emerald-500/40">
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500 text-black border border-emerald-400">
                                 YOU
                               </span>
                             )}

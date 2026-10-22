@@ -944,7 +944,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
               <Link
                 href="/login"
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg"
               >
                 Sign In as Player / Coach
               </Link>

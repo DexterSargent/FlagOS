@@ -796,6 +796,13 @@ html.light .text-gray-200 {
   color: #1e293b !important;
 }
 
+html.light .text-neutral-300,
+html.light .text-slate-300,
+html.light .text-zinc-300,
+html.light .text-gray-300 {
+  color: #334155 !important;
+}
+
 html.light .text-neutral-100,
 html.light .text-slate-100,
 html.light .text-zinc-100,
@@ -997,7 +1004,7 @@ html.light button.bg-white\/5 *,
 html.light button.bg-white\/10 *,
 html.light a.bg-white\/5 *,
 html.light a.bg-white\/10 * {
-  color: #0f172a;
+  color: #0f172a !important;
 }
 
 /* Form Controls in Light Mode */

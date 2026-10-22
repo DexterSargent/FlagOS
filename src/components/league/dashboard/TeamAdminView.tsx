@@ -106,7 +106,7 @@ export function TeamAdminView({
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={onOpenAddPlayer}
-              className="px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 bg-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2 cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Add Player</span>
@@ -124,9 +124,9 @@ export function TeamAdminView({
 
                 <Link
                   href={`/teams/${managedTeam.id}/playbook`}
-                  className="px-4 py-2.5 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 text-xs font-bold uppercase tracking-wider rounded-xl border border-cyan-500/30 transition-all flex items-center gap-2"
+                  className="px-4 py-2.5 bg-cyan-950/40 hover:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300 text-xs font-bold uppercase tracking-wider rounded-xl border border-cyan-500/30 transition-all flex items-center gap-2"
                 >
-                  <BookOpen className="w-4 h-4 text-cyan-400" />
+                  <BookOpen className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
                   <span>Playbook</span>
                 </Link>
 
@@ -508,7 +508,7 @@ export function TeamAdminView({
                         </div>
                         <span className="truncate">{row.name}</span>
                         {isMyTeam && (
-                          <span className="px-1.5 py-0.2 rounded bg-cyan-500/30 text-cyan-300 text-[9px] font-black uppercase font-mono">
+                          <span className="px-1.5 py-0.5 rounded bg-cyan-500 text-black text-[9px] font-black uppercase font-mono border border-cyan-400">
                             YOU
                           </span>
                         )}

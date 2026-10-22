@@ -491,7 +491,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                           className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm border ${
                             canScheduleMatches && isAsyncMatch
                               ? "bg-emerald-500/10 hover:bg-emerald-500 text-emerald-300 hover:text-black border-emerald-500/30 hover:border-emerald-500"
-                              : "bg-white/5 hover:bg-gradient-to-r hover:from-cyan-500 hover:to-blue-600 text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
+                              : "bg-white/5 hover:bg-gradient-to-r hover:from-cyan-500 hover:to-blue-600 text-slate-700 dark:text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
                           }`}
                         >
                           <PlayCircle className="w-4 h-4 shrink-0" />

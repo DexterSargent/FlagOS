@@ -67,7 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <AuthGuard>
                 <a
                   href="#main-content"
-                  className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-[100] focus-visible:rounded-lg focus-visible:bg-background focus-visible:px-4 focus-visible:py-3 focus-visible:text-foreground focus-visible:shadow-lg"
+                  className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-[100] focus-visible:rounded-lg focus-visible:bg-white dark:focus-visible:bg-slate-900 focus-visible:px-4 focus-visible:py-3 focus-visible:text-slate-900 dark:focus-visible:text-white focus-visible:shadow-lg focus-visible:border focus-visible:border-slate-300 dark:focus-visible:border-slate-700"
                 >
                   Skip to main content
                 </a>

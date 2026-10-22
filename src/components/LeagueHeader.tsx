@@ -491,7 +491,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
                 <Link
                   href="/login"
-                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 text-xs font-bold transition-all shadow-sm shrink-0"
+                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
                 >
                   <LogIn className="w-3.5 h-3.5 shrink-0" />
                   <span className="hidden sm:inline">Sign In</span>
@@ -500,7 +500,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             ) : (
               <Link
                 href="/login"
-                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 text-xs font-bold transition-all shadow-sm shrink-0"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
               >
                 {isLeagueAdmin ? (
                   <>

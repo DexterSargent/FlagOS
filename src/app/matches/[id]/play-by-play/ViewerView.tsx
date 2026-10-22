@@ -25,6 +25,7 @@ import { isTrackablePlayer } from "@/lib/opponentPlaceholder";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor, getTeamBadgeStyle } from "@/lib/teamColors";
 import GameTeamStats from "@/components/match/GameTeamStats";
+import { useTheme } from "@/lib/themeContext";
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -50,9 +51,20 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
 
   const [matchData, setMatchData] = useState<any>(null);
   const { home: homeColors, away: awayColors } = useMatchTeamColors(matchData, isDemoMatch);
+  const { resolvedTheme } = useTheme();
+  const [isLightDom, setIsLightDom] = useState(false);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const update = () => setIsLightDom(document.documentElement.classList.contains("light"));
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  const isLight = resolvedTheme === "light" || isLightDom;
   const homeText = getReadableTextColor(homeColors.secondary, homeColors.primary);
   const awayText = getReadableTextColor(awayColors.secondary, awayColors.primary);
-  const homeAccent = getReadableTextColor("#0A0A0A", homeColors.primary);
+  const homeAccent = getReadableTextColor(isLight ? "#FFFFFF" : "#0A0A0A", homeColors.primary);
   const [plays, setPlays] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'play-by-play' | 'box-score' | 'team-stats'>('play-by-play');

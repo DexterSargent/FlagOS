@@ -34,6 +34,7 @@ import {
   isDemoMatch,
 } from "@/lib/demoSandbox";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
+import { getReadableTextColor } from "@/lib/teamColors";
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
 import { STAT_KEEPER_WALKTHROUGH } from "@/lib/walkthroughData";
@@ -89,6 +90,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
   const { home: homeTeamColors, away: awayTeamColors } = useMatchTeamColors(matchData, isDemo);
+  const homeText = useMemo(() => getReadableTextColor(homeTeamColors.secondary, homeTeamColors.primary), [homeTeamColors]);
+  const awayText = useMemo(() => getReadableTextColor(awayTeamColors.secondary, awayTeamColors.primary), [awayTeamColors]);
 
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
   const [subs, setSubs] = useState<string[]>([]);
@@ -1244,10 +1247,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               }}
             >
               <div className="flex items-center gap-6">
-                <FootballIcon active={possession === (homeTeamName || "HOME")} className="w-12 h-12" style={{ color: homeTeamColors.primary }} />
-                <span className="text-6xl font-black uppercase" style={{ color: homeTeamColors.primary }}>{homeTeamName}</span>
+                <FootballIcon active={possession === (homeTeamName || "HOME")} className="w-12 h-12" style={{ color: homeText }} />
+                <span className="text-6xl font-black uppercase" style={{ color: homeText }}>{homeTeamName}</span>
               </div>
-              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
+              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: homeText }}>{homeScore}</span>
               <div className="flex gap-3">
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
@@ -1272,10 +1275,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               }}
             >
               <div className="flex items-center gap-6">
-                <span className="text-6xl font-black uppercase" style={{ color: awayTeamColors.primary }}>{awayTeamName}</span>
-                <FootballIcon active={possession === (awayTeamName || "AWAY")} className="w-12 h-12" style={{ color: awayTeamColors.primary }} />
+                <span className="text-6xl font-black uppercase" style={{ color: awayText }}>{awayTeamName}</span>
+                <FootballIcon active={possession === (awayTeamName || "AWAY")} className="w-12 h-12" style={{ color: awayText }} />
               </div>
-              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
+              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: awayText }}>{awayScore}</span>
               <div className="flex gap-3">
                 {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
                   <div
@@ -1465,17 +1468,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               borderColor: `${homeTeamColors.primary}40`,
             }}
           >
-            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: homeTeamColors.primary }}>
+            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: homeText }}>
               {homeTeamName}
-              <FootballIcon active={possession === homeTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: homeTeamColors.primary }} />
+              <FootballIcon active={possession === homeTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: homeText }} />
             </span>
-            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
+            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: homeText }}>{homeScore}</span>
             <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
               <button
                 disabled={homeTimeouts === 0}
                 onClick={() => callTimeout("home")}
                 className="px-1 py-0.5 rounded text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
-                style={{ backgroundColor: `${homeTeamColors.primary}20`, color: homeTeamColors.primary }}
+                style={{ backgroundColor: `${homeTeamColors.primary}20`, color: homeText }}
                 title="Call home team timeout"
               >
                 TO {homeTimeouts}
@@ -1576,17 +1579,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               borderColor: `${awayTeamColors.primary}40`,
             }}
           >
-            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: awayTeamColors.primary }}>
-              <FootballIcon active={possession === awayTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: awayTeamColors.primary }} />
+            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: awayText }}>
+              <FootballIcon active={possession === awayTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: awayText }} />
               {awayTeamName}
             </span>
-            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
+            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: awayText }}>{awayScore}</span>
             <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
               <button
                 disabled={awayTimeouts === 0}
                 onClick={() => callTimeout("away")}
                 className="px-1 py-0.5 rounded text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
-                style={{ backgroundColor: `${awayTeamColors.primary}20`, color: awayTeamColors.primary }}
+                style={{ backgroundColor: `${awayTeamColors.primary}20`, color: awayText }}
                 title="Call away team timeout"
               >
                 TO {awayTimeouts}
@@ -1663,18 +1666,18 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   <FootballIcon
                     active={possession === (homeTeamName || "HOME")}
                     className="w-[clamp(0.875rem,2vw,1.75rem)] h-[clamp(0.875rem,2vw,1.75rem)] shrink-0"
-                    style={{ color: homeTeamColors.primary }}
+                    style={{ color: homeText }}
                   />
                   <span
                     className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase truncate"
-                    style={{ color: homeTeamColors.primary }}
+                    style={{ color: homeText }}
                   >
                     {homeTeamName}
                   </span>
                 </div>
                 <span
                   className="text-[clamp(1.5rem,6vw,5rem)] font-black leading-none tabular-nums my-0.5"
-                  style={{ color: homeTeamColors.primary }}
+                  style={{ color: homeText }}
                 >
                   {homeScore}
                 </span>
@@ -1768,19 +1771,19 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
                   <span
                     className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase truncate"
-                    style={{ color: awayTeamColors.primary }}
+                    style={{ color: awayText }}
                   >
                     {awayTeamName}
                   </span>
                   <FootballIcon
                     active={possession === (awayTeamName || "AWAY")}
                     className="w-[clamp(0.875rem,2vw,1.75rem)] h-[clamp(0.875rem,2vw,1.75rem)] shrink-0"
-                    style={{ color: awayTeamColors.primary }}
+                    style={{ color: awayText }}
                   />
                 </div>
                 <span
                   className="text-[clamp(1.5rem,6vw,5rem)] font-black leading-none tabular-nums my-0.5"
-                  style={{ color: awayTeamColors.primary }}
+                  style={{ color: awayText }}
                 >
                   {awayScore}
                 </span>
@@ -1827,16 +1830,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 className="flex flex-col items-center gap-2 sm:gap-4 px-8 py-5 rounded-3xl border shadow-xl"
                 style={{ backgroundColor: homeTeamColors.secondary, borderColor: `${homeTeamColors.primary}40` }}
               >
-                <span className="text-xl sm:text-3xl font-black uppercase" style={{ color: homeTeamColors.primary }}>{homeTeamName}</span>
-                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: homeTeamColors.primary }}>{homeScore}</span>
+                <span className="text-xl sm:text-3xl font-black uppercase" style={{ color: homeText }}>{homeTeamName}</span>
+                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: homeText }}>{homeScore}</span>
               </div>
               <div className="text-neutral-500 font-bold text-lg sm:text-2xl tracking-widest">FINAL</div>
               <div 
                 className="flex flex-col items-center gap-2 sm:gap-4 px-8 py-5 rounded-3xl border shadow-xl"
                 style={{ backgroundColor: awayTeamColors.secondary, borderColor: `${awayTeamColors.primary}40` }}
               >
-                <span className="text-xl sm:text-3xl font-black uppercase" style={{ color: awayTeamColors.primary }}>{awayTeamName}</span>
-                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: awayTeamColors.primary }}>{awayScore}</span>
+                <span className="text-xl sm:text-3xl font-black uppercase" style={{ color: awayText }}>{awayTeamName}</span>
+                <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: awayText }}>{awayScore}</span>
               </div>
             </div>
 

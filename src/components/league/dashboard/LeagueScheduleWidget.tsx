@@ -267,7 +267,7 @@ export function LeagueScheduleWidget({
                   {live ? (
                     <Link
                       href={isEmbedded ? `/matches/${m.id}/play-by-play?embed=true&demo=true` : `/matches/${m.id}/play-by-play`}
-                      className="w-full py-2.5 px-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl text-center transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/50"
+                      className="w-full py-2.5 px-3 bg-red-600 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl text-center transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/50"
                     >
                       <PlayCircle className="w-4 h-4 animate-pulse" />
                       <span>{isLeagueAdmin ? "Manage Scorekeeper" : "Watch Live Play-by-Play"}</span>
