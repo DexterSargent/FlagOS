@@ -16,6 +16,8 @@ import { LeagueScheduleWidget } from "./LeagueScheduleWidget";
 import { LeagueStandingsWidget } from "./LeagueStandingsWidget";
 import { LeagueLeadersWidget } from "./LeagueLeadersWidget";
 import { LeagueTeamsGrid } from "./LeagueTeamsGrid";
+import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { LEAGUE_DIRECTORY_WALKTHROUGH } from "@/lib/walkthroughData";
 
 export interface LeagueAdminViewProps {
   teams: any[];
@@ -106,7 +108,8 @@ export function LeagueAdminView({
           </div>
 
           {/* Fast Operations Toolbar */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div data-tour="league-admin-actions" className="flex flex-wrap items-center gap-3">
+            <WalkthroughTrigger walkthrough={LEAGUE_DIRECTORY_WALKTHROUGH} variant="header" />
             <button
               onClick={openCustomizer}
               className="px-4 py-2.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 text-black dark:text-amber-300 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border border-amber-500/40 shadow-sm flex items-center gap-2 cursor-pointer"
@@ -134,7 +137,7 @@ export function LeagueAdminView({
         </div>
 
         {/* League Executive KPI Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
+        <div data-tour="league-kpis" className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
             <div className="flex items-center justify-between">
               <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Teams &amp; Slots</span>
@@ -216,13 +219,15 @@ export function LeagueAdminView({
       </div>
 
       {/* Section: Team Operations Registry */}
-      <LeagueTeamsGrid
-        teams={teams}
-        players={players}
-        standingsMap={standingsMap}
-        isEffectiveDemo={isEffectiveDemo}
-        isAdminView={true}
-      />
+      <div data-tour="league-teams-grid">
+        <LeagueTeamsGrid
+          teams={teams}
+          players={players}
+          standingsMap={standingsMap}
+          isEffectiveDemo={isEffectiveDemo}
+          isAdminView={true}
+        />
+      </div>
     </main>
   );
 }

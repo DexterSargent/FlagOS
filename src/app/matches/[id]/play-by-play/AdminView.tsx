@@ -1534,7 +1534,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           {/* IFAF PLAY CLOCK CONTAINER WITH CONTROLS */}
-          <div className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
+          <div data-tour="play-clock-controls" className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
             <div className="flex flex-col items-center leading-none" title="IFAF Play Clock">
               <span className="text-[7px] md:text-[8px] uppercase tracking-wider text-neutral-500 font-bold">Play</span>
               <span className={`text-sm md:text-base font-black tabular-nums ${playClock <= 0 ? "text-red-500 animate-pulse" : playClock <= 5 ? "text-amber-400 animate-pulse" : "text-amber-500"

@@ -1291,7 +1291,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div data-tour="playbook-cards-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {playbooks.map((book) => {
                 const isOffense = book.type === "offense";
                 return (
@@ -1419,7 +1419,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         {/* ============================================================== */}
         {viewLevel === "formations" && activePlaybook && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0F19] p-4 rounded-2xl border border-white/10">
+            <div data-tour="formations-toolbar" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0F19] p-4 rounded-2xl border border-white/10">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setViewLevel("playbooks")}
@@ -1507,7 +1507,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div data-tour="formation-cards-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {activePlaybook.formations.map((formation) => {
                   const playsCount = activePlaybook.plays.filter((p) => p.formation === formation.name).length;
                   // Construct preview play with no routes to show clean formation spots

@@ -3,7 +3,6 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
-import HelpGuide from "@/components/HelpGuide";
 import RoleSwitcherBar from "@/components/RoleSwitcherBar";
 import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
 
@@ -84,7 +83,6 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
       </main>
       {showLeagueNav && <LeagueFooter />}
       {isEmbedded && <InteractiveDemoGuard />}
-      {!isEmbedded && !isLogin && !isAdminSandbox && !isLandingPage && <HelpGuide />}
       <LeagueCustomizerModal />
     </div>
   );

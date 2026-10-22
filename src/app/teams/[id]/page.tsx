@@ -671,6 +671,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             {hasEditAccess && (
               <>
                 <Link
+                  data-tour="team-schedule-game-btn"
                   href={`/teams/${teamId}/schedule?create=1`}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wider transition-all border border-emerald-500/30 hover:border-emerald-500/50 backdrop-blur-md shadow-lg cursor-pointer"
                 >
@@ -679,6 +680,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 </Link>
                 <button
                   type="button"
+                  data-tour="team-staff-btn"
                   disabled={!privateSettingsReady}
                   onClick={() => setIsStaffModalOpen(true)}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"

@@ -316,19 +316,19 @@ export default function LeagueCustomizerContent() {
         if (e.target === e.currentTarget) closeCustomizer();
       }}
     >
-      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-3xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-3xl w-full shadow-2xl relative flex flex-col h-[90vh] max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
         {/* Pinned Header & Tab Navigation */}
-        <div className="p-5 sm:p-6 pb-4 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+        <div className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10 space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
                 <SettingsIcon className="w-5 h-5" />
               </div>
-              <div>
-                <h2 className="text-xl font-black uppercase text-white tracking-wide flex items-center gap-2">
+              <div className="min-w-0">
+                <h2 className="text-xl font-black uppercase text-white tracking-wide flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>Settings</span>
                   {isLeagueAdmin ? (
-                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                    <span className="text-[10px] font-mono uppercase whitespace-nowrap px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
                       Commissioner Controls
                     </span>
                   ) : isPlayer ? (
@@ -341,7 +341,7 @@ export default function LeagueCustomizerContent() {
                     </span>
                   )}
                 </h2>
-                <p className="text-xs text-neutral-400">
+                <p className="hidden sm:block text-xs text-neutral-400">
                   {isLeagueAdmin
                     ? "Manage league branding, operations, and official gameplay rules site-wide"
                     : "View official league regulations"}
@@ -350,21 +350,22 @@ export default function LeagueCustomizerContent() {
             </div>
             <button
               onClick={closeCustomizer}
-              className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer shrink-0"
               title="Close"
+              aria-label="Close settings"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex items-center gap-2 p-1 bg-black/60 border border-white/10 rounded-2xl">
+          <div className={`${isLeagueAdmin ? "grid grid-cols-2 sm:flex" : "flex"} items-center gap-1.5 sm:gap-2 p-1 bg-black/60 border border-white/10 rounded-2xl`}>
           {/* League Admin Tab: Branding */}
           {isLeagueAdmin && (
             <button
               type="button"
               onClick={() => setActiveTab("branding")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === "branding"
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${activeTab === "branding"
                 ? "bg-amber-500/20 border border-amber-500/40 text-amber-300 shadow-md"
                 : "text-neutral-400 hover:text-white hover:bg-white/5"
                 }`}
@@ -378,7 +379,7 @@ export default function LeagueCustomizerContent() {
           <button
             type="button"
             onClick={() => setActiveTab("rules")}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === "rules"
+            className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${activeTab === "rules"
               ? "bg-purple-500/20 border border-purple-500/40 text-purple-300 shadow-md"
               : "text-neutral-400 hover:text-white hover:bg-white/5"
               }`}
@@ -392,7 +393,7 @@ export default function LeagueCustomizerContent() {
             <button
               type="button"
               onClick={() => setActiveTab("subscription")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${
                 activeTab === "subscription"
                   ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 shadow-md"
                   : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -408,7 +409,7 @@ export default function LeagueCustomizerContent() {
             <button
               type="button"
               onClick={() => setActiveTab("season")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === "season"
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${activeTab === "season"
                 ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-md"
                 : "text-neutral-400 hover:text-white hover:bg-white/5"
                 }`}
@@ -421,7 +422,7 @@ export default function LeagueCustomizerContent() {
         </div>
 
         {/* Scrollable Modal Content */}
-        <div className="overflow-y-auto overscroll-contain flex-1 min-h-0 p-5 sm:p-6 md:p-8">
+        <div className="overflow-y-auto overscroll-contain flex-1 min-h-0 p-4 sm:p-6 md:p-8">
         {/* ============================================================
             TAB: LEAGUE BRANDING & IDENTITY (LEAGUE ADMIN EXCLUSIVE)
            ============================================================ */}
@@ -453,15 +454,15 @@ export default function LeagueCustomizerContent() {
                       <Shield className="w-5 h-5 fill-white/20" />
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-base font-black uppercase tracking-wider text-white">
                         {renderFlagOS(leagueName || "League Name")}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-bold text-emerald-400">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 whitespace-nowrap">
                         {seasonTitle || "Active Season"}
                       </span>
-                      <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono text-cyan-300 font-bold">
+                      <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono text-cyan-300 font-bold whitespace-nowrap">
                         {shortcode || "FLAG"}
                       </span>
                     </div>
@@ -838,7 +839,7 @@ export default function LeagueCustomizerContent() {
                   <Palette className="w-3.5 h-3.5" />
                   <span>3. Official League Colours</span>
                 </span>
-                <span className="text-[11px] text-neutral-400 font-mono">
+                <span className="hidden sm:inline text-[11px] text-neutral-400 font-mono">
                   Primary & Secondary Brand Palette
                 </span>
               </div>
@@ -974,21 +975,22 @@ export default function LeagueCustomizerContent() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-[#0B0F19]/95 backdrop-blur-md pt-4 pb-2 border-t border-white/10 flex items-center justify-between gap-3 z-20 mt-6 shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+            {/* Negative offsets cancel the scroll container's padding so the bar sits flush with the panel's bottom edge. */}
+            <div className="sticky -bottom-4 sm:-bottom-6 md:-bottom-8 -mx-4 sm:-mx-6 md:-mx-8 -mb-4 sm:-mb-6 md:-mb-8 px-4 sm:px-6 md:px-8 py-3 bg-[#0B0F19] border-t border-white/10 flex items-center justify-between gap-3 z-20 mt-6 shadow-[0_-6px_16px_rgba(0,0,0,0.18)]">
               <button
                 type="button"
                 onClick={closeCustomizer}
-                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white border border-white/10 text-xs font-bold transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                className="px-4 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
               >
-                <Check className="w-4 h-4" />
-                <span>{saving ? "Saving Changes..." : "Apply League Branding"}</span>
+                <Check className="w-4 h-4 shrink-0" />
+                <span>{saving ? "Saving..." : <>Apply<span className="hidden sm:inline"> League Branding</span></>}</span>
               </button>
             </div>
           </form>
@@ -1572,50 +1574,51 @@ export default function LeagueCustomizerContent() {
               </div>
             </div>
 
+            {/* Notification when IFAF preset is loaded */}
+            {ifafPresetNotice && (
+              <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 text-xs flex items-center justify-between gap-3 font-mono shadow-lg shadow-emerald-950/50">
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>
+                    Official IFAF 5v5 Preset Loaded <strong> Remember to click &quot;Apply &amp; Save Settings&quot;.  </strong>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIfafPresetNotice(false)}
+                  className="text-emerald-400 hover:text-white text-xs font-bold px-2 py-0.5 rounded cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {/* Footer buttons */}
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+            <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 max-sm:order-last max-sm:w-full">
                 <button
                   type="button"
                   onClick={closeCustomizer}
-                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white border border-white/10 text-xs font-bold transition-colors cursor-pointer"
                 >
                   Close
                 </button>
                 <button
                   type="button"
                   onClick={handleResetToIFAF}
-                  className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-amber-300 hover:text-amber-200 border border-amber-500/20 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-amber-300 hover:text-amber-200 border border-amber-500/20 text-xs font-bold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 max-sm:flex-1 max-sm:justify-center"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Reset to IFAF 5v5</span>
                 </button>
               </div>
 
-              {/* Notification when IFAF preset is loaded */}
-              {ifafPresetNotice && (
-                <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 text-xs flex items-center justify-between gap-3 font-mono shadow-lg shadow-emerald-950/50">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>
-                      Official IFAF 5v5 Preset Loaded <strong> Remember to click &quot;Apply &amp; Save Settings&quot;.  </strong>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIfafPresetNotice(false)}
-                    className="text-emerald-400 hover:text-white text-xs font-bold px-2 py-0.5 rounded cursor-pointer"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              )}
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 max-sm:w-full"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-4 h-4 shrink-0" />
                 <span>{saving ? "Saving Changes..." : "Apply & Save Settings"}</span>
               </button>
             </div>
@@ -2133,7 +2136,7 @@ export default function LeagueCustomizerContent() {
               ) : subTeamsList.length === 0 ? (
                 <div className="py-6 text-center text-xs text-neutral-400">No teams found in this league.</div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:max-h-72 sm:overflow-y-auto sm:pr-1">
                   {subTeamsList.map((t) => (
                     <div
                       key={t.id}
@@ -2235,7 +2238,7 @@ export default function LeagueCustomizerContent() {
                 <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">
                   <div className="text-[10px] uppercase font-bold text-neutral-400">Monthly Licensing</div>
                   <div className="text-sm font-black text-cyan-400 font-mono mt-0.5">
-                    ${subscription?.totalMonthlyFee || 89}/mo
+                    ${subscription?.totalMonthlyFee || 40 + (subscription?.teamCount || 8) * 15}/mo
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">

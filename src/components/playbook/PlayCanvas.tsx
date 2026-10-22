@@ -2027,7 +2027,7 @@ export default function PlayCanvas({
         {/* ============================================================== */}
         {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
         {/* ============================================================== */}
-        <div className="p-2 sm:p-3 [@media(max-height:450px)]:p-1.5 [@media(max-width:639px)_and_(min-height:451px)]:p-1.5 bg-[#0B0F19] border-b border-white/10 flex flex-col gap-2 [@media(max-width:639px)_and_(min-height:451px)]:gap-1.5 shrink-0">
+        <div data-tour="play-command-bar" className="p-2 sm:p-3 [@media(max-height:450px)]:p-1.5 [@media(max-width:639px)_and_(min-height:451px)]:p-1.5 bg-[#0B0F19] border-b border-white/10 flex flex-col gap-2 [@media(max-width:639px)_and_(min-height:451px)]:gap-1.5 shrink-0">
           {/* Play Name Editable Field */}
           <div className="flex items-center gap-2 min-w-0 w-full">
             <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider [@media(max-width:639px)]:hidden">Play:</span>
@@ -3513,7 +3513,7 @@ export default function PlayCanvas({
             </div>
 
             {/* Selected Player Status & Action Buttons */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <div data-tour="player-actions" className="flex items-center gap-2 flex-wrap">
               {selectedPlayer && (
               <div className="w-full flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
                   <span className="text-neutral-400">{selectedPlayer.role}:</span>
@@ -3806,7 +3806,7 @@ export default function PlayCanvas({
             </div>
           ) : selectedPlayer?.side === "defense" ? (
             /* Defense Coverage Presets Ribbon */
-            <div className="space-y-1.5 [@media(min-width:600px)_and_(max-height:450px)]:grid [@media(min-width:600px)_and_(max-height:450px)]:grid-cols-[auto_1fr] [@media(min-width:600px)_and_(max-height:450px)]:gap-x-2">
+            <div data-tour="defense-coverage" className="space-y-1.5 [@media(min-width:600px)_and_(max-height:450px)]:grid [@media(min-width:600px)_and_(max-height:450px)]:grid-cols-[auto_1fr] [@media(min-width:600px)_and_(max-height:450px)]:gap-x-2">
               <div className="flex items-center justify-between [@media(min-width:600px)_and_(max-height:450px)]:col-span-2">
                 <span className="text-xs font-black uppercase tracking-wider text-purple-200 flex items-center gap-1">
                   <Shield className="w-3 h-3" />

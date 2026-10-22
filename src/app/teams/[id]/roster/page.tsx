@@ -682,7 +682,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* View Switcher: Roster Table vs Depth Chart */}
-            <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto whitespace-nowrap max-w-full">
+            <div data-tour="roster-tabs" className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto whitespace-nowrap max-w-full">
               <button
                 onClick={() => setActiveTab("roster")}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${

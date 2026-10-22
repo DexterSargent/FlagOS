@@ -1,34 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import {
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  Map,
-  Sparkles,
-  HelpCircle,
-  CheckCircle,
-  Lightbulb,
-  Crosshair,
-  Search,
-  Filter,
-  Eye,
-  Sliders
-} from "lucide-react";
-import {
-  ToolWalkthrough,
-  WalkthroughStep,
-  OverlayCallout,
-  ALL_WALKTHROUGHS,
-} from "@/lib/walkthroughData";
-
-export type WalkthroughViewMode = "tour" | "map";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { X, ChevronLeft, ChevronRight, CheckCircle, Lightbulb, Crosshair, MousePointerClick } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ToolWalkthrough, WalkthroughStep } from "@/lib/walkthroughData";
 
 interface WalkthroughModalProps {
   walkthrough: ToolWalkthrough;
-  initialMode?: WalkthroughViewMode;
   initialStepIndex?: number;
   isOpen: boolean;
   onClose: () => void;
@@ -43,593 +21,337 @@ interface TargetRect {
   right: number;
 }
 
+const PADDING = 12;
+const GAP = 14;
+const MOBILE_BREAKPOINT = 640;
+
+/** Returns the first element matching the selector that is actually rendered on screen. */
+function findVisibleTarget(selector: string): HTMLElement | null {
+  if (!selector || typeof document === "undefined") return null;
+  try {
+    const matches = Array.from(document.querySelectorAll<HTMLElement>(selector));
+    return (
+      matches.find((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return false;
+        const style = window.getComputedStyle(el);
+        return style.visibility !== "hidden" && style.display !== "none";
+      }) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Steps whose target is not on the current screen (e.g. defense-only controls on an offense play) are skipped. */
+export function getAvailableSteps(steps: WalkthroughStep[]): WalkthroughStep[] {
+  const available = steps.filter((step) => !step.targetSelector || findVisibleTarget(step.targetSelector));
+  return available.length > 0 ? available : steps;
+}
+
 export default function WalkthroughModal({
   walkthrough,
-  initialMode = "tour",
   initialStepIndex = 0,
   isOpen,
   onClose,
 }: WalkthroughModalProps) {
-  const [mode, setMode] = useState<WalkthroughViewMode>(initialMode);
+  const [steps, setSteps] = useState<WalkthroughStep[]>(walkthrough.steps);
   const [stepIndex, setStepIndex] = useState<number>(initialStepIndex);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
-  const [activeCalloutId, setActiveCalloutId] = useState<string | null>(null);
-  const [calloutFilter, setCalloutFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [viewport, setViewport] = useState({ width: 1024, height: 768 });
+  const [cardHeight, setCardHeight] = useState(280);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // Reset to initial state when opened
   useEffect(() => {
-    if (isOpen) {
-      setMode(initialMode);
-      setStepIndex(initialStepIndex);
-      setActiveCalloutId(null);
-      setSearchQuery("");
-      setCalloutFilter("all");
-    }
-  }, [isOpen, initialMode, initialStepIndex]);
+    if (!isOpen) return;
+    const available = getAvailableSteps(walkthrough.steps);
+    setSteps(available);
+    setStepIndex(Math.min(initialStepIndex, available.length - 1));
+  }, [isOpen, walkthrough, initialStepIndex]);
 
-  // Keep track of viewport dimensions
   useEffect(() => {
-    const updateSize = () => {
-      setViewportSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
+    const updateSize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
     updateSize();
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  const currentStep: WalkthroughStep | undefined = walkthrough.steps[stepIndex];
+  const currentStep: WalkthroughStep | undefined = steps[stepIndex];
+  const isLastStep = stepIndex >= steps.length - 1;
 
-  // Measure target element position for current step in tour mode
-  const updateTargetRect = useCallback(() => {
-    if (!isOpen || mode !== "tour" || !currentStep) {
-      setTargetRect(null);
-      return;
-    }
-
-    try {
-      const el = document.querySelector(currentStep.targetSelector) as HTMLElement | null;
-      if (el) {
-        // Scroll target into view if offscreen
-        const rect = el.getBoundingClientRect();
-        const isInViewport =
-          rect.top >= 0 &&
-          rect.left >= 0 &&
-          rect.bottom <= window.innerHeight &&
-          rect.right <= window.innerWidth;
-
-        if (!isInViewport) {
-          el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-        }
-
-        // Slight delay to re-measure after smooth scroll or re-measure immediately
-        const freshRect = el.getBoundingClientRect();
-        setTargetRect({
-          top: freshRect.top,
-          left: freshRect.left,
-          width: freshRect.width,
-          height: freshRect.height,
-          bottom: freshRect.bottom,
-          right: freshRect.right,
-        });
-      } else {
+  const measureTarget = useCallback(
+    (scroll: boolean) => {
+      if (!isOpen || !currentStep?.targetSelector) {
         setTargetRect(null);
+        return;
       }
-    } catch (err) {
-      console.warn("Could not query selector for step:", currentStep.targetSelector, err);
-      setTargetRect(null);
-    }
-  }, [isOpen, mode, currentStep]);
+      const el = findVisibleTarget(currentStep.targetSelector);
+      if (!el) {
+        setTargetRect(null);
+        return;
+      }
+      if (scroll) {
+        const rect = el.getBoundingClientRect();
+        const fullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight && rect.left >= 0 && rect.right <= window.innerWidth;
+        if (!fullyVisible) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      }
+      const r = el.getBoundingClientRect();
+      setTargetRect({ top: r.top, left: r.left, width: r.width, height: r.height, bottom: r.bottom, right: r.right });
+    },
+    [isOpen, currentStep]
+  );
 
   useEffect(() => {
-    updateTargetRect();
-    const handleScrollOrResize = () => {
-      updateTargetRect();
-    };
-    window.addEventListener("scroll", handleScrollOrResize, true);
-    window.addEventListener("resize", handleScrollOrResize);
+    measureTarget(true);
+    const remeasure = () => measureTarget(false);
+    // Smooth scrolling settles after the first measurement, so measure again shortly after.
+    const settle = window.setTimeout(remeasure, 450);
+    window.addEventListener("scroll", remeasure, true);
+    window.addEventListener("resize", remeasure);
     return () => {
-      window.removeEventListener("scroll", handleScrollOrResize, true);
-      window.removeEventListener("resize", handleScrollOrResize);
+      window.clearTimeout(settle);
+      window.removeEventListener("scroll", remeasure, true);
+      window.removeEventListener("resize", remeasure);
     };
-  }, [updateTargetRect]);
+  }, [measureTarget]);
 
-  // Keyboard navigation
+  useLayoutEffect(() => {
+    if (cardRef.current) setCardHeight(cardRef.current.offsetHeight);
+  }, [stepIndex, isOpen, viewport.width, steps]);
+
+  const goNext = useCallback(() => {
+    if (isLastStep) onClose();
+    else setStepIndex((prev) => prev + 1);
+  }, [isLastStep, onClose]);
+
+  const goBack = useCallback(() => setStepIndex((prev) => Math.max(0, prev - 1)), []);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      } else if (mode === "tour") {
-        if (e.key === "ArrowRight") {
-          e.preventDefault();
-          if (stepIndex < walkthrough.steps.length - 1) {
-            setStepIndex((prev) => prev + 1);
-          } else {
-            onClose();
-          }
-        } else if (e.key === "ArrowLeft") {
-          e.preventDefault();
-          if (stepIndex > 0) {
-            setStepIndex((prev) => prev - 1);
-          }
-        }
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goBack();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, mode, stepIndex, walkthrough.steps.length, onClose]);
+  }, [isOpen, goNext, goBack, onClose]);
 
-  // Compute live positions of all callouts for the Button Map HUD
-  const locatedCallouts = useMemo(() => {
-    if (!isOpen || typeof document === "undefined") return [];
+  if (!isOpen || !currentStep || typeof document === "undefined") return null;
 
-    return walkthrough.callouts
-      .map((callout, index) => {
-        try {
-          const el = document.querySelector(callout.targetSelector) as HTMLElement | null;
-          if (!el) return null;
-          const rect = el.getBoundingClientRect();
-          // Filter out elements that have 0 width or height (e.g. hidden dropdowns)
-          if (rect.width === 0 && rect.height === 0) return null;
+  const isMobile = viewport.width < MOBILE_BREAKPOINT;
+  const cardWidth = isMobile ? viewport.width - PADDING * 2 : Math.min(420, viewport.width - PADDING * 2);
+  const maxCardHeight = Math.round(viewport.height * (isMobile ? 0.55 : 0.8));
+  const effectiveCardHeight = Math.min(cardHeight, maxCardHeight);
 
-          return {
-            ...callout,
-            index: index + 1,
-            rect: {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              centerX: rect.left + rect.width / 2,
-              centerY: rect.top + rect.height / 2,
-            },
-          };
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean) as (OverlayCallout & {
-      index: number;
-      rect: { top: number; left: number; width: number; height: number; centerX: number; centerY: number };
-    })[];
-  }, [isOpen, walkthrough.callouts, viewportSize]);
+  const computeCardPosition = (): { top: number; left: number } => {
+    const centered = {
+      top: Math.max(PADDING, (viewport.height - effectiveCardHeight) / 2),
+      left: Math.max(PADDING, (viewport.width - cardWidth) / 2),
+    };
+    if (!targetRect) return centered;
 
-  // Filtered callouts based on category and search
-  const filteredCallouts = useMemo(() => {
-    return locatedCallouts.filter((c) => {
-      const matchesCategory = calloutFilter === "all" || c.category === calloutFilter;
-      const matchesSearch =
-        searchQuery.trim() === "" ||
-        c.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
-  }, [locatedCallouts, calloutFilter, searchQuery]);
-
-  if (!isOpen) return null;
-
-  // Calculate Tooltip position for Tour Mode
-  const computeTooltipStyle = () => {
-    const cardWidth = Math.min(380, window.innerWidth - 32);
-    const cardHeightEstimate = 260;
-    const padding = 16;
-
-    if (!targetRect) {
-      // Center in screen if no element found
-      return {
-        top: Math.max(padding, (window.innerHeight - cardHeightEstimate) / 2),
-        left: Math.max(padding, (window.innerWidth - cardWidth) / 2),
-        width: cardWidth,
-      };
+    if (isMobile) {
+      // Dock to whichever screen edge leaves the highlighted control visible.
+      const targetCenter = targetRect.top + targetRect.height / 2;
+      const top = targetCenter > viewport.height / 2 ? PADDING : viewport.height - effectiveCardHeight - PADDING;
+      return { top, left: PADDING };
     }
 
-    const preferred = currentStep?.placement || "bottom";
-    let top = 0;
-    let left = targetRect.left + (targetRect.width - cardWidth) / 2;
+    const placement = currentStep.placement || "bottom";
+    const clampLeft = (l: number) => Math.max(PADDING, Math.min(l, viewport.width - cardWidth - PADDING));
+    const clampTop = (t: number) => Math.max(PADDING, Math.min(t, viewport.height - effectiveCardHeight - PADDING));
+    const below = targetRect.bottom + GAP;
+    const above = targetRect.top - effectiveCardHeight - GAP;
+    const fitsBelow = below + effectiveCardHeight <= viewport.height - PADDING;
+    const fitsAbove = above >= PADDING;
+    const centeredLeft = clampLeft(targetRect.left + (targetRect.width - cardWidth) / 2);
 
-    // Clamp left within viewport
-    left = Math.max(padding, Math.min(left, window.innerWidth - cardWidth - padding));
-
-    if (preferred === "bottom") {
-      top = targetRect.bottom + 14;
-      // If overflows bottom, flip to top
-      if (top + cardHeightEstimate > window.innerHeight - padding) {
-        top = Math.max(padding, targetRect.top - cardHeightEstimate - 14);
-      }
-    } else if (preferred === "top") {
-      top = targetRect.top - cardHeightEstimate - 14;
-      // If overflows top, flip to bottom
-      if (top < padding) {
-        top = Math.min(window.innerHeight - cardHeightEstimate - padding, targetRect.bottom + 14);
-      }
-    } else if (preferred === "left") {
-      top = Math.max(padding, targetRect.top - 20);
-      left = targetRect.left - cardWidth - 14;
-      if (left < padding) {
-        left = Math.min(window.innerWidth - cardWidth - padding, targetRect.right + 14);
-      }
-    } else if (preferred === "right") {
-      top = Math.max(padding, targetRect.top - 20);
-      left = targetRect.right + 14;
-      if (left + cardWidth > window.innerWidth - padding) {
-        left = Math.max(padding, targetRect.left - cardWidth - 14);
-      }
+    if (placement === "left" || placement === "right") {
+      const leftSide = targetRect.left - cardWidth - GAP;
+      const rightSide = targetRect.right + GAP;
+      const fitsLeft = leftSide >= PADDING;
+      const fitsRight = rightSide + cardWidth <= viewport.width - PADDING;
+      const top = clampTop(targetRect.top + targetRect.height / 2 - effectiveCardHeight / 2);
+      if (placement === "left" && fitsLeft) return { top, left: leftSide };
+      if (placement === "right" && fitsRight) return { top, left: rightSide };
+      if (fitsLeft) return { top, left: leftSide };
+      if (fitsRight) return { top, left: rightSide };
     }
 
-    // Safety clamp
-    top = Math.max(padding, Math.min(top, window.innerHeight - cardHeightEstimate - padding));
-
+    if (placement === "top" && fitsAbove) return { top: above, left: centeredLeft };
+    if (fitsBelow) return { top: below, left: centeredLeft };
+    if (fitsAbove) return { top: above, left: centeredLeft };
+    // Large targets (e.g. the whole field) leave no room above or below: pin to the roomier side, overlapping slightly.
+    const roomBelow = viewport.height - targetRect.bottom;
     return {
-      top,
-      left,
-      width: cardWidth,
+      top: roomBelow >= targetRect.top ? viewport.height - effectiveCardHeight - PADDING : PADDING,
+      left: centeredLeft,
     };
   };
 
-  const tooltipStyle = computeTooltipStyle();
+  const position = computeCardPosition();
+  const spotlight = targetRect
+    ? {
+        x: Math.max(0, targetRect.left - 6),
+        y: Math.max(0, targetRect.top - 6),
+        width: targetRect.width + 12,
+        height: targetRect.height + 12,
+      }
+    : null;
 
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${walkthrough.toolName} walkthrough`}
-      className="fixed inset-0 z-[120] overflow-hidden select-none"
-    >
-      {/* ============================================================== */}
-      {/* MODE 1: STEP-BY-STEP SPOTLIGHT TOUR                            */}
-      {/* ============================================================== */}
-      {mode === "tour" && (
-        <>
-          {/* SVG Cutout Mask for Spotlight */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none transition-all duration-300">
-            <defs>
-              <mask id="walkthrough-spotlight-mask">
-                {/* Everything white is visible (the dark backdrop) */}
-                <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                {/* Black cutout creates the transparent hole over target */}
-                {targetRect && (
-                  <rect
-                    x={Math.max(0, targetRect.left - 6)}
-                    y={Math.max(0, targetRect.top - 6)}
-                    width={targetRect.width + 12}
-                    height={targetRect.height + 12}
-                    rx="14"
-                    fill="black"
-                  />
-                )}
-              </mask>
-            </defs>
-            <rect
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              fill="rgba(5, 8, 16, 0.78)"
-              mask="url(#walkthrough-spotlight-mask)"
-            />
-          </svg>
+  // Portal to <body> so ancestors with transforms or backdrop filters can't trap or clip the fixed overlay.
+  return createPortal(
+    <div className="fixed inset-0 z-[120] overflow-hidden">
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+        <defs>
+          <mask id="walkthrough-spotlight-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            {spotlight && <rect {...spotlight} rx="14" fill="black" />}
+          </mask>
+        </defs>
+        <rect x="0" y="0" width="100%" height="100%" fill="rgba(5, 8, 16, 0.72)" mask="url(#walkthrough-spotlight-mask)" />
+      </svg>
 
-          {/* Glowing Animated Ring Around Spotlight Target */}
-          {targetRect && (
-            <div
-              className="absolute pointer-events-none transition-all duration-300 rounded-2xl ring-4 ring-cyan-400/80 shadow-[0_0_25px_rgba(6,182,212,0.6)] animate-pulse"
-              style={{
-                top: Math.max(0, targetRect.top - 6),
-                left: Math.max(0, targetRect.left - 6),
-                width: targetRect.width + 12,
-                height: targetRect.height + 12,
-              }}
-            />
+      {spotlight && (
+        <div
+          data-testid="walkthrough-spotlight"
+          className="absolute pointer-events-none transition-all duration-300 rounded-2xl ring-4 ring-cyan-400/80 shadow-[0_0_25px_rgba(6,182,212,0.6)]"
+          style={{ top: spotlight.y, left: spotlight.x, width: spotlight.width, height: spotlight.height }}
+        />
+      )}
+
+      <div
+        ref={cardRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${walkthrough.toolName} walkthrough`}
+        className="absolute z-10 flex flex-col rounded-2xl border-2 border-cyan-500/50 bg-white text-slate-900 shadow-2xl transition-[top,left] duration-200 dark:bg-[#0B0F19] dark:text-white"
+        style={{ top: position.top, left: position.left, width: cardWidth, maxHeight: maxCardHeight }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 pt-3 pb-2.5 dark:border-white/10 shrink-0">
+          <div className="flex min-w-0 items-center gap-1.5 flex-wrap">
+            <span className="rounded-full border border-cyan-600/30 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-cyan-700 dark:border-cyan-500/40 dark:bg-cyan-500/20 dark:text-cyan-300">
+              Step {stepIndex + 1} of {steps.length}
+            </span>
+            {currentStep.category && (
+              <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400">{currentStep.category}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close walkthrough"
+            className="rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body (scrolls if the step has a lot of detail) */}
+        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-4 py-3">
+          <div>
+            <h3 className="mb-1 text-base font-black tracking-tight sm:text-lg">{currentStep.title}</h3>
+            <p className="text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-neutral-300">{currentStep.description}</p>
+          </div>
+
+          {currentStep.details && currentStep.details.length > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-white/10 dark:bg-white/5">
+              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+                <MousePointerClick className="h-3.5 w-3.5" />
+                What each control does
+              </div>
+              <ul className="space-y-1.5">
+                {currentStep.details.map((detail) => (
+                  <li key={detail.label} className="text-xs leading-snug text-slate-700 dark:text-neutral-300">
+                    <strong className="font-bold text-slate-900 dark:text-white">{detail.label}</strong>
+                    {" — "}
+                    {detail.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
-          {/* Floating Tour Card */}
-          <div
-            className="absolute z-10 bg-slate-900/95 dark:bg-[#0B0F19]/95 text-white border-2 border-cyan-500/50 rounded-2xl shadow-2xl backdrop-blur-xl p-4 sm:p-5 flex flex-col gap-3 transition-all duration-200"
-            style={{
-              top: tooltipStyle.top,
-              left: tooltipStyle.left,
-              width: tooltipStyle.width,
-            }}
-          >
-            {/* Header: Progress, Category & Mode Switcher */}
-            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                  Step {stepIndex + 1} of {walkthrough.steps.length}
-                </span>
-                {currentStep?.category && (
-                  <span className="text-[11px] font-mono font-bold text-neutral-400">
-                    • {currentStep.category}
-                  </span>
-                )}
-              </div>
+          {currentStep.actionHint && (
+            <div className="flex items-start gap-2 rounded-xl border border-cyan-600/25 bg-cyan-500/10 p-2.5 text-xs text-cyan-900 dark:border-cyan-500/25 dark:text-cyan-100">
+              <Crosshair className="mt-0.5 h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-400" />
+              <span>
+                <strong className="font-bold">Try it:</strong> {currentStep.actionHint}
+              </span>
+            </div>
+          )}
 
-              <div className="flex items-center gap-1">
-                {/* Switch to HUD Map */}
-                <button
-                  type="button"
-                  onClick={() => setMode("map")}
-                  title="Switch to full-screen Button Map HUD"
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-neutral-300 hover:text-white text-[11px] font-bold transition-colors cursor-pointer"
-                >
-                  <Map className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Button Map</span>
-                </button>
-                {/* Close Tour */}
+          {currentStep.tip && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-900 dark:border-amber-500/25 dark:text-amber-100">
+              <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                <strong className="font-bold">Coach tip:</strong> {currentStep.tip}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-4 pt-2 pb-3 dark:border-white/10">
+          <div className="flex items-center justify-center gap-1" aria-hidden="true">
+            {steps.map((step, i) => (
+              <span
+                key={step.id}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === stepIndex ? "w-4 bg-cyan-500" : i < stepIndex ? "w-1.5 bg-cyan-500/50" : "w-1.5 bg-slate-300 dark:bg-white/15"
+                }`}
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-1 text-xs font-bold text-slate-500 transition-colors hover:text-slate-900 dark:text-neutral-400 dark:hover:text-white cursor-pointer"
+            >
+              Skip tour
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={stepIndex === 0}
+                onClick={goBack}
+                className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white cursor-pointer"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Back</span>
+              </button>
+              {isLastStep ? (
                 <button
                   type="button"
                   onClick={onClose}
-                  aria-label="Close walkthrough"
-                  className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 rounded-xl bg-emerald-500 px-4 py-1.5 text-xs font-black text-black shadow-lg shadow-emerald-500/30 transition-all hover:bg-emerald-400 active:scale-95 cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <CheckCircle className="h-3.5 w-3.5 stroke-[3]" />
+                  <span>Got it!</span>
                 </button>
-              </div>
-            </div>
-
-            {/* Content Body */}
-            <div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-white mb-1">
-                {currentStep?.title}
-              </h3>
-              <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
-                {currentStep?.description}
-              </p>
-            </div>
-
-            {/* Action Hint / Try It */}
-            {currentStep?.actionHint && (
-              <div className="bg-cyan-500/10 border border-cyan-500/25 rounded-xl p-2.5 flex items-start gap-2 text-xs text-cyan-200">
-                <Crosshair className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-cyan-300 font-bold">Try it:</strong> {currentStep.actionHint}
-                </span>
-              </div>
-            )}
-
-            {/* Pro Tip */}
-            {currentStep?.tip && (
-              <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-2.5 flex items-start gap-2 text-xs text-amber-200">
-                <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-amber-300 font-bold">Coach Tip:</strong> {currentStep.tip}
-                </span>
-              </div>
-            )}
-
-            {/* Navigation Footer */}
-            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10 mt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-xs font-bold text-neutral-400 hover:text-white transition-colors cursor-pointer px-1"
-              >
-                Skip Tour
-              </button>
-
-              <div className="flex items-center gap-2">
+              ) : (
                 <button
                   type="button"
-                  disabled={stepIndex === 0}
-                  onClick={() => setStepIndex((prev) => Math.max(0, prev - 1))}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer border border-white/10"
+                  onClick={goNext}
+                  className="flex items-center gap-1 rounded-xl bg-cyan-500 px-4 py-1.5 text-xs font-black text-black shadow-lg shadow-cyan-500/30 transition-all hover:bg-cyan-400 active:scale-95 cursor-pointer"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                  <span>Back</span>
+                  <span>Next</span>
+                  <ChevronRight className="h-3.5 w-3.5 stroke-[3]" />
                 </button>
-
-                {stepIndex < walkthrough.steps.length - 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => setStepIndex((prev) => prev + 1)}
-                    className="flex items-center gap-1 px-4 py-1.5 rounded-xl text-xs font-black bg-cyan-500 hover:bg-cyan-400 text-black shadow-lg shadow-cyan-500/30 transition-all cursor-pointer active:scale-95"
-                  >
-                    <span>Next</span>
-                    <ChevronRight className="w-3.5 h-3.5 stroke-[3]" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="flex items-center gap-1 px-4 py-1.5 rounded-xl text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/30 transition-all cursor-pointer active:scale-95"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Got It!</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ============================================================== */}
-      {/* MODE 2: TRANSLUCENT BUTTON MAP ("COACH HUD")                   */}
-      {/* ============================================================== */}
-      {mode === "map" && (
-        <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col text-white animate-in fade-in duration-200">
-          {/* Top Control Bar */}
-          <div className="p-3 sm:p-4 bg-slate-900/90 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 shadow-xl shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm">
-                <Map className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white">
-                    {walkthrough.toolName} • Button Map HUD
-                  </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Cheat Sheet
-                  </span>
-                </div>
-                <p className="text-xs text-neutral-400 hidden sm:block">
-                  Translucent overlay showing every button and tool control on this screen
-                </p>
-              </div>
-            </div>
-
-            {/* Filter Pills & Search */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Category Filter */}
-              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
-                {(["all", "primary", "tactics", "gameplay", "settings"] as const).map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCalloutFilter(cat)}
-                    className={`px-2 py-1 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                      calloutFilter === cat
-                        ? "bg-cyan-500 text-black shadow-sm"
-                        : "text-neutral-400 hover:text-white"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Mode Switcher: Back to Tour */}
-              <button
-                type="button"
-                onClick={() => setMode("tour")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-bold transition-all cursor-pointer"
-                title="Switch to guided Step-by-Step Tour"
-              >
-                <Compass className="w-4 h-4" />
-                <span className="hidden sm:inline">Guided Tour</span>
-              </button>
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close button map"
-                className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Interactive Screen Overlay with Glowing Pins */}
-          <div className="relative flex-1 overflow-hidden pointer-events-auto">
-            {filteredCallouts.map((c) => {
-              const isSelected = activeCalloutId === c.id;
-
-              return (
-                <div
-                  key={c.id}
-                  style={{
-                    position: "absolute",
-                    top: Math.max(8, c.rect.top - 8),
-                    left: Math.max(8, c.rect.left - 8),
-                  }}
-                  className="z-20 transition-all duration-200"
-                >
-                  {/* Glowing Outline Box over the button */}
-                  <div
-                    style={{
-                      width: c.rect.width + 16,
-                      height: c.rect.height + 16,
-                    }}
-                    className={`rounded-2xl border-2 transition-all duration-200 pointer-events-none ${
-                      isSelected
-                        ? "border-amber-400 ring-4 ring-amber-400/40 shadow-[0_0_20px_rgba(251,191,36,0.6)] bg-amber-500/10"
-                        : "border-cyan-400/60 ring-2 ring-cyan-400/20 hover:border-cyan-300 bg-cyan-500/5"
-                    }`}
-                  />
-
-                  {/* Labeled Badge Pin */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveCalloutId(isSelected ? null : c.id)}
-                    className={`absolute -top-3.5 -left-3.5 flex items-center gap-1 px-2 py-0.5 rounded-full font-black text-xs shadow-xl transition-all cursor-pointer active:scale-95 ${
-                      isSelected
-                        ? "bg-amber-400 text-black ring-2 ring-white scale-110"
-                        : "bg-cyan-500 hover:bg-cyan-400 text-black ring-1 ring-black/40"
-                    }`}
-                  >
-                    <span>{c.index}</span>
-                    <span className="font-bold text-[11px] tracking-tight">{c.label}</span>
-                  </button>
-
-                  {/* Active Tooltip Popover if Selected */}
-                  {isSelected && (
-                    <div
-                      className="absolute left-0 top-full mt-2 w-72 bg-neutral-900 border-2 border-amber-400 rounded-2xl p-3 shadow-2xl z-30 animate-in fade-in zoom-in-95 duration-150"
-                    >
-                      <div className="flex items-center justify-between pb-1.5 border-b border-white/10 mb-1.5">
-                        <span className="text-xs font-black uppercase text-amber-400">
-                          #{c.index} {c.label}
-                        </span>
-                        <span className="text-[10px] font-mono uppercase text-neutral-400 bg-white/5 px-1.5 py-0.5 rounded">
-                          {c.category}
-                        </span>
-                      </div>
-                      <p className="text-xs text-neutral-200 leading-relaxed">
-                        {c.description}
-                      </p>
-                      {c.shortcutOrRole && (
-                        <p className="text-[11px] text-amber-300/90 mt-1 font-mono">
-                          Role: {c.shortcutOrRole}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Bottom Drawer: Directory of All Mapped Buttons for Quick Scanning */}
-          <div className="bg-slate-900/95 border-t border-white/10 p-3 max-h-48 overflow-y-auto shrink-0 shadow-2xl scrollbar-thin">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
-                Mapped Controls ({filteredCallouts.length} detected)
-              </span>
-              <span className="text-[11px] text-neutral-400">
-                Click any control below to highlight it on your screen
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {filteredCallouts.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveCalloutId(c.id);
-                    // Scroll to button
-                    try {
-                      const el = document.querySelector(c.targetSelector);
-                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    } catch {}
-                  }}
-                  className={`p-2 rounded-xl text-left border transition-all cursor-pointer flex items-start gap-2 ${
-                    activeCalloutId === c.id
-                      ? "bg-amber-500/20 border-amber-400 text-white"
-                      : "bg-black/40 border-white/10 text-neutral-300 hover:border-white/30 hover:text-white"
-                  }`}
-                >
-                  <span className="w-5 h-5 rounded-full bg-cyan-500 text-black text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
-                    {c.index}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold truncate text-white">{c.label}</div>
-                    <div className="text-[11px] text-neutral-400 line-clamp-1">{c.description}</div>
-                  </div>
-                </button>
-              ))}
+              )}
             </div>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    </div>,
+    document.body
   );
 }
