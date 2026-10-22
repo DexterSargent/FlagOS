@@ -101,6 +101,9 @@ export interface LeagueSettings {
   rules: LeagueRules;
   playoffFormat?: PlayoffFormat;
   subscription?: LeagueSubscriptionInfo;
+  registrationFeePerTeam?: number;
+  individualFee?: number;
+  amenities?: string[];
 }
 
 export interface PlayoffFormat {
@@ -146,7 +149,7 @@ export function getDefaultPlayoffFormat(
       hasByes: true,
       byesCount: 2,
       playoffWeeks: 4,
-      championshipName: "FlagOS League Championship",
+      championshipName: "FlagOS Demo League Championship",
     };
   }
 
@@ -159,7 +162,7 @@ export function getDefaultPlayoffFormat(
     hasByes: false,
     byesCount: 0,
     playoffWeeks,
-    championshipName: "FlagOS League Championship",
+    championshipName: "FlagOS Demo League Championship",
   };
 }
 
@@ -195,7 +198,7 @@ const LEAGUE_UPDATE_KEYS: (keyof LeagueSettings)[] = [
 ];
 
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
-  leagueName: "FlagOS League",
+  leagueName: "FlagOS Demo League",
   shortcode: "FLAG",
   tagline: "The Flag Football Operating System",
   seasonTitle: "2026 Season",
@@ -219,7 +222,7 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
     hasByes: false,
     byesCount: 0,
     playoffWeeks: 2,
-    championshipName: "FlagOS League Championship",
+    championshipName: "FlagOS Demo League Championship",
   },
 };
 

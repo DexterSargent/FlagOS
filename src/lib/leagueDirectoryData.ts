@@ -69,8 +69,8 @@ export interface DirectoryLeague {
   venue: LeagueVenue;
   teamCount: number;
   maxTeams: number;
-  registrationFeePerTeam: number;
-  individualFee: number;
+  registrationFeePerTeam?: number;
+  individualFee?: number;
   registrationStatus: RegistrationStatus;
   registrationDeadline: string;
   seasonDates: string;
@@ -180,7 +180,7 @@ export function normalizeToDirectoryLeague(
   meta?: { isLive?: boolean; isUserLeague?: boolean; isActive?: boolean }
 ): DirectoryLeague {
   const id = raw.id || "default";
-  const name = raw.leagueName || raw.name || "FlagOS League";
+  const name = raw.leagueName || raw.name || "FlagOS Demo League";
   const shortcode =
     raw.shortcode || (name.length <= 4 ? name.toUpperCase() : name.slice(0, 4).toUpperCase());
   const tagline =
@@ -255,9 +255,19 @@ export function normalizeToDirectoryLeague(
   );
   const maxTeams = Number(raw.maxTeams ?? Math.max(teamCount + 4, 12));
 
-  // Pricing
-  const registrationFeePerTeam = Number(raw.registrationFeePerTeam ?? 850);
-  const individualFee = Number(raw.individualFee ?? 95);
+  // Pricing: Only populated if entered by the commissioner
+  const registrationFeePerTeam =
+    raw.registrationFeePerTeam !== undefined &&
+    raw.registrationFeePerTeam !== null &&
+    raw.registrationFeePerTeam !== ""
+      ? Number(raw.registrationFeePerTeam)
+      : undefined;
+  const individualFee =
+    raw.individualFee !== undefined &&
+    raw.individualFee !== null &&
+    raw.individualFee !== ""
+      ? Number(raw.individualFee)
+      : undefined;
 
   // Status
   let registrationStatus: RegistrationStatus = "Open Registration";
@@ -292,12 +302,10 @@ export function normalizeToDirectoryLeague(
     visibility: raw.visibility === "private" ? "private" : "public",
     amenities:
       Array.isArray(raw.amenities) && raw.amenities.length > 0
-        ? raw.amenities
-        : [
-            "Certified Game Officials",
-            "Live Play-by-Play & Box Scores",
-            "Official Team Standings & Stat Tracking",
-          ],
+        ? raw.amenities.filter((a: any) => typeof a === "string" && a.trim().length > 0)
+        : Array.isArray(raw.features) && raw.features.length > 0
+        ? raw.features.filter((f: any) => typeof f === "string" && f.trim().length > 0)
+        : [],
     contactEmail: raw.contactEmail,
     isFeatured: Boolean(raw.isFeatured),
     isLive: meta?.isLive ?? Boolean(raw.isLive),
@@ -355,6 +363,9 @@ export function buildDirectoryCatalog(
         if (l.primaryColor) existing.primaryColor = l.primaryColor;
         if (l.accentColor) existing.accentColor = l.accentColor;
         if (l.teamCount) existing.teamCount = l.teamCount;
+        if (l.registrationFeePerTeam !== undefined) existing.registrationFeePerTeam = l.registrationFeePerTeam;
+        if (l.individualFee !== undefined) existing.individualFee = l.individualFee;
+        if (Array.isArray(l.amenities) && l.amenities.length > 0) existing.amenities = l.amenities;
         if (l.location || l.defaultLocation) {
           existing.venue.name = l.location || l.defaultLocation;
         }
@@ -386,6 +397,15 @@ export function buildDirectoryCatalog(
       if (activeLeagueSettings.primaryColor) existing.primaryColor = activeLeagueSettings.primaryColor;
       if (activeLeagueSettings.accentColor) existing.accentColor = activeLeagueSettings.accentColor;
       if (activeLeagueSettings.tagline) existing.tagline = activeLeagueSettings.tagline;
+      if (activeLeagueSettings.registrationFeePerTeam !== undefined) {
+        existing.registrationFeePerTeam = activeLeagueSettings.registrationFeePerTeam;
+      }
+      if (activeLeagueSettings.individualFee !== undefined) {
+        existing.individualFee = activeLeagueSettings.individualFee;
+      }
+      if (Array.isArray(activeLeagueSettings.amenities) && activeLeagueSettings.amenities.length > 0) {
+        existing.amenities = activeLeagueSettings.amenities;
+      }
       if (activeLeagueSettings.defaultLocation) {
         existing.venue.name = activeLeagueSettings.defaultLocation;
       }

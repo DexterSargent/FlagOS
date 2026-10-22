@@ -182,7 +182,7 @@ describe("GlobalShell", () => {
     expect(screen.getByText("Powered by FlagOS")).toBeInTheDocument();
   });
 
-  it.each(["/profile", "/account", "/login", "/admin"])(
+  it.each(["/profile", "/account", "/login", "/admin", "/leagues"])(
     "gives %s the site header and Powered by FlagOS footer",
     async (path) => {
       usePathnameMock.mockReturnValue(path);
@@ -199,7 +199,7 @@ describe("GlobalShell", () => {
     }
   );
 
-  it.each(["/", "/pricing", "/leagues", "/teams/york_lions/playbook", "/matches/m1/play-by-play"])(
+  it.each(["/", "/pricing", "/teams/york_lions/playbook", "/matches/m1/play-by-play"])(
     "leaves %s to render its own header and footer",
     (path) => {
       usePathnameMock.mockReturnValue(path);

@@ -19,7 +19,7 @@ vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({
     activeLeagueId: "default",
     settings: {
-      leagueName: "FlagOS Live Premier Circuit",
+      leagueName: "FlagOS Demo League",
       shortcode: "FLPC",
       tagline: "The Flag Football Operating System",
       seasonTitle: "2026 Championship",
@@ -98,7 +98,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     });
 
     // Public active league and user league are present in directory headings
-    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
 
     // Fake mock circuits are completely absent
@@ -192,13 +192,13 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // Only user's own leagues appear in card headings
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "FlagOS Demo League" })).toBeNull();
 
     // Click back to "All Leagues" tab button
     const allTabBtn = allBtns[allBtns.length - 1];
     fireEvent.click(allTabBtn);
 
-    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
   });
 
@@ -223,7 +223,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     });
 
     // Both 5v5 (FlagOS Live Premier) and 7v7 (Metro West) are present initially
-    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
 
     // Open format multi-select dropdown
@@ -245,7 +245,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // Metro West (7v7) remains, FlagOS Live Premier (5v5) is filtered out
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "FlagOS Demo League" })).toBeNull();
 
     // Also select 5v5 format
     const option5v5 = within(listbox).getByRole("option", { name: /5v5/i });
@@ -253,7 +253,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // Now both 5v5 and 7v7 match
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
 
     // Click Clear button in dropdown
     const clearBtn = within(listbox).getByRole("button", { name: "Clear" });
@@ -261,7 +261,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // All leagues displayed
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
   });
 
   it("filters circuits by keyword search (league name or location)", async () => {
@@ -275,7 +275,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     fireEvent.change(searchInput, { target: { value: "Metro West" } });
 
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "FlagOS Demo League" })).toBeNull();
   });
 
   it("filters by division (e.g. Women's Flag)", async () => {
@@ -288,7 +288,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     const divisionSelect = screen.getByDisplayValue("All Divisions");
     fireEvent.change(divisionSelect, { target: { value: "womens" } });
 
-    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Metro West Flag League" })).toBeNull();
   });
 
@@ -333,5 +333,30 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     await waitFor(() => {
       expect(screen.getByText(/Message Dispatched to Commissioner/i)).toBeInTheDocument();
     });
+  });
+
+  it("displays Contact commissioner for more details when fees or amenities are omitted", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    // Fallback text should be present because mock leagues did not set registrationFeePerTeam/individualFee/amenities
+    const fallbacks = screen.getAllByText(/Contact commissioner for more details/i);
+    expect(fallbacks.length).toBeGreaterThan(0);
+  });
+
+  it("renders Explore Hub links with solid green styling and high contrast text", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    const exploreHubLinks = screen.getAllByRole("link", { name: /Explore Hub/i });
+    expect(exploreHubLinks.length).toBeGreaterThan(0);
+    expect(exploreHubLinks[0]).toHaveStyle({ backgroundColor: "rgb(60, 165, 5)" });
+    expect(exploreHubLinks[0]).toHaveStyle({ color: "rgb(255, 255, 255)" });
   });
 });

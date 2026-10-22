@@ -185,6 +185,15 @@ export default function LeagueCustomizerContent() {
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
   const [accentColor, setAccentColor] = useState(settings.accentColor);
   const [visibility, setVisibility] = useState<"public" | "private">(settings.visibility || "public");
+  const [registrationFeePerTeam, setRegistrationFeePerTeam] = useState<string>(
+    settings.registrationFeePerTeam !== undefined ? String(settings.registrationFeePerTeam) : ""
+  );
+  const [individualFee, setIndividualFee] = useState<string>(
+    settings.individualFee !== undefined ? String(settings.individualFee) : ""
+  );
+  const [amenitiesText, setAmenitiesText] = useState<string>(
+    settings.amenities ? settings.amenities.join(", ") : ""
+  );
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedJoinLink, setCopiedJoinLink] = useState(false);
 
@@ -236,6 +245,9 @@ export default function LeagueCustomizerContent() {
     setPrimaryColor(settings.primaryColor);
     setAccentColor(settings.accentColor);
     setVisibility(settings.visibility || "public");
+    setRegistrationFeePerTeam(settings.registrationFeePerTeam !== undefined ? String(settings.registrationFeePerTeam) : "");
+    setIndividualFee(settings.individualFee !== undefined ? String(settings.individualFee) : "");
+    setAmenitiesText(settings.amenities ? settings.amenities.join(", ") : "");
     setRules(settings.rules || DEFAULT_LEAGUE_RULES);
 
     if (!isLeagueAdmin && activeTab === "branding") {
@@ -285,9 +297,14 @@ export default function LeagueCustomizerContent() {
     try {
       const sanitizedMinRoster = Math.max(rules.playersOnField, rules.minRosterSize);
       const sanitizedMaxRoster = Math.min(30, Math.max(sanitizedMinRoster, rules.maxRosterSize || 30));
+      const parsedTeamFee = registrationFeePerTeam.trim() !== "" ? Number(registrationFeePerTeam) : undefined;
+      const parsedPlayerFee = individualFee.trim() !== "" ? Number(individualFee) : undefined;
+      const parsedAmenities = amenitiesText.trim() !== ""
+        ? amenitiesText.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined;
 
       await updateSettings({
-        leagueName: leagueName.trim() || "FlagOS League",
+        leagueName: leagueName.trim() || "FlagOS Demo League",
         shortcode: shortcode.trim().toUpperCase() || "FLAG",
         tagline: tagline.trim(),
         seasonTitle: seasonTitle.trim() || "Active Season",
@@ -300,6 +317,9 @@ export default function LeagueCustomizerContent() {
         accentColor,
         themePreset: "custom",
         visibility,
+        registrationFeePerTeam: Number.isFinite(parsedTeamFee) ? parsedTeamFee : undefined,
+        individualFee: Number.isFinite(parsedPlayerFee) ? parsedPlayerFee : undefined,
+        amenities: parsedAmenities,
         rules: {
           ...rules,
           minRosterSize: sanitizedMinRoster,
@@ -984,6 +1004,79 @@ export default function LeagueCustomizerContent() {
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Section 4: Registration Fees & Features (Optional) */}
+            <div className="border-t border-white/10 pt-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>4. Registration Fees & Features (Optional)</span>
+                </span>
+                <span className="hidden sm:inline text-[11px] text-neutral-400 font-mono">
+                  Directory Listing Info
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                Provide optional registration pricing and included features to display on the FlagOS League Directory. If left blank, cards will display &ldquo;Contact commissioner for more details&rdquo;.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                    <span>Team Registration Fee ($)</span>
+                    <FieldHelpTooltip
+                      title="Team Registration Fee"
+                      content="Optional total cost for a full team registration. If not entered, the directory displays 'Contact commissioner for more details'."
+                    />
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={registrationFeePerTeam}
+                    onChange={(e) => setRegistrationFeePerTeam(e.target.value)}
+                    placeholder="e.g. 750 (leave blank if undisclosed)"
+                    className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white font-mono text-xs outline-none transition-colors"
+                  />
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                  <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                    <span>Free Agent / Individual Fee ($)</span>
+                    <FieldHelpTooltip
+                      title="Individual Entry Fee"
+                      content="Optional registration fee per solo player / free agent. If not entered, the directory displays 'Contact commissioner for more details'."
+                    />
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={individualFee}
+                    onChange={(e) => setIndividualFee(e.target.value)}
+                    placeholder="e.g. 85 (leave blank if undisclosed)"
+                    className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white font-mono text-xs outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                  <span>Included Features & Perks (Comma-Separated)</span>
+                  <FieldHelpTooltip
+                    title="Included Amenities"
+                    content="Enter features included with registration, separated by commas (e.g. 'Certified Referees, Custom Jerseys, HD Highlights, Live Stats'). If empty, defaults to 'Contact commissioner for more details'."
+                  />
+                </label>
+                <input
+                  type="text"
+                  value={amenitiesText}
+                  onChange={(e) => setAmenitiesText(e.target.value)}
+                  placeholder="e.g. Official Referees, Team Jerseys, Live Stats Tracking, Trophies"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white text-xs outline-none transition-colors"
+                />
               </div>
             </div>
 

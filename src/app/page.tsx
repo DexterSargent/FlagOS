@@ -159,7 +159,7 @@ export default function FlagOSPlatformLandingPage() {
   const directoryCatalog = [
     {
       id: activeLeagueId || "default",
-      name: settings?.leagueName || "FlagOS League",
+      name: settings?.leagueName || "FlagOS Demo League",
       shortcode: settings?.shortcode || "FLAG",
       seasonTitle: settings?.seasonTitle || "2026 Season",
       location: settings?.defaultLocation || "Turf Field 1",
@@ -263,14 +263,12 @@ export default function FlagOSPlatformLandingPage() {
             >
               Demo League
             </Link>
-            {user && (
-              <Link
-                href="/leagues"
-                className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
-              >
-                <span>League Directory</span>
-              </Link>
-            )}
+            <Link
+              href="/leagues"
+              className="text-white hover:text-[#3CA505] transition-colors flex items-center gap-1.5"
+            >
+              <span>League Directory</span>
+            </Link>
             {isMe && (
               <Link
                 href="/my-story"
@@ -377,16 +375,14 @@ export default function FlagOSPlatformLandingPage() {
               <PlayCircle className="w-4 h-4" />
               <span>Demo League</span>
             </Link>
-            {user && (
-              <Link
-                href="/leagues"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
-              >
-                <Globe className="w-4 h-4" />
-                <span>League Directory</span>
-              </Link>
-            )}
+            <Link
+              href="/leagues"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white hover:text-[#3CA505] hover:bg-white/5 transition-colors"
+            >
+              <Globe className="w-4 h-4" />
+              <span>League Directory</span>
+            </Link>
             {isMe && (
               <Link
                 href="/my-story"
@@ -416,7 +412,7 @@ export default function FlagOSPlatformLandingPage() {
             <div className="flex items-center gap-2 text-neutral-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span>
-                Looking for your active league? You have access to <strong className="text-white">{settings?.leagueName || "FlagOS League"}</strong>.
+                Looking for your active league? You have access to <strong className="text-white">{settings?.leagueName || "FlagOS Demo League"}</strong>.
               </span>
             </div>
             <Link
@@ -1149,9 +1145,7 @@ export default function FlagOSPlatformLandingPage() {
                   Demo League
                 </Link>
               </li>
-              {user && (
-                <li><Link href="/leagues" className="hover:text-cyan-400 transition-colors">League Directory</Link></li>
-              )}
+              <li><Link href="/leagues" className="hover:text-cyan-400 transition-colors">League Directory</Link></li>
             </ul>
           </div>
           <div className="space-y-3">

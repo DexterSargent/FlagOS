@@ -6,8 +6,6 @@ import { collection, query, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
-import LeagueHeader from "@/components/LeagueHeader";
-import LeagueFooter from "@/components/LeagueFooter";
 import {
   DirectoryLeague,
   buildDirectoryCatalog,
@@ -294,7 +292,9 @@ export default function LeagueDirectoryPage() {
           }
         }
         if (sortBy === "fee") {
-          return a.registrationFeePerTeam - b.registrationFeePerTeam;
+          const feeA = a.registrationFeePerTeam ?? Infinity;
+          const feeB = b.registrationFeePerTeam ?? Infinity;
+          return feeA - feeB;
         }
         if (sortBy === "name") {
           return a.name.localeCompare(b.name);
@@ -367,66 +367,65 @@ export default function LeagueDirectoryPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#07090E] text-slate-900 dark:text-white transition-colors duration-200">
-      <LeagueHeader />
-
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8">
         {/* ========================================================= */}
         {/* HERO SECTION & DIRECTORY VALUE PROPOSITION                */}
         {/* ========================================================= */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-[#0B0F19] to-slate-900 text-white border border-slate-800 shadow-2xl p-6 sm:p-10 lg:p-12">
+        <section id="league-directory-hero" className="relative overflow-hidden rounded-3xl bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-[#0B0F19] dark:to-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl dark:shadow-2xl p-6 sm:p-10 lg:p-12 transition-colors duration-200">
           {/* Subtle Ambient Glow */}
-          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-cyan-500/10 dark:bg-cyan-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-emerald-500/10 dark:bg-emerald-500/10 blur-3xl pointer-events-none" />
 
           <div className="relative z-10 max-w-3xl space-y-5">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400">
                 <Globe className="w-3.5 h-3.5" />
                 <span><span className="normal-case">FlagOS</span> League Directory</span>
               </span>
-              <span className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs font-mono text-cyan-300">
+              <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-cyan-500/10 border border-slate-200 dark:border-cyan-500/20 text-xs font-mono font-bold text-slate-700 dark:text-cyan-300">
                 {processedLeagues.length} {processedLeagues.length === 1 ? "League Available" : "Leagues Available"}
               </span>
               {liveCount > 0 && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-xs font-mono font-bold text-emerald-300">
-                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
+                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   {liveCount} Live FlagOS {liveCount === 1 ? "League" : "Leagues"}
                 </span>
               )}
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white leading-tight">
-              Find a Flag Football League <span className="text-cyan-400">Near You</span>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
+              Find a Flag Football League <span className="text-[#3ca505] dark:text-emerald-400">Near You</span>
             </h1>
 
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
-              Find a league to play in, or start your own. Browse active leagues by city, format, division, and game night—whether you're looking for a Sunday co-ed squad or competitive 5v5 under the lights.
+            <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
+              Find a league to play in, or start your own. Browse active leagues by city, format, division, and game night—whether you&apos;re looking for a Sunday co-ed squad or competitive 5v5 under the lights.
             </p>
 
             {/* Commissioner CTA Links */}
             <div className="flex items-center gap-3 pt-2 flex-wrap">
               <Link
                 href="/pricing"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 hover:opacity-90 transition-all cursor-pointer"
+                style={{ backgroundColor: '#3ca505', color: '#ffffff' }}
               >
-                <Trophy className="w-4 h-4 text-slate-950" />
+                <Trophy className="w-4 h-4" style={{ color: '#ffffff' }} />
                 <span>Create a League</span>
               </Link>
               <button
                 type="button"
                 onClick={() => setSelectedCategory("all")}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/15 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white font-bold text-xs uppercase tracking-wider transition-all border border-slate-200 dark:border-white/15 cursor-pointer"
               >
-                <Sparkles className="w-4 h-4 text-cyan-300" />
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>All Leagues ({catalog.length})</span>
               </button>
               {myLeaguesCount > 0 && (
                 <button
                   type="button"
                   onClick={() => setSelectedCategory("my")}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 font-bold text-xs uppercase tracking-wider transition-all border border-purple-500/30 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-500/20 dark:hover:bg-purple-500/30 text-purple-700 dark:text-purple-200 font-bold text-xs uppercase tracking-wider transition-all border border-purple-200 dark:border-purple-500/30 cursor-pointer"
                 >
-                  <Users className="w-4 h-4 text-purple-300" />
+                  <Users className="w-4 h-4 text-purple-600 dark:text-purple-300" />
                   <span>My Leagues ({myLeaguesCount})</span>
                 </button>
               )}
@@ -434,22 +433,22 @@ export default function LeagueDirectoryPage() {
           </div>
 
           {/* Quick Metrics Bar */}
-          <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
             <div>
-              <span className="text-slate-400 block text-[11px]">Active Leagues</span>
-              <span className="text-cyan-400 font-bold text-base sm:text-lg">{catalog.length} Available</span>
+              <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Active Leagues</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold text-base sm:text-lg">{catalog.length} Available</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[11px]">Teams Playing</span>
-              <span className="text-white font-bold text-base sm:text-lg">{totalTeamsCount} Teams</span>
+              <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Teams Playing</span>
+              <span className="text-slate-900 dark:text-white font-bold text-base sm:text-lg">{totalTeamsCount} Teams</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[11px]">Fields &amp; Facilities</span>
-              <span className="text-emerald-400 font-bold text-base sm:text-lg">{uniqueVenues.length} Venues</span>
+              <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Fields &amp; Facilities</span>
+              <span className="text-cyan-700 dark:text-cyan-400 font-bold text-base sm:text-lg">{uniqueVenues.length} Venues</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[11px]">Games &amp; Stats</span>
-              <span className="text-amber-400 font-bold text-base sm:text-lg">Refereed &amp; Tracked</span>
+              <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Games &amp; Stats</span>
+              <span className="text-amber-700 dark:text-amber-400 font-bold text-base sm:text-lg">Refereed &amp; Tracked</span>
             </div>
           </div>
         </section>
@@ -465,11 +464,12 @@ export default function LeagueDirectoryPage() {
               onClick={() => setSelectedCategory("all")}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedCategory === "all"
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-black shadow-sm"
-                  : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 font-black shadow-sm"
+                  : "bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
               }`}
+              style={selectedCategory === "all" ? { color: '#ffffff', backgroundColor: '#0f172a' } : undefined}
             >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
               <span>All Leagues ({catalog.length})</span>
             </button>
             <button
@@ -477,11 +477,12 @@ export default function LeagueDirectoryPage() {
               onClick={() => setSelectedCategory("my")}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedCategory === "my"
-                  ? "bg-purple-600 text-white font-black shadow-sm"
-                  : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-purple-600 font-black shadow-sm"
+                  : "bg-slate-100 text-slate-700 dark:bg-white/5 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
               }`}
+              style={selectedCategory === "my" ? { color: '#ffffff', backgroundColor: '#9333ea' } : undefined}
             >
-              <Users className="w-3.5 h-3.5 text-purple-500" />
+              <Users className="w-3.5 h-3.5" style={{ color: selectedCategory === "my" ? '#ffffff' : '#a855f7' }} />
               <span>My Leagues ({myLeaguesCount})</span>
             </button>
           </div>
@@ -953,33 +954,51 @@ export default function LeagueDirectoryPage() {
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                       What&apos;s Included
                     </span>
-                    <ul className="grid grid-cols-1 gap-1 text-[11px] text-slate-700 dark:text-neutral-300">
-                      {league.amenities.slice(0, 3).map((item, idx) => (
-                        <li key={idx} className="flex items-center gap-1.5 truncate">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                          <span className="truncate">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {league.amenities && league.amenities.length > 0 ? (
+                      <ul className="grid grid-cols-1 gap-1 text-[11px] text-slate-700 dark:text-neutral-300">
+                        {league.amenities.slice(0, 3).map((item, idx) => (
+                          <li key={idx} className="flex items-center gap-1.5 truncate">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span className="truncate">{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 dark:text-neutral-400 italic">
+                        Contact commissioner for more details
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 {/* Footer Pricing & Direct Action CTAs */}
                 <div className="mt-6 pt-4 border-t border-slate-200 dark:border-white/10 space-y-3">
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between gap-2">
                     <div>
                       <span className="text-[10px] font-mono text-slate-400 block">Team Registration</span>
-                      <span className="text-base font-black text-slate-900 dark:text-white">
-                        ${league.registrationFeePerTeam}
-                        <span className="text-[10px] font-normal text-slate-400"> / team</span>
-                      </span>
+                      {league.registrationFeePerTeam !== undefined ? (
+                        <span className="text-base font-black text-slate-900 dark:text-white">
+                          ${league.registrationFeePerTeam}
+                          <span className="text-[10px] font-normal text-slate-400"> / team</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-slate-500 dark:text-neutral-400 italic">
+                          Contact commissioner for more details
+                        </span>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] font-mono text-slate-400 block">Free Agent Entry</span>
-                      <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                        ${league.individualFee}
-                        <span className="text-[10px] font-normal text-slate-400"> / player</span>
-                      </span>
+                      {league.individualFee !== undefined ? (
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                          ${league.individualFee}
+                          <span className="text-[10px] font-normal text-slate-400"> / player</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-slate-500 dark:text-neutral-400 italic">
+                          Contact commissioner for more details
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -987,10 +1006,11 @@ export default function LeagueDirectoryPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <Link
                       href={`/league/${league.id}`}
-                      className="w-full py-2.5 px-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-wider text-center transition-all hover:bg-slate-800 dark:hover:bg-cyan-300 flex items-center justify-center gap-1 shadow-sm"
+                      className="w-full py-2.5 px-3 rounded-xl text-white font-black text-xs uppercase tracking-wider text-center transition-all hover:opacity-90 flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                      style={{ backgroundColor: '#3ca505', color: '#ffffff' }}
                     >
                       <span>Explore Hub</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3.5 h-3.5" style={{ color: '#ffffff' }} />
                     </Link>
 
                     {league.isActive ? (
@@ -1126,16 +1146,18 @@ export default function LeagueDirectoryPage() {
                             )}
                           </div>
                           <span className="text-[11px] text-slate-500 dark:text-neutral-400 block truncate">
-                            {l.teamCount} teams • {l.gameDay} • ${l.registrationFeePerTeam}/team
+                            {l.teamCount} teams • {l.gameDay}
+                            {l.registrationFeePerTeam !== undefined ? ` • $${l.registrationFeePerTeam}/team` : ""}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Link
                             href={`/league/${l.id}`}
-                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-cyan-300 text-white dark:text-black font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-xl text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                            style={{ backgroundColor: '#3ca505', color: '#ffffff' }}
                           >
                             <span>Hub</span>
-                            <ArrowRight className="w-3 h-3" />
+                            <ArrowRight className="w-3 h-3" style={{ color: '#ffffff' }} />
                           </Link>
                         </div>
                       </div>
@@ -1206,10 +1228,14 @@ export default function LeagueDirectoryPage() {
                       <div className="text-[11px] text-slate-500 dark:text-neutral-400">{l.gameTimeWindow}</div>
                     </td>
                     <td className="py-4 px-4 font-bold text-slate-900 dark:text-white">
-                      ${l.registrationFeePerTeam}
+                      {l.registrationFeePerTeam !== undefined ? `$${l.registrationFeePerTeam}` : (
+                        <span className="text-[11px] font-normal text-slate-400 italic">Contact commissioner</span>
+                      )}
                     </td>
                     <td className="py-4 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                      ${l.individualFee}
+                      {l.individualFee !== undefined ? `$${l.individualFee}` : (
+                        <span className="text-[11px] font-normal text-slate-400 italic">Contact commissioner</span>
+                      )}
                     </td>
                     <td className="py-4 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
@@ -1225,10 +1251,11 @@ export default function LeagueDirectoryPage() {
                         )}
                         <Link
                           href={`/league/${l.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-cyan-300 text-white dark:text-black font-black text-[11px] uppercase tracking-wider transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-white font-black text-[11px] uppercase tracking-wider transition-all cursor-pointer"
+                          style={{ backgroundColor: '#3ca505', color: '#ffffff' }}
                         >
                           <span>Hub</span>
-                          <ArrowRight className="w-3 h-3" />
+                          <ArrowRight className="w-3 h-3" style={{ color: '#ffffff' }} />
                         </Link>
                       </div>
                     </td>
@@ -1242,22 +1269,23 @@ export default function LeagueDirectoryPage() {
         {/* ========================================================= */}
         {/* COMMISSIONER ONBOARDING CALLOUT BANNER                    */}
         {/* ========================================================= */}
-        <section className="rounded-3xl bg-gradient-to-r from-emerald-950/40 via-cyan-950/30 to-blue-950/40 border border-emerald-500/20 p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+        <section className="rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-cyan-950/30 dark:to-blue-950/40 border border-emerald-200 dark:border-emerald-500/20 p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="space-y-2 max-w-xl text-center md:text-left">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-emerald-400 flex items-center justify-center md:justify-start gap-1.5">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400 flex items-center justify-center md:justify-start gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Run a Flag Football League?</span>
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black uppercase text-white">
+            <h2 className="text-2xl sm:text-3xl font-black uppercase text-slate-900 dark:text-white">
               List Your League on <span className="normal-case">FlagOS</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               Get automated schedules, live game clocks, digital playbooks, and team stats tracking in one place. Built for commissioners, coaches, and players who love the game.
             </p>
           </div>
           <Link
             href="/pricing"
-            className="px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 cursor-pointer shrink-0"
+            className="px-6 py-3.5 rounded-2xl text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 hover:opacity-90 cursor-pointer shrink-0"
+            style={{ backgroundColor: '#3ca505', color: '#ffffff' }}
           >
             Create Your League
           </Link>
@@ -1360,8 +1388,6 @@ export default function LeagueDirectoryPage() {
           </div>
         </div>
       )}
-
-      <LeagueFooter />
     </div>
   );
 }

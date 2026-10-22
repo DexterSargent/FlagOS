@@ -88,8 +88,6 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     !isLandingPage &&
     !isPricingPage &&
     !isMyStoryPage &&
-    // The league directory renders its own LeagueHeader/LeagueFooter.
-    pathname !== "/leagues" &&
     !isTeamRoute &&
     !isPlayByPlay;
 

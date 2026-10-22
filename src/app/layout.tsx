@@ -41,25 +41,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var saved = localStorage.getItem('flagos_theme_mode_v2');
-                  var mode = (saved === 'dark' || saved === 'light') ? saved : 'dark';
-                  var root = document.documentElement;
-                  root.classList.remove('light', 'dark');
-                  root.classList.add(mode);
-                  root.setAttribute('data-theme', mode);
-                  root.style.colorScheme = mode;
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-150 w-full max-w-full overflow-x-clip">
         <AuthProvider>
           <ThemeProvider>
