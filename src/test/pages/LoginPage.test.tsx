@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LoginPage from "@/app/login/page";
 
-const { createAccountMock, loginWithEmailAndPasswordMock, routerPushMock, useAuthMock } = vi.hoisted(() => ({
+const { createAccountMock, loginWithEmailAndPasswordMock, routerPushMock, sendPasswordResetMock, useAuthMock } = vi.hoisted(() => ({
   createAccountMock: vi.fn(),
   loginWithEmailAndPasswordMock: vi.fn(),
   routerPushMock: vi.fn(),
+  sendPasswordResetMock: vi.fn(),
   useAuthMock: vi.fn(),
 }));
 
@@ -44,13 +45,28 @@ describe("LoginPage email/password sign-in", () => {
       login: vi.fn(async () => ({ success: true })),
       loginWithEmailAndPassword: loginWithEmailAndPasswordMock,
       createAccount: createAccountMock,
+      sendPasswordReset: sendPasswordResetMock,
       loginWithPlayerEmail: vi.fn(),
       logout: vi.fn(),
       setDevRole: vi.fn(),
     });
     loginWithEmailAndPasswordMock.mockReset();
     createAccountMock.mockReset();
+    sendPasswordResetMock.mockReset();
     routerPushMock.mockReset();
+  });
+
+  it("sends a set-password link for the entered email", async () => {
+    sendPasswordResetMock.mockResolvedValue({ success: true, message: "We sent a link to set a new password." });
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email and password"), {
+      target: { value: "coach@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Forgot or set password?" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("We sent a link to set a new password.");
+    expect(sendPasswordResetMock).toHaveBeenCalledWith("coach@example.com");
   });
 
   it("submits email/password credentials and redirects on success", async () => {

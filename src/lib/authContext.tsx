@@ -11,6 +11,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
   updateProfile,
   signOut,
 } from "firebase/auth";
@@ -143,6 +144,7 @@ interface AuthContextType {
   login: () => Promise<LoginResult>;
   loginWithEmailAndPassword: (email: string, password: string) => Promise<LoginResult>;
   createAccount: (displayName: string, email: string, password: string) => Promise<LoginResult>;
+  sendPasswordReset: (email: string) => Promise<LoginResult>;
   loginWithPlayerEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   bypassLogin: (role?: UserRole, teamId?: string, playerId?: string) => void;
@@ -171,6 +173,7 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => ({ success: false, message: "Sign-in is unavailable." }),
   loginWithEmailAndPassword: async () => ({ success: false, message: "Sign-in is unavailable." }),
   createAccount: async () => ({ success: false, message: "Account creation is unavailable." }),
+  sendPasswordReset: async () => ({ success: false, message: "Password reset is unavailable." }),
   loginWithPlayerEmail: async () => ({ success: false }),
   logout: async () => { },
   bypassLogin: () => { },
@@ -556,6 +559,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Also lets Google-only accounts add a password, for browsers where the Google popup is blocked.
+  const sendPasswordReset = async (email: string): Promise<LoginResult> => {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      return { success: false, message: "Enter your email address first." };
+    }
+    try {
+      await sendPasswordResetEmail(auth, normalizedEmail, {
+        url: `${window.location.origin}/login`,
+      });
+    } catch (error: unknown) {
+      if (!(error instanceof FirebaseError && error.code === "auth/user-not-found")) {
+        console.error("Password reset error:", error);
+        return { success: false, message: getAuthErrorMessage(error) };
+      }
+    }
+    return {
+      success: true,
+      message: `If an account exists for ${normalizedEmail}, we sent a link to set a new password. Check your inbox and spam folder.`,
+    };
+  };
+
   const createAccount = async (
     displayName: string,
     email: string,
@@ -711,6 +736,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         login,
         loginWithEmailAndPassword,
         createAccount,
+        sendPasswordReset,
         loginWithPlayerEmail,
         logout,
         bypassLogin,

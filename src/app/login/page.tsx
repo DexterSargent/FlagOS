@@ -26,6 +26,7 @@ export default function LoginPage() {
     login,
     loginWithEmailAndPassword,
     createAccount,
+    sendPasswordReset,
     loginWithPlayerEmail,
     logout,
     setDevRole,
@@ -46,6 +47,7 @@ export default function LoginPage() {
   const [emailPasswordError, setEmailPasswordError] = useState("");
   const [emailPasswordSuccess, setEmailPasswordSuccess] = useState("");
   const [emailPasswordLoggingIn, setEmailPasswordLoggingIn] = useState(false);
+  const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
   const [googleLoggingIn, setGoogleLoggingIn] = useState(false);
   const [googleLoginError, setGoogleLoginError] = useState("");
   const [redirectUrl, setRedirectUrl] = useState<string>("");
@@ -118,6 +120,22 @@ export default function LoginPage() {
       setEmailPasswordError(error instanceof Error ? error.message : "Sign-in failed. Please try again.");
     } finally {
       setEmailPasswordLoggingIn(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    setEmailPasswordError("");
+    setEmailPasswordSuccess("");
+    setSendingPasswordReset(true);
+    try {
+      const result = await sendPasswordReset(email);
+      if (result.success) {
+        setEmailPasswordSuccess(result.message || "Check your inbox for a link to set your password.");
+      } else {
+        setEmailPasswordError(result.message);
+      }
+    } finally {
+      setSendingPasswordReset(false);
     }
   };
 
@@ -281,6 +299,19 @@ export default function LoginPage() {
               placeholder={isCreatingAccount ? "Password (at least 6 characters)" : "Password"}
               className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-500"
             />
+            {!isCreatingAccount && (
+              <div className="flex justify-end -mt-1">
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={sendingPasswordReset}
+                  title="Also works if you normally sign in with Google and want to add a password"
+                  className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {sendingPasswordReset ? "Sending link..." : "Forgot or set password?"}
+                </button>
+              </div>
+            )}
             {emailPasswordError && (
               <p role="alert" className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 p-3 rounded-lg font-medium">
                 {emailPasswordError}
