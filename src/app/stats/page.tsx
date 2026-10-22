@@ -31,7 +31,7 @@ import {
 } from "@/lib/leagueDataCache";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
-import { isPlayoffMatch } from "@/lib/standingsEngine";
+import { compareStandingRows, isPlayoffMatch } from "@/lib/standingsEngine";
 import { useAuth } from "@/lib/authContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -51,7 +51,7 @@ export default function StatsAndStandings() {
   const [indivViewMode, setIndivViewMode] = useState<"leaders" | "table">("leaders");
   const [individualTab, setIndividualTab] = useState<"passing" | "receiving" | "defense">("passing");
 
-  const [sortTeam, setSortTeam] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "pts", direction: "desc" });
+  const [sortTeam, setSortTeam] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "rank", direction: "asc" });
   const [sortIndiv, setSortIndiv] = useState<{ key: string; direction: "asc" | "desc" }>({ key: "", direction: "desc" });
 
   const [standings, setStandings] = useState<any[]>([]);
@@ -225,29 +225,10 @@ export default function StatsAndStandings() {
             return t;
           });
 
-        const sortedForRank = [...computedStandings].sort((a, b) => {
-          if (a.pts !== b.pts) return b.pts - a.pts;
-
-          const h2hMatches = matches.filter(
-            (m) =>
-              m.status === "completed" &&
-              ((m.homeTeamId === a.id && m.awayTeamId === b.id) || (m.homeTeamId === b.id && m.awayTeamId === a.id))
-          );
-
-          if (h2hMatches.length > 0) {
-            let aWins = 0;
-            let bWins = 0;
-            h2hMatches.forEach((m) => {
-              const aIsHome = m.homeTeamId === a.id;
-              const aScore = aIsHome ? m.homeScore : m.awayScore;
-              const bScore = aIsHome ? m.awayScore : m.homeScore;
-              if (aScore > bScore) aWins++;
-              else if (bScore > aScore) bWins++;
-            });
-            if (aWins !== bWins) return bWins - aWins;
-          }
-          return b.diff - a.diff;
-        });
+        const sortedForRank = [...computedStandings].sort((a, b) => compareStandingRows(
+          { winPct: a.played > 0 ? (a.won + 0.5 * a.tied) / a.played : 0, diff: a.diff, pointsFor: a.pf, pointsAgainst: a.pa, name: a.name },
+          { winPct: b.played > 0 ? (b.won + 0.5 * b.tied) / b.played : 0, diff: b.diff, pointsFor: b.pf, pointsAgainst: b.pa, name: b.name },
+        ));
 
         sortedForRank.forEach((team, idx) => {
           (team as any).rank = idx + 1;

@@ -34,6 +34,7 @@ import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCa
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
+import { useLeagueArchived, isTeamSeasonArchived } from "@/lib/useLeagueArchived";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { loadTeamSeasonData } from "@/lib/teamSeasonData";
@@ -493,7 +494,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const hasEditAccess = isTeamOrLeagueAdmin;
+  const isTeamLeagueArchived = useLeagueArchived(team?.leagueId) || isTeamSeasonArchived(team);
+  const hasEditAccess = isTeamOrLeagueAdmin && !isTeamLeagueArchived;
   const teamName = team?.name || "Team";
 
   // Calculate Team Overview Stats
@@ -649,6 +651,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             <div className="text-2xl font-black text-white mt-1">
               {wins}-{losses}{ties > 0 ? `-${ties}` : ""}
             </div>
+            {seasonTeamStats?.playoffRecordFormatted && (
+              <span className="block text-[11px] text-neutral-500 mt-0.5 truncate">
+                Reg. {seasonTeamStats.regularRecordFormatted} · Playoffs {seasonTeamStats.playoffRecordFormatted}
+              </span>
+            )}
           </div>
           <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
             <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Games Played</span>

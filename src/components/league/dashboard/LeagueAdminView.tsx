@@ -18,6 +18,7 @@ import { LeagueLeadersWidget } from "./LeagueLeadersWidget";
 import { LeagueTeamsGrid } from "./LeagueTeamsGrid";
 import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
 import { LEAGUE_DIRECTORY_WALKTHROUGH } from "@/lib/walkthroughData";
+import { useLeague } from "@/lib/leagueContext";
 
 export interface LeagueAdminViewProps {
   teams: any[];
@@ -59,9 +60,10 @@ export function LeagueAdminView({
   openCustomizer,
 }: LeagueAdminViewProps) {
   const [copiedLeagueLink, setCopiedLeagueLink] = useState(false);
+  const { isLeagueArchived } = useLeague();
 
   return (
-    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
+    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* League Command Center Hero Banner */}
       <div className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
@@ -118,6 +120,7 @@ export function LeagueAdminView({
               <span>League Settings</span>
             </button>
 
+            {!isLeagueArchived && (
             <Link
               href="/schedule"
               className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
@@ -125,13 +128,14 @@ export function LeagueAdminView({
               <Plus className="w-4 h-4" />
               <span>Schedule Game</span>
             </Link>
+            )}
 
             <Link
               href="/teams"
               className="px-4 py-2.5 bg-surface-muted hover:bg-white/10 text-neutral-200 text-xs font-bold uppercase tracking-wider rounded-xl border border-line transition-colors flex items-center gap-2"
             >
               <Users className="w-4 h-4 text-cyan-400" />
-              <span>Manage Teams</span>
+              <span>{isLeagueArchived ? "View Teams" : "Manage Teams"}</span>
             </Link>
           </div>
         </div>
@@ -142,7 +146,7 @@ export function LeagueAdminView({
             <div className="flex items-center justify-between">
               <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Teams &amp; Slots</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
-                ${subscription?.totalMonthlyFee || 160}/mo
+                {isLeagueArchived ? "Archived" : `$${subscription?.totalMonthlyFee || 160}/mo`}
               </span>
             </div>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
@@ -228,7 +232,7 @@ export function LeagueAdminView({
           isAdminView={true}
         />
       </div>
-    </main>
+    </div>
   );
 }
 

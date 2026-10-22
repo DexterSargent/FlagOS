@@ -1296,7 +1296,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex flex-col flex-1 min-h-0 min-w-0 w-full p-2 md:p-3 overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-0 min-w-0 w-full p-2 md:p-3 overflow-hidden">
         {(saveNotice || playsError) && (
           <div className="mb-2 space-y-1 shrink-0">
             {saveNotice && (
@@ -2037,7 +2037,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         {activeTab === "team-stats" && (
           <GameTeamStats matchData={matchData} plays={plays} isDemo={isDemo} />
         )}
-      </main>
+      </div>
 
       {/* ADD SUB / CUSTOM PLAYER MODAL */}
       {isSubModalOpen && (

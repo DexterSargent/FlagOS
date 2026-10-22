@@ -196,12 +196,12 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   />
                 ) : isCustomOrPaidLeague ? (
                   <div
-                    className="w-full h-full rounded-xl flex items-center justify-center font-black text-xs uppercase shadow text-white"
+                    className={`w-full h-full rounded-xl flex items-center justify-center font-black uppercase shadow text-white tracking-tighter ${(settings.shortcode?.length ?? 0) > 3 ? "text-[9px]" : "text-xs"}`}
                     style={{
                       background: `linear-gradient(135deg, var(--league-primary, #10b981), var(--league-accent, #06b6d4))`,
                     }}
                   >
-                    {settings.shortcode ? settings.shortcode.slice(0, 3) : (settings.leagueName?.charAt(0) || "L")}
+                    {settings.shortcode ? settings.shortcode.slice(0, 4) : (settings.leagueName?.charAt(0) || "L")}
                   </div>
                 ) : (
                   <FlagOSLogo
@@ -502,7 +502,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               </div>
             ) : (
               <Link
-                href="/login"
+                href={user ? "/profile" : "/login"}
                 className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
               >
                 {isLeagueAdmin ? (
@@ -514,6 +514,11 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   <>
                     <Shield className="w-3.5 h-3.5 text-cyan-400 dark:text-cyan-600 shrink-0" />
                     <span className="hidden sm:inline">Team Admin</span>
+                  </>
+                ) : user ? (
+                  <>
+                    <User className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">My Account</span>
                   </>
                 ) : (
                   <>

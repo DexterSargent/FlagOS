@@ -2249,10 +2249,10 @@ export default function LeagueCustomizerContent() {
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black font-mono text-white shrink-0"
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-black font-mono text-white shrink-0 tracking-tighter ${(t.shortcode?.length ?? 0) > 3 ? "text-[9px]" : "text-xs"}`}
                           style={{ backgroundColor: t.primaryColor || "#3ca505" }}
                         >
-                          {t.shortcode ? t.shortcode.slice(0, 3) : t.name.slice(0, 2).toUpperCase()}
+                          {t.shortcode ? t.shortcode.slice(0, 4) : t.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-white truncate">{t.name}</div>

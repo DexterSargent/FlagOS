@@ -8,6 +8,8 @@ import { collection, doc, getDoc, getDocs, onSnapshot, query, where, deleteDoc, 
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
+import { useLeagueArchived, isTeamSeasonArchived } from "@/lib/useLeagueArchived";
+import { formatMatchTime } from "@/lib/formatMatchTime";
 import { useAuth } from "@/lib/authContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
@@ -42,10 +44,11 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   const isDexter = isDexterUser(user?.email);
   const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
-  const canScheduleMatches = isLeagueAdmin || canManageTeam(teamId);
+  const isTeamLeagueArchived = useLeagueArchived(team?.leagueId) || isTeamSeasonArchived(team);
+  const canScheduleMatches = (isLeagueAdmin || canManageTeam(teamId)) && !isTeamLeagueArchived;
   // Independent teams own their games; only league teams defer deletion to league admins.
   const isIndependentTeam = !isDemoLeague && !!team && !team.leagueId;
-  const canDeleteMatch = isPrimary || (!isIndependentTeam && isLeagueAdmin);
+  const canDeleteMatch = !isTeamLeagueArchived && (isPrimary || (!isIndependentTeam && isLeagueAdmin));
 
   // Admin emails live in team_private, so the primary-coach check needs the private settings.
   const hasTeam = !!team;
@@ -422,7 +425,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                     onClick={() => setIsScheduleModalOpen(true)}
                     className="px-4 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                   >
-                    Schedule Your First Game
+                    {pastMatches.length > 0 ? "Schedule a Game" : "Schedule Your First Game"}
                   </button>
                 )}
               </div>
@@ -501,7 +504,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                           {m.time && (
                             <div className="flex items-center gap-2">
                               <Clock className="w-3.5 h-3.5 text-neutral-500" />
-                              <span>{m.time}</span>
+                              <span>{formatMatchTime(m.time)}</span>
                             </div>
                           )}
                           {m.location && (
@@ -627,6 +630,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           <div role="dialog" aria-label="Schedule Exhibition Game" aria-modal="true" className="bg-neutral-950 border border-emerald-500/40 rounded-3xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setIsScheduleModalOpen(false)}
+              aria-label="Close"
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5"
             >
               <X className="w-5 h-5" />

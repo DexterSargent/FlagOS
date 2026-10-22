@@ -683,6 +683,13 @@ export default function PlayoffBracketView({
   );
 }
 
+// The pill shows only the seed number ("#3"); placeholders such as "Winner Quarterfinals 1"
+// are already spelled out next to it, so the pill falls back to "TBD".
+function seedPillLabel(label: string | undefined): string {
+  const seed = /^#\d+/.exec(label?.trim() ?? "");
+  return seed ? seed[0] : "TBD";
+}
+
 /**
  * Individual Match Card within the tournament bracket
  */
@@ -768,7 +775,7 @@ function BracketMatchCard({
         >
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-cyan-300 shrink-0">
-              {node.homeTeam ? `#${node.homeTeam.rank}` : node.homeSeedLabel}
+              {node.homeTeam ? `#${node.homeTeam.rank}` : seedPillLabel(node.homeSeedLabel)}
             </span>
             {node.homeTeam && (
               <span
@@ -816,7 +823,7 @@ function BracketMatchCard({
         >
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/10 text-cyan-300 shrink-0">
-              {node.awayTeam ? `#${node.awayTeam.rank}` : node.awaySeedLabel}
+              {node.awayTeam ? `#${node.awayTeam.rank}` : seedPillLabel(node.awaySeedLabel)}
             </span>
             {node.awayTeam && (
               <span

@@ -17,6 +17,7 @@ import {
   Flame,
   Zap,
   Trophy,
+  Archive,
   Crown,
   Star,
   Sword,
@@ -40,6 +41,7 @@ import { isPrimaryTeamAdmin, getTeamAdminEmails, getTeamAdminAccounts, isDexterU
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
+import { useLeagueArchived, isTeamSeasonArchived } from "@/lib/useLeagueArchived";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -88,6 +90,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const hasEditAccess = canManageTeam(teamId) || isLeagueAdmin;
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [team, setTeam] = useState<any>(null);
+  // Archived leagues are read-only, so hide edit controls the server would reject.
+  const isTeamLeagueArchived = useLeagueArchived(team?.leagueId);
+  const canEditTeam = hasEditAccess && !isTeamLeagueArchived;
+  const teamSeasonArchived = isTeamSeasonArchived(team);
+  const [archivingSeason, setArchivingSeason] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
@@ -102,10 +109,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const editQueryHandledRef = useRef(false);
   useEffect(() => {
-    if (editQueryHandledRef.current || !hasEditAccess || !team) return;
+    if (editQueryHandledRef.current || !canEditTeam || !team) return;
     editQueryHandledRef.current = true;
     if (new URLSearchParams(window.location.search).get("edit") === "1") setIsEditModalOpen(true);
-  }, [hasEditAccess, team]);
+  }, [canEditTeam, team]);
   const [editName, setEditName] = useState("");
   const [editShortcode, setEditShortcode] = useState("");
   const [editLogoUrl, setEditLogoUrl] = useState("");
@@ -400,6 +407,30 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     }
   };
 
+  const handleToggleSeasonArchive = async () => {
+    const archive = !teamSeasonArchived;
+    const message = archive
+      ? "Conclude and archive this season?\n\nThe roster, schedule, and game stats become read-only. You can reopen the season at any time."
+      : "Reopen this season?\n\nThe roster, schedule, and games become editable again.";
+    if (!window.confirm(message)) return;
+    const updatePayload = {
+      isArchived: archive,
+      seasonStatus: archive ? "archived" : "active",
+      archivedAt: archive ? new Date().toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    };
+    setArchivingSeason(true);
+    try {
+      await updateDoc(doc(db, "teams", teamId), updatePayload);
+      setTeam((prev: any) => ({ ...prev, ...updatePayload }));
+    } catch (e) {
+      console.error("Error updating season archive state:", e);
+      alert("The season status could not be saved. Please retry.");
+    } finally {
+      setArchivingSeason(false);
+    }
+  };
+
   const handleSaveTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editName.trim()) return;
@@ -505,7 +536,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Main Content */}
-      <main className="relative z-10 flex flex-col items-center justify-center flex-1 p-6 md:p-20">
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 p-6 md:p-20">
         {/* Navigation Buttons */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
           {!isIndependentTeam && targetLeagueId && (
@@ -547,7 +578,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     className="w-full h-full object-contain filter drop-shadow-md"
                   />
                 </div>
-                {hasEditAccess && (
+                {canEditTeam && (
                   <button
                     onClick={() => setIsEditModalOpen(true)}
                     className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white dark:bg-black/90 border border-slate-200 dark:border-white/20 text-slate-800 dark:text-white hover:text-cyan-600 dark:hover:text-cyan-400 opacity-90 group-hover/logo:opacity-100 transition-all shadow-lg flex items-center gap-1 cursor-pointer whitespace-nowrap"
@@ -561,15 +592,15 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             ) : (
               <button
                 type="button"
-                onClick={() => hasEditAccess && setIsEditModalOpen(true)}
-                disabled={!hasEditAccess}
-                className={`group/placeholder relative w-28 h-28 md:w-32 md:h-32 rounded-3xl p-3 flex flex-col items-center justify-center text-center transition-all duration-300 backdrop-blur-xl bg-slate-100 dark:bg-transparent ${hasEditAccess ? "hover:scale-105 cursor-pointer" : "cursor-default"}`}
+                onClick={() => canEditTeam && setIsEditModalOpen(true)}
+                disabled={!canEditTeam}
+                className={`group/placeholder relative w-28 h-28 md:w-32 md:h-32 rounded-3xl p-3 flex flex-col items-center justify-center text-center transition-all duration-300 backdrop-blur-xl bg-slate-100 dark:bg-transparent ${canEditTeam ? "hover:scale-105 cursor-pointer" : "cursor-default"}`}
                 style={{
                   backgroundColor: `${palette.primary}15`,
-                  border: `2px ${hasEditAccess ? "dashed" : "solid"} ${palette.primary}80`,
+                  border: `2px ${canEditTeam ? "dashed" : "solid"} ${palette.primary}80`,
                   boxShadow: `0 0 30px ${palette.primary}20`,
                 }}
-                title={hasEditAccess ? "Click to add team logo" : undefined}
+                title={canEditTeam ? "Click to add team logo" : undefined}
               >
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-1 text-slate-900 dark:text-white group-hover/placeholder:scale-110 transition-transform">
                   <TeamLogo
@@ -581,7 +612,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     customColor={palette.primary === "#E31837" ? "text-red-400" : undefined}
                   />
                 </div>
-                {hasEditAccess && (
+                {canEditTeam && (
                   <>
                     <div className="flex items-center gap-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
                       <Upload className="w-3 h-3 text-amber-500 dark:text-amber-400" />
@@ -677,8 +708,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               </div>
             </div>
 
-            {hasEditAccess && (
+            {canEditTeam && (
               <>
+                {!teamSeasonArchived && (
                 <Link
                   data-tour="team-schedule-game-btn"
                   href={`/teams/${teamId}/schedule?create=1`}
@@ -687,6 +719,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <Plus className="w-4 h-4 text-emerald-400" />
                   <span>Schedule Game</span>
                 </Link>
+                )}
                 <button
                   type="button"
                   data-tour="team-staff-btn"
@@ -706,9 +739,28 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <Edit3 className="w-4 h-4 text-amber-400" />
                   <span>Edit Team Info</span>
                 </button>
+                {isIndependentTeam && !isDemoLeague && (
+                  <button
+                    type="button"
+                    onClick={handleToggleSeasonArchive}
+                    disabled={archivingSeason}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer disabled:opacity-50"
+                  >
+                    <Archive className="w-4 h-4 text-neutral-300" />
+                    <span>{archivingSeason ? "Saving..." : teamSeasonArchived ? "Reopen Season" : "Conclude & Archive Season"}</span>
+                  </button>
+                )}
               </>
             )}
           </div>
+          {teamSeasonArchived && (
+            <div role="status" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+              <Archive className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                This season is archived{team.archivedAt ? ` (${new Date(team.archivedAt).toLocaleDateString()})` : ""}. Roster, schedule, and game stats are read-only.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Team Season Stats Banner (Customizable by Team Admin) */}
@@ -750,7 +802,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     </div>
                   </div>
 
-                  {hasEditAccess && (
+                  {canEditTeam && (
                     <button
                       type="button"
                       onClick={() => setIsStatsCustomizerOpen(true)}
@@ -766,7 +818,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 {visibleStatIds.length === 0 ? (
                   <div className="py-8 text-center bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
                     <p className="text-sm text-neutral-400 mb-2">No team stats currently selected for display.</p>
-                    {hasEditAccess && (
+                    {canEditTeam && (
                       <button
                         onClick={() => setIsStatsCustomizerOpen(true)}
                         className="text-xs text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-wider"
@@ -801,7 +853,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                             </div>
                           </div>
                           <div className="text-[11px] text-neutral-400 font-medium line-clamp-1" title={def.description}>
-                            {def.label}
+                            {def.id === "record" && stats.playoffRecordFormatted
+                              ? `Reg. ${stats.regularRecordFormatted} · Playoffs ${stats.playoffRecordFormatted}`
+                              : def.label}
                           </div>
                         </div>
                       );
@@ -921,14 +975,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         {/* Footer info & Admin login */}
         <div className="mt-16 flex items-center justify-center gap-6">
           <Link
-            href="/login"
+            href={user ? "/profile" : "/login"}
             className="text-neutral-600 hover:text-neutral-400 text-sm transition-colors flex items-center gap-2"
           >
             <Settings className="w-4 h-4" />
-            Role Settings & Login
+            {user ? "Account & Role Settings" : "Sign In"}
           </Link>
         </div>
-      </main>
+      </div>
 
       {/* Edit Team Modal (Accessible to Team Admin & League Admin) */}
       {isEditModalOpen && (
@@ -938,7 +992,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             if (e.target === e.currentTarget) setIsEditModalOpen(false);
           }}
         >
-          <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+          <div role="dialog" aria-modal="true" aria-labelledby="team-edit-modal-title" className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
             {/* Pinned Header with permanently accessible Close button */}
             <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10">
               <div className="flex items-center gap-3">
@@ -946,7 +1000,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <Edit3 className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white">Edit Team Details</h2>
+                  <h2 id="team-edit-modal-title" className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white">Edit Team Details</h2>
                   <p className="text-xs text-neutral-400">Team identity, logo emblem, and primary / secondary colours.</p>
                 </div>
               </div>
@@ -954,6 +1008,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
+                aria-label="Close"
                 className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
                 title="Close"
               >
@@ -1209,7 +1264,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
       {/* Team Coaches & Admins Management Modal */}
       {isStaffModalOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
           <div role="dialog" aria-modal="true" aria-labelledby="team-staff-modal-title" className="w-full max-w-xl rounded-3xl border border-white/15 bg-neutral-900 p-6 sm:p-8 shadow-2xl text-white">
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-3">

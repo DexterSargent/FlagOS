@@ -487,7 +487,9 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
         root.style.setProperty(`--league-accent-${shade}`, hex);
       });
 
-      if (leagueName) {
+      const path = window.location.pathname;
+      const isNonLeaguePage = ["/", "/login", "/pricing", "/my-story", "/profile"].includes(path) || path.startsWith("/admin");
+      if (leagueName && !isNonLeaguePage) {
         document.title = `${leagueName} | ${seasonTitle || "Active Season"}`;
       }
     }

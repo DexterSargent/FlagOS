@@ -7,6 +7,14 @@ export interface TeamComprehensiveStats {
   winPct: number;
   winPctFormatted: string;
   recordFormatted: string;
+  /** Subset of wins/losses/ties from playoff games; the overall record includes them. */
+  playoffWins: number;
+  playoffLosses: number;
+  playoffTies: number;
+  /** Regular-season record (matches league standings). */
+  regularRecordFormatted: string;
+  /** Empty when the team has no completed playoff games. */
+  playoffRecordFormatted: string;
   pf: number;
   pa: number;
   diff: number;
@@ -113,7 +121,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
     shortLabel: "REC",
     category: "record",
     categoryLabel: "Record & Scoring",
-    description: "Total games won, lost, and tied in completed matches.",
+    description: "Total games won, lost, and tied in all completed matches, including playoffs (league standings count the regular season only).",
     getValue: (s) => s.recordFormatted,
   },
   {
@@ -462,6 +470,9 @@ export function calculateTeamComprehensiveStats(
   let ties = 0;
   let pf = 0;
   let pa = 0;
+  let playoffWins = 0;
+  let playoffLosses = 0;
+  let playoffTies = 0;
 
   const completedMatchIdSet = new Set<string>();
 
@@ -470,13 +481,21 @@ export function calculateTeamComprehensiveStats(
     const isHome = isTargetTeam(m.homeTeamId);
     const scoreFor = Number(isHome ? m.homeScore || 0 : m.awayScore || 0);
     const scoreAgainst = Number(isHome ? m.awayScore || 0 : m.homeScore || 0);
+    const isPlayoffGame = Boolean(m.isPlayoff || m.week?.toString().toLowerCase().includes("playoff"));
 
     pf += scoreFor;
     pa += scoreAgainst;
 
-    if (scoreFor > scoreAgainst) wins += 1;
-    else if (scoreFor < scoreAgainst) losses += 1;
-    else ties += 1;
+    if (scoreFor > scoreAgainst) {
+      wins += 1;
+      if (isPlayoffGame) playoffWins += 1;
+    } else if (scoreFor < scoreAgainst) {
+      losses += 1;
+      if (isPlayoffGame) playoffLosses += 1;
+    } else {
+      ties += 1;
+      if (isPlayoffGame) playoffTies += 1;
+    }
   });
 
   const gp = completedMatches.length;
@@ -701,7 +720,7 @@ export function calculateTeamComprehensiveStats(
   });
 
   return finalizeTeamComprehensiveStats({
-    gp, wins, losses, ties, pf, pa,
+    gp, wins, losses, ties, pf, pa, playoffWins, playoffLosses, playoffTies,
     thirdDownAttempts, thirdDownConversions, fourthDownAttempts, fourthDownConversions, firstDowns,
     defThirdDownAttempts, defThirdDownStops, defFourthDownAttempts, defFourthDownStops,
     pat1Attempts, pat1Conversions, pat2Attempts, pat2Conversions,
@@ -713,7 +732,7 @@ export function calculateTeamComprehensiveStats(
 
 /** Additive counts that can be summed across games; every other stat is derived from these. */
 export const TEAM_COUNTING_STAT_KEYS = [
-  "gp", "wins", "losses", "ties", "pf", "pa",
+  "gp", "wins", "losses", "ties", "pf", "pa", "playoffWins", "playoffLosses", "playoffTies",
   "thirdDownAttempts", "thirdDownConversions", "fourthDownAttempts", "fourthDownConversions", "firstDowns",
   "defThirdDownAttempts", "defThirdDownStops", "defFourthDownAttempts", "defFourthDownStops",
   "pat1Attempts", "pat1Conversions", "pat2Attempts", "pat2Conversions",
@@ -736,7 +755,7 @@ export function toTeamCountingStats(stats: TeamComprehensiveStats): TeamCounting
 /** Derives rates and display strings from counts, so per-game counts can be combined without averaging percentages. */
 export function finalizeTeamComprehensiveStats(counts: TeamCountingStats): TeamComprehensiveStats {
   const {
-    gp, wins, losses, ties, pf, pa,
+    gp, wins, losses, ties, pf, pa, playoffWins, playoffLosses, playoffTies,
     thirdDownAttempts, thirdDownConversions, fourthDownAttempts, fourthDownConversions, firstDowns,
     defThirdDownAttempts, defThirdDownStops, defFourthDownAttempts, defFourthDownStops,
     pat1Attempts, pat1Conversions, pat2Attempts, pat2Conversions,
@@ -744,6 +763,7 @@ export function finalizeTeamComprehensiveStats(counts: TeamCountingStats): TeamC
     flags, sacks, interceptions, pbus, defTDs, safeties,
     takeaways, giveaways, penalties, penaltyYards,
   } = counts;
+  const playoffGames = playoffWins + playoffLosses + playoffTies;
   const winPct = gp > 0 ? (wins + 0.5 * ties) / gp : 0;
   const diff = pf - pa;
   const ppg = gp > 0 ? pf / gp : 0;
@@ -772,6 +792,11 @@ export function finalizeTeamComprehensiveStats(counts: TeamCountingStats): TeamC
     winPct,
     winPctFormatted: winPct.toFixed(3).replace(/^0\./, "."),
     recordFormatted: `${wins}-${losses}-${ties}`,
+    playoffWins,
+    playoffLosses,
+    playoffTies,
+    regularRecordFormatted: `${wins - playoffWins}-${losses - playoffLosses}-${ties - playoffTies}`,
+    playoffRecordFormatted: playoffGames > 0 ? `${playoffWins}-${playoffLosses}-${playoffTies}` : "",
     pf,
     pa,
     diff,

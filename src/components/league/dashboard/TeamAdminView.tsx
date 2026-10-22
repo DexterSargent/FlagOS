@@ -63,7 +63,7 @@ export function TeamAdminView({
   onOpenAddPlayer,
 }: TeamAdminViewProps) {
   return (
-    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
+    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* Team Clubhouse Hero Banner */}
       <div className="bg-gradient-to-br from-[#0B132B]/95 via-[#0B0F19] to-[#07090E] border-2 border-cyan-500/40 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
@@ -528,7 +528,7 @@ export function TeamAdminView({
           </table>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 

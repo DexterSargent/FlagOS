@@ -181,4 +181,25 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
   it("never allows client-side match creation", async () => {
     expect((await write("matches/new-match", fixture, auth(head))).status).toBe(403);
   });
+
+  it("blocks season writes in an archived league until it is reactivated", async () => {
+    const league = { visibility: "public", adminEmails: [head] };
+    const leagueMatch = { ...fixture, leagueId: "rules-archived" };
+    await write("leagues/rules-archived", { ...league, isArchived: false, seasonStatus: "active" });
+    await write(`matches/${matchId}`, leagueMatch);
+    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 7 }, auth(head))).status).toBe(200);
+    await write("leagues/rules-archived", { ...league, isArchived: true, seasonStatus: "archived" });
+    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth(head))).status).toBe(403);
+    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth("dextersargent@gmail.com"))).status).toBe(403);
+  });
+
+  it("blocks independent-team season writes while archived but allows reopening", async () => {
+    const teamDoc = { id: teamId, name: "Indie", leagueId: "", visibility: "public", isStandalone: true, primaryColor: "#B31B1B" };
+    await seedTeam();
+    await write(`matches/${matchId}`, fixture);
+    await write(`teams/${teamId}`, { ...teamDoc, isArchived: true, seasonStatus: "archived" });
+    expect((await write(`matches/${matchId}`, { ...fixture, homeScore: 21 }, auth(head))).status).toBe(403);
+    expect((await write(`teams/${teamId}`, { ...teamDoc, isArchived: false, seasonStatus: "active" }, auth(head))).status).toBe(200);
+    expect((await write(`matches/${matchId}`, { ...fixture, homeScore: 21 }, auth(head))).status).toBe(200);
+  });
 });

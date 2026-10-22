@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
-import { isPlayoffMatch } from "@/lib/standingsEngine";
+import { compareStandingRows, isPlayoffMatch } from "@/lib/standingsEngine";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -175,15 +175,16 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
       }
     });
 
+    const winPct = (row: { w: number; l: number; t: number }) => {
+      const gp = row.w + row.l + row.t;
+      return gp > 0 ? (row.w + 0.5 * row.t) / gp : 0;
+    };
     const sorted = Object.values(map)
       .filter(isRealTeam)
-      .sort((a, b) => {
-        if (b.pts !== a.pts) return b.pts - a.pts;
-        const diffB = b.pf - b.pa;
-        const diffA = a.pf - a.pa;
-        if (diffB !== diffA) return diffB - diffA;
-        return b.pf - a.pf;
-      });
+      .sort((a, b) => compareStandingRows(
+        { winPct: winPct(a), diff: a.pf - a.pa, pointsFor: a.pf, pointsAgainst: a.pa, name: a.name },
+        { winPct: winPct(b), diff: b.pf - b.pa, pointsFor: b.pf, pointsAgainst: b.pa, name: b.name },
+      ));
 
     return { standingsMap: map, completedMatches: completed, sortedStandings: sorted };
   }, [teams, matches]);

@@ -312,7 +312,13 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const hasAnyLeader = sections.some((section) => section.categories.some((cat) => getTop3(cat.key).length > 0));
   const snapshot = teamStats && teamStats.gp > 0
     ? [
-        { label: "Record", value: teamStats.recordFormatted },
+        { label: teamStats.playoffRecordFormatted ? "Record (incl. playoffs)" : "Record", value: teamStats.recordFormatted },
+        ...(teamStats.playoffRecordFormatted
+          ? [
+              { label: "Regular Season", value: teamStats.regularRecordFormatted },
+              { label: "Playoffs", value: teamStats.playoffRecordFormatted },
+            ]
+          : []),
         { label: "Points For", value: teamStats.pf },
         { label: "Points Against", value: teamStats.pa },
         { label: "Point Diff", value: teamStats.diffFormatted },

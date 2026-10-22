@@ -386,7 +386,7 @@ export default function SignedInHome() {
   return (
     <div className="flex min-h-screen flex-col bg-surface-base text-text-primary">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6 sm:px-6 sm:py-10">
+      <div className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6 sm:px-6 sm:py-10">
         <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
@@ -448,7 +448,7 @@ export default function SignedInHome() {
         </section>
 
         <StartSomething emphasized={!showLoading && !hasAny} />
-      </main>
+      </div>
       <PoweredByFooter />
     </div>
   );

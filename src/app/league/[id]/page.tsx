@@ -13,12 +13,26 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
   const unwrappedParams = params ? use(params) : null;
   const leagueIdParam = unwrappedParams?.id;
 
-  const { openCustomizer } = useLeague();
+  const { openCustomizer, activeLeagueId, loading: leagueLoading } = useLeague();
   const data = useLeagueDashboardData(leagueIdParam);
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
 
   if (data.isDenied) {
     return data.deniedElement;
+  }
+
+  // The context starts on the demo league (including during SSR), so wait for the requested league
+  // instead of flashing demo content under a real league URL.
+  const isRealLeagueParam = Boolean(leagueIdParam && leagueIdParam !== "default" && leagueIdParam !== "demo");
+  if (isRealLeagueParam && (activeLeagueId !== leagueIdParam || leagueLoading)) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center bg-surface-base" role="status" aria-live="polite">
+        <div className="flex flex-col items-center gap-3 text-neutral-400">
+          <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Loading league…</span>
+        </div>
+      </div>
+    );
   }
 
   return (

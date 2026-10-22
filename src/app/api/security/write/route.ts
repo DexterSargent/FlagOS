@@ -59,6 +59,23 @@ const ENTITY_LIMITS = {
   redPlayLeague: { collection: "red_plays", field: "leagueId", limit: 10_000 },
 } as const;
 
+// Season data in an archived league is read-only; league-level admin/reactivation and
+// platform cleanup (deletes) remain available.
+const ARCHIVE_GUARDED_ENTITIES = new Set<Entity>([
+  "team", "player", "assign_player", "team_private_update", "player_private_update", "player_update",
+  "match_update", "delete_player", "match", "play", "play_batch", "red_play",
+]);
+
+// Independent teams archive their own season on the team document; roster and game data
+// for that team then become read-only until the season is reopened.
+const TEAM_ARCHIVE_GUARDED_ENTITIES = new Set<Entity>([
+  "player", "player_update", "delete_player", "match", "play", "play_batch",
+]);
+
+function isArchivedLeagueData(data: FirebaseFirestore.DocumentData | undefined): boolean {
+  return !!data && (data.isArchived === true || data.seasonStatus === "archived");
+}
+
 class RequestError extends Error {
   constructor(
     message: string,
@@ -997,6 +1014,23 @@ export async function POST(request: Request) {
           );
           if (teams.size > 64) fail("The league exceeds the supported team limit.", 409);
           leagueTeams = teams.docs;
+        }
+      }
+      if (ARCHIVE_GUARDED_ENTITIES.has(requestedEntity) &&
+        typeof data.leagueId === "string" && isDocumentId(data.leagueId)) {
+        const league = await transaction.get(adminDb.doc(`leagues/${data.leagueId}`));
+        if (isArchivedLeagueData(league.data())) {
+          fail("This league is archived and read-only. Reactivate it to make changes.", 409);
+        }
+      }
+      const archiveTeamId = typeof data.managingTeamId === "string" && data.managingTeamId
+        ? data.managingTeamId
+        : data.teamId;
+      if (TEAM_ARCHIVE_GUARDED_ENTITIES.has(requestedEntity) && !data.leagueId &&
+        typeof archiveTeamId === "string" && isDocumentId(archiveTeamId)) {
+        const team = await transaction.get(adminDb.doc(`teams/${archiveTeamId}`));
+        if (isArchivedLeagueData(team.data())) {
+          fail("This team's season is archived and read-only. Reopen the season to make changes.", 409);
         }
       }
       const scopes = resolveScopes(requestedEntity, data, token);

@@ -8,6 +8,9 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
+import { useLeagueArchived, useTeamSeasonArchived } from "@/lib/useLeagueArchived";
+import { formatMatchTime } from "@/lib/formatMatchTime";
+import { useSuppressLeagueNav } from "@/lib/shellChrome";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -32,6 +35,11 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
 
   const [matchData, setMatchData] = useState<any>(null);
+  const isLeagueOfMatchArchived = useLeagueArchived(isDemo ? null : matchData?.leagueId);
+  const isTeamOfMatchArchived = useTeamSeasonArchived(isDemo || matchData?.leagueId ? null : matchData?.managingTeamId);
+  const isMatchLeagueArchived = isLeagueOfMatchArchived || isTeamOfMatchArchived;
+  // Independent team games aren't part of a league, so drop the league header/footer.
+  useSuppressLeagueNav(Boolean(matchData?.isStandalone || matchData?.isIndependent));
   const now = useNow();
   const { home: homeColors, away: awayColors } = useMatchTeamColors(matchData, isDemo);
   const [loading, setLoading] = useState(true);
@@ -229,7 +237,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
               <div className="flex flex-col md:flex-row items-center md:items-start gap-4 mt-3">
                 <div className="flex items-center gap-1.5 text-neutral-400">
                   <Clock className="w-4 h-4" />
-                  <span>{matchData.date} • {matchData.time}</span>
+                  <span>{matchData.date} • {formatMatchTime(matchData.time)}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-neutral-500">
                   <MapPin className="w-4 h-4" />
@@ -252,8 +260,8 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
           </div>
         </div>
 
-        {/* Admin Controls */}
-        {(isLeagueAdmin || isPlatformAdmin || (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) || (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) || (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId))) && (
+        {/* Admin Controls (archived leagues are read-only) */}
+        {!isMatchLeagueArchived && (isLeagueAdmin || isPlatformAdmin || (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) || (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) || (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId))) && (
           <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <ShieldAlert className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />

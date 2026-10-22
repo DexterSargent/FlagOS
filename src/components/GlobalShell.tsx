@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import RoleSwitcherBar from "@/components/RoleSwitcherBar";
 import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
@@ -13,6 +13,7 @@ const SiteHeader = dynamic(() => import("./SiteHeader"));
 const PoweredByFooter = dynamic(() => import("./PoweredByFooter"));
 
 import { useAuth } from "@/lib/authContext";
+import { ShellChromeContext } from "@/lib/shellChrome";
 
 function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -22,12 +23,15 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   // Always initialize to false so server HTML matches the first client render.
   // The real embedded state is determined in useEffect (client-only).
   const [isEmbedded, setIsEmbedded] = useState(false);
+  const [suppressLeagueNav, setSuppressLeagueNav] = useState(false);
 
   useEffect(() => {
     const isEmbedQuery = window.location.search.includes("embed=true");
     const isIframe = window.self !== window.top;
     setIsEmbedded(isEmbedQuery || (isIframe && isEmbedQuery));
   }, [pathname, searchParams]);
+
+  const shellChrome = useMemo(() => ({ setSuppressLeagueNav }), []);
 
   // Views that skip the league header/footer entirely:
   // 1. Embedded preview iframe (e.g. interactive landing feature frame)
@@ -78,6 +82,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     !isMyStoryPage &&
     !isTeamRoute &&
     !isLoggedInAsIndividualTeam &&
+    !suppressLeagueNav &&
     isLeagueRoute;
 
   // Every other page still gets the theme toggle, account menu and "Powered by FlagOS" footer.
@@ -92,6 +97,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     !isPlayByPlay;
 
   return (
+    <ShellChromeContext.Provider value={shellChrome}>
     <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-clip">
       <RoleSwitcherBar />
       {showLeagueNav && <LeagueHeader />}
@@ -104,6 +110,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
       {isEmbedded && <InteractiveDemoGuard />}
       <LeagueCustomizerModal />
     </div>
+    </ShellChromeContext.Provider>
   );
 }
 

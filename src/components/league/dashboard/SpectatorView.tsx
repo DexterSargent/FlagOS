@@ -51,7 +51,7 @@ export function SpectatorView({
   canRegisterAsPlayer,
 }: SpectatorViewProps) {
   return (
-    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
+    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* Fan & Spectator Hero Banner */}
       <div className="bg-gradient-to-r from-[#0C1222] via-[#0B0F19] to-[#0A101D] border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
@@ -195,7 +195,7 @@ export function SpectatorView({
           </Link>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

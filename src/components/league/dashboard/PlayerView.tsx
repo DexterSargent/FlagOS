@@ -96,7 +96,7 @@ export function PlayerView({
   setDevRole,
 }: PlayerViewProps) {
   return (
-    <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
+    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* Athlete Cockpit Hero Banner */}
       <div className="bg-gradient-to-br from-[#061822]/95 via-[#0B0F19] to-[#08121E] border-2 border-emerald-500/40 rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
         {/* Ambient Background Glows */}
@@ -902,7 +902,7 @@ export function PlayerView({
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

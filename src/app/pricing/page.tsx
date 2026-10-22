@@ -687,13 +687,21 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                {/* Bulk Savings Badge */}
-                <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-xl p-2.5 text-[11px] flex items-center justify-between text-[#93c5fd]">
-                  <span>Standalone Value: ${teamCount * 30}/mo</span>
-                  <span className="font-bold text-white bg-[#3b82f6]/20 px-2 py-0.5 rounded font-mono">
-                    Save ${teamCount * 15}/mo (50% Off)
-                  </span>
-                </div>
+                {/* Bulk Savings Badge (league total includes the base fee) */}
+                {(() => {
+                  const standaloneMonthly = teamCount * 30;
+                  const leagueMonthly = baseLeagueFee + teamCount * perTeamFee;
+                  const monthlySavings = Math.max(0, standaloneMonthly - leagueMonthly);
+                  const savingsPct = standaloneMonthly > 0 ? Math.round((monthlySavings / standaloneMonthly) * 100) : 0;
+                  return (
+                    <div className="bg-[#3b82f6]/10 border border-[#3b82f6]/20 rounded-xl p-2.5 text-[11px] flex items-center justify-between text-[#93c5fd]">
+                      <span>Standalone Value: ${standaloneMonthly}/mo</span>
+                      <span className="font-bold text-white bg-[#3b82f6]/20 px-2 py-0.5 rounded font-mono">
+                        Save ${monthlySavings}/mo ({savingsPct}% Off)
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* What You Get Inclusions */}
@@ -1118,9 +1126,10 @@ export default function PricingPage() {
       {/* LEAGUE CHECKOUT MODAL */}
       {isLeagueModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-neutral-950 border border-cyan-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-label="Subscribe League Portal" className="bg-neutral-950 border border-cyan-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsLeagueModalOpen(false)}
+              aria-label="Close"
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5 cursor-pointer"
             >
               <X className="w-5 h-5" />
@@ -1368,9 +1377,10 @@ export default function PricingPage() {
       {/* TEAM CHECKOUT MODAL */}
       {isTeamModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-neutral-950 border border-white/20 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-label="Subscribe Team Portal" className="bg-neutral-950 border border-white/20 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsTeamModalOpen(false)}
+              aria-label="Close"
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5 cursor-pointer"
             >
               <X className="w-5 h-5" />

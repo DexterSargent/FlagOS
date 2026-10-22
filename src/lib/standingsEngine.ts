@@ -81,6 +81,26 @@ export interface BracketRound {
   bracketType?: "winners" | "losers" | "finals";
 }
 
+export interface StandingSortRow {
+  winPct: number;
+  diff: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  name: string;
+}
+
+/**
+ * Single standings tiebreak order used by every standings view and playoff seeding:
+ * win %, point differential, points for, fewest points against, then team name.
+ */
+export function compareStandingRows(a: StandingSortRow, b: StandingSortRow): number {
+  if (b.winPct !== a.winPct) return b.winPct - a.winPct;
+  if (b.diff !== a.diff) return b.diff - a.diff;
+  if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
+  if (a.pointsAgainst !== b.pointsAgainst) return a.pointsAgainst - b.pointsAgainst;
+  return (a.name || "").localeCompare(b.name || "");
+}
+
 /**
  * Calculates current seasonal standings based on completed regular season games.
  */
@@ -199,19 +219,11 @@ export function calculateStandings(
     };
   });
 
-  // Standard Football Standings Sort Hierarchy
-  standingsList.sort((a, b) => {
-    // 1. Win Percentage
-    if (b.winPct !== a.winPct) return b.winPct - a.winPct;
-    // 2. Point Differential
-    if (b.diff !== a.diff) return b.diff - a.diff;
-    // 3. Points Scored (PF)
-    if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
-    // 4. Points Allowed (fewer is better)
-    if (a.pointsAgainst !== b.pointsAgainst) return a.pointsAgainst - b.pointsAgainst;
-    // 5. Team Name
-    return a.teamName.localeCompare(b.teamName);
-  });
+  // Standard Football Standings Sort Hierarchy (shared with /stats via compareStandingRows)
+  standingsList.sort((a, b) => compareStandingRows(
+    { winPct: a.winPct, diff: a.diff, pointsFor: a.pointsFor, pointsAgainst: a.pointsAgainst, name: a.teamName },
+    { winPct: b.winPct, diff: b.diff, pointsFor: b.pointsFor, pointsAgainst: b.pointsAgainst, name: b.teamName },
+  ));
 
   // -------------------------------------------------------------------------
   // Mathematical Clinching & Elimination Logic

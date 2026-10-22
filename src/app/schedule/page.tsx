@@ -85,7 +85,7 @@ interface Match {
 
 export default function Calendar() {
   const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
-  const { settings, updateSettings, isDemoLeague, activeLeagueId } = useLeague();
+  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived } = useLeague();
   const [matches, setMatches] = useState<Match[]>([]);
   const [simulatingMatchId, setSimulatingMatchId] = useState<string | null>(null);
 
@@ -166,7 +166,8 @@ export default function Calendar() {
     }
   }, []);
 
-  const canManageSchedule = Boolean(isLeagueAdmin || isEmbedded);
+  // Archived leagues are read-only; the server rejects schedule writes until reactivation.
+  const canManageSchedule = Boolean((isLeagueAdmin || isEmbedded) && !isLeagueArchived);
 
   // Manual Match Edit/Create Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -317,7 +318,7 @@ export default function Calendar() {
   // Once the regular season is final, seed the playoff games from standings and advance winners.
   const appliedPlayoffUpdatesRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!isLeagueAdmin || isDemoLeague || isEmbedded || loading || teams.length === 0) return;
+    if (!isLeagueAdmin || isLeagueArchived || isDemoLeague || isEmbedded || loading || teams.length === 0) return;
     const updates = computePlayoffMatchupUpdates(standings, playoffFormat, matches).filter((update) => {
       const key = `${update.matchId}:${update.homeTeamId}:${update.awayTeamId}`;
       if (appliedPlayoffUpdatesRef.current.has(key)) return false;
@@ -334,7 +335,7 @@ export default function Calendar() {
         }
       }
     })();
-  }, [isLeagueAdmin, isDemoLeague, isEmbedded, loading, teams.length, standings, playoffFormat, matches]);
+  }, [isLeagueAdmin, isLeagueArchived, isDemoLeague, isEmbedded, loading, teams.length, standings, playoffFormat, matches]);
 
   // Unique list of Regular Season Weeks for the week pill filter
   const regularSeasonWeeks = useMemo(() => {
@@ -961,7 +962,7 @@ export default function Calendar() {
                       <div
                         key={match.id}
                         className={`relative group ${draggedMatchId === match.id ? "opacity-50" : ""}`}
-                        draggable={isLeagueAdmin}
+                        draggable={canManageSchedule}
                         onDragStart={(e) => handleDragStart(e, match.id)}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, match.id)}
@@ -978,7 +979,7 @@ export default function Calendar() {
 
                           <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
                             <div className="flex items-center gap-2">
-                              {isLeagueAdmin && (
+                              {canManageSchedule && (
                                 <GripVertical className="w-5 h-5 text-neutral-600 cursor-grab hover:text-white" />
                               )}
                               <span className="text-xs font-bold tracking-widest uppercase text-cyan-400">
@@ -1049,9 +1050,9 @@ export default function Calendar() {
                           </div>
                         </Link>
 
-                        {(canManageSchedule || isPlatformAdmin) && (
+                        {(canManageSchedule || (isPlatformAdmin && !isLeagueArchived)) && (
                           <div className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 flex items-center gap-1.5 z-20">
-                            {isPlatformAdmin && match.status !== "completed" && (
+                            {isPlatformAdmin && !isLeagueArchived && match.status !== "completed" && (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1117,11 +1118,12 @@ export default function Calendar() {
       {/* Manual Edit/Create Match Modal */}
       {isModalOpen && editingMatch && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+          <div role="dialog" aria-modal="true" aria-labelledby="schedule-match-modal-title" className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">{editingMatch.id ? "Edit Game" : "Schedule Game"}</h2>
+              <h2 id="schedule-match-modal-title" className="text-2xl font-bold">{editingMatch.id ? "Edit Game" : "Schedule Game"}</h2>
               <button
                 onClick={() => { setIsModalOpen(false); setMatchSaveError(null); }}
+                aria-label="Close"
                 className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-neutral-400"
               >
                 <X className="w-5 h-5" />
