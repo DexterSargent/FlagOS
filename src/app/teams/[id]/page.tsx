@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, getDocs, query, where, limit } from "firebase/firestore";
+import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { isPrimaryTeamAdmin, getTeamAdminEmails, getTeamAdminAccounts, isDexterUser, type TeamAdminAccount } from "@/lib/teamAdminRbac";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
@@ -347,13 +348,13 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           setPlays(season.plays);
           return;
         }
-        const [matchesSnap, playsSnap] = await Promise.all([
-          getDocs(query(collection(db, "matches"), where("leagueId", "==", leagueId), where("isHidden", "!=", true), limit(512))),
-          getDocs(query(collection(db, "plays"), where("leagueId", "==", leagueId), where("isHidden", "!=", true), limit(10_000))),
+        const [rawMatches, rawPlays] = await Promise.all([
+          getCachedLeagueMatches(leagueId),
+          getCachedLeaguePlays(leagueId),
         ]);
         if (cancelled) return;
-        setMatches(matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
-        setPlays(playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+        setMatches(rawMatches.filter((m) => !m.isHidden && (!m.leagueId || m.leagueId === leagueId)));
+        setPlays(rawPlays);
       } catch (e) {
         console.error("Error fetching team:", e);
         if (!cancelled) setStatsError("Season statistics could not be loaded. Please retry.");

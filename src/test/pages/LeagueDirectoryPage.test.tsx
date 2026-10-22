@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import LeagueDirectoryPage from "@/app/leagues/page";
+import { invalidateLeagueData } from "@/lib/leagueDataCache";
 
 // Mock Firestore
 const mockGetDocs = vi.fn();
@@ -86,6 +87,7 @@ vi.mock("next/navigation", () => ({
 
 describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () => {
   beforeEach(() => {
+    invalidateLeagueData();
     vi.clearAllMocks();
     mockGetDocs.mockResolvedValue({ docs: [] });
   });

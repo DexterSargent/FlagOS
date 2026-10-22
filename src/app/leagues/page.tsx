@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { collection, query, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getCachedLeaguesDirectory } from "@/lib/leagueDataCache";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import {
@@ -59,42 +60,9 @@ export default function LeagueDirectoryPage() {
     async function fetchLeagues() {
       try {
         setIsLoadingRemote(true);
-        const leaguesQuery = query(collection(db, "leagues"), limit(100));
-        const leaguesSnap = await getDocs(leaguesQuery);
-
-        let teamsCountMap: Record<string, number> = {};
-        try {
-          const teamsSnap = await getDocs(query(collection(db, "teams"), limit(300)));
-          if (teamsSnap && Array.isArray(teamsSnap.docs)) {
-            teamsSnap.docs.forEach((docSnap) => {
-              const data = docSnap.data();
-              const lid = data.leagueId;
-              if (lid) {
-                teamsCountMap[lid] = (teamsCountMap[lid] || 0) + 1;
-              }
-            });
-          }
-        } catch {
-          // ignore team count query errors in mocked/offline modes
-        }
-
-        if (isCurrent && leaguesSnap && Array.isArray(leaguesSnap.docs)) {
-          const list = leaguesSnap.docs
-            .map((docSnap) => {
-              const data = docSnap.data() as Record<string, any>;
-              return {
-                id: docSnap.id,
-                ...data,
-                teamCount:
-                  teamsCountMap[docSnap.id] ??
-                  data.teamCount ??
-                  data.subscription?.teamCount ??
-                  0,
-              };
-            })
-            .filter((l: Record<string, any>) => l.visibility !== "private" && l.id !== "league_private_live");
-
-          setRemoteLeagues(list);
+        const { leagues } = await getCachedLeaguesDirectory();
+        if (isCurrent) {
+          setRemoteLeagues(leagues);
         }
       } catch (err) {
         console.warn("Notice: could not load Firestore leagues directly (offline/mocked):", err);

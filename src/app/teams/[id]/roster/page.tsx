@@ -30,6 +30,7 @@ import {
   where,
   limit
 } from "firebase/firestore";
+import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
@@ -163,22 +164,12 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           mList = season.matches;
           playList = season.plays;
         } else {
-          const [matchesSnap, playsSnap] = await Promise.all([
-            getDocs(query(
-              collection(db, "matches"),
-              where("leagueId", "==", leagueId),
-              where("isHidden", "!=", true),
-              limit(512),
-            )),
-            getDocs(query(
-              collection(db, "plays"),
-              where("leagueId", "==", leagueId),
-              where("isHidden", "!=", true),
-              limit(10_000),
-            )),
+          const [rawMatches, rawPlays] = await Promise.all([
+            getCachedLeagueMatches(leagueId),
+            getCachedLeaguePlays(leagueId),
           ]);
-          mList = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-          playList = playsSnap.docs.map((d) => d.data() as any);
+          mList = rawMatches.filter((m) => !m.isHidden && (!m.leagueId || m.leagueId === leagueId));
+          playList = rawPlays;
         }
       }
 

@@ -25,6 +25,11 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
+import {
+  getCachedLeaguePlayers,
+  getCachedLeagueMatches,
+  getCachedLeaguePlays,
+} from "@/lib/leagueDataCache";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { getTeamShortcode } from "@/components/TeamAssets";
@@ -108,23 +113,12 @@ export default function PlayerProfilePage() {
     const fetchProfileAndStats = async () => {
       setLoading(true);
       try {
-        const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
-          getDocs(query(collection(db, "players"), where("leagueId", "==", activeLeagueId), limit(1920))),
-          getDocs(query(
-            collection(db, "matches"),
-            where("leagueId", "==", activeLeagueId),
-            where("isHidden", "!=", true),
-            limit(512),
-          )),
-          getDocs(query(
-            collection(db, "plays"),
-            where("leagueId", "==", activeLeagueId),
-            where("isHidden", "!=", true),
-            limit(10_000),
-          )),
+        const [playersList, rawMatches, rawPlays] = await Promise.all([
+          getCachedLeaguePlayers(activeLeagueId),
+          getCachedLeagueMatches(activeLeagueId),
+          getCachedLeaguePlays(activeLeagueId),
         ]);
 
-        const playersList = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         setAllRosteredPlayers(playersList);
 
         // Determine which player to display
@@ -171,8 +165,8 @@ export default function PlayerProfilePage() {
             pbu: 0,
           };
 
-          const matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-          const plays = playsSnap.docs.map((d) => d.data() as any);
+          const matches = rawMatches;
+          const plays = rawPlays;
 
           // Games played & recent matches
           const playerRecentGames: any[] = [];

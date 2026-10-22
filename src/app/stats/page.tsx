@@ -23,6 +23,12 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
+import {
+  getCachedLeagueTeams,
+  getCachedLeaguePlayers,
+  getCachedLeagueMatches,
+  getCachedLeaguePlays,
+} from "@/lib/leagueDataCache";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { isPlayoffMatch } from "@/lib/standingsEngine";
@@ -78,33 +84,20 @@ export default function StatsAndStandings() {
           plays = getSandboxPlays();
         } else {
           try {
-            const [teamsSnap, playersSnap, matchesSnap, playsSnap] = await Promise.all([
-              getDocs(query(collection(db, "teams"), where("leagueId", "==", activeLeagueId), limit(64))),
-              getDocs(query(collection(db, "players"), where("leagueId", "==", activeLeagueId), limit(1920))),
-              getDocs(query(
-                collection(db, "matches"),
-                where("leagueId", "==", activeLeagueId),
-                where("isHidden", "!=", true),
-                limit(512),
-              )),
-              getDocs(query(
-                collection(db, "plays"),
-                where("leagueId", "==", activeLeagueId),
-                where("isHidden", "!=", true),
-                limit(10_000),
-              )),
+            const [rawTeams, rawPlayers, rawMatches, rawPlays] = await Promise.all([
+              getCachedLeagueTeams(activeLeagueId),
+              getCachedLeaguePlayers(activeLeagueId),
+              getCachedLeagueMatches(activeLeagueId),
+              getCachedLeaguePlays(activeLeagueId),
             ]);
 
-            teams = teamsSnap.docs
-              .map((d) => ({ id: d.id, ...(d.data() as any) }))
+            teams = rawTeams
               .filter((t) => isRealTeam(t) && (!t.leagueId || t.leagueId === activeLeagueId));
-            players = playersSnap.docs
-              .map((d) => ({ id: d.id, ...(d.data() as any) }))
+            players = rawPlayers
               .filter((p) => !p.leagueId || p.leagueId === activeLeagueId || teams.some((t) => t.id === p.teamId));
-            matches = matchesSnap.docs
-              .map((d) => ({ id: d.id, ...(d.data() as any) }))
+            matches = rawMatches
               .filter((m) => !m.leagueId || m.leagueId === activeLeagueId);
-            plays = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+            plays = rawPlays;
           } catch (err) {
             console.warn("Unable to fetch stats from Firestore, falling back to sandbox:", err);
             teams = getSandboxTeams().filter(isRealTeam);

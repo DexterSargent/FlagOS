@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, onSnapshot, query, where, limit } from "firebase/firestore";
+import { getCachedLeagueTeams, getCachedLeaguePlayers, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
@@ -88,26 +89,18 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
       let isSubscribed = true;
 
       Promise.all([
-        getDocs(query(collection(db, "teams"), where("leagueId", "==", targetLeagueId), limit(64))),
-        getDocs(query(collection(db, "players"), where("leagueId", "==", targetLeagueId), limit(1920))),
-        getDocs(query(
-          collection(db, "plays"),
-          where("leagueId", "==", targetLeagueId),
-          where("isHidden", "!=", true),
-          limit(10_000),
-        )),
-      ]).then(([teamsSnap, playersSnap, playsSnap]) => {
+        getCachedLeagueTeams(targetLeagueId),
+        getCachedLeaguePlayers(targetLeagueId),
+        getCachedLeaguePlays(targetLeagueId),
+      ]).then(([rawTeams, rawPlayers, rawPlays]) => {
         if (!isSubscribed) return;
-        const tList = teamsSnap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        const tList = rawTeams
           .filter((t) => isRealTeam(t) && (!t.leagueId || t.leagueId === targetLeagueId));
-        const pList = playersSnap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        const pList = rawPlayers
           .filter((p) => !p.leagueId || p.leagueId === targetLeagueId || tList.some((t) => t.id === p.teamId));
-        const plList = playsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
         setTeams(tList);
         setPlayers(pList);
-        setPlays(plList);
+        setPlays(rawPlays);
       }).catch((e) => {
         console.warn("Non-critical: permission or network error loading dashboard data:", e);
       });

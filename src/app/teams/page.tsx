@@ -5,6 +5,13 @@ import Link from "next/link";
 import { ChevronLeft, Users, Shield, Plus, Check, X, ArrowRightLeft, Calendar, Trophy, Activity, History, Trash2, UserPlus, Search, CheckCircle2, CreditCard, SlidersHorizontal } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, updateDoc, doc, query, where, limit } from "firebase/firestore";
+import {
+  getCachedLeagueTeams,
+  getCachedLeaguePlayers,
+  getCachedLeagueMatches,
+  getCachedLeaguePlays,
+  notifyDataChanged,
+} from "@/lib/leagueDataCache";
 import { createSecureRecord } from "@/lib/secureWrites";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
@@ -123,47 +130,29 @@ export default function TeamsPage() {
       return;
     }
     try {
-      const teamsSnap = await getDocs(query(
-        collection(db, "teams"),
-        where("leagueId", "==", activeLeagueId),
-        limit(64),
-      ));
-      const tData = teamsSnap.docs
-        .map(d => ({ ...d.data(), id: d.id } as Team))
+      const [rawTeams, rawPlayers, rawMatches, rawPlays] = await Promise.all([
+        getCachedLeagueTeams(activeLeagueId),
+        getCachedLeaguePlayers(activeLeagueId),
+        getCachedLeagueMatches(activeLeagueId),
+        getCachedLeaguePlays(activeLeagueId),
+      ]);
+
+      const tData = (rawTeams as Team[])
         .filter(t => isRealTeam(t) && !isStandaloneTeam(t as any) && (t as any).leagueId === activeLeagueId);
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
 
-      const playersSnap = await getDocs(query(
-        collection(db, "players"),
-        where("leagueId", "==", activeLeagueId),
-        limit(1920),
-      ));
-      const pData = playersSnap.docs.map(d => ({ ...d.data(), id: d.id } as Player));
+      const pData = rawPlayers as Player[];
       setPlayers(pData);
 
-      const matchesSnap = await getDocs(query(
-        collection(db, "matches"),
-        where("leagueId", "==", activeLeagueId),
-        where("isHidden", "!=", true),
-        limit(512),
-      ));
-      const mData = matchesSnap.docs
-        .map(d => ({ ...d.data(), id: d.id } as any))
+      const mData = rawMatches
         .filter(m =>
           !m.isHidden &&
           (!m.leagueId || m.leagueId === activeLeagueId)
         );
       setMatches(mData);
 
-      const playsSnap = await getDocs(query(
-        collection(db, "plays"),
-        where("leagueId", "==", activeLeagueId),
-        where("isHidden", "!=", true),
-        limit(10_000),
-      ));
-      const playData = playsSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-      setPlays(playData);
+      setPlays(rawPlays);
     } catch (e) {
       console.warn("Unable to fetch live teams data, falling back to sandbox:", e);
       const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
@@ -236,6 +225,7 @@ export default function TeamsPage() {
       setNewPlayerName("");
       setNewPlayerPositions(["ATH"]);
       setIsAddingPlayer(false);
+      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Could not add the player.");
@@ -257,6 +247,7 @@ export default function TeamsPage() {
       });
       setPlayers(players.map(p => p.id === playerId ? { ...p, teamId: editTeamId, status: "Active" } : p));
       setEditingPlayerId(null);
+      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Could not assign the player.");
@@ -313,6 +304,7 @@ export default function TeamsPage() {
           status: "Active",
         });
       }
+      notifyDataChanged(activeLeagueId);
     } catch (err) {
       console.error("Error assigning free agent:", err);
       alert("Failed to assign player to team.");
@@ -332,6 +324,7 @@ export default function TeamsPage() {
       await createSecureRecord("delete_player", { playerId });
       setPlayers(players.filter(p => p.id !== playerId));
       setSelectedPlayerForStats(null);
+      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Could not add the team.");
@@ -376,6 +369,7 @@ export default function TeamsPage() {
       setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
       setNewTeamName("");
       setIsAddingTeam(false);
+      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Could not add the team.");
@@ -396,6 +390,7 @@ export default function TeamsPage() {
       });
       setTeams(teams.map(t => t.id === activeTeamId ? { ...t, name: editTeamNameValue.trim() } : t).sort((a, b) => a.name.localeCompare(b.name)));
       setIsEditingTeamName(false);
+      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
     }
@@ -415,6 +410,7 @@ export default function TeamsPage() {
         await removeTeamFromSubscription(activeTeamId);
         setTeams(teams.filter(t => t.id !== activeTeamId));
         setActiveTeamId(null);
+        notifyDataChanged(activeLeagueId);
       } catch (e) {
         console.error(e);
         alert(e instanceof Error ? e.message : "Failed to remove team from subscription.");
@@ -437,6 +433,7 @@ export default function TeamsPage() {
       await createSecureRecord("delete_team", { teamId: activeTeamId });
       setTeams(teams.filter(t => t.id !== activeTeamId));
       setActiveTeamId(null);
+      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
     }

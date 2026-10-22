@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
+import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { useLeague } from "@/lib/leagueContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
@@ -81,24 +82,14 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             matches = season.matches;
             plays = season.plays;
           } else {
-            const [playersSnap, matchesSnap, playsSnap] = await Promise.all([
+            const [playersSnap, rawMatches, rawPlays] = await Promise.all([
               getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
-              getDocs(query(
-                collection(db, "matches"),
-                where("leagueId", "==", leagueId),
-                where("isHidden", "!=", true),
-                limit(512),
-              )),
-              getDocs(query(
-                collection(db, "plays"),
-                where("leagueId", "==", leagueId),
-                where("isHidden", "!=", true),
-                limit(10_000),
-              )),
+              getCachedLeagueMatches(leagueId),
+              getCachedLeaguePlays(leagueId),
             ]);
             players = playersSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
-            matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-            plays = playsSnap.docs.map((d) => d.data() as any);
+            matches = rawMatches.filter((m) => !m.isHidden && (!m.leagueId || m.leagueId === leagueId));
+            plays = rawPlays;
           }
         }
 
