@@ -26,12 +26,20 @@ export default function RoleSwitcherBar() {
 
   const teamId = pathname?.startsWith("/teams/") ? pathname.split("/")[2] : null;
   const matchId = pathname?.startsWith("/matches/") ? pathname.split("/")[2] : null;
+  const leagueId = pathname?.startsWith("/league/") ? pathname.split("/")[2] : null;
   const owner = isDexterUser(user?.email);
   const demoTeam = Boolean(teamId && isDemoLeague && DEMO_TEAM_IDS.includes(teamId));
   const embedded = useEmbedState().embedQuery;
-  // Real customer team and game pages never show demo chrome.
-  const customerPage = Boolean((teamId && !isDemoTeamId(teamId)) || (matchId && !isDemoMatchId(matchId)));
-  const allowed = !embedded && (localOrDemo || owner || isDemoLeague) &&
+
+  // Real customer league, team and game pages never show demo chrome.
+  const isRealCustomerLeague = Boolean(leagueId && leagueId !== "default" && leagueId !== "demo" && !isDemoLeague);
+  const customerPage = Boolean(isRealCustomerLeague || (teamId && !isDemoTeamId(teamId)) || (matchId && !isDemoMatchId(matchId)));
+
+  // Allow in the main page sandbox preview frame for league dashboard (/league/default?embed=true&demo=true)
+  const isMainPageSandboxLeague = Boolean(embedded && (leagueId === "default" || leagueId === "demo" || isDemoLeague) && pathname?.startsWith("/league/"));
+  const allowEmbed = isMainPageSandboxLeague ? true : !embedded;
+
+  const allowed = allowEmbed && (localOrDemo || owner || isDemoLeague) &&
     !customerPage &&
     (!teamId || demoTeam) &&
     pathname !== "/" && pathname !== "/pricing" && pathname !== "/login" && pathname !== "/my-story" &&
