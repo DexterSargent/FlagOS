@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { TeamLogo } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
+import { getGameDisplayState, isFinalGameStatus, isStartedGameStatus, useNow } from "@/lib/gameLiveState";
 
 export interface LeagueScheduleWidgetProps {
   games: any[];
@@ -41,10 +42,8 @@ export function LeagueScheduleWidget({
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const isLive = (m: any) =>
-    (m.status === "in_progress" || m.status === "live") &&
-    m.status !== "completed" &&
-    m.status !== "Final";
+  const now = useNow();
+  const isLive = (m: any) => isStartedGameStatus(m.status) && !isFinalGameStatus(m.status);
 
   return (
     <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
@@ -97,7 +96,7 @@ export function LeagueScheduleWidget({
             const hTeam = teams.find((t) => t.id === m.homeTeamId);
             const aTeam = teams.find((t) => t.id === m.awayTeamId);
             const live = isLive(m);
-
+            const paused = live && getGameDisplayState(m, now) === "paused";
             const hScore = m.homeScore ?? m.matchState?.homeScore ?? 0;
             const aScore = m.awayScore ?? m.matchState?.awayScore ?? 0;
 
@@ -111,22 +110,37 @@ export function LeagueScheduleWidget({
             return (
               <div
                 key={m.id}
-                className={`p-5 rounded-2xl transition-all flex flex-col justify-between relative overflow-hidden group ${live
+                className={`p-5 rounded-2xl transition-all flex flex-col justify-between relative overflow-hidden group ${paused
+                  ? "bg-black/60 border-2 border-amber-500/40 hover:border-amber-400/70"
+                  : live
                   ? "bg-gradient-to-br from-[#1C0B0E]/95 via-[#0D101A] to-[#07090E] border-2 border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.2)] hover:border-red-400"
                   : "bg-black/60 border border-line hover:border-cyan-500/40"
                   }`}
               >
                 {/* Live Accent Glow */}
-                {live && (
+                {live && !paused && (
                   <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-2xl pointer-events-none"></div>
                 )}
 
                 <div>
                   {/* Card Status & Timing Header */}
                   <div className="flex items-center justify-between text-[11px] mb-3 pb-2.5 border-b border-line-subtle">
-                    {live ? (
+                    {paused ? (
                       <div className="flex items-center gap-2">
-                        {/* Flashing Red Dot Live Symbol */}
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400"></span>
+                        <span className="font-black uppercase tracking-wider text-amber-400 text-[11px]">
+                          PAUSED
+                        </span>
+                        <span className="text-neutral-400 font-mono text-[10px]">
+                          {m.matchState?.half
+                            ? m.isAsyncStatKeeping || m.isIndependent
+                              ? `H${m.matchState.half}`
+                              : `${periodPrefix}${m.matchState.half}`
+                            : m.week || "In Progress"}
+                        </span>
+                      </div>
+                    ) : live ? (
+                      <div className="flex items-center gap-2">
                         <span className="relative flex h-2.5 w-2.5">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
@@ -150,8 +164,8 @@ export function LeagueScheduleWidget({
 
                     {/* Clock or Time */}
                     {live ? (
-                      <span className="px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 font-mono text-xs font-black tracking-wider flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-red-400 shrink-0" />
+                      <span className={`px-2 py-0.5 rounded-lg font-mono text-xs font-black tracking-wider flex items-center gap-1 ${paused ? "bg-amber-500/10 border border-amber-500/30 text-amber-300" : "bg-red-500/20 border border-red-500/30 text-red-300"}`}>
+                        <Clock className={`w-3 h-3 shrink-0 ${paused ? "text-amber-400" : "text-red-400"}`} />
                         <span>{formatClock(m.matchState?.gameClock ?? 1200)}</span>
                       </span>
                     ) : (
@@ -267,10 +281,10 @@ export function LeagueScheduleWidget({
                   {live ? (
                     <Link
                       href={isEmbedded ? `/matches/${m.id}/play-by-play?embed=true&demo=true` : `/matches/${m.id}/play-by-play`}
-                      className="w-full py-2.5 px-3 bg-red-600 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl text-center transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-950/50"
+                      className={`w-full py-2.5 px-3 text-white text-xs font-bold uppercase tracking-wider rounded-xl text-center transition-all flex items-center justify-center gap-2 ${paused ? "bg-amber-600/80 hover:bg-amber-500" : "bg-red-600 hover:bg-red-500 shadow-lg shadow-red-950/50"}`}
                     >
-                      <PlayCircle className="w-4 h-4 animate-pulse" />
-                      <span>{isLeagueAdmin ? "Manage Scorekeeper" : "Watch Live Play-by-Play"}</span>
+                      <PlayCircle className={`w-4 h-4 ${paused ? "" : "animate-pulse"}`} />
+                      <span>{isLeagueAdmin ? (paused ? "Resume Scorekeeper" : "Manage Scorekeeper") : paused ? "View Play-by-Play" : "Watch Live Play-by-Play"}</span>
                     </Link>
                   ) : isEmbedded ? (
                     <div className="w-full py-2.5 px-3 bg-surface-muted text-neutral-400 text-xs font-bold rounded-xl border border-line text-center flex items-center justify-center gap-1.5 cursor-default">

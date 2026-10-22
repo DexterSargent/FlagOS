@@ -555,7 +555,7 @@ export default function StatsAndStandings() {
           <button
             onClick={() => setActiveTab("team")}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold transition-all ${
-              activeTab === "team" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20" : "text-neutral-400 hover:text-white"
+              activeTab === "team" ? "bg-cyan-600 text-white shadow-lg shadow-cyan-500/20" : "text-neutral-400 hover:text-white"
             }`}
           >
             <Trophy className="w-4 h-4" /> Team Standings
@@ -563,7 +563,7 @@ export default function StatsAndStandings() {
           <button
             onClick={() => setActiveTab("individual")}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold transition-all ${
-              activeTab === "individual" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20" : "text-neutral-400 hover:text-white"
+              activeTab === "individual" ? "bg-cyan-600 text-white shadow-lg shadow-cyan-500/20" : "text-neutral-400 hover:text-white"
             }`}
           >
             <Users className="w-4 h-4" /> Individual Stats
@@ -678,7 +678,7 @@ export default function StatsAndStandings() {
                     <button
                       onClick={() => setIndivViewMode("leaders")}
                       className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        indivViewMode === "leaders" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
+                        indivViewMode === "leaders" ? "bg-cyan-600 text-white shadow" : "text-neutral-400 hover:text-white"
                       }`}
                     >
                       <LayoutGrid className="w-3.5 h-3.5" /> Leaders
@@ -686,7 +686,7 @@ export default function StatsAndStandings() {
                     <button
                       onClick={() => setIndivViewMode("table")}
                       className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        indivViewMode === "table" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
+                        indivViewMode === "table" ? "bg-cyan-600 text-white shadow" : "text-neutral-400 hover:text-white"
                       }`}
                     >
                       <TableIcon className="w-3.5 h-3.5" /> Full Table
@@ -758,7 +758,7 @@ export default function StatsAndStandings() {
                         {/* View Full Stats Button */}
                         <button
                           onClick={() => handleOpenFullStats(cat.subtab, cat.key)}
-                          className="w-full mt-2 py-3 px-4 rounded-xl bg-white/5 hover:bg-gradient-to-r hover:from-cyan-500 hover:to-blue-600 text-neutral-300 hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-cyan-500 group-hover:shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.25)]"
+                          className="w-full mt-2 py-3 px-4 rounded-xl bg-white/5 hover:bg-cyan-600 text-neutral-300 hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-cyan-500 group-hover:shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.25)]"
                         >
                           <span>View Full {cat.title} Stats</span>
                           <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
@@ -795,7 +795,7 @@ export default function StatsAndStandings() {
                           setSortIndiv({ key: "passTD", direction: "desc" });
                         }}
                         className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                          individualTab === "passing" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
+                          individualTab === "passing" ? "bg-cyan-600 text-white shadow" : "text-neutral-400 hover:text-white"
                         }`}
                       >
                         Passing
@@ -806,7 +806,7 @@ export default function StatsAndStandings() {
                           setSortIndiv({ key: "receptions", direction: "desc" });
                         }}
                         className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                          individualTab === "receiving" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
+                          individualTab === "receiving" ? "bg-cyan-600 text-white shadow" : "text-neutral-400 hover:text-white"
                         }`}
                       >
                         Receiving / Rushing
@@ -817,7 +817,7 @@ export default function StatsAndStandings() {
                           setSortIndiv({ key: "flagPulls", direction: "desc" });
                         }}
                         className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                          individualTab === "defense" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow" : "text-neutral-400 hover:text-white"
+                          individualTab === "defense" ? "bg-cyan-600 text-white shadow" : "text-neutral-400 hover:text-white"
                         }`}
                       >
                         Defense

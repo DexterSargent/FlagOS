@@ -14,6 +14,7 @@ import {
   getSandboxPlays,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
+import { getGameDisplayState, isFinalGameStatus, isStartedGameStatus, useNow } from "@/lib/gameLiveState";
 
 const noopSubscribe = () => () => {};
 const readEmbeddedFlag = () => {
@@ -58,6 +59,7 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   const [matches, setMatches] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
+  const now = useNow();
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess(leagueIdParam);
 
@@ -297,13 +299,8 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   }, [teams, players, matches, plays, completedMatches]);
 
   // Live & Upcoming Games Prioritization Logic
-  const isMatchLive = (m: any) => {
-    return (
-      (m.status === "in_progress" || m.status === "live") &&
-      m.status !== "completed" &&
-      m.status !== "Final"
-    );
-  };
+  // Started games (live or paused) are prioritized; only games with an active scorekeeper count as live.
+  const isMatchLive = (m: any) => isStartedGameStatus(m.status) && !isFinalGameStatus(m.status);
 
   const getLiveTimeRemaining = (m: any) => {
     const periodDuration = (settings.rules?.periodDurationMinutes || 20) * 60;
@@ -329,9 +326,10 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   });
 
   // Live games prioritized by LEAST time remaining first
-  const liveMatches = activeNonCompletedMatches
+  const startedMatches = activeNonCompletedMatches
     .filter(isMatchLive)
     .sort((a, b) => getLiveTimeRemaining(a) - getLiveTimeRemaining(b));
+  const liveMatches = startedMatches.filter((m) => getGameDisplayState(m, now) === "live");
 
   // Upcoming games sorted chronologically
   const upcomingOnlyMatches = activeNonCompletedMatches
@@ -344,7 +342,7 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
     });
 
   // Combined next games (live games with least time remaining first, then upcoming games)
-  const liveAndUpcomingGames = [...liveMatches, ...upcomingOnlyMatches].slice(0, 4);
+  const liveAndUpcomingGames = [...startedMatches, ...upcomingOnlyMatches].slice(0, 4);
 
   const upcomingMatches = activeNonCompletedMatches;
 

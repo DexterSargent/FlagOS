@@ -22,6 +22,8 @@ import {
   Minus,
   BadgePercent,
   Menu,
+  Upload,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -29,6 +31,7 @@ import { isPlatformAdminEmail } from "@/lib/platformAdmin";
 import { createSecureRecord } from "@/lib/secureWrites";
 import { FlagOSText } from "@/components/FlagOSText";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
+import { FLAGOS_LOGO } from "@/lib/brandTokens";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountMenu from "@/components/AccountMenu";
 
@@ -58,13 +61,23 @@ export default function PricingPage() {
   const [showDevelopmentNotice, setShowDevelopmentNotice] = useState(false);
   const [isLeagueModalOpen, setIsLeagueModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+
+  // League subscription state
   const [leagueName, setLeagueName] = useState("");
   const [leagueShortcode, setLeagueShortcode] = useState("");
-  const [leagueColor, setLeagueColor] = useState("#3ca505");
+  const [leaguePrimaryColor, setLeaguePrimaryColor] = useState("#3ca505");
+  const [leagueSecondaryColor, setLeagueSecondaryColor] = useState("#3b82f6");
+  const [leagueTertiaryColor, setLeagueTertiaryColor] = useState("#ffffff");
+  const [leagueLogoUrl, setLeagueLogoUrl] = useState("");
   const [isSubmittingLeague, setIsSubmittingLeague] = useState(false);
+
+  // Team subscription state
   const [teamName, setTeamName] = useState("");
   const [teamShortcode, setTeamShortcode] = useState("");
-  const [teamColor, setTeamColor] = useState("#22c55e");
+  const [teamPrimaryColor, setTeamPrimaryColor] = useState("#22c55e");
+  const [teamSecondaryColor, setTeamSecondaryColor] = useState("#06b6d4");
+  const [teamTertiaryColor, setTeamTertiaryColor] = useState("#ffffff");
+  const [teamLogoUrl, setTeamLogoUrl] = useState("");
   const [teamVisibility, setTeamVisibility] = useState<"public" | "private">("public");
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
@@ -79,7 +92,11 @@ export default function PricingPage() {
         name: leagueName.trim(),
         shortcode: leagueShortcode.trim().toUpperCase(),
         teamCount: teamCount,
-        primaryColor: leagueColor,
+        primaryColor: leaguePrimaryColor,
+        secondaryColor: leagueSecondaryColor,
+        accentColor: leagueSecondaryColor,
+        tertiaryColor: leagueTertiaryColor,
+        logoUrl: leagueLogoUrl.trim() || FLAGOS_LOGO,
         seasonTitle: `${new Date().getFullYear()} Season`,
         visibility: "public",
       });
@@ -105,7 +122,10 @@ export default function PricingPage() {
         leagueId: "",
         isStandalone: true,
         visibility: teamVisibility,
-        primaryColor: teamColor,
+        primaryColor: teamPrimaryColor,
+        secondaryColor: teamSecondaryColor,
+        tertiaryColor: teamTertiaryColor,
+        logoUrl: teamLogoUrl.trim() || FLAGOS_LOGO,
         adminEmails: [user.email.trim().toLowerCase()],
         subscription: {
           plan: "team",
@@ -409,7 +429,7 @@ export default function PricingPage() {
                       localStorage.setItem("flagos_demo_active", "true");
                     }
                   }}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-1.5"
                 >
                   <Play className="w-3.5 h-3.5 fill-black" />
                   <span className="hidden xs:inline">Try Demo</span>
@@ -1102,7 +1122,7 @@ export default function PricingPage() {
       {/* LEAGUE CHECKOUT MODAL */}
       {isLeagueModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-neutral-950 border border-cyan-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative">
+          <div className="bg-neutral-950 border border-cyan-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsLeagueModalOpen(false)}
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5 cursor-pointer"
@@ -1159,19 +1179,161 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              {/* Brand color choice */}
-              <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1.5">Primary League Color</label>
-                <div className="flex items-center gap-2">
-                  {["#3ca505", "#22c55e", "#06B6D4", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444"].map((c) => (
+              {/* League Logo (Optional, defaults to FlagOS logo) */}
+              <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>League Logo (Optional)</span>
+                  </label>
+                  {leagueLogoUrl && (
                     <button
-                      key={c}
                       type="button"
-                      onClick={() => setLeagueColor(c)}
-                      className={`w-8 h-8 rounded-lg transition-transform cursor-pointer ${leagueColor === c ? "scale-110 ring-2 ring-white" : ""}`}
-                      style={{ backgroundColor: c }}
+                      onClick={() => setLeagueLogoUrl("")}
+                      className="text-[11px] text-cyan-400 hover:underline cursor-pointer"
+                    >
+                      Reset to FlagOS Logo
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl border border-white/20 bg-neutral-950 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                    <img
+                      src={leagueLogoUrl.trim() || FLAGOS_LOGO}
+                      alt="League Logo Preview"
+                      className="w-full h-full object-contain"
                     />
-                  ))}
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <input
+                      type="text"
+                      value={leagueLogoUrl}
+                      onChange={(e) => setLeagueLogoUrl(e.target.value)}
+                      placeholder="Paste image URL or upload below..."
+                      className="w-full px-3 py-1.5 rounded-lg bg-neutral-950 border border-white/10 text-white text-xs outline-none focus:border-cyan-400"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[11px] font-semibold cursor-pointer border border-white/10 transition-colors">
+                        <Upload className="w-3 h-3 text-cyan-400" />
+                        <span>Upload File</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                if (typeof ev.target?.result === "string") setLeagueLogoUrl(ev.target.result);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      <span className="text-[10px] text-neutral-400">
+                        {leagueLogoUrl ? "Custom logo active" : "Defaulting to FlagOS emblem"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Brand Colors: Primary, Secondary, Tertiary */}
+              <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-200">Brand Color Palette</span>
+                  <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
+                    <span>Preview:</span>
+                    <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: leaguePrimaryColor }} title="Primary" />
+                    <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: leagueSecondaryColor }} title="Secondary" />
+                    <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: leagueTertiaryColor }} title="Tertiary" />
+                  </div>
+                </div>
+
+                {/* Primary Color */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-neutral-300">Primary Color</label>
+                    <span className="font-mono text-[10px] text-neutral-400">{leaguePrimaryColor}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["#3ca505", "#22c55e", "#06B6D4", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#111827"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`League primary color ${c}`}
+                        onClick={() => setLeaguePrimaryColor(c)}
+                        className={`w-7 h-7 rounded-lg transition-transform cursor-pointer border border-white/20 ${leaguePrimaryColor === c ? "scale-110 ring-2 ring-white" : ""}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                    <label className="relative cursor-pointer" title="Custom color picker">
+                      <input
+                        type="color"
+                        value={leaguePrimaryColor}
+                        onChange={(e) => setLeaguePrimaryColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-white/20 p-0 cursor-pointer bg-transparent"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Secondary Color */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-neutral-300">Secondary Color</label>
+                    <span className="font-mono text-[10px] text-neutral-400">{leagueSecondaryColor}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["#3B82F6", "#06B6D4", "#22c55e", "#10B981", "#8B5CF6", "#EC4899", "#F59E0B", "#111827"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`League secondary color ${c}`}
+                        onClick={() => setLeagueSecondaryColor(c)}
+                        className={`w-7 h-7 rounded-lg transition-transform cursor-pointer border border-white/20 ${leagueSecondaryColor === c ? "scale-110 ring-2 ring-white" : ""}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                    <label className="relative cursor-pointer" title="Custom color picker">
+                      <input
+                        type="color"
+                        value={leagueSecondaryColor}
+                        onChange={(e) => setLeagueSecondaryColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-white/20 p-0 cursor-pointer bg-transparent"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Tertiary Color */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-neutral-300">Tertiary Color</label>
+                    <span className="font-mono text-[10px] text-neutral-400">{leagueTertiaryColor}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["#FFFFFF", "#F3F4F6", "#9CA3AF", "#F59E0B", "#FCD34D", "#06B6D4", "#3B82F6", "#111827"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`League tertiary color ${c}`}
+                        onClick={() => setLeagueTertiaryColor(c)}
+                        className={`w-7 h-7 rounded-lg transition-transform cursor-pointer border border-white/20 ${leagueTertiaryColor.toLowerCase() === c.toLowerCase() ? "scale-110 ring-2 ring-white" : ""}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                    <label className="relative cursor-pointer" title="Custom color picker">
+                      <input
+                        type="color"
+                        value={leagueTertiaryColor.startsWith("#") ? leagueTertiaryColor : "#ffffff"}
+                        onChange={(e) => setLeagueTertiaryColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-white/20 p-0 cursor-pointer bg-transparent"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -1194,7 +1356,7 @@ export default function PricingPage() {
               <button
                 type="submit"
                 disabled={isSubmittingLeague}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
+                className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
                 <span>{isSubmittingLeague ? "Provisioning League..." : `Confirm & Pay $${totalLeagueMonthly}/mo`}</span>
@@ -1210,7 +1372,7 @@ export default function PricingPage() {
       {/* TEAM CHECKOUT MODAL */}
       {isTeamModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-neutral-950 border border-white/20 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative">
+          <div className="bg-neutral-950 border border-white/20 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsTeamModalOpen(false)}
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5 cursor-pointer"
@@ -1253,19 +1415,161 @@ export default function PricingPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1.5">Primary Team Color</label>
-                <div className="flex items-center gap-2">
-                  {["#22c55e", "#06B6D4", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#111827"].map((c) => (
+              {/* Team Logo (Optional, defaults to FlagOS logo) */}
+              <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Team Logo / Crest (Optional)</span>
+                  </label>
+                  {teamLogoUrl && (
                     <button
-                      key={c}
                       type="button"
-                      aria-label={`Team color ${c}`}
-                      onClick={() => setTeamColor(c)}
-                      className={`w-8 h-8 rounded-lg border border-white/20 transition-transform cursor-pointer ${teamColor === c ? "scale-110 ring-2 ring-white" : ""}`}
-                      style={{ backgroundColor: c }}
+                      onClick={() => setTeamLogoUrl("")}
+                      className="text-[11px] text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      Reset to FlagOS Logo
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl border border-white/20 bg-neutral-950 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                    <img
+                      src={teamLogoUrl.trim() || FLAGOS_LOGO}
+                      alt="Team Logo Preview"
+                      className="w-full h-full object-contain"
                     />
-                  ))}
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    <input
+                      type="text"
+                      value={teamLogoUrl}
+                      onChange={(e) => setTeamLogoUrl(e.target.value)}
+                      placeholder="Paste image URL or upload below..."
+                      className="w-full px-3 py-1.5 rounded-lg bg-neutral-950 border border-white/10 text-white text-xs outline-none focus:border-emerald-400"
+                    />
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-white text-[11px] font-semibold cursor-pointer border border-white/10 transition-colors">
+                        <Upload className="w-3 h-3 text-emerald-400" />
+                        <span>Upload File</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                if (typeof ev.target?.result === "string") setTeamLogoUrl(ev.target.result);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      <span className="text-[10px] text-neutral-400">
+                        {teamLogoUrl ? "Custom logo active" : "Defaulting to FlagOS emblem"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Brand Colors: Primary, Secondary, Tertiary */}
+              <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-200">Team Color Palette</span>
+                  <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
+                    <span>Preview:</span>
+                    <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: teamPrimaryColor }} title="Primary" />
+                    <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: teamSecondaryColor }} title="Secondary" />
+                    <span className="w-3.5 h-3.5 rounded-full border border-white/30" style={{ backgroundColor: teamTertiaryColor }} title="Tertiary" />
+                  </div>
+                </div>
+
+                {/* Primary Color */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-neutral-300">Primary Color</label>
+                    <span className="font-mono text-[10px] text-neutral-400">{teamPrimaryColor}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["#22c55e", "#06B6D4", "#3B82F6", "#8B5CF6", "#F59E0B", "#EF4444", "#111827"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`Team primary color ${c}`}
+                        onClick={() => setTeamPrimaryColor(c)}
+                        className={`w-7 h-7 rounded-lg border border-white/20 transition-transform cursor-pointer ${teamPrimaryColor === c ? "scale-110 ring-2 ring-white" : ""}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                    <label className="relative cursor-pointer" title="Custom color picker">
+                      <input
+                        type="color"
+                        value={teamPrimaryColor}
+                        onChange={(e) => setTeamPrimaryColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-white/20 p-0 cursor-pointer bg-transparent"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Secondary Color */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-neutral-300">Secondary Color</label>
+                    <span className="font-mono text-[10px] text-neutral-400">{teamSecondaryColor}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["#06B6D4", "#3B82F6", "#22c55e", "#10B981", "#8B5CF6", "#EC4899", "#F59E0B", "#111827"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`Team secondary color ${c}`}
+                        onClick={() => setTeamSecondaryColor(c)}
+                        className={`w-7 h-7 rounded-lg border border-white/20 transition-transform cursor-pointer ${teamSecondaryColor === c ? "scale-110 ring-2 ring-white" : ""}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                    <label className="relative cursor-pointer" title="Custom color picker">
+                      <input
+                        type="color"
+                        value={teamSecondaryColor}
+                        onChange={(e) => setTeamSecondaryColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-white/20 p-0 cursor-pointer bg-transparent"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Tertiary Color */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-semibold text-neutral-300">Tertiary Color</label>
+                    <span className="font-mono text-[10px] text-neutral-400">{teamTertiaryColor}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["#FFFFFF", "#F3F4F6", "#9CA3AF", "#F59E0B", "#FCD34D", "#06B6D4", "#3B82F6", "#111827"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`Team tertiary color ${c}`}
+                        onClick={() => setTeamTertiaryColor(c)}
+                        className={`w-7 h-7 rounded-lg border border-white/20 transition-transform cursor-pointer ${teamTertiaryColor.toLowerCase() === c.toLowerCase() ? "scale-110 ring-2 ring-white" : ""}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                    <label className="relative cursor-pointer" title="Custom color picker">
+                      <input
+                        type="color"
+                        value={teamTertiaryColor.startsWith("#") ? teamTertiaryColor : "#ffffff"}
+                        onChange={(e) => setTeamTertiaryColor(e.target.value)}
+                        className="w-7 h-7 rounded-lg border border-white/20 p-0 cursor-pointer bg-transparent"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 

@@ -172,7 +172,7 @@ async function lookupByEmail(token: DecodedIdToken) {
 const MAX_MEMBERSHIP_TEAMS = 12;
 const MEMBERSHIP_GAME_FIELDS = [
   "date", "time", "status", "location", "isHidden",
-  "homeTeamId", "awayTeamId", "homeTeamName", "awayTeamName", "homeScore", "awayScore",
+  "homeTeamId", "awayTeamId", "homeTeamName", "awayTeamName", "homeScore", "awayScore", "liveHeartbeatAt",
 ];
 
 type MembershipGame = {
@@ -187,11 +187,19 @@ type MembershipGame = {
   awayTeamName: string;
   homeScore: number | null;
   awayScore: number | null;
-  live: boolean;
+  /** Epoch ms of the scorekeeper's last heartbeat; clients derive live vs paused from it. */
+  liveHeartbeatAt: number | null;
 };
 
 function stringField(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function heartbeatField(value: unknown): number | null {
+  if (value && typeof (value as { toMillis?: unknown }).toMillis === "function") {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function toMembershipGame(snapshot: FirebaseFirestore.DocumentSnapshot): MembershipGame {
@@ -208,7 +216,7 @@ function toMembershipGame(snapshot: FirebaseFirestore.DocumentSnapshot): Members
     awayTeamName: stringField(data.awayTeamName),
     homeScore: typeof data.homeScore === "number" ? data.homeScore : null,
     awayScore: typeof data.awayScore === "number" ? data.awayScore : null,
-    live: false,
+    liveHeartbeatAt: heartbeatField(data.liveHeartbeatAt),
   };
 }
 
@@ -238,18 +246,18 @@ async function getTeamGames(teamId: string, leagueId: string) {
   const today = torontoDay(0);
   const yesterday = torontoDay(-1);
   const all = [...games.values()];
-  // A game left "in_progress" on another day is stale, not live.
-  const isLive = (game: MembershipGame) =>
-    game.status === "in_progress" && (!game.date || game.date === today || game.date === yesterday);
-  const live = all
-    .filter(isLive)
-    .sort((a, b) => gameSortKey(a).localeCompare(gameSortKey(b)))
-    .map((game) => ({ ...game, live: true }));
+  const byDate = (a: MembershipGame, b: MembershipGame) => gameSortKey(a).localeCompare(gameSortKey(b));
+  // Started games are live while a scorekeeper is in the manager and paused otherwise (decided client-side).
+  const isStarted = (game: MembershipGame) => game.status === "in_progress" || game.status === "live";
+  const isRecent = (game: MembershipGame) => !game.date || game.date >= yesterday;
+  const started = all.filter(isStarted).sort((a, b) => (b.liveHeartbeatAt ?? 0) - (a.liveHeartbeatAt ?? 0) || byDate(a, b));
   const upcoming = all
-    .filter((game) => !isLive(game) && !isFinalStatus(game.status) && game.date >= today)
-    .sort((a, b) => gameSortKey(a).localeCompare(gameSortKey(b)));
+    .filter((game) => !isStarted(game) && !isFinalStatus(game.status) && game.date >= today)
+    .sort(byDate);
   const finals = all.filter((game) => isFinalStatus(game.status)).sort((a, b) => gameSortKey(b).localeCompare(gameSortKey(a)));
-  return { nextGame: live[0] || upcoming[0] || null, lastGame: finals[0] || null };
+  // A game paused days ago shouldn't hide the next scheduled game, but still surfaces if nothing else is coming.
+  const nextGame = started.find(isRecent) || upcoming[0] || started[0] || null;
+  return { nextGame, lastGame: finals[0] || null };
 }
 
 /**

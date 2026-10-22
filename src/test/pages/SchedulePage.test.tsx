@@ -263,7 +263,7 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     expect(restoreBtn).toBeInTheDocument();
     // Check that light/dark styles are applied
     expect(restoreBtn.className).toContain("text-slate-950");
-    expect(restoreBtn.className).toContain("from-amber-500");
+    expect(restoreBtn.className).toContain("bg-amber-500");
 
     fireEvent.click(restoreBtn);
     expect(mockRestoreSandboxScheduleBackup).toHaveBeenCalledTimes(1);

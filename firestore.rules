@@ -230,6 +230,7 @@ service cloud.firestore {
         (!('location' in data) || (data.location is string && data.location.size() <= 200)) &&
         (!('notes' in data) || (data.notes is string && data.notes.size() <= 2000)) &&
         (!('subs' in data) || (data.subs is list && data.subs.size() <= 100)) &&
+        (!('liveHeartbeatAt' in data) || data.liveHeartbeatAt == null || data.liveHeartbeatAt is timestamp) &&
         (!('isHidden' in data) || data.isHidden is bool);
     }
 

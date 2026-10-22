@@ -74,6 +74,7 @@ import {
 import GameTeamStats from "@/components/match/GameTeamStats";
 import SiteControls from "@/components/SiteControls";
 import PoweredByFooter from "@/components/PoweredByFooter";
+import { sandboxHeartbeatWriter, useLiveGameHeartbeat } from "@/lib/gameLiveState";
 
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
@@ -108,6 +109,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     !!canManageTeam?.(managingTeamId) || ((isDemo || !!matchData?.leagueId) && isLeagueAdmin)
   );
   const canTrackPlays = canEdit && matchStatus !== "completed";
+  useLiveGameHeartbeat(
+    matchId,
+    canEdit && !loadingData && matchStatus === "in_progress",
+    isDemo ? sandboxHeartbeatWriter((data) => updateSandboxMatch(matchId, data)) : undefined,
+  );
 
   // Match Information
   const [homeTeamName, setHomeTeamName] = useState("HOME");
@@ -380,7 +386,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   // Autosave game state
   useEffect(() => {
-    if (!canEdit || loadingData || matchStatus === "completed" || matchStatus === "scheduled" && step === "IDLE" && homeScore === 0 && awayScore === 0 && half === 1 && currentDown === 1) return;
+    if (!canEdit || loadingData || matchStatus === "completed" || matchStatus !== "in_progress" && step === "IDLE" && homeScore === 0 && awayScore === 0 && half === 1 && currentDown === 1) return;
     const saveState = setTimeout(() => {
       const updatedMatchState = {
         status: (matchStatus === "completed" ? "completed" : "in_progress") as "completed" | "in_progress",
@@ -402,7 +408,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         return;
       }
 
-      const { id: _matchId, ...matchFields } = matchData || {};
+      const { id: _matchId, liveHeartbeatAt: _heartbeat, ...matchFields } = matchData || {};
       Promise.resolve(setDoc(doc(db, "matches", matchId), { ...matchFields, isHidden: false, ...updatedMatchState }, { merge: true })).catch((err) => {
         console.warn("Could not save match state to Firestore, saving locally:", err);
         setSaveNotice({ kind: "warning", message: "Game state could not be synced. Changes are on this device only." });
@@ -436,7 +442,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   // ACTION: "Start Play" Button
   const handleStartPlay = () => {
-    if (matchStatus === "scheduled") {
+    if (matchStatus !== "in_progress" && matchStatus !== "completed") {
       setMatchStatus("in_progress");
     }
     setStep("PLAY_TYPE");
@@ -484,11 +490,12 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         alert("Game finalized successfully!");
         return;
       }
-      const { id: _matchId, ...matchFields } = matchData || {};
+      const { id: _matchId, liveHeartbeatAt: _heartbeat, ...matchFields } = matchData || {};
       await setDoc(doc(db, "matches", matchId), {
         ...matchFields,
         isHidden: false,
         ...finalUpdate,
+        liveHeartbeatAt: null,
         completedAt: serverTimestamp(),
       }, { merge: true });
       setMatchStatus("completed");
@@ -1429,7 +1436,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
                 <button
                   onClick={handleStartPlay}
-                  className="w-full max-w-md min-h-12 py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-sm sm:text-lg uppercase tracking-wide transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 mx-auto shrink-0"
+                  className="w-full max-w-md min-h-12 py-3 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm sm:text-lg uppercase tracking-wide transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 mx-auto shrink-0"
                 >
                   <Play className="w-5 h-5 fill-current shrink-0" />
                   <span>START NEXT PLAY</span>

@@ -106,7 +106,7 @@ export function TeamAdminView({
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={onOpenAddPlayer}
-              className="px-4 py-2.5 bg-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2 cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
               <span>Add Player</span>

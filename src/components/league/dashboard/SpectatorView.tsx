@@ -80,7 +80,7 @@ export function SpectatorView({
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href="/schedule"
-                className="px-5 py-2.5 bg-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
+                className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
               >
                 <CalendarDays className="w-4 h-4" />
                 <span>Game Schedule</span>
@@ -188,7 +188,7 @@ export function SpectatorView({
           </div>
           <Link
             href="/join"
-            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 flex items-center gap-2"
+            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 flex items-center gap-2"
           >
             <UserPlus className="w-4 h-4" />
             <span>Register as Player</span>

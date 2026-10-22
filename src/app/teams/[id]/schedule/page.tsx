@@ -18,6 +18,7 @@ import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors"
 import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
+import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
 
 // Date-only strings parse as UTC and display a day early in western time zones.
 function localMatchDate(value: string): Date {
@@ -37,6 +38,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [allTeams, setAllTeams] = useState<Record<string, any>>({});
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const now = useNow();
 
   const isDexter = isDexterUser(user?.email);
   const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
@@ -223,6 +225,19 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           setMatches([...teamMatches].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
           setScheduleError("");
           setLoading(false);
+          // Started games flip between live and paused as scorekeepers come and go; keep just those fresh.
+          unsubscribe = onSnapshot(query(
+            collection(db, "matches"),
+            where("managingTeamId", "==", teamId),
+            where("isHidden", "==", false),
+            where("status", "==", "in_progress"),
+            limit(16),
+          ), (snap) => {
+            if (cancelled) return;
+            const fresh = new Map(snap.docs.map((d) => [d.id, { id: d.id, ...(d.data() as any) }]));
+            setMatches((prev) => prev.map((m) => fresh.get(m.id) || m));
+          }, (err) => console.warn("Live game status listener error:", err));
+          if (cancelled) unsubscribe();
           return;
         }
         const allTeamsSnap = await getDocs(query(
@@ -303,7 +318,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         </p>
         <Link
           href="/teams"
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
         >
           Back to Teams
         </Link>
@@ -422,8 +437,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] sm:text-xs font-bold text-emerald-400 uppercase tracking-wider sm:tracking-widest whitespace-nowrap">
-                              {m.status === "in_progress" ? "● LIVE NOW" : "Scheduled"}
+                            <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest whitespace-nowrap ${m.status === "in_progress" ? (getGameDisplayState(m, now) === "live" ? "text-red-400 animate-pulse" : "text-amber-400") : "text-emerald-400"}`}>
+                              {m.status === "in_progress" ? (getGameDisplayState(m, now) === "live" ? "● LIVE NOW" : "Ⅱ PAUSED") : "Upcoming"}
                             </span>
                             {canDeleteMatch && (
                               <button
@@ -486,7 +501,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                           className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm border ${
                             canScheduleMatches && isAsyncMatch
                               ? "bg-emerald-500/10 hover:bg-emerald-500 text-emerald-300 hover:text-black border-emerald-500/30 hover:border-emerald-500"
-                              : "bg-white/5 hover:bg-gradient-to-r hover:from-cyan-500 hover:to-blue-600 text-slate-700 dark:text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
+                              : "bg-white/5 hover:bg-cyan-600 text-slate-700 dark:text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
                           }`}
                         >
                           <PlayCircle className="w-4 h-4 shrink-0" />
@@ -695,7 +710,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               <button
                 type="submit"
                 disabled={isScheduling}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
+                className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <span>{isScheduling ? "Scheduling..." : "Confirm & Schedule Game"}</span>
               </button>

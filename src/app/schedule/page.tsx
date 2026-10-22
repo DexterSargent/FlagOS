@@ -56,6 +56,7 @@ import PlayoffBracketView from "@/components/schedule/PlayoffBracketView";
 import AutomatedScheduleBuilderModal from "@/components/schedule/AutomatedScheduleBuilderModal";
 import EditPlayoffFormatModal from "@/components/schedule/EditPlayoffFormatModal";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
+import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
 
 interface Match {
   id: string;
@@ -123,6 +124,7 @@ export default function Calendar() {
   };
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const now = useNow();
 
   // Active Main View: "schedule" (Regular Season) vs "playoffs" (Playoff Picture / Playoffs)
   const [activeView, setActiveView] = useState<"schedule" | "playoffs">("schedule");
@@ -615,7 +617,7 @@ export default function Calendar() {
             <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
               <button
                 onClick={() => setIsAutoScheduleOpen(true)}
-                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 cursor-pointer"
+                className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 cursor-pointer"
               >
                 <Zap className="w-4 h-4 fill-current shrink-0" />
                 <span>Auto Schedule Builder</span>
@@ -675,7 +677,7 @@ export default function Calendar() {
             <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0">
               <button
                 onClick={handleRestoreBackup}
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-500/20 border border-amber-400/60 dark:border-amber-500/40 flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-500/20 border border-amber-400/60 dark:border-amber-500/40 flex items-center gap-1.5 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Restore Schedule</span>
@@ -697,7 +699,7 @@ export default function Calendar() {
             <button
               onClick={() => setActiveView("schedule")}
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${activeView === "schedule"
-                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
+                ? "bg-cyan-600 text-white shadow-lg shadow-cyan-500/20"
                 : "text-neutral-400 hover:text-white"
                 }`}
             >
@@ -708,7 +710,7 @@ export default function Calendar() {
             <button
               onClick={() => setActiveView("playoffs")}
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all ${activeView === "playoffs"
-                ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20"
+                ? "bg-cyan-600 text-white shadow-lg shadow-cyan-500/20"
                 : "text-neutral-400 hover:text-white"
                 }`}
             >
@@ -791,7 +793,7 @@ export default function Calendar() {
                 {canManageSchedule && (
                   <button
                     onClick={() => setIsAutoScheduleOpen(true)}
-                    className="inline-flex items-center gap-2.5 px-8 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer"
+                    className="inline-flex items-center gap-2.5 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer"
                   >
                     <Zap className="w-4 h-4 fill-current" />
                     <span>Launch Automated Schedule Builder</span>
@@ -845,9 +847,9 @@ export default function Calendar() {
                                 Final
                               </span>
                             ) : match.status === "in_progress" ? (
-                              <span className="text-xs font-semibold px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full border border-cyan-500/30 flex items-center gap-1.5 animate-pulse">
-                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                                <span>LIVE</span>
+                              <span className={`text-xs font-semibold px-3 py-1 rounded-full border flex items-center gap-1.5 ${getGameDisplayState(match, now) === "live" ? "bg-red-500/15 text-red-300 border-red-500/30 animate-pulse" : "bg-amber-500/10 text-amber-300 border-amber-500/30"}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${getGameDisplayState(match, now) === "live" ? "bg-red-400" : "bg-amber-400"}`} />
+                                <span>{getGameDisplayState(match, now) === "live" ? "LIVE NOW" : "PAUSED"}</span>
                                 {Boolean((match as any).half || (match as any).matchState?.half) && (
                                   <span className="font-mono">
                                     • Q{(match as any).half || (match as any).matchState?.half}
@@ -916,7 +918,7 @@ export default function Calendar() {
                                 }}
                                 disabled={simulatingMatchId === match.id}
                                 title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
-                                className="p-1.5 sm:px-2.5 sm:py-1.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 border border-amber-500/40 rounded-xl text-amber-300 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
+                                className="p-1.5 sm:px-2.5 sm:py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-xl text-amber-300 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 disabled:opacity-50"
                               >
                                 <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${simulatingMatchId === match.id ? "animate-spin" : ""}`} />
                                 <span className="hidden sm:inline">{simulatingMatchId === match.id ? "Simulating..." : "Simulate"}</span>
@@ -1184,7 +1186,7 @@ export default function Calendar() {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
+                    className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
                   >
                     {editingMatch.id ? "Save Changes" : "Schedule Game"}
                   </button>

@@ -197,9 +197,41 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
       expect.objectContaining({
         name: "Metro Flag League",
         shortcode: "MFL",
+        primaryColor: "#3ca505",
+        secondaryColor: "#3b82f6",
+        tertiaryColor: "#ffffff",
+        logoUrl: "/flagos-emblem-512.png",
       })
     );
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/league/league_new_99"));
+  });
+
+  it("creates a league with custom primary, secondary, tertiary colors and custom logo", async () => {
+    mockAuth = ownerAuth() as typeof mockAuth;
+    render(<PricingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Launch & Subscribe League/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Gotham Flag Football League/i), { target: { value: "Apex Flag League" } });
+    fireEvent.change(screen.getByPlaceholderText(/GFFL/i), { target: { value: "AFL" } });
+    fireEvent.change(screen.getByPlaceholderText(/Paste image URL/i), { target: { value: "https://example.com/crest.png" } });
+
+    // Pick secondary color swatch
+    fireEvent.click(screen.getByRole("button", { name: /League secondary color #06B6D4/i }));
+    // Pick tertiary color swatch
+    fireEvent.click(screen.getByRole("button", { name: /League tertiary color #FCD34D/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
+
+    expect(mockCreateLeague).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Apex Flag League",
+        shortcode: "AFL",
+        primaryColor: "#3ca505",
+        secondaryColor: "#06B6D4",
+        tertiaryColor: "#FCD34D",
+        logoUrl: "https://example.com/crest.png",
+      })
+    );
   });
 
   it("creates a complimentary independent team for the owner and opens its portal", async () => {
@@ -219,8 +251,39 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
       leagueId: "",
       isStandalone: true,
       visibility: "private",
+      primaryColor: "#22c55e",
+      secondaryColor: "#06b6d4",
+      tertiaryColor: "#ffffff",
+      logoUrl: "/flagos-emblem-512.png",
       adminEmails: ["dextersargent@gmail.com"],
       subscription: expect.objectContaining({ status: "active", paymentMethod: "complimentary" }),
+    }));
+  });
+
+  it("creates a team with custom primary, secondary, tertiary colors and custom logo", async () => {
+    mockAuth = ownerAuth() as typeof mockAuth;
+    render(<PricingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Viper Squad" } });
+    fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "VIP" } });
+    fireEvent.change(screen.getByPlaceholderText(/Paste image URL/i), { target: { value: "https://example.com/viper.png" } });
+
+    // Pick primary color swatch
+    fireEvent.click(screen.getByRole("button", { name: /Team primary color #8B5CF6/i }));
+    // Pick secondary color swatch
+    fireEvent.click(screen.getByRole("button", { name: /Team secondary color #EC4899/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay \$30/i }));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
+    expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
+      name: "Viper Squad",
+      shortcode: "VIP",
+      primaryColor: "#8B5CF6",
+      secondaryColor: "#EC4899",
+      tertiaryColor: "#ffffff",
+      logoUrl: "https://example.com/viper.png",
     }));
   });
 

@@ -371,8 +371,12 @@ export const getSandboxMatches = (): DemoMatch[] => {
     ...match,
     homeTeamName: teamNames.get(match.homeTeamId) || match.homeTeamName,
     awayTeamName: teamNames.get(match.awayTeamId) || match.awayTeamName,
+    // Seeded showcase games have a simulated scorekeeper until a visitor opens and exits the manager.
+    ...(SIMULATED_LIVE_MATCH_IDS.has(match.id) ? { simulatedScorekeeper: match.simulatedScorekeeper !== false } : {}),
   }));
 };
+
+const SIMULATED_LIVE_MATCH_IDS = new Set(["match_w16_11", "match_w16_12"]);
 
 export const getSandboxMatch = (id: string): DemoMatch | undefined => {
   const matches = getSandboxMatches();

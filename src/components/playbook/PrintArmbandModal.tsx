@@ -266,7 +266,7 @@ export default function PrintArmbandModal({
             <div className="flex items-center gap-2.5">
               <button
                 onClick={handleTriggerPrint}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer transition-all hover:scale-105 active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg cursor-pointer transition-all hover:scale-105 active:scale-95"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print / Save PDF</span>

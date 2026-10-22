@@ -537,8 +537,8 @@ export default function CreateFormationModal({
             onClick={handleSubmit}
             className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 ${
               isOffense
-                ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black shadow-cyan-500/20"
-                : "bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white shadow-purple-500/20"
+                ? "bg-cyan-500 hover:bg-cyan-400 text-black shadow-cyan-500/20"
+                : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20"
             }`}
           >
             <Sparkles className="w-4 h-4" />

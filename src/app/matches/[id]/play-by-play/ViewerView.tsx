@@ -28,6 +28,20 @@ import GameTeamStats from "@/components/match/GameTeamStats";
 import SiteControls from "@/components/SiteControls";
 import PoweredByFooter from "@/components/PoweredByFooter";
 import { useTheme } from "@/lib/themeContext";
+import { GAME_STATE_LABEL, getGameDisplayState, useNow, type GameDisplayState } from "@/lib/gameLiveState";
+
+const GAME_STATE_BADGE: Record<GameDisplayState, string> = {
+  live: "bg-red-500/10 border-red-500/30 text-red-400",
+  paused: "bg-amber-500/10 border-amber-500/30 text-amber-400",
+  upcoming: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400",
+  final: "bg-white/5 border-white/10 text-neutral-300",
+};
+const GAME_STATE_DOT: Record<GameDisplayState, string> = {
+  live: "bg-red-400 animate-pulse",
+  paused: "bg-amber-400",
+  upcoming: "bg-cyan-400",
+  final: "bg-neutral-400",
+};
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -52,6 +66,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
 
 
   const [matchData, setMatchData] = useState<any>(null);
+  const now = useNow();
   const { home: homeColors, away: awayColors } = useMatchTeamColors(matchData, isDemoMatch);
   const { resolvedTheme } = useTheme();
   const [isLightDom, setIsLightDom] = useState(false);
@@ -438,6 +453,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     const sec = Math.max(0, seconds) % 60;
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
+  const viewerGameState = getGameDisplayState(effectiveMatchData, now);
 
   return (
     <div className="h-[100dvh] bg-black text-white font-sans flex flex-col">
@@ -519,9 +535,9 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               </button>
             </div>
           )}
-          <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[10px]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            LIVE BROADCAST
+          <span className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full border font-bold text-[10px] uppercase ${GAME_STATE_BADGE[viewerGameState]}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${GAME_STATE_DOT[viewerGameState]}`}></span>
+            {GAME_STATE_LABEL[viewerGameState]}
           </span>
           <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-neutral-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
             <MapPin className="w-3 h-3 text-cyan-400" />

@@ -1181,7 +1181,7 @@ export default function TeamsPage() {
                           </button>
                         ))}
                     </fieldset>
-                    <button onClick={handleAddPlayer} className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]">
+                    <button onClick={handleAddPlayer} className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] cursor-pointer">
                       Save Player
                     </button>
                   </div>

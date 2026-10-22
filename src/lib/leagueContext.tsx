@@ -83,6 +83,8 @@ export interface LeagueSettings {
   icon: string;
   primaryColor: string;
   accentColor: string;
+  secondaryColor?: string;
+  tertiaryColor?: string;
   themePreset: string;
   defaultLocation: string;
   contactEmail: string;
@@ -93,6 +95,8 @@ export interface LeagueSettings {
   isArchived?: boolean;
   archivedAt?: string;
   visibility?: "public" | "private"; // public = indexed in public directory, private = direct URL access only
+  ownerUid?: string;
+  createdAt?: string;
   adminEmails?: string[];
   rules: LeagueRules;
   playoffFormat?: PlayoffFormat;
@@ -192,6 +196,8 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   icon: "shield",
   primaryColor: "#3ca505", // Field Green (#3ca505)
   accentColor: "#3b82f6",  // FlagOS blue accent
+  secondaryColor: "#3b82f6",
+  tertiaryColor: "#ffffff",
   themePreset: "gridiron-green",
   defaultLocation: "Turf Field 1",
   contactEmail: "commissioner@flagos.app",
@@ -232,6 +238,8 @@ export interface UserLeagueSummary {
   logoUrl?: string;
   primaryColor?: string;
   accentColor?: string;
+  secondaryColor?: string;
+  tertiaryColor?: string;
   role: "owner" | "admin" | "member";
   visibility?: "public" | "private";
   subscription?: LeagueSubscriptionInfo;
@@ -328,7 +336,10 @@ interface LeagueContextType {
     seasonTitle?: string;
     teamCount?: number;
     primaryColor?: string;
+    secondaryColor?: string;
     accentColor?: string;
+    tertiaryColor?: string;
+    logoUrl?: string;
     rulePreset?: string;
     visibility?: "public" | "private";
   }) => Promise<string>;
@@ -633,7 +644,10 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
     seasonTitle?: string;
     teamCount?: number;
     primaryColor?: string;
+    secondaryColor?: string;
     accentColor?: string;
+    tertiaryColor?: string;
+    logoUrl?: string;
     rulePreset?: string;
     visibility?: "public" | "private";
   }): Promise<string> => {
@@ -642,7 +656,9 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       throw new Error("Sign in with a verified email before creating a league.");
     }
     const pColor = data.primaryColor || "#3ca505";
-    const aColor = data.accentColor || "#3b82f6";
+    const sColor = data.secondaryColor || data.accentColor || "#3b82f6";
+    const tColor = data.tertiaryColor || "#ffffff";
+    const logo = data.logoUrl?.trim() || FLAGOS_LOGO;
     const teams = data.teamCount || 8;
     const baseFee = 40;
     const perTeamFee = 15;
@@ -658,7 +674,7 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
-    const newLeagueSettings = {
+    const newLeagueSettings: LeagueSettings = {
       ...DEFAULT_LEAGUE_SETTINGS,
       leagueName: data.name,
       shortcode: data.shortcode.toUpperCase(),
@@ -668,7 +684,10 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       adminEmails: [owner.email.trim().toLowerCase()],
       createdAt: new Date().toISOString(),
       primaryColor: pColor,
-      accentColor: aColor,
+      accentColor: sColor,
+      secondaryColor: sColor,
+      tertiaryColor: tColor,
+      logoUrl: logo,
       rules: DEFAULT_LEAGUE_RULES,
       playoffFormat: getDefaultPlayoffFormat(teams),
       subscription: newSub,
@@ -677,7 +696,7 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
     // Save to Firestore
     let newLeagueId: string;
     try {
-      newLeagueId = await createSecureRecord("league", newLeagueSettings);
+      newLeagueId = await createSecureRecord("league", newLeagueSettings as unknown as Record<string, unknown>);
     } catch (e) {
       console.error("Could not save new league to Firestore:", e);
       throw new Error("Could not create the league. Check your permissions and try again.");
@@ -713,7 +732,10 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       shortcode: data.shortcode.toUpperCase(),
       seasonTitle: newLeagueSettings.seasonTitle,
       primaryColor: pColor,
-      accentColor: aColor,
+      accentColor: sColor,
+      secondaryColor: sColor,
+      tertiaryColor: tColor,
+      logoUrl: logo,
       role: "owner",
       visibility: data.visibility || "public",
       subscription: newSub,
@@ -731,7 +753,7 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       localStorage.setItem(`league_settings_${newLeagueId}`, JSON.stringify(newLeagueSettings));
     }
 
-    applyThemeColors(pColor, aColor, data.name, newLeagueSettings.seasonTitle);
+    applyThemeColors(pColor, sColor, data.name, newLeagueSettings.seasonTitle);
     return newLeagueId;
   };
 

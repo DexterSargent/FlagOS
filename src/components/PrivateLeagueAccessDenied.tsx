@@ -57,7 +57,7 @@ export default function PrivateLeagueAccessDenied({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href="/login"
-            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
+            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
           >
             <LogIn className="w-4 h-4" />
             <span>Sign In With Email</span>

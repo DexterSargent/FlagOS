@@ -66,6 +66,7 @@ export interface BracketMatchNode {
   location?: string;
   status: "projected" | "scheduled" | "in_progress" | "completed";
   homeScore?: number;
+  liveHeartbeatAt?: unknown;
   awayScore?: number;
   winnerTeamId?: string;
   bracketType?: "winners" | "losers" | "finals";
@@ -450,6 +451,7 @@ export function generatePlayoffBracket(
       time: m?.time,
       location: m?.location,
       status: m ? (m.status as any) : "projected",
+      liveHeartbeatAt: m?.liveHeartbeatAt,
       homeScore: m?.homeScore,
       awayScore: m?.awayScore,
       winnerTeamId:
@@ -524,6 +526,7 @@ export function generatePlayoffBracket(
         time: actualM?.time,
         location: actualM?.location,
         status: actualM ? (actualM.status as any) : "projected",
+        liveHeartbeatAt: actualM?.liveHeartbeatAt,
         homeScore: actualM?.homeScore,
         awayScore: actualM?.awayScore,
         winnerTeamId: winnerId,
@@ -597,6 +600,7 @@ export function generatePlayoffBracket(
         time: actualM?.time,
         location: actualM?.location,
         status: actualM ? (actualM.status as any) : "projected",
+        liveHeartbeatAt: actualM?.liveHeartbeatAt,
         homeScore: actualM?.homeScore,
         awayScore: actualM?.awayScore,
         winnerTeamId: winnerId,
@@ -749,6 +753,7 @@ export function generateDoubleEliminationBracket(
         time: actualM?.time,
         location: actualM?.location,
         status: actualM ? (actualM.status as any) : "projected",
+        liveHeartbeatAt: actualM?.liveHeartbeatAt,
         homeScore: actualM?.homeScore,
         awayScore: actualM?.awayScore,
         winnerTeamId: winnerId,
@@ -838,6 +843,7 @@ export function generateDoubleEliminationBracket(
         time: actualM?.time,
         location: actualM?.location,
         status: actualM ? (actualM.status as any) : "projected",
+        liveHeartbeatAt: actualM?.liveHeartbeatAt,
         homeScore: actualM?.homeScore,
         awayScore: actualM?.awayScore,
         winnerTeamId: winnerId,

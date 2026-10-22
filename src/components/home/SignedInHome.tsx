@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Lock,
   MapPin,
+  PauseCircle,
   PlayCircle,
   Plus,
   Radio,
@@ -32,6 +33,7 @@ import {
 import { TeamLogo } from "@/components/TeamAssets";
 import SiteHeader from "@/components/SiteHeader";
 import PoweredByFooter from "@/components/PoweredByFooter";
+import { GAME_STATE_LABEL, getGameDisplayState, useNow, type GameDisplayState } from "@/lib/gameLiveState";
 
 // Date-only strings parse as UTC and display a day early in western time zones.
 function gameDate(game: MembershipGame): Date | null {
@@ -224,16 +226,16 @@ function IndependentTeamCard({ team }: { team: TeamMembership }) {
 }
 
 function UpNext({ memberships }: { memberships: Memberships }) {
+  const now = useNow();
   const teams = [...memberships.leagues.flatMap((league) => league.teams), ...memberships.independentTeams];
   const seen = new Set<string>();
+  const stateRank: Record<GameDisplayState, number> = { live: 0, paused: 1, upcoming: 2, final: 3 };
   const games = teams
     .filter((team) => team.nextGame)
-    .map((team) => ({ team, game: team.nextGame! }))
+    .map((team) => ({ team, game: team.nextGame!, state: getGameDisplayState(team.nextGame, now) }))
     .filter(({ game }) => (seen.has(game.id) ? false : (seen.add(game.id), true)))
     .sort((a, b) => {
-      const liveA = a.game.live ? 0 : 1;
-      const liveB = b.game.live ? 0 : 1;
-      if (liveA !== liveB) return liveA - liveB;
+      if (a.state !== b.state) return stateRank[a.state] - stateRank[b.state];
       return `${a.game.date} ${a.game.time}`.localeCompare(`${b.game.date} ${b.game.time}`);
     });
   if (!games.length) return null;
@@ -242,22 +244,32 @@ function UpNext({ memberships }: { memberships: Memberships }) {
     <section aria-labelledby="up-next-title" className="space-y-3">
       <h2 id="up-next-title" className="text-xs font-black uppercase tracking-widest text-text-muted">Up next</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {games.map(({ team, game }) => {
-          const live = Boolean(game.live);
-          const result = live ? gameResult(team, game) : null;
+        {games.map(({ team, game, state }) => {
+          const live = state === "live";
+          const started = live || state === "paused";
+          const result = started ? gameResult(team, game) : null;
           return (
             <Link
               key={`${team.id}-${game.id}`}
               href={gameHref(team, game)}
               className={`group rounded-2xl border p-4 transition-colors ${
-                live ? "border-rose-500/40 bg-rose-500/5 hover:bg-rose-500/10" : "border-token bg-surface-raised hover:bg-surface-hover"
+                live
+                  ? "border-rose-500/40 bg-rose-500/5 hover:bg-rose-500/10"
+                  : started
+                    ? "border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10"
+                    : "border-token bg-surface-raised hover:bg-surface-hover"
               }`}
             >
               <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
                 {live ? (
                   <span className="inline-flex items-center gap-1 uppercase tracking-wider text-rose-500">
                     <Radio className="h-3.5 w-3.5 animate-pulse" aria-hidden />
-                    Live now
+                    {GAME_STATE_LABEL.live}
+                  </span>
+                ) : started ? (
+                  <span className="inline-flex items-center gap-1 uppercase tracking-wider text-amber-500">
+                    <PauseCircle className="h-3.5 w-3.5" aria-hidden />
+                    {GAME_STATE_LABEL.paused}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-text-secondary">
@@ -277,7 +289,7 @@ function UpNext({ memberships }: { memberships: Memberships }) {
                   {game.location && <><MapPin className="h-3 w-3 shrink-0" aria-hidden /><span className="truncate">{game.location}</span></>}
                 </span>
                 <span className="inline-flex shrink-0 items-center gap-0.5 font-bold text-text-secondary group-hover:text-text-primary">
-                  {live ? (isCoach(team) && !team.leagueId ? "Open stat keeper" : "Watch") : "Details"}
+                  {live ? (isCoach(team) && !team.leagueId ? "Open stat keeper" : "Watch") : started && isCoach(team) && !team.leagueId ? "Resume stat keeper" : "Details"}
                   <ChevronRight className="h-3.5 w-3.5" aria-hidden />
                 </span>
               </div>

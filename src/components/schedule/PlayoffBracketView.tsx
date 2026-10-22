@@ -23,6 +23,7 @@ import {
 import { PlayoffFormat, getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 import { TeamStanding, BracketRound, BracketMatchNode } from "@/lib/standingsEngine";
 import BracketConnections from "./BracketConnections";
+import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
 
 interface PlayoffBracketViewProps {
   standings: TeamStanding[];
@@ -136,7 +137,7 @@ export default function PlayoffBracketView({
               <button
                 onClick={() => setActiveTab("bracket")}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "bracket"
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md"
+                    ? "bg-cyan-600 text-white shadow-md"
                     : "text-neutral-400 hover:text-white"
                   }`}
               >
@@ -145,7 +146,7 @@ export default function PlayoffBracketView({
               <button
                 onClick={() => setActiveTab("standings")}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "standings"
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md"
+                    ? "bg-cyan-600 text-white shadow-md"
                     : "text-neutral-400 hover:text-white"
                   }`}
               >
@@ -218,7 +219,7 @@ export default function PlayoffBracketView({
             <button
               onClick={() => setDoubleElimSection("finals")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${doubleElimSection === "finals"
-                  ? "bg-gradient-to-r from-amber-400 to-yellow-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)] font-black"
+                  ? "bg-amber-400 text-black shadow-[0_0_15px_rgba(245,158,11,0.4)] font-black"
                   : "bg-yellow-500/10 text-yellow-300 hover:bg-yellow-500/20 border border-yellow-500/20"
                 }`}
             >
@@ -694,8 +695,10 @@ function BracketMatchCard({
   isPlayoffActive: boolean;
   accentColor?: "cyan" | "amber" | "gold";
 }) {
+  const now = useNow();
   const isFinal = node.status === "completed";
   const isLive = node.status === "in_progress";
+  const isPaused = isLive && getGameDisplayState(node, now) === "paused";
   const homeWon = isFinal && (node.homeScore ?? 0) > (node.awayScore ?? 0);
   const awayWon = isFinal && (node.awayScore ?? 0) > (node.homeScore ?? 0);
 
@@ -704,8 +707,10 @@ function BracketMatchCard({
 
   // Styling presets by accent color
   const borderColor =
-    isLive
-      ? "border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] bg-neutral-900"
+    isLive && !isPaused
+      ? "border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.25)] bg-neutral-900"
+      : isPaused
+        ? "border-amber-500/40 bg-neutral-900/90"
       : accentColor === "gold"
         ? "border-yellow-500/40 bg-neutral-900/90 hover:border-yellow-500/60 shadow-[0_0_20px_rgba(234,179,8,0.1)]"
         : accentColor === "amber"
@@ -721,9 +726,14 @@ function BracketMatchCard({
         <span className="font-bold text-neutral-300 truncate max-w-[160px]">
           {isGrandReset ? "Reset Match (If Needed)" : node.roundName}
         </span>
-        {isLive ? (
-          <span className="flex items-center gap-1 text-cyan-400 font-bold animate-pulse">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+        {isPaused ? (
+          <span className="flex items-center gap-1 text-amber-400 font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            PAUSED
+          </span>
+        ) : isLive ? (
+          <span className="flex items-center gap-1 text-red-400 font-bold animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
             LIVE
           </span>
         ) : isFinal ? (

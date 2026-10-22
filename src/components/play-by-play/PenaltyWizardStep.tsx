@@ -432,7 +432,7 @@ export default function PenaltyWizardStep({
             <button
               type="button"
               onClick={handleSubmit}
-              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 px-4 py-2 text-xs font-black uppercase tracking-wider text-black shadow-lg transition-all hover:from-amber-400 hover:to-yellow-400"
+              className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-black uppercase tracking-wider text-black shadow-lg transition-all cursor-pointer"
             >
               <Flag className="h-4 w-4 fill-current" />
               Enforce penalty

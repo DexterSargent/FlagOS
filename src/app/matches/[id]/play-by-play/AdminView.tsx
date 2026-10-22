@@ -38,6 +38,7 @@ import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { sandboxHeartbeatWriter, useLiveGameHeartbeat } from "@/lib/gameLiveState";
 import { STAT_KEEPER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
@@ -507,18 +508,24 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     }
   };
 
-  // Automatically transition scheduled match to in_progress once gameplay actions start
+  // Automatically transition a pregame match to in_progress once gameplay actions start
   useEffect(() => {
-    if (matchStatus === 'scheduled') {
+    if (matchStatus !== 'in_progress' && matchStatus !== 'completed') {
       if (isGameClockRunning || homeScore > 0 || awayScore > 0 || half > 1 || currentDown > 1) {
         setMatchStatus('in_progress');
       }
     }
   }, [isGameClockRunning, homeScore, awayScore, half, currentDown, matchStatus]);
 
+  useLiveGameHeartbeat(
+    matchId,
+    !loadingData && !isResetting && matchStatus === 'in_progress',
+    isDemo ? sandboxHeartbeatWriter((data) => updateSandboxMatch(matchId, data)) : undefined,
+  );
+
   // Autosave
   useEffect(() => {
-    if (loadingData || isResetting || matchStatus === 'scheduled') return;
+    if (loadingData || isResetting || matchStatus !== 'in_progress') return;
     const saveState = setTimeout(() => {
       if (isDemo) {
         updateSandboxMatch(matchId, {
@@ -665,6 +672,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         homeScore,
         awayScore,
         completedAt: serverTimestamp(),
+        liveHeartbeatAt: null,
         didNotPlay,
         roster: {
           home: homePlayers,
@@ -1349,7 +1357,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 type="button"
                 disabled={isResetting}
                 onClick={handleResetGameToPreGame}
-                className="flex-1 py-3.5 px-5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 px-5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isResetting ? (
                   <>
@@ -1723,7 +1731,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         <button
                           onClick={handleSimulateGame}
                           disabled={isSimulating}
-                          className="py-1.5 sm:py-2.5 px-3 sm:px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-[clamp(0.55rem,1.1vw,0.75rem)] uppercase tracking-widest transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
+                          className="py-1.5 sm:py-2.5 px-3 sm:px-6 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-[clamp(0.55rem,1.1vw,0.75rem)] uppercase tracking-widest transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
                         >
                           <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
                           <span className="truncate">{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>
@@ -1752,7 +1760,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                         <button
                           onClick={handleSimulateGame}
                           disabled={isSimulating}
-                          className="py-1.5 sm:py-2.5 px-3 sm:px-6 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-[clamp(0.55rem,1.1vw,0.75rem)] uppercase tracking-widest transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
+                          className="py-1.5 sm:py-2.5 px-3 sm:px-6 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-full font-black text-[clamp(0.55rem,1.1vw,0.75rem)] uppercase tracking-widest transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-lg active:scale-95 disabled:opacity-50"
                         >
                           <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
                           <span className="truncate">{isSimulating ? "Simulating Game..." : "⚡ Simulate Full Game (Platform Admin)"}</span>

@@ -964,8 +964,8 @@ export default function AutomatedScheduleBuilderModal({
                 onClick={handleStartBuilding}
                 className={`px-6 py-3 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer ${
                   existingMatchesCount > 0
-                    ? "bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-black shadow-rose-900/40"
-                    : "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                    ? "bg-amber-500 hover:bg-amber-400 text-black shadow-rose-900/40"
+                    : "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]"
                 }`}
               >
                 <Zap className="w-4 h-4 fill-current" />
@@ -991,7 +991,7 @@ export default function AutomatedScheduleBuilderModal({
               </button>
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-cyan-500/30 flex items-center gap-2 cursor-pointer"
+                className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-cyan-500/30 flex items-center gap-2 cursor-pointer"
               >
                 <span>View Full Schedule & Bracket</span>
                 <ArrowRight className="w-4 h-4" />

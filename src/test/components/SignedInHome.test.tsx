@@ -89,7 +89,7 @@ const memberships: Memberships = {
       nextGame: game({
         id: "g_live",
         status: "in_progress",
-        live: true,
+        liveHeartbeatAt: Date.now(),
         date: "2099-12-31",
         homeTeamId: "york_lions",
         awayTeamId: "carleton",
@@ -168,6 +168,24 @@ describe("SignedInHome", () => {
     expect(links[0]).toHaveTextContent("14–7");
     expect(links[0]).toHaveAttribute("href", "/teams/york_lions/matches/g_live/stat-keeper");
     expect(links[1]).toHaveAttribute("href", "/matches/g_sharks");
+  });
+
+  it("shows a started game as paused once the scorekeeper has left the manager", () => {
+    const york = memberships.independentTeams[0];
+    const pausedGame = { ...york.nextGame!, liveHeartbeatAt: Date.now() - 10 * 60_000 };
+    mockUseMemberships.mockReturnValue({
+      data: { ...memberships, independentTeams: [{ ...york, nextGame: pausedGame }] },
+      loading: false,
+      refreshing: false,
+      error: "",
+      retry: vi.fn(),
+    });
+    render(<SignedInHome />);
+    const links = within(screen.getByRole("region", { name: "Up next" })).getAllByRole("link");
+    expect(links[0]).toHaveTextContent("Paused");
+    expect(links[0]).not.toHaveTextContent("Live now");
+    expect(links[0]).toHaveTextContent("14–7");
+    expect(links[0]).toHaveTextContent("Resume stat keeper");
   });
 
   it("shows an empty state and emphasizes getting started when the account has no memberships", () => {

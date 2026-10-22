@@ -266,7 +266,7 @@ describe("memberships", () => {
     players: { p1: { teamId: "sharks", playerName: "Dex", number: 12 } },
     teams: { york: { name: "York Lions", leagueId: "" }, sharks: { name: "Sharks", leagueId: "sunday" } },
     matches: {
-      live: { managingTeamId: "york", status: "in_progress", date: torontoDay(0), homeTeamId: "york", homeScore: 7, awayScore: 0 },
+      live: { managingTeamId: "york", status: "in_progress", date: torontoDay(0), homeTeamId: "york", homeScore: 7, awayScore: 0, liveHeartbeatAt: { toMillis: () => 1_700_000_000_000 } },
       stale: { managingTeamId: "york", status: "in_progress", date: "2020-01-01", homeTeamId: "york" },
       hidden: { managingTeamId: "york", status: "in_progress", date: torontoDay(0), isHidden: true },
       next: { homeTeamId: "sharks", awayTeamId: "jets", status: "scheduled", date: "2999-01-01", awayTeamName: "Jets" },
@@ -316,22 +316,32 @@ describe("memberships", () => {
         id: "sharks",
         roles: ["player"],
         player: { id: "p1", name: "Dex", number: "12" },
-        nextGame: expect.objectContaining({ id: "next", live: false }),
+        nextGame: expect.objectContaining({ id: "next", liveHeartbeatAt: null }),
         lastGame: expect.objectContaining({ id: "final", homeScore: 6, awayScore: 13 }),
       }),
     ]);
     expect(data.independentTeams).toEqual([
-      expect.objectContaining({ id: "york", roles: ["coach"], nextGame: expect.objectContaining({ id: "live", live: true }) }),
+      expect.objectContaining({
+        id: "york",
+        roles: ["coach"],
+        nextGame: expect.objectContaining({ id: "live", status: "in_progress", liveHeartbeatAt: 1_700_000_000_000 }),
+      }),
     ]);
   });
 
-  it("does not treat games left in progress on another day as live", async () => {
+  it("prefers the next scheduled game over a game paused days ago, but still surfaces paused games", async () => {
     store.matches.live.date = "2020-01-03";
+    store.matches.upcoming = { managingTeamId: "york", status: "scheduled", date: "2999-02-01", homeTeamId: "york" };
     try {
-      const { data } = await (await POST(request({ action: "memberships" }))).json();
-      expect(data.independentTeams[0].nextGame).toBeNull();
+      let { data } = await (await POST(request({ action: "memberships" }))).json();
+      expect(data.independentTeams[0].nextGame).toMatchObject({ id: "upcoming" });
+
+      delete store.matches.upcoming;
+      ({ data } = await (await POST(request({ action: "memberships" }))).json());
+      expect(data.independentTeams[0].nextGame).toMatchObject({ id: "live", status: "in_progress" });
     } finally {
       store.matches.live.date = torontoDay(0);
+      delete store.matches.upcoming;
     }
   });
 

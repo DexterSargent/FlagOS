@@ -328,7 +328,7 @@ export default function FlagOSPlatformLandingPage() {
                       localStorage.setItem("flagos_demo_active", "true");
                     }
                   }}
-                  className="hidden sm:inline-flex px-4 py-2 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 text-cyan-300 hover:text-white text-xs font-bold rounded-xl border border-cyan-500/30 transition-all items-center gap-1.5 shadow-[0_0_15px_rgba(var(--league-primary-rgb),0.2)]"
+                  className="hidden sm:inline-flex px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white text-xs font-bold rounded-xl border border-cyan-500/30 transition-all items-center gap-1.5 shadow-[0_0_15px_rgba(var(--league-primary-rgb),0.2)]"
                 >
                   <PlayCircle className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Explore Demo League</span>

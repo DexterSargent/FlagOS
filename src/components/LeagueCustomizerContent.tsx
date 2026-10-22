@@ -987,7 +987,7 @@ export default function LeagueCustomizerContent() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-4 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                className="px-4 sm:px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 cursor-pointer flex items-center gap-2"
               >
                 <Check className="w-4 h-4 shrink-0" />
                 <span>{saving ? "Saving..." : <>Apply<span className="hidden sm:inline"> League Branding</span></>}</span>
@@ -1616,7 +1616,7 @@ export default function LeagueCustomizerContent() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 max-sm:w-full"
+                className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 max-sm:w-full"
               >
                 <Check className="w-4 h-4 shrink-0" />
                 <span>{saving ? "Saving Changes..." : "Apply & Save Settings"}</span>
@@ -2269,7 +2269,7 @@ export default function LeagueCustomizerContent() {
                   <button
                     type="button"
                     onClick={() => setShowArchivePrompt(true)}
-                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                    className="w-full py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
                   >
                     Mark Season Concluded &amp; Archive Circuit
                   </button>

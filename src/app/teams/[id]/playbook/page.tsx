@@ -810,7 +810,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         </p>
         <Link
           href="/teams"
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
         >
           Back to Teams
         </Link>
@@ -861,7 +861,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </Link>
               <Link
                 href="/"
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20"
               >
                 League Home
               </Link>
@@ -977,7 +977,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
               <Link
                 href="/login"
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-blue-600 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg"
               >
                 Sign In as Player / Coach
               </Link>

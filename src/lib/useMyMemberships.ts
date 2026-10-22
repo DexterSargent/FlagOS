@@ -17,8 +17,8 @@ export interface MembershipGame {
   awayTeamName: string;
   homeScore: number | null;
   awayScore: number | null;
-  /** In progress today (server-verified); stale "in_progress" games from other days are not live. */
-  live?: boolean;
+  /** Epoch ms of the scorekeeper's last heartbeat; see getGameDisplayState for live vs paused. */
+  liveHeartbeatAt?: number | null;
 }
 
 export interface TeamMembership {

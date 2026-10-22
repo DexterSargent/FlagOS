@@ -15,6 +15,7 @@ import { getSandboxMatches, getSandboxMatch, updateSandboxMatch, deleteSandboxMa
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getTeamBadgeStyle } from "@/lib/teamColors";
+import { GAME_STATE_LABEL, getGameDisplayState, useNow } from "@/lib/gameLiveState";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
 
   const [matchData, setMatchData] = useState<any>(null);
+  const now = useNow();
   const { home: homeColors, away: awayColors } = useMatchTeamColors(matchData, isDemo);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -186,6 +188,8 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
     );
   }
 
+  const gameState = getGameDisplayState(matchData, now);
+
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col">
 
@@ -283,7 +287,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 <button
                   onClick={handleSimulateGame}
                   disabled={isSimulating}
-                  className="px-4 py-2.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 hover:from-amber-500/30 hover:to-yellow-500/30 text-amber-300 border border-amber-500/40 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm disabled:opacity-50"
+                  className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm disabled:opacity-50"
                   title="Platform Admin: Randomly Generate Full Game Play-by-Play & Score"
                 >
                   <Zap className={`w-3.5 h-3.5 fill-amber-400 text-amber-400 ${isSimulating ? "animate-spin" : ""}`} />
@@ -293,7 +297,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
               {matchData.status !== 'completed' ? (
                 <Link
                   href={`/matches/${matchId}/play-by-play`}
-                  className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
+                  className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                 >
                   {matchData.isAsyncStatKeeping ? "Async Stat Keeper" : "Play-by-Play Manager"}
                 </Link>
@@ -304,7 +308,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                       updateSandboxMatch(matchId, { status: "in_progress" });
                       window.location.href = `/matches/${matchId}/play-by-play`;
                     }}
-                    className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
+                    className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                   >
                     Reopen Play-by-Play
                   </button>
@@ -333,18 +337,27 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
         <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
           <div>
-            <h3 className="font-semibold text-lg text-white">
-              {matchData.status === 'completed' ? 'Box Score & Play-by-Play' : 'Live Play-by-Play'}
+            <h3 className="font-semibold text-lg text-white flex items-center gap-2">
+              {gameState === 'final' ? 'Box Score & Play-by-Play' : 'Play-by-Play'}
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${gameState === 'live' ? 'text-red-400 border-red-500/30 bg-red-500/10 animate-pulse' : gameState === 'paused' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' : gameState === 'upcoming' ? 'text-cyan-400 border-cyan-500/20 bg-cyan-500/10' : 'text-neutral-300 border-white/10 bg-white/5'}`}>
+                {GAME_STATE_LABEL[gameState]}
+              </span>
             </h3>
             <p className="text-sm text-neutral-400">
-              {matchData.status === 'completed' ? 'Review the full stats and history of this game.' : 'Follow the game action in real-time.'}
+              {gameState === 'final'
+                ? 'Review the full stats and history of this game.'
+                : gameState === 'live'
+                  ? 'Follow the game action in real-time.'
+                  : gameState === 'paused'
+                    ? 'Scorekeeping is paused. Plays so far are available.'
+                    : 'Plays will appear here once the game starts.'}
             </p>
           </div>
           <Link
             href={`/matches/${matchId}/play-by-play`}
             className="px-6 py-3 bg-white hover:bg-neutral-200 text-black font-semibold rounded-xl shadow-lg transition-all active:scale-95 whitespace-nowrap"
           >
-            {matchData.status === 'completed' ? 'See Stats' : 'Watch Live'}
+            {gameState === 'final' ? 'See Stats' : gameState === 'live' ? 'Watch Live' : 'Open Play-by-Play'}
           </Link>
         </div>
 
@@ -505,7 +518,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
+                    className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
                   >
                     Save Changes
                   </button>

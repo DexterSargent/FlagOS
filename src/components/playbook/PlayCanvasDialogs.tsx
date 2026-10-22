@@ -93,7 +93,7 @@ export function SaveRoutePresetDialog({
               type="button"
               disabled={!presetName.trim()}
               onClick={onSave}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
             >
               Save to Team ({customPresetCount}/20)
             </button>

@@ -197,7 +197,7 @@ export default function InteractiveDemoGuard() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
             onClick={handleLaunchFullDemo}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-[0_0_25px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>Explore Demo League</span>
             <ArrowRight className="w-4 h-4 shrink-0" />

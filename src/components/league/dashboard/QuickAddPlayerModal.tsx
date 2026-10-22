@@ -213,7 +213,7 @@ export function QuickAddPlayerModal({
             <button
               type="submit"
               disabled={addingPlayer}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] disabled:opacity-50 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] disabled:opacity-50 cursor-pointer"
             >
               {addingPlayer ? "Signing..." : "Sign Athlete"}
             </button>

@@ -539,7 +539,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         </p>
         <Link
           href="/teams"
-          className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl hover:from-cyan-400 hover:to-blue-500 transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
         >
           Back to Teams
         </Link>
@@ -995,7 +995,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 <button
                   type="submit"
                   disabled={addingPlayer}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] disabled:opacity-50 cursor-pointer"
                 >
                   {addingPlayer ? "Adding..." : "Add Player"}
                 </button>
