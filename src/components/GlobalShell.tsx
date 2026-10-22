@@ -56,7 +56,8 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
 
   // Specific league routes where league navigation is relevant
   const isLeagueRoute = Boolean(
-    pathname?.startsWith("/league") ||
+    pathname === "/league" ||
+    pathname?.startsWith("/league/") ||
     pathname === "/schedule" ||
     pathname === "/stats" ||
     pathname === "/teams" ||
@@ -87,6 +88,8 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     !isLandingPage &&
     !isPricingPage &&
     !isMyStoryPage &&
+    // The league directory renders its own LeagueHeader/LeagueFooter.
+    pathname !== "/leagues" &&
     !isTeamRoute &&
     !isPlayByPlay;
 

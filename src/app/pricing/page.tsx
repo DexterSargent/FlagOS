@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Shield,
-  LogOut,
   Check,
   ChevronDown,
   Sparkles,
@@ -36,7 +35,7 @@ import AccountMenu from "@/components/AccountMenu";
 export default function PricingPage() {
   const router = useRouter();
   const { activeLeagueId, settings, createLeague } = useLeague();
-  const { user, isAuthorized, isPlatformAdmin, logout } = useAuth();
+  const { user, isAuthorized, isPlatformAdmin } = useAuth();
 
   // Until real billing exists, only the platform owner's verified account can "pay".
   const isOwnerEmail = !!user?.emailVerified && isPlatformAdminEmail(user.email);

@@ -28,7 +28,7 @@ const { match, players, history } = vi.hoisted(() => ({
   ],
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("@/lib/authContext", () => ({
   useAuth: () => ({ loading: false, isPlatformAdmin: false, isLeagueAdmin: true, canManageTeam: () => true }),

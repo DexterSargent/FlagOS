@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Crown,
   Shield,
-  LogOut,
   Zap,
   Sparkles,
   ListChecks,
@@ -49,7 +48,7 @@ import { useTheme } from "@/lib/themeContext";
 export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
-  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin, logout } = useAuth();
+  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin } = useAuth();
   const isMe = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" || Boolean(isPlatformAdmin);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);

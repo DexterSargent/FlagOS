@@ -23,7 +23,7 @@ const testPlayers = [
   { id: "p2", playerName: "Alex Safety", teamId: "team_apex", number: "24" },
 ];
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("@/lib/authContext", () => ({
   useAuth: () => ({ loading: false, isPlatformAdmin: false, isLeagueAdmin: true, canManageTeam: () => true }),

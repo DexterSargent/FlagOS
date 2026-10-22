@@ -4,7 +4,7 @@ import PricingPage from "@/app/pricing/page";
 
 // Mock router
 const mockPush = vi.fn();
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => "/",
   useRouter: () => ({
     push: mockPush,
   }),

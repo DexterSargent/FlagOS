@@ -9,7 +9,7 @@ vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({ isDemoLeague: false, activeLeagueId: "", settings: {} }),
 }));
 vi.mock("@/lib/authContext", () => ({
-  useAuth: () => ({ canManageTeam: () => false, isLeagueAdmin: false, user: null }),
+  useAuth: () => ({ canManageTeam: () => false, isTeamAdmin: () => false, isLeagueAdmin: false, user: null }),
 }));
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(),

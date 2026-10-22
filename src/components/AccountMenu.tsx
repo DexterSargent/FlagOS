@@ -15,18 +15,22 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
   const pathname = usePathname();
   const { user, isPlayer, playerData, playerTeamId, managedTeamId, isLeagueAdmin, isPlatformAdmin, isAuthorized, logout } = useAuth();
   const { openCustomizer } = useLeague();
-  const [open, setOpen] = useState(false);
+  // Remember the path the menu was opened on so navigating away closes it.
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const open = openPath !== null && openPath === pathname;
+  const setOpen = (next: boolean | ((v: boolean) => boolean)) => {
+    const value = typeof next === "function" ? next(open) : next;
+    setOpenPath(value ? pathname : null);
+  };
   const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {
     if (!open) return;
     const onPointer = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpenPath(null);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setOpenPath(null);
     };
     document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);

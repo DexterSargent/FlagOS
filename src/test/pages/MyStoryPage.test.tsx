@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import MyStoryPage from "@/app/my-story/page";
 
 const mockReplace = vi.fn();
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({ usePathname: () => "/",
   useRouter: () => ({
     replace: mockReplace,
     push: vi.fn(),
