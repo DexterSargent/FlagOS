@@ -68,7 +68,7 @@ const readEmbeddedFlag = () => {
 export default function FlagOSDashboard({ params }: { params?: Promise<{ id: string }> }) {
   const unwrappedParams = params ? use(params) : null;
   const leagueIdParam = unwrappedParams?.id;
-  const { settings, openCustomizer, activeLeagueId, switchLeague, isDemoLeague } = useLeague();
+  const { settings, openCustomizer, activeLeagueId, switchLeague, isDemoLeague, subscription } = useLeague();
 
   // Server snapshot is false so hydration matches; the client re-renders with the real URL flag.
   const isEmbedded = useSyncExternalStore(
@@ -803,9 +803,23 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             {/* League Executive KPI Strip */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
               <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-                <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Teams Registered</span>
-                <div className="text-3xl font-black text-white mt-1 tabular-nums">{teams.length}</div>
-                <span className="text-[11px] text-cyan-400 mt-1 block">Active Teams in League</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Teams &amp; Slots</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
+                    ${subscription?.totalMonthlyFee || 160}/mo
+                  </span>
+                </div>
+                <div className="text-3xl font-black text-white mt-1 tabular-nums">
+                  {teams.length} <span className="text-sm font-normal text-neutral-400">/ {subscription?.teamCount || 8} Paid</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={openCustomizer}
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors mt-1 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Manage Teams &amp; Slots</span>
+                  <ChevronRight className="w-3 h-3" />
+                </button>
               </div>
 
               <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">

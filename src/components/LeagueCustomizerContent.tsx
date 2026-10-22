@@ -29,9 +29,18 @@ import {
   Archive,
   Calendar,
   AlertTriangle,
+  CreditCard,
+  Plus,
+  Minus,
+  Trash2,
+  CheckCircle2,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { isRealTeam } from "@/components/TeamAssets";
+import { getSandboxTeams } from "@/lib/demoSandbox";
 
 const SAMPLE_LOGOS = [
   { name: "Shield Crest", Url: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=150&auto=format&fit=crop&q=80" },
@@ -52,14 +61,115 @@ export default function LeagueCustomizerContent() {
     resumeSubscription,
     isLeagueArchived,
     isSubscriptionPastDue,
+    updateSubscriptionTeamCount,
+    addTeamToSubscription,
+    removeTeamFromSubscription,
+    isDemoLeague,
   } = useLeague();
   const { isLeagueAdmin, isPlayer, playerData } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"branding" | "rules" | "season">(
+  const [activeTab, setActiveTab] = useState<"branding" | "rules" | "subscription" | "season">(
     isLeagueAdmin ? "branding" : "rules"
   );
   const [showArchivePrompt, setShowArchivePrompt] = useState(false);
   const [archivingInProgress, setArchivingInProgress] = useState(false);
+
+  // Subscription team management states
+  const [targetTeamCount, setTargetTeamCount] = useState<number>(subscription?.teamCount ?? 8);
+  const [isUpdatingSub, setIsUpdatingSub] = useState(false);
+  const [subSuccessMsg, setSubSuccessMsg] = useState("");
+  const [subTeamsList, setSubTeamsList] = useState<{ id: string; name: string; shortcode?: string; primaryColor?: string }[]>([]);
+  const [loadingSubTeams, setLoadingSubTeams] = useState(false);
+  const [newSubTeamName, setNewSubTeamName] = useState("");
+  const [isSubmittingNewTeam, setIsSubmittingNewTeam] = useState(false);
+
+  useEffect(() => {
+    if (subscription?.teamCount) {
+      setTargetTeamCount(subscription.teamCount);
+    }
+  }, [subscription?.teamCount]);
+
+  const loadSubTeams = async () => {
+    setLoadingSubTeams(true);
+    try {
+      if (isDemoLeague) {
+        const demoTeams = (getSandboxTeams() as unknown as { id: string; name: string; shortcode?: string; primaryColor?: string }[]).filter(isRealTeam);
+        setSubTeamsList(demoTeams);
+      } else {
+        const snap = await getDocs(
+          query(collection(db, "teams"), where("leagueId", "==", activeLeagueId), limit(64))
+        );
+        const t = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })).filter(isRealTeam);
+        setSubTeamsList(t);
+      }
+    } catch (e) {
+      console.warn("Could not load teams for subscription manager:", e);
+    } finally {
+      setLoadingSubTeams(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "subscription") {
+      void loadSubTeams();
+    }
+  }, [activeTab, activeLeagueId, isDemoLeague]);
+
+  const handleUpdateSubscriptionCount = async (count: number) => {
+    setIsUpdatingSub(true);
+    setSubSuccessMsg("");
+    try {
+      await updateSubscriptionTeamCount(count);
+      setSubSuccessMsg(`Subscription updated to ${count} teams! Next monthly payment adjusted to $${40 + count * 15}/mo.`);
+      setTimeout(() => setSubSuccessMsg(""), 5000);
+      await loadSubTeams();
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Failed to update subscription.");
+    } finally {
+      setIsUpdatingSub(false);
+    }
+  };
+
+  const handleQuickAddTeam = async () => {
+    setIsSubmittingNewTeam(true);
+    setSubSuccessMsg("");
+    try {
+      const nextCount = (subscription?.teamCount ?? 8) + 1;
+      const teamNameToUse = newSubTeamName.trim() || `Team ${nextCount}`;
+      await addTeamToSubscription(teamNameToUse);
+      setNewSubTeamName("");
+      setSubSuccessMsg(`Added "${teamNameToUse}" and increased subscription to ${nextCount} teams ($${40 + nextCount * 15}/mo at next payment).`);
+      setTimeout(() => setSubSuccessMsg(""), 5000);
+      await loadSubTeams();
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Failed to add team to subscription.");
+    } finally {
+      setIsSubmittingNewTeam(false);
+    }
+  };
+
+  const handleQuickRemoveTeam = async (teamId: string, teamName: string) => {
+    const nextCount = Math.max(2, (subscription?.teamCount ?? 8) - 1);
+    const confirmed = window.confirm(
+      `Remove "${teamName}" from the league and reduce your subscription by $15/month starting at your next monthly payment (new cost: $${40 + nextCount * 15}/mo)?`
+    );
+    if (!confirmed) return;
+    setIsUpdatingSub(true);
+    setSubSuccessMsg("");
+    try {
+      await removeTeamFromSubscription(teamId);
+      setSubSuccessMsg(`Removed "${teamName}" and reduced subscription to ${nextCount} teams ($${40 + nextCount * 15}/mo at next payment).`);
+      setTimeout(() => setSubSuccessMsg(""), 5000);
+      await loadSubTeams();
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Failed to remove team from subscription.");
+    } finally {
+      setIsUpdatingSub(false);
+    }
+  };
 
   // League Branding states (League Admin)
   const [leagueName, setLeagueName] = useState(settings.leagueName);
@@ -276,6 +386,22 @@ export default function LeagueCustomizerContent() {
             <Scale className="w-4 h-4" />
             <span>League Rules {isLeagueAdmin ? "" : "(View Only)"}</span>
           </button>
+
+          {/* Subscription & Teams Tab (League Admin Exclusive) */}
+          {isLeagueAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("subscription")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "subscription"
+                  ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 shadow-md"
+                  : "text-neutral-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Subscription &amp; Teams</span>
+            </button>
+          )}
 
           {/* Season & Archival Tab (League Admin Exclusive) */}
           {isLeagueAdmin && (
@@ -1778,6 +1904,277 @@ export default function LeagueCustomizerContent() {
               <div className="text-[11px] text-neutral-400 flex items-center gap-2 font-mono">
                 <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>To propose changes to these rules, contact the League Commissioner.</span>
+              </div>
+              <button
+                type="button"
+                onClick={closeCustomizer}
+                className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            TAB: SUBSCRIPTION & TEAMS (LEAGUE COMMISSIONER)
+           ============================================================ */}
+        {activeTab === "subscription" && isLeagueAdmin && (
+          <div className="space-y-6">
+            {/* Header / Active Subscription Card */}
+            <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                      League Team Subscription
+                    </h3>
+                    <p className="text-xs text-neutral-400">
+                      Tier Capacity: {subscription?.teamCount || 8} Teams • $40 base + $15/team per month
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-black font-mono bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Active Subscription</span>
+                  </span>
+                </div>
+              </div>
+
+              {subSuccessMsg && (
+                <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>{subSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* Pricing Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
+                  <div className="text-[10px] uppercase font-bold text-neutral-400">Base Platform Fee</div>
+                  <div className="text-base font-black text-white font-mono">$40.00 / mo</div>
+                  <div className="text-[10px] text-neutral-500">Core circuit & stats engine</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
+                  <div className="text-[10px] uppercase font-bold text-neutral-400">
+                    Team Slots ({targetTeamCount} teams)
+                  </div>
+                  <div className="text-base font-black text-emerald-400 font-mono">
+                    ${targetTeamCount * 15}.00 / mo
+                  </div>
+                  <div className="text-[10px] text-neutral-500">{targetTeamCount} × $15.00/team per month</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
+                  <div className="text-[10px] uppercase font-bold text-neutral-400">Adjusted Total Monthly</div>
+                  <div className="text-base font-black text-cyan-400 font-mono">
+                    ${40 + targetTeamCount * 15}.00 / mo
+                  </div>
+                  <div className="text-[10px] text-neutral-500">Next bill on renewal date</div>
+                </div>
+              </div>
+
+              {/* Renewal Notice */}
+              <div className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-neutral-300">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span>
+                    Next Monthly Billing Cycle:{" "}
+                    <strong className="text-white font-mono">
+                      {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </strong>
+                  </span>
+                </div>
+                <span className="text-[11px] text-neutral-400">
+                  Rate at next payment: <strong className="text-cyan-300 font-mono">${40 + targetTeamCount * 15}/mo</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Adjust Team Capacity Section */}
+            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+                    <SlidersHorizontal className="w-4 h-4 text-emerald-400" />
+                    <span>Adjust Paid Team Slots</span>
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Add or remove team capacity. Adjusts your monthly cost by $15 per team at next renewal.
+                  </p>
+                </div>
+
+                <span className="text-xs font-bold font-mono text-neutral-400">
+                  Range: 2 to 32 Teams
+                </span>
+              </div>
+
+              {/* Interactive Stepper */}
+              <div className="p-4 rounded-xl bg-black/50 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+                  <button
+                    type="button"
+                    disabled={targetTeamCount <= 2 || isUpdatingSub}
+                    onClick={() => setTargetTeamCount((prev) => Math.max(2, prev - 1))}
+                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-lg transition-colors cursor-pointer"
+                    title="Decrease team slot"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+
+                  <div className="px-5 py-2 rounded-xl bg-neutral-900 border border-white/10 text-center min-w-[130px]">
+                    <div className="text-lg font-black text-white font-mono">{targetTeamCount} Teams</div>
+                    <div className="text-[10px] text-neutral-400 font-mono">
+                      ${40 + targetTeamCount * 15}/mo
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={targetTeamCount >= 32 || isUpdatingSub}
+                    onClick={() => setTargetTeamCount((prev) => Math.min(32, prev + 1))}
+                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-lg transition-colors cursor-pointer"
+                    title="Increase team slot"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Slider */}
+                <div className="flex-1 w-full sm:max-w-xs space-y-1">
+                  <input
+                    type="range"
+                    min={2}
+                    max={32}
+                    step={1}
+                    value={targetTeamCount}
+                    onChange={(e) => setTargetTeamCount(Number(e.target.value))}
+                    className="w-full accent-emerald-400 cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
+                    <span>2 teams ($70/mo)</span>
+                    <span>32 teams ($520/mo)</span>
+                  </div>
+                </div>
+
+                {/* Save button if changed */}
+                {targetTeamCount !== (subscription?.teamCount ?? 8) && (
+                  <button
+                    type="button"
+                    disabled={isUpdatingSub}
+                    onClick={() => handleUpdateSubscriptionCount(targetTeamCount)}
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
+                  >
+                    {isUpdatingSub ? "Updating..." : `Confirm ${targetTeamCount} Teams ($${40 + targetTeamCount * 15}/mo)`}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Add Team to Subscription */}
+            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-cyan-400" />
+                  <span>Add New Team to Subscription (+ $15/mo)</span>
+                </h4>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Provisions a new franchise slot and team record immediately. Monthly cost increases by $15 starting at your next renewal.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  value={newSubTeamName}
+                  onChange={(e) => setNewSubTeamName(e.target.value)}
+                  placeholder={`e.g. Team ${(subscription?.teamCount ?? 8) + 1} or Thunderbirds`}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-cyan-400 text-white text-xs outline-none transition-colors"
+                />
+
+                <button
+                  type="button"
+                  disabled={isSubmittingNewTeam}
+                  onClick={handleQuickAddTeam}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isSubmittingNewTeam ? "Adding..." : "Add Team to Subscription (+$15/mo)"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Active Teams in League with Direct Removal */}
+            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span>Current League Teams ({subTeamsList.length})</span>
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Removing a team deletes its franchise and automatically decrements your subscription by $15/mo at your next monthly payment.
+                  </p>
+                </div>
+              </div>
+
+              {loadingSubTeams ? (
+                <div className="py-6 text-center text-xs text-neutral-400">Loading teams...</div>
+              ) : subTeamsList.length === 0 ? (
+                <div className="py-6 text-center text-xs text-neutral-400">No teams found in this league.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1">
+                  {subTeamsList.map((t) => (
+                    <div
+                      key={t.id}
+                      className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-3 hover:border-white/20 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black font-mono text-white shrink-0"
+                          style={{ backgroundColor: t.primaryColor || "#3ca505" }}
+                        >
+                          {t.shortcode ? t.shortcode.slice(0, 3) : t.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-white truncate">{t.name}</div>
+                          <div className="text-[10px] text-neutral-400 font-mono">
+                            {t.shortcode || "TEAM"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isUpdatingSub}
+                        onClick={() => handleQuickRemoveTeam(t.id, t.name)}
+                        className="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                        title="Remove team and lower monthly fee"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Remove (-$15/mo)</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+              <div className="text-[11px] text-neutral-400 flex items-center gap-2 font-mono">
+                <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Adjusted fees apply at your next billing statement on {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.</span>
               </div>
               <button
                 type="button"

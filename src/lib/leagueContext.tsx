@@ -333,6 +333,9 @@ interface LeagueContextType {
     visibility?: "public" | "private";
   }) => Promise<string>;
   subscription: LeagueSubscriptionInfo | null;
+  updateSubscriptionTeamCount: (newTeamCount: number) => Promise<LeagueSubscriptionInfo>;
+  addTeamToSubscription: (customName?: string) => Promise<{ teamId: string; newSubscription: LeagueSubscriptionInfo }>;
+  removeTeamFromSubscription: (teamId: string) => Promise<{ newSubscription: LeagueSubscriptionInfo }>;
   isDemoLeague: boolean;
   resetDemoSession: () => void | Promise<void>;
   archiveLeague: (action: "pause_subscription" | "new_season") => Promise<void>;
@@ -413,6 +416,9 @@ const LeagueContext = createContext<LeagueContextType>({
   switchLeague: async () => { },
   createLeague: async () => "",
   subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
+  updateSubscriptionTeamCount: async () => DEFAULT_LEAGUE_SUBSCRIPTION,
+  addTeamToSubscription: async () => ({ teamId: "", newSubscription: DEFAULT_LEAGUE_SUBSCRIPTION }),
+  removeTeamFromSubscription: async () => ({ newSubscription: DEFAULT_LEAGUE_SUBSCRIPTION }),
   isDemoLeague: true,
   resetDemoSession: () => { },
   archiveLeague: async () => { },
@@ -677,6 +683,30 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       throw new Error("Could not create the league. Check your permissions and try again.");
     }
 
+    const starterTeamColors = [
+      "#3ca505", "#3b82f6", "#ef4444", "#f59e0b",
+      "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
+      "#06b6d4", "#84cc16", "#6366f1", "#d946ef",
+      "#0ea5e9", "#eab308", "#10b981", "#a855f7",
+    ];
+
+    try {
+      await Promise.all(
+        Array.from({ length: teams }, (_, index) => {
+          const num = index + 1;
+          return createSecureRecord("team", {
+            name: `Team ${num}`,
+            shortcode: `TM${num}`,
+            leagueId: newLeagueId,
+            primaryColor: starterTeamColors[index % starterTeamColors.length],
+            createdAt: new Date().toISOString(),
+          });
+        })
+      );
+    } catch (teamErr) {
+      console.warn("Non-fatal: could not auto-create starter teams:", teamErr);
+    }
+
     const newSummary: UserLeagueSummary = {
       id: newLeagueId,
       name: data.name,
@@ -835,6 +865,113 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
     setSubscription(updatedSub);
   };
 
+  const updateSubscriptionTeamCount = async (newTeamCount: number): Promise<LeagueSubscriptionInfo> => {
+    const clampedCount = Math.max(2, Math.round(newTeamCount));
+    const baseFee = subscription?.baseMonthlyFee ?? 40;
+    const perTeamFee = subscription?.perTeamMonthlyFee ?? 15;
+    const totalMonthlyFee = baseFee + clampedCount * perTeamFee;
+
+    const nextSub: LeagueSubscriptionInfo = {
+      ...(subscription || DEFAULT_LEAGUE_SUBSCRIPTION),
+      baseMonthlyFee: baseFee,
+      perTeamMonthlyFee: perTeamFee,
+      teamCount: clampedCount,
+      totalMonthlyFee,
+      status: subscription?.status || "active",
+      renewsAt: subscription?.renewsAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    const nextSettings: LeagueSettings = {
+      ...settings,
+      subscription: nextSub,
+      playoffFormat: getDefaultPlayoffFormat(clampedCount),
+    };
+
+    setSubscription(nextSub);
+    setSettings(nextSettings);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`league_settings_${activeLeagueId}`, JSON.stringify(nextSettings));
+      localStorage.setItem("league_settings", JSON.stringify(nextSettings));
+    }
+
+    setUserLeagues((prev) => {
+      const updated = prev.map((l) =>
+        l.id === activeLeagueId
+          ? {
+              ...l,
+              subscription: nextSub,
+            }
+          : l
+      );
+      if (typeof window !== "undefined") {
+        localStorage.setItem("flagos_user_leagues", JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    if (checkIsDemoLeague(activeLeagueId)) {
+      const { updateSandboxSettings } = await import("./demoSandbox");
+      updateSandboxSettings(nextSettings);
+      return nextSub;
+    }
+
+    try {
+      const targetDoc = doc(db, "leagues", activeLeagueId);
+      await setDoc(targetDoc, { subscription: nextSub, playoffFormat: nextSettings.playoffFormat }, { merge: true });
+    } catch (err) {
+      console.error("Failed to sync updated subscription to Firestore:", err);
+    }
+
+    return nextSub;
+  };
+
+  const addTeamToSubscription = async (customName?: string): Promise<{ teamId: string; newSubscription: LeagueSubscriptionInfo }> => {
+    const currentCount = subscription?.teamCount ?? 8;
+    const nextCount = currentCount + 1;
+    const updatedSub = await updateSubscriptionTeamCount(nextCount);
+
+    const teamColors = [
+      "#3ca505", "#3b82f6", "#ef4444", "#f59e0b",
+      "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
+      "#06b6d4", "#84cc16", "#6366f1", "#d946ef",
+      "#0ea5e9", "#eab308", "#10b981", "#a855f7",
+    ];
+
+    const teamName = customName?.trim() || `Team ${nextCount}`;
+    const shortcode = teamName.startsWith("Team ") ? `TM${teamName.replace("Team ", "")}` : teamName.slice(0, 4).toUpperCase();
+
+    if (checkIsDemoLeague(activeLeagueId)) {
+      const { addSandboxTeam } = await import("./demoSandbox");
+      const created = addSandboxTeam(teamName);
+      return { teamId: created.id, newSubscription: updatedSub };
+    }
+
+    const teamId = await createSecureRecord("team", {
+      name: teamName,
+      shortcode,
+      leagueId: activeLeagueId,
+      primaryColor: teamColors[(nextCount - 1) % teamColors.length],
+      createdAt: new Date().toISOString(),
+    });
+
+    return { teamId, newSubscription: updatedSub };
+  };
+
+  const removeTeamFromSubscription = async (teamId: string): Promise<{ newSubscription: LeagueSubscriptionInfo }> => {
+    if (checkIsDemoLeague(activeLeagueId)) {
+      const { deleteSandboxTeam } = await import("./demoSandbox");
+      deleteSandboxTeam(teamId);
+    } else {
+      await createSecureRecord("delete_team", { teamId });
+    }
+
+    const currentCount = subscription?.teamCount ?? 8;
+    const nextCount = Math.max(2, currentCount - 1);
+    const updatedSub = await updateSubscriptionTeamCount(nextCount);
+    return { newSubscription: updatedSub };
+  };
+
   const openCustomizer = () => setIsCustomizerOpen(true);
   const closeCustomizer = () => {
     revertThemeColors();
@@ -859,6 +996,9 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
         switchLeague,
         createLeague,
         subscription,
+        updateSubscriptionTeamCount,
+        addTeamToSubscription,
+        removeTeamFromSubscription,
         isDemoLeague: checkIsDemoLeague(activeLeagueId),
         resetDemoSession,
         archiveLeague,
@@ -925,6 +1065,9 @@ function IndependentTeamLeague({ teamId, team, loading, children }: {
       resetDemoSession: rejectIndependentLeagueMutation,
       archiveLeague: async () => rejectIndependentLeagueMutation(),
       resumeSubscription: async () => rejectIndependentLeagueMutation(),
+      updateSubscriptionTeamCount: async () => rejectIndependentLeagueMutation(),
+      addTeamToSubscription: async () => rejectIndependentLeagueMutation(),
+      removeTeamFromSubscription: async () => rejectIndependentLeagueMutation(),
     }}>
       {children}
     </LeagueContext.Provider>

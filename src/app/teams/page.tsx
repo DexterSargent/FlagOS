@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, Users, Shield, Plus, Check, X, ArrowRightLeft, Calendar, Trophy, Activity, History, Trash2, UserPlus, Search, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, Users, Shield, Plus, Check, X, ArrowRightLeft, Calendar, Trophy, Activity, History, Trash2, UserPlus, Search, CheckCircle2, CreditCard, SlidersHorizontal } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, updateDoc, doc, query, where, limit } from "firebase/firestore";
 import { createSecureRecord } from "@/lib/secureWrites";
@@ -68,7 +68,16 @@ export default function TeamsPage() {
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
   const { isAdmin, isLeagueAdmin, isPlatformAdmin, canManageTeam, canRegisterAsPlayer } = useAuth();
-  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const {
+    settings,
+    isDemoLeague,
+    activeLeagueId,
+    subscription,
+    updateSubscriptionTeamCount,
+    addTeamToSubscription,
+    removeTeamFromSubscription,
+    openCustomizer,
+  } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
 
   // Admin States
@@ -331,6 +340,26 @@ export default function TeamsPage() {
 
   const handleAddTeam = async () => {
     if (!newTeamName.trim() || !isLeagueAdmin) return;
+    const currentPaid = subscription?.teamCount ?? 8;
+    const isExpandingSubscription = competitiveTeams.length >= currentPaid;
+
+    if (isExpandingSubscription) {
+      const confirmExpand = window.confirm(
+        `All ${currentPaid} paid team slots are currently in use.\n\nAdding "${newTeamName.trim()}" will add a team slot and adjust your monthly subscription by +$15/mo (new cost: $${40 + (currentPaid + 1) * 15}/mo starting at your next monthly payment). Proceed?`
+      );
+      if (!confirmExpand) return;
+      try {
+        const { teamId } = await addTeamToSubscription(newTeamName.trim());
+        setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
+        setNewTeamName("");
+        setIsAddingTeam(false);
+      } catch (e) {
+        console.error(e);
+        alert(e instanceof Error ? e.message : "Could not add team to subscription.");
+      }
+      return;
+    }
+
     if (isDemoLeague) {
       const created = addSandboxTeam(newTeamName.trim());
       setTeams([...teams, created as unknown as Team].sort((a, b) => a.name.localeCompare(b.name)));
@@ -374,8 +403,30 @@ export default function TeamsPage() {
 
   const handleDeleteTeam = async () => {
     if (!isLeagueAdmin || !activeTeamId) return;
-    const confirmDelete = window.confirm("Are you sure you want to delete this team? Players will NOT be deleted automatically.");
-    if (!confirmDelete) return;
+    const currentPaid = subscription?.teamCount ?? 8;
+    const nextCount = Math.max(2, currentPaid - 1);
+
+    const reduceSubscription = window.confirm(
+      `Delete "${activeTeam?.name || "this team"}"?\n\nClick OK to also remove this team slot and reduce your subscription by $15/month (new rate: $${40 + nextCount * 15}/mo at next monthly payment).\n\nClick Cancel to choose if you want to keep the open slot.`
+    );
+
+    if (reduceSubscription) {
+      try {
+        await removeTeamFromSubscription(activeTeamId);
+        setTeams(teams.filter(t => t.id !== activeTeamId));
+        setActiveTeamId(null);
+      } catch (e) {
+        console.error(e);
+        alert(e instanceof Error ? e.message : "Failed to remove team from subscription.");
+      }
+      return;
+    }
+
+    const deleteTeamOnly = window.confirm(
+      `Would you like to delete "${activeTeam?.name || "this team"}" but KEEP your ${currentPaid} paid team slots for a future franchise?`
+    );
+    if (!deleteTeamOnly) return;
+
     if (isDemoLeague) {
       deleteSandboxTeam(activeTeamId);
       setTeams(teams.filter(t => t.id !== activeTeamId));
@@ -608,7 +659,7 @@ export default function TeamsPage() {
             </p>
           </div>
 
-          {!activeTeamId && isLeagueAdmin && (isDemoLeague || isPlatformAdmin) && (
+          {!activeTeamId && isLeagueAdmin && (
             <div className="mt-4 md:mt-0 flex gap-2">
               {isAddingTeam ? (
                 <div className="flex items-center gap-2">
@@ -620,17 +671,17 @@ export default function TeamsPage() {
                     onChange={(e) => setNewTeamName(e.target.value)}
                     autoFocus
                   />
-                  <button onClick={handleAddTeam} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg">
+                  <button onClick={handleAddTeam} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
                     <Check className="w-5 h-5" />
                   </button>
-                  <button onClick={() => setIsAddingTeam(false)} className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg">
+                  <button onClick={() => setIsAddingTeam(false)} className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setIsAddingTeam(true)}
-                  className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 font-bold flex items-center gap-2"
+                  className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 font-bold flex items-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-5 h-5" /> Create Team
                 </button>
@@ -638,6 +689,66 @@ export default function TeamsPage() {
             </div>
           )}
         </div>
+
+        {/* Commissioner Subscription & Capacity Bar */}
+        {!activeTeamId && isLeagueAdmin && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 dark:bg-[#0B0F19]/90 border border-slate-700/60 dark:border-emerald-500/30 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-100 dark:text-white">
+                    Franchise Subscription &amp; Capacity
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                    {competitiveTeams.length} of {subscription?.teamCount || 8} Slots Used
+                  </span>
+                  {competitiveTeams.length >= (subscription?.teamCount || 8) && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                      Tier Limit Reached
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-slate-400 dark:text-neutral-400 flex flex-wrap items-center gap-2">
+                  <span>${subscription?.totalMonthlyFee || 160}/mo ($40 base + ${(subscription?.teamCount || 8)} × $15)</span>
+                  <span>•</span>
+                  <span>
+                    Renews on{" "}
+                    <strong className="text-slate-200 dark:text-neutral-200 font-mono">
+                      {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setIsAddingTeam(true)}
+                className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Team to Subscription (+ $15/mo)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openCustomizer}
+                className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-white/10 dark:hover:bg-white/15 text-slate-200 dark:text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
+                <span>Manage Subscription</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
