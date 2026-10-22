@@ -762,7 +762,7 @@ export default function PlayerProfilePage() {
                 },
                 {
                   label: "Play Clock",
-                  value: `${settings?.rules?.playClockSeconds || 30} Seconds`,
+                  value: `${settings?.rules?.playClockSeconds || 25} Seconds`,
                   desc: "Time allowed between snaps before a delay of game infraction.",
                 },
                 {

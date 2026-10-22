@@ -34,7 +34,7 @@ export interface LeagueRules {
   maxRosterSize: number;           // hard cap: 30
   downsPerSeries: number;          // default: 4
   rushLineDistance: number;        // default: 7 (yards)
-  playClockSeconds: number;        // default: 30 (seconds)
+  playClockSeconds: number;        // default: 25 (seconds)
   halftimeDurationSeconds: number; // default: 300 (seconds)
   enableFreeAgents: boolean;       // default: true (Controls public join form and free agent pool)
 }
@@ -51,7 +51,7 @@ export const DEFAULT_LEAGUE_RULES: LeagueRules = {
   maxRosterSize: 30,
   downsPerSeries: 4,
   rushLineDistance: 7,
-  playClockSeconds: 30,
+  playClockSeconds: 25,
   halftimeDurationSeconds: 300,
   enableFreeAgents: true,
 };

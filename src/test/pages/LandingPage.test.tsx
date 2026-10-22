@@ -216,7 +216,7 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not render public league directory or directory nav links when user is not logged in", () => {
+  it("renders public league directory navigation link pointing to /leagues when user is not logged in", () => {
     mockUseAuth.mockReturnValue({
       user: null,
       isLeagueAdmin: false,
@@ -229,6 +229,8 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     render(<FlagOSPlatformLandingPage />);
     expect(screen.queryByText(/Public League Directory/i)).toBeNull();
     expect(screen.queryByText("Toronto Flag League")).toBeNull();
-    expect(screen.queryByRole("link", { name: /league directory/i })).toBeNull();
+    const directoryLinks = screen.getAllByRole("link", { name: /league directory/i });
+    expect(directoryLinks.length).toBeGreaterThan(0);
+    expect(directoryLinks[0]).toHaveAttribute("href", "/leagues");
   });
 });

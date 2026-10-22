@@ -78,7 +78,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const timeoutDurationSeconds = settings?.rules?.timeoutDurationSeconds || 60;
   const timeoutsResetPerPeriod = settings?.rules?.timeoutsResetPerPeriod ?? true;
   const downsPerSeries = settings?.rules?.downsPerSeries || 4;
-  const playClockSeconds = settings?.rules?.playClockSeconds || 30;
+  const playClockSeconds = settings?.rules?.playClockSeconds || 25;
   const halftimeDurationSeconds = settings?.rules?.halftimeDurationSeconds || 300;
 
   const [loadingData, setLoadingData] = useState(true);
@@ -556,7 +556,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     try {
       const defaultDuration = (settings?.rules?.periodDurationMinutes || 20) * 60;
       const defaultTimeouts = settings?.rules?.timeoutsPerTeam ?? 2;
-      const defaultPlayClock = settings?.rules?.playClockSeconds || 30;
+      const defaultPlayClock = settings?.rules?.playClockSeconds || 25;
 
       if (isDemo) {
         deleteSandboxPlaysForMatch(matchId);

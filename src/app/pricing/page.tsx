@@ -157,8 +157,8 @@ export default function PricingPage() {
     },
     {
       category: "stats",
-      feature: "Live Clocks (Synchronous Mode) & 25s Play Clock",
-      detail: "Synchronized 20-min countdown clocks, play clock, and timeouts",
+      feature: "Live Clocks (Synchronous Mode) & Customizable Clocks",
+      detail: "Synchronized regulation countdown clocks, customizable play clock, and timeouts",
       team: false,
       league: true,
     },
@@ -228,7 +228,7 @@ export default function PricingPage() {
     {
       category: "playbook",
       feature: "Printable Gameday Armband Inserts & Wristband PDF Export",
-      detail: "Export print-ready 8, 12, or 16-play wristband inserts",
+      detail: "Export print-ready 1, 2, 4, or 8-play wristband inserts and full gameday call sheets",
       team: true,
       league: true,
     },
@@ -372,14 +372,12 @@ export default function PricingPage() {
             >
               Demo League
             </Link>
-            {user && (
-              <Link
-                href="/#league-directory"
-                className="text-neutral-300 hover:text-[#3CA505] transition-colors"
-              >
-                League Directory
-              </Link>
-            )}
+            <Link
+              href="/leagues"
+              className="text-neutral-300 hover:text-[#3CA505] transition-colors"
+            >
+              League Directory
+            </Link>
             <Link
               href="/pricing"
               className="text-emerald-400 font-extrabold flex items-center gap-1.5"
@@ -468,15 +466,13 @@ export default function PricingPage() {
             >
               Demo League
             </Link>
-            {user && (
-              <Link
-                href="/#league-directory"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block text-sm font-bold text-neutral-300 hover:text-white py-1"
-              >
-                League Directory
-              </Link>
-            )}
+            <Link
+              href="/leagues"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block text-sm font-bold text-neutral-300 hover:text-white py-1"
+            >
+              League Directory
+            </Link>
             <Link
               href="/pricing"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -585,7 +581,7 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span><strong className="text-white">Printable Wristband Inserts:</strong> Export print-ready 8, 12, or 16-play gameday inserts.</span>
+                    <span><strong className="text-white">Printable Wristband Inserts:</strong> Export print-ready 1, 2, 4, or 8-play gameday inserts and call sheets.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
@@ -717,7 +713,7 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
-                    <span><strong className="text-white">Official Gameday Clocks:</strong> Synchronized 20-min countdown clocks, 25s play clock, and timeouts.</span>
+                    <span><strong className="text-white">Official Gameday Clocks:</strong> Synchronized regulation countdown clocks, customizable play clock, and timeouts.</span>
                   </li>
                   <li className="flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-[#60a5fa] shrink-0 mt-0.5" />
