@@ -66,6 +66,7 @@ import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import {
   OPPONENT_QB_PLACEHOLDER,
+  OPPONENT_RUNNER_PLACEHOLDER,
   displayPlayerName,
   isOpponentPlaceholder,
   isTrackablePlayer,
@@ -559,20 +560,28 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
   const handlePlayTypeSelect = (type: "Pass" | "Run" | "Penalty") => {
     setPlayType(type);
-    // The opponent has no roster in a team stat tracker; auto-fill their passer so our
+    // The opponent has no roster in a team stat tracker; auto-fill their passer / runner so our
     // defenders/flaggers are still credited without inventing opponent player stats.
     const offenseIsUnrostered = (possession === homeTeamName ? homePlayers : awayPlayers).length === 0;
+    const managingTeamName = managingTeamId === homeTeamId ? homeTeamName : (managingTeamId === awayTeamId ? awayTeamName : "");
+    const isTeamOnDefense = offenseIsUnrostered || (!!managingTeamName && possession !== managingTeamName);
+
     if (type === "Pass") {
-      const lastQb = offenseIsUnrostered
+      const lastQb = isTeamOnDefense
         ? OPPONENT_QB_PLACEHOLDER
         : possession === homeTeamName ? lastHomeQB : lastAwayQB;
       setOutcome("Complete");
       setQbRunner(lastQb);
-      setOpenSection(lastQb ? (offenseIsUnrostered ? "defenders" : "receiver") : "qb");
+      setOpenSection(lastQb ? (isTeamOnDefense ? "defenders" : "receiver") : "qb");
     } else if (type === "Run") {
       setOutcome("Gain");
-      setQbRunner("");
-      setOpenSection("qb");
+      if (isTeamOnDefense) {
+        setQbRunner(OPPONENT_RUNNER_PLACEHOLDER);
+        setOpenSection("defenders");
+      } else {
+        setQbRunner("");
+        setOpenSection("qb");
+      }
     } else {
       setOutcome(null);
     }
@@ -1519,7 +1528,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                   <div className="grid grid-cols-2 xl:grid-cols-3 gap-1 max-h-36 md:max-h-40 [@media(max-height:450px)]:max-h-24 overflow-y-auto">
                     {(offensePlayers.length === 0
-                      ? [OPPONENT_QB_PLACEHOLDER]
+                      ? [playType === "Run" ? OPPONENT_RUNNER_PLACEHOLDER : OPPONENT_QB_PLACEHOLDER]
                       : sortRosterByStatLeader(
                           offensePlayers,
                           playerNumberMap,

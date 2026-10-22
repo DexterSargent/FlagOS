@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   OPPONENT_QB_PLACEHOLDER,
+  OPPONENT_RUNNER_PLACEHOLDER,
   displayPlayerName,
   isOpponentPlaceholder,
   isTrackablePlayer,
   opponentQuarterbackLabel,
+  opponentRunnerLabel,
   replacePlaceholderInText,
   toPossessive,
 } from "@/lib/opponentPlaceholder";
@@ -77,5 +79,28 @@ describe("opponentPlaceholder", () => {
     ]);
     expect(counts.passing[OPPONENT_QB_PLACEHOLDER]).toBeUndefined();
     expect(counts.passing["Alexxandria Olivier"]).toBe(1);
+    expect(counts.rushing[OPPONENT_RUNNER_PLACEHOLDER]).toBeUndefined();
+  });
+
+  it("handles opponent ball carrier placeholders correctly for defense workflows", () => {
+    expect(isOpponentPlaceholder(OPPONENT_RUNNER_PLACEHOLDER)).toBe(true);
+    expect(isTrackablePlayer(OPPONENT_RUNNER_PLACEHOLDER)).toBe(false);
+    expect(opponentRunnerLabel("Waterloo Warriors")).toBe("Waterloo Warriors Ball Carrier");
+    expect(displayPlayerName(OPPONENT_RUNNER_PLACEHOLDER, "Waterloo Warriors")).toBe(
+      "Waterloo Warriors Ball Carrier"
+    );
+
+    const runSentence = formatPlaySentence(
+      {
+        playType: "Run",
+        passOutcome: "Gain",
+        runnerPlayerId: OPPONENT_RUNNER_PLACEHOLDER,
+        possessionTeamId: "opponent_waterloo",
+        defenders: ["Alexxandria Olivier"],
+      } as any,
+      { homeTeamName: "York Lions", awayTeamName: "Waterloo Warriors", homeTeamId: "york_lions", downsPerSeries: 4 }
+    );
+    expect(runSentence).toContain("Waterloo Warriors Ball Carrier rush for positive gain");
+    expect(runSentence).toContain("Flagged by Alexxandria Olivier");
   });
 });
