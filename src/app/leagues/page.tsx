@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { collection, query, limit, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import LeagueHeader from "@/components/LeagueHeader";
@@ -44,13 +46,82 @@ import {
 } from "lucide-react";
 
 export default function LeagueDirectoryPage() {
-  const { userLeagues, settings, activeLeagueId } = useLeague();
+  const { userLeagues, settings, activeLeagueId, switchLeague } = useLeague();
   const { user } = useAuth();
 
-  // Master catalog
+  // Remote Firestore Leagues & Loading State
+  const [remoteLeagues, setRemoteLeagues] = useState<any[]>([]);
+  const [isLoadingRemote, setIsLoadingRemote] = useState<boolean>(true);
+
+  // Quick Category Filter ("all" | "live" | "my")
+  const [selectedCategory, setSelectedCategory] = useState<"all" | "live" | "my">("all");
+
+  useEffect(() => {
+    let isCurrent = true;
+    async function fetchLeagues() {
+      try {
+        setIsLoadingRemote(true);
+        const leaguesQuery = query(collection(db, "leagues"), limit(100));
+        const leaguesSnap = await getDocs(leaguesQuery);
+
+        let teamsCountMap: Record<string, number> = {};
+        try {
+          const teamsSnap = await getDocs(query(collection(db, "teams"), limit(300)));
+          if (teamsSnap && Array.isArray(teamsSnap.docs)) {
+            teamsSnap.docs.forEach((docSnap) => {
+              const data = docSnap.data();
+              const lid = data.leagueId;
+              if (lid) {
+                teamsCountMap[lid] = (teamsCountMap[lid] || 0) + 1;
+              }
+            });
+          }
+        } catch {
+          // ignore team count query errors in mocked/offline modes
+        }
+
+        if (isCurrent && leaguesSnap && Array.isArray(leaguesSnap.docs)) {
+          const list = leaguesSnap.docs
+            .map((docSnap) => {
+              const data = docSnap.data() as Record<string, any>;
+              return {
+                id: docSnap.id,
+                ...data,
+                teamCount:
+                  teamsCountMap[docSnap.id] ??
+                  data.teamCount ??
+                  data.subscription?.teamCount ??
+                  0,
+              };
+            })
+            .filter((l: Record<string, any>) => l.visibility !== "private" && l.id !== "league_private_live");
+
+          setRemoteLeagues(list);
+        }
+      } catch (err) {
+        console.warn("Notice: could not load Firestore leagues directly (offline/mocked):", err);
+      } finally {
+        if (isCurrent) setIsLoadingRemote(false);
+      }
+    }
+
+    fetchLeagues();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  // Master catalog merging live remote leagues, user leagues, active league settings, and partner circuits
   const catalog = useMemo(() => {
-    return buildDirectoryCatalog(userLeagues, settings);
-  }, [userLeagues, settings]);
+    return buildDirectoryCatalog(userLeagues, settings, remoteLeagues, activeLeagueId);
+  }, [userLeagues, settings, remoteLeagues, activeLeagueId]);
+
+  const liveCount = useMemo(() => catalog.filter((l) => l.isLive).length, [catalog]);
+  const myLeaguesCount = useMemo(() => catalog.filter((l) => l.isUserLeague).length, [catalog]);
+  const totalTeamsCount = useMemo(
+    () => catalog.reduce((acc, l) => acc + (l.teamCount || 0), 0),
+    [catalog]
+  );
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState("");
@@ -131,6 +202,10 @@ export default function LeagueDirectoryPage() {
         };
       })
       .filter((league) => {
+        // Quick Category filter (All vs Live vs My)
+        if (selectedCategory === "live" && !league.isLive) return false;
+        if (selectedCategory === "my" && !league.isUserLeague) return false;
+
         // Search text matching
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
@@ -202,11 +277,19 @@ export default function LeagueDirectoryPage() {
         if (sortBy === "name") {
           return a.name.localeCompare(b.name);
         }
+        // Priority sort: Active -> User created -> Live remote -> Sample
+        if (a.isActive && !b.isActive) return -1;
+        if (!a.isActive && b.isActive) return 1;
+        if (a.isUserLeague && !b.isUserLeague) return -1;
+        if (!a.isUserLeague && b.isUserLeague) return 1;
+        if (a.isLive && !b.isLive) return -1;
+        if (!a.isLive && b.isLive) return 1;
         return 0;
       });
   }, [
     catalog,
     userCoords,
+    selectedCategory,
     searchQuery,
     maxDistanceMiles,
     selectedFormat,
@@ -238,6 +321,7 @@ export default function LeagueDirectoryPage() {
   }, [processedLeagues]);
 
   const handleResetFilters = () => {
+    setSelectedCategory("all");
     setSearchQuery("");
     setSelectedFormat("all");
     setSelectedDivision("all");
@@ -272,15 +356,21 @@ export default function LeagueDirectoryPage() {
           <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 max-w-3xl space-y-4">
+          <div className="relative z-10 max-w-3xl space-y-5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
                 <Globe className="w-3.5 h-3.5" />
                 <span><span className="normal-case">FlagOS</span> League Finder</span>
               </span>
               <span className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs font-mono text-cyan-300">
-                {processedLeagues.length} Available Circuits Near You
+                {processedLeagues.length} Available Circuits
               </span>
+              {liveCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-xs font-mono font-bold text-emerald-300">
+                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                  {liveCount} Live FlagOS {liveCount === 1 ? "League" : "Leagues"}
+                </span>
+              )}
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white leading-tight">
@@ -288,23 +378,42 @@ export default function LeagueDirectoryPage() {
             </h1>
 
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
-              Use our interactive locator to discover flag football leagues tailored to your schedule, location, and competition level. Join as an individual free agent or register a team with certified game officials, live box scores, and digital playbooks.
+              Explore active flag football leagues and discover competitive circuits tailored to your location, schedule, and division. Jump into live team dashboards, view certified box scores, or start your own league.
             </p>
+
+            {/* Commissioner CTA Links */}
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider hover:opacity-95 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+              >
+                <Trophy className="w-4 h-4 text-slate-950" />
+                <span>Create a League</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("live")}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/15 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-cyan-300" />
+                <span>View Live Leagues ({liveCount})</span>
+              </button>
+            </div>
           </div>
 
           {/* Quick Metrics Bar */}
           <div className="mt-8 pt-6 border-t border-white/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
             <div>
-              <span className="text-slate-400 block text-[11px]">Active Venues</span>
-              <span className="text-white font-bold text-base sm:text-lg">{uniqueVenues.length} Facilities</span>
+              <span className="text-slate-400 block text-[11px]">Live Circuits</span>
+              <span className="text-cyan-400 font-bold text-base sm:text-lg">{liveCount} Verified</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[11px]">Format Variety</span>
-              <span className="text-cyan-400 font-bold text-base sm:text-lg">5v5 &amp; 7v7</span>
+              <span className="text-slate-400 block text-[11px]">Total Teams</span>
+              <span className="text-white font-bold text-base sm:text-lg">{totalTeamsCount} Teams</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[11px]">Registration Status</span>
-              <span className="text-emerald-400 font-bold text-base sm:text-lg">Open Spots</span>
+              <span className="text-slate-400 block text-[11px]">Active Facilities</span>
+              <span className="text-emerald-400 font-bold text-base sm:text-lg">{uniqueVenues.length} Facilities</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[11px]">Officials &amp; Stats</span>
@@ -316,7 +425,48 @@ export default function LeagueDirectoryPage() {
         {/* ========================================================= */}
         {/* INTERACTIVE PROXIMITY & LOCATION CONTROL BAR              */}
         {/* ========================================================= */}
-        <section className="bg-white dark:bg-[#0B0F19] rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-lg p-4 sm:p-6 space-y-4 transition-colors">
+        <section id="league-directory-results" className="bg-white dark:bg-[#0B0F19] rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-lg p-4 sm:p-6 space-y-4 transition-colors">
+          {/* Quick Category Switcher Tabs */}
+          <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-slate-200/80 dark:border-white/5">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("all")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                selectedCategory === "all"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-black shadow-sm"
+                  : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              All Circuits ({catalog.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("live")}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                selectedCategory === "live"
+                  ? "bg-cyan-500 text-black font-black shadow-sm shadow-cyan-500/20"
+                  : "bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 border border-cyan-500/20 hover:bg-cyan-500/20"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Live FlagOS Leagues ({liveCount})</span>
+            </button>
+            {myLeaguesCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("my")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  selectedCategory === "my"
+                    ? "bg-purple-600 text-white font-black shadow-sm"
+                    : "bg-purple-500/10 text-purple-800 dark:text-purple-300 border border-purple-500/20 hover:bg-purple-500/20"
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>My Leagues ({myLeaguesCount})</span>
+              </button>
+            )}
+          </div>
+
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
             {/* Search Input */}
             <div className="relative flex-1">
@@ -587,11 +737,17 @@ export default function LeagueDirectoryPage() {
             {processedLeagues.map((league) => (
               <div
                 key={league.id}
-                className="bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 hover:border-cyan-500/50 rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-2xl group relative overflow-hidden"
+                className={`bg-white dark:bg-[#0B0F19] border ${
+                  league.isActive
+                    ? "border-emerald-500 shadow-lg shadow-emerald-500/10"
+                    : league.isLive
+                    ? "border-cyan-500/40 hover:border-cyan-500/70"
+                    : "border-slate-200 dark:border-white/10 hover:border-cyan-500/50"
+                } rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-2xl group relative overflow-hidden`}
               >
                 {/* Top Badge Row */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span
                         className="px-2 py-0.5 rounded text-[10px] font-mono font-black uppercase text-white shadow-sm"
@@ -605,6 +761,23 @@ export default function LeagueDirectoryPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300">
                         {league.division}
                       </span>
+                      {league.isActive && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-black uppercase shadow-sm">
+                          <Sparkles className="w-3 h-3 text-emerald-500" />
+                          Active League
+                        </span>
+                      )}
+                      {!league.isActive && league.isUserLeague && (
+                        <span className="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-[10px] font-mono font-bold uppercase">
+                          My League
+                        </span>
+                      )}
+                      {!league.isActive && !league.isUserLeague && league.isLive && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold uppercase">
+                          <Globe className="w-3 h-3 text-cyan-500" />
+                          Live Circuit
+                        </span>
+                      )}
                     </div>
 
                     {league.distanceMiles !== null && (
@@ -656,6 +829,10 @@ export default function LeagueDirectoryPage() {
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200 dark:border-white/5 text-slate-600 dark:text-neutral-400">
+                      <span className="flex items-center gap-1 font-semibold text-slate-900 dark:text-white">
+                        <Users className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>{league.teamCount} Teams</span>
+                      </span>
                       <span className="flex items-center gap-1 font-medium">
                         <Calendar className="w-3 h-3 text-amber-500" />
                         <span>{league.gameDay}</span>
@@ -709,6 +886,7 @@ export default function LeagueDirectoryPage() {
                     </div>
                   </div>
 
+                  {/* Row 1: Explore Hub & Set Active */}
                   <div className="grid grid-cols-2 gap-2">
                     <Link
                       href={`/league/${league.id}`}
@@ -718,10 +896,42 @@ export default function LeagueDirectoryPage() {
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
 
+                    {league.isActive ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-2.5 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Active</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => switchLeague(league.id)}
+                        className="w-full py-2.5 px-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 font-bold text-xs uppercase tracking-wider text-center border border-cyan-500/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                        title="Switch to this league as your active circuit"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>Set Active</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Row 2: Register & Inquire */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link
+                      href={`/join?league=${league.id}`}
+                      className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-bold text-xs uppercase tracking-wider text-center border border-slate-300 dark:border-white/10 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Users className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Register</span>
+                    </Link>
+
                     <button
                       type="button"
                       onClick={() => setContactingLeague(league)}
-                      className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-900 dark:text-white font-bold text-xs uppercase tracking-wider text-center border border-slate-300 dark:border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 font-bold text-xs uppercase tracking-wider text-center border border-slate-300 dark:border-white/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Mail className="w-3.5 h-3.5 text-cyan-500" />
                       <span>Inquire</span>
@@ -791,27 +1001,46 @@ export default function LeagueDirectoryPage() {
                     {leagues.map((l) => (
                       <div
                         key={l.id}
-                        className="p-4 rounded-2xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 flex items-center justify-between gap-3"
+                        className={`p-4 rounded-2xl bg-slate-50 dark:bg-black/30 border ${
+                          l.isActive
+                            ? "border-emerald-500"
+                            : l.isLive
+                            ? "border-cyan-500/40"
+                            : "border-slate-200 dark:border-white/5"
+                        } flex items-center justify-between gap-3`}
                       >
                         <div className="space-y-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-sm text-slate-900 dark:text-white truncate">
                               {l.name}
                             </span>
                             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-neutral-300">
                               {l.rulesFormat}
                             </span>
+                            {l.isActive && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
+                                Active
+                              </span>
+                            )}
+                            {!l.isActive && l.isLive && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30">
+                                Live
+                              </span>
+                            )}
                           </div>
                           <span className="text-[11px] text-slate-500 dark:text-neutral-400 block truncate">
-                            {l.gameDay} • {l.gameTimeWindow} • ${l.registrationFeePerTeam}/team
+                            {l.teamCount} teams • {l.gameDay} • ${l.registrationFeePerTeam}/team
                           </span>
                         </div>
-                        <Link
-                          href={`/league/${l.id}`}
-                          className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs uppercase tracking-wider shrink-0 transition-all shadow-sm"
-                        >
-                          View Hub
-                        </Link>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Link
+                            href={`/league/${l.id}`}
+                            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-cyan-300 text-white dark:text-black font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-1"
+                          >
+                            <span>Hub</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -828,6 +1057,7 @@ export default function LeagueDirectoryPage() {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/40 text-[11px] font-mono uppercase text-slate-500 dark:text-neutral-400">
                   <th className="py-4 px-4 font-bold">Circuit &amp; Format</th>
+                  <th className="py-4 px-4 font-bold">Teams</th>
                   <th className="py-4 px-4 font-bold">Location &amp; Distance</th>
                   <th className="py-4 px-4 font-bold">Division</th>
                   <th className="py-4 px-4 font-bold">Schedule</th>
@@ -840,10 +1070,30 @@ export default function LeagueDirectoryPage() {
                 {processedLeagues.map((l) => (
                   <tr key={l.id} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors">
                     <td className="py-4 px-4">
-                      <div className="font-bold text-slate-900 dark:text-white">{l.name}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-slate-900 dark:text-white">{l.name}</span>
+                        {l.isActive && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
+                            Active
+                          </span>
+                        )}
+                        {!l.isActive && l.isUserLeague && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold uppercase bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30">
+                            My League
+                          </span>
+                        )}
+                        {!l.isActive && !l.isUserLeague && l.isLive && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold uppercase bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30">
+                            Live
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[11px] text-cyan-600 dark:text-cyan-400 font-mono font-medium">
                         {l.rulesFormat}
                       </span>
+                    </td>
+                    <td className="py-4 px-4 font-bold text-slate-900 dark:text-white">
+                      {l.teamCount} Teams
                     </td>
                     <td className="py-4 px-4">
                       <div className="text-slate-800 dark:text-neutral-200 font-medium">{l.venue.city}, {l.venue.stateOrProvince}</div>
@@ -865,13 +1115,25 @@ export default function LeagueDirectoryPage() {
                       ${l.individualFee}
                     </td>
                     <td className="py-4 px-4 text-right">
-                      <Link
-                        href={`/league/${l.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-cyan-300 text-white dark:text-black font-black text-[11px] uppercase tracking-wider transition-colors"
-                      >
-                        <span>Hub</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </Link>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {!l.isActive && (
+                          <button
+                            type="button"
+                            onClick={() => switchLeague(l.id)}
+                            className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30 text-[10px] font-bold uppercase transition-colors cursor-pointer"
+                            title="Set as active league"
+                          >
+                            Set Active
+                          </button>
+                        )}
+                        <Link
+                          href={`/league/${l.id}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-cyan-300 text-white dark:text-black font-black text-[11px] uppercase tracking-wider transition-colors"
+                        >
+                          <span>Hub</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

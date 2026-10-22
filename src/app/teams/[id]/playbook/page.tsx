@@ -251,7 +251,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       if (cachedPlaybooks) {
         try {
           const parsed = JSON.parse(cachedPlaybooks);
-          return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+          return Array.isArray(parsed) ? parsed : null;
         } catch {}
         return null;
       }
@@ -265,24 +265,34 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     };
 
     const normalizePlaybooks = (source: Playbook[] | null): Playbook[] => {
-      const hasSavedPlaybooks = !!source && source.length > 0;
-      const books = hasSavedPlaybooks ? source! : createDefaultPlaybooks(teamId, playersPerSide);
-      // Guarantee squad format for every play (respecting book.playersOnField or league rules)
-      return books.map((book) => {
-        const bookSquad = book.playersOnField || playersPerSide;
-        return {
-          ...book,
-          playersOnField: bookSquad,
-          plays: (book.plays || []).map((p) => ({
-            ...p,
-            players: ensureSquadMatchup(p.players || [], p.losY || DEFAULT_LOS_Y, bookSquad),
-          })),
-        };
-      });
+      if (source !== null) {
+        return source.map((book) => {
+          const bookSquad = book.playersOnField || playersPerSide;
+          return {
+            ...book,
+            playersOnField: bookSquad,
+            formations: book.formations || [],
+            plays: (book.plays || []).map((p) => ({
+              ...p,
+              players: ensureSquadMatchup(p.players || [], p.losY || DEFAULT_LOS_Y, bookSquad),
+            })),
+          };
+        });
+      }
+      if (isEmbedded) {
+        return createDefaultPlaybooks(teamId, playersPerSide);
+      }
+      return [];
     };
 
     const selectFirstPlay = (books: Playbook[]) => {
-      if (books.length === 0) return;
+      if (!books || books.length === 0) {
+        setActivePlaybookId("");
+        setSelectedFormationName("");
+        setActivePlayId("");
+        setViewLevel("playbooks");
+        return;
+      }
       const firstBook = books[0];
       setActivePlaybookId(firstBook.id);
       const firstForm = firstBook.formations?.[0]?.name || firstBook.plays?.[0]?.formation || "";
@@ -290,6 +300,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       const matchingPlay = firstBook.plays?.find((p) => p.formation === firstForm) || firstBook.plays?.[0];
       if (matchingPlay) {
         setActivePlayId(matchingPlay.id);
+      } else {
+        setActivePlayId("");
       }
       if (isEmbedded) {
         setViewLevel("editor");
@@ -338,7 +350,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         const remote = await remotePromise;
         if (isStale()) return;
 
-        const loadedPlaybooks = normalizePlaybooks(remote && remote.length > 0 ? remote : readCachedPlaybooks());
+        const sourcePlaybooks = remote !== null ? remote : readCachedPlaybooks();
+        const loadedPlaybooks = normalizePlaybooks(sourcePlaybooks);
         const loadedSnapshot = JSON.stringify(loadedPlaybooks);
 
         if (typeof window !== "undefined") {
@@ -513,17 +526,24 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       return;
     }
     if (!hasEditAccess) return;
-    if (playbooks.length <= 1) {
-      alert("A team must maintain at least one playbook.");
-      return;
-    }
     const bookToDelete = playbooks.find((b) => b.id === bookId);
-    if (!confirm(`Are you sure you want to delete "${bookToDelete?.title}"? All formations and plays within it will be deleted.`)) {
+    if (!confirm(`Are you sure you want to delete "${bookToDelete?.title || "this playbook"}"? All formations and plays within it will be deleted.`)) {
       return;
     }
     const nextBooks = playbooks.filter((b) => b.id !== bookId);
     setPlaybooks(nextBooks);
-    setActivePlaybookId(nextBooks[0].id);
+    if (nextBooks.length > 0) {
+      setActivePlaybookId(nextBooks[0].id);
+      const firstForm = nextBooks[0].formations?.[0]?.name || "";
+      setSelectedFormationName(firstForm);
+      const matchingPlay = nextBooks[0].plays?.find((p) => p.formation === firstForm) || nextBooks[0].plays?.[0];
+      setActivePlayId(matchingPlay?.id || "");
+    } else {
+      setActivePlaybookId("");
+      setSelectedFormationName("");
+      setActivePlayId("");
+      setViewLevel("playbooks");
+    }
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem(`flagos_playbooks_${teamId}`, JSON.stringify(nextBooks));
@@ -568,19 +588,16 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const handleDeleteFormation = (formationName: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!activePlaybook) return;
-    if (activePlaybook.formations.length <= 1) {
-      alert("A playbook must have at least one formation.");
-      return;
-    }
     if (!confirm(`Are you sure you want to delete formation "${formationName}" and its plays?`)) {
       return;
     }
 
+    const nextFormations = activePlaybook.formations.filter((f) => f.name !== formationName);
+    const nextPlays = activePlaybook.plays.filter((p) => p.formation !== formationName);
+
     setPlaybooks((prev) => {
       const next = prev.map((book) => {
         if (book.id === activePlaybook.id) {
-          const nextFormations = book.formations.filter((f) => f.name !== formationName);
-          const nextPlays = book.plays.filter((p) => p.formation !== formationName);
           return { ...book, formations: nextFormations, plays: nextPlays };
         }
         return book;
@@ -594,9 +611,13 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       return next;
     });
 
-    const remaining = activePlaybook.formations.filter((f) => f.name !== formationName);
-    if (remaining.length > 0) {
-      setSelectedFormationName(remaining[0].name);
+    if (nextFormations.length > 0) {
+      setSelectedFormationName(nextFormations[0].name);
+      const remainingPlay = nextPlays.find((p) => p.formation === nextFormations[0].name) || nextPlays[0];
+      setActivePlayId(remainingPlay?.id || "");
+    } else {
+      setSelectedFormationName("");
+      setActivePlayId("");
     }
   };
 
@@ -704,10 +725,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Delete Play
   const handleDeletePlay = (idToDelete: string) => {
     if (!hasEditAccess || !activePlaybook) return;
-    if (activePlaybook.plays.length <= 1) {
-      alert("A playbook must have at least one play diagram.");
-      return;
-    }
     if (!confirm("Are you sure you want to delete this play?")) return;
 
     setPlaybooks((prev) => {
@@ -731,7 +748,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       setActivePlayId(remainingInFormation[0].id);
     } else {
       const remainingTotal = activePlaybook.plays.filter((p) => p.id !== idToDelete);
-      if (remainingTotal.length > 0) setActivePlayId(remainingTotal[0].id);
+      if (remainingTotal.length > 0) {
+        setActivePlayId(remainingTotal[0].id);
+      } else {
+        setActivePlayId("");
+        if (viewLevel === "editor") {
+          setViewLevel("plays");
+        }
+      }
     }
   };
 
@@ -1291,71 +1315,99 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </span>
             </div>
 
-            <div data-tour="playbook-cards-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {playbooks.map((book) => {
-                const isOffense = book.type === "offense";
-                return (
-                  <div
-                    key={book.id}
-                    onClick={() => {
-                      setActivePlaybookId(book.id);
-                      if (book.formations.length > 0) {
-                        setSelectedFormationName(book.formations[0].name);
-                      }
-                      setViewLevel("formations");
+            {playbooks.length === 0 ? (
+              <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-8 sm:p-12 text-center text-neutral-400 shadow-xl">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-neutral-500 mb-4 shadow-inner">
+                  <BookOpen className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-black uppercase text-white mb-2">No Playbooks Created Yet</h3>
+                <p className="text-xs sm:text-sm text-neutral-400 max-w-md mx-auto mb-6 leading-relaxed">
+                  {hasEditAccess
+                    ? "New teams start with an empty playbook canvas. Create your first offensive or defensive playbook to start designing custom formations and plays."
+                    : "Your coaching staff has not created any playbooks for this team yet."}
+                </p>
+                {hasEditAccess && (
+                  <button
+                    type="button"
+                    data-testid="create-first-playbook-btn"
+                    onClick={() => setIsCreatePlaybookOpen(true)}
+                    className="px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg hover:opacity-90 inline-flex items-center gap-2 cursor-pointer"
+                    style={{
+                      background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+                      color: getReadableTextColor(palette.primary, "#000000"),
                     }}
-                    className="bg-[#0B0F19] hover:bg-[#0E1424] border border-white/10 hover:border-cyan-500/50 rounded-3xl p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-xl hover:shadow-cyan-500/10 group space-y-5"
                   >
-                    <div>
-                      {/* Card Header & Badge */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 border ${
-                              isOffense
-                                ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
-                                : "bg-purple-500/10 text-purple-300 border-purple-500/30"
-                            }`}
-                          >
-                            {isOffense ? <Zap className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
-                            <span>{isOffense ? "Offensive Playbook" : "Defensive Playbook"}</span>
-                          </span>
-
-                          <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold uppercase bg-white/5 border border-white/10 text-neutral-300">
-                            {book.playersOnField || playersPerSide}v{book.playersOnField || playersPerSide}
-                          </span>
-                        </div>
-
-                        {hasEditAccess && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              data-tour="edit-playbook-btn"
-                              data-testid={`edit-playbook-btn-${book.id}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingPlaybook(book);
-                                setIsEditPlaybookOpen(true);
-                              }}
-                              className="p-1.5 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors"
-                              title="Edit playbook details"
+                    <Plus className="w-4 h-4" />
+                    <span>Create First Playbook</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div data-tour="playbook-cards-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {playbooks.map((book) => {
+                  const isOffense = book.type === "offense";
+                  return (
+                    <div
+                      key={book.id}
+                      onClick={() => {
+                        setActivePlaybookId(book.id);
+                        if (book.formations.length > 0) {
+                          setSelectedFormationName(book.formations[0].name);
+                        }
+                        setViewLevel("formations");
+                      }}
+                      className="bg-[#0B0F19] hover:bg-[#0E1424] border border-white/10 hover:border-cyan-500/50 rounded-3xl p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between shadow-xl hover:shadow-cyan-500/10 group space-y-5"
+                    >
+                      <div>
+                        {/* Card Header & Badge */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 border ${
+                                isOffense
+                                  ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
+                                  : "bg-purple-500/10 text-purple-300 border-purple-500/30"
+                              }`}
                             >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            {canDeletePlaybook && playbooks.length > 1 && (
+                              {isOffense ? <Zap className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+                              <span>{isOffense ? "Offensive Playbook" : "Defensive Playbook"}</span>
+                            </span>
+
+                            <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold uppercase bg-white/5 border border-white/10 text-neutral-300">
+                              {book.playersOnField || playersPerSide}v{book.playersOnField || playersPerSide}
+                            </span>
+                          </div>
+
+                          {hasEditAccess && (
+                            <div className="flex items-center gap-1">
                               <button
                                 type="button"
-                                data-testid={`delete-playbook-btn-${book.id}`}
-                                onClick={(e) => handleDeletePlaybook(book.id, e)}
-                                className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-white/10 transition-colors"
-                                title="Delete playbook"
+                                data-tour="edit-playbook-btn"
+                                data-testid={`edit-playbook-btn-${book.id}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingPlaybook(book);
+                                  setIsEditPlaybookOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors"
+                                title="Edit playbook details"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Edit2 className="w-4 h-4" />
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                              {canDeletePlaybook && (
+                                <button
+                                  type="button"
+                                  data-testid={`delete-playbook-btn-${book.id}`}
+                                  onClick={(e) => handleDeletePlaybook(book.id, e)}
+                                  className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-white/10 transition-colors"
+                                  title="Delete playbook"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
                       <h3 className="text-xl font-black uppercase text-white group-hover:text-cyan-400 transition-colors">
                         {book.title}
@@ -1411,8 +1463,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
         {/* ============================================================== */}
         {/* LEVEL 2: FORMATIONS CARDS DASHBOARD (WITH PRE-SNAP SPOTS)       */}
@@ -1443,6 +1496,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       title="Edit playbook details"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {canDeletePlaybook && (
+                    <button
+                      type="button"
+                      data-testid="delete-active-playbook-btn"
+                      onClick={(e) => handleDeletePlaybook(activePlaybook.id, e)}
+                      className="p-1 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-white/10 transition-colors cursor-pointer"
+                      title="Delete this playbook"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </span>
@@ -1562,16 +1626,15 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
-                            {activePlaybook.formations.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteFormation(formation.name, e)}
-                                className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-white/10"
-                                title="Delete formation"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              data-testid={`delete-formation-btn-${formation.id || formation.name}`}
+                              onClick={(e) => handleDeleteFormation(formation.name, e)}
+                              className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-white/10"
+                              title="Delete formation"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1704,16 +1767,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                         >
                           <Copy className="w-4 h-4" />
                         </button>
-                        {activePlaybook.plays.length > 1 && (
-                          <button
-                            type="button"
-                            aria-label={`Delete ${play.name}`}
-                            onClick={() => handleDeletePlay(play.id)}
-                            className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-white/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          aria-label={`Delete ${play.name}`}
+                          onClick={() => handleDeletePlay(play.id)}
+                          className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-white/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1779,14 +1840,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                         <Copy className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    {hasEditAccess && playsInActiveFormation.length > 1 && (
+                    {hasEditAccess && (
                       <button
                         type="button"
                         onClick={() => handleDeletePlay(activePlay.id)}
                         className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-white/10"
                         title="Delete Play"
                         aria-label="Delete Play"
-                    >
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}

@@ -463,6 +463,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     mockAuth.isPlayer = true;
     mockAuth.playerTeamId = "team_apex";
     mockAuth.isTeamAdmin = vi.fn(() => false);
+    localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify(createDefaultPlaybooks("team_apex")));
 
     delete (window as any).location;
     window.location = new URL("http://localhost:3000/teams/team_apex/playbook?level=plays") as any;
@@ -477,5 +478,81 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       // Player does not see edit/save controls
       expect(screen.queryByRole("button", { name: /^Save$/i })).toBeNull();
     });
+  });
+
+  it("NEW TEAMS: New teams (independent or in a league) have 0 playbooks autoloaded", async () => {
+    // Team with no saved playbooks in Firestore or localStorage
+    mockAuth.isTeamAdmin = vi.fn((tid?: string) => tid === "team_apex");
+    mockAuth.canManageTeam = vi.fn((tid?: string) => tid === "team_apex");
+
+    await renderPage("team_apex");
+
+    await waitFor(() => {
+      expect(screen.getByText("Existing Playbooks (0/5):")).toBeInTheDocument();
+      expect(screen.getByText("No Playbooks Created Yet")).toBeInTheDocument();
+      expect(screen.getByText(/New teams start with an empty playbook canvas/i)).toBeInTheDocument();
+      expect(screen.getByTestId("create-first-playbook-btn")).toBeInTheDocument();
+    });
+  });
+
+  it("DELETE ALL PLAYBOOKS: Coach can delete all playbooks down to 0", async () => {
+    mockAuth.user = { uid: "test-user-1", email: "dexter@yuwffl.ca" };
+    const [book] = createDefaultPlaybooks("team_apex");
+    localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify([book]));
+    mockAuth.isTeamAdmin = vi.fn((tid?: string) => tid === "team_apex");
+    mockAuth.canManageTeam = vi.fn((tid?: string) => tid === "team_apex");
+
+    await renderPage("team_apex");
+
+    expect(screen.getByRole("heading", { name: book.title })).toBeInTheDocument();
+    const deleteBtn = screen.getByTestId(`delete-playbook-btn-${book.id}`);
+    expect(deleteBtn).toBeInTheDocument();
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("Existing Playbooks (0/5):")).toBeInTheDocument();
+      expect(screen.getByText("No Playbooks Created Yet")).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: book.title })).toBeNull();
+    });
+
+    const cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
+    expect(cached).toEqual([]);
+    confirmSpy.mockRestore();
+  });
+
+  it("DELETE ALL FORMATIONS: Coach can delete all formations down to 0 in a playbook", async () => {
+    const [book] = createDefaultPlaybooks("team_apex");
+    // Leave only 1 formation
+    const formName = book.formations[0].name;
+    book.formations = [book.formations[0]];
+    book.plays = book.plays.filter((p) => p.formation === formName);
+    localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify([book]));
+
+    mockAuth.isTeamAdmin = vi.fn((tid?: string) => tid === "team_apex");
+    mockAuth.canManageTeam = vi.fn((tid?: string) => tid === "team_apex");
+
+    await renderPage("team_apex");
+
+    // Drill into formations
+    fireEvent.click(screen.getByRole("heading", { name: book.title }));
+    expect(screen.getByRole("heading", { name: formName })).toBeInTheDocument();
+
+    // Verify delete button is present even with only 1 formation
+    const deleteFormBtn = screen.getByTestId(`delete-formation-btn-${book.formations[0].id || formName}`);
+    expect(deleteFormBtn).toBeInTheDocument();
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(deleteFormBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText("No Formations Created Yet")).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: formName })).toBeNull();
+    });
+
+    const cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
+    expect(cached[0].formations).toHaveLength(0);
+    confirmSpy.mockRestore();
   });
 });
