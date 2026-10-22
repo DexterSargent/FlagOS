@@ -56,7 +56,7 @@ export default function AccountPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-12">
+    <div className="min-h-screen bg-black text-white px-6 py-12">
       <div className="mx-auto max-w-xl space-y-6">
         <Link href="/login" className="text-sm text-neutral-400 hover:text-white">Back to sign-in settings</Link>
         <h1 className="text-3xl font-black">Account &amp; Connected Emails</h1>
@@ -124,6 +124,6 @@ export default function AccountPage() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

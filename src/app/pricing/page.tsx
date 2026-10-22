@@ -485,7 +485,7 @@ export default function PricingPage() {
       </header>
 
       {/* MAIN PRICING CONTENT */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-16 flex-1 w-full max-w-full overflow-hidden relative z-10 space-y-12 sm:space-y-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-16 flex-1 w-full max-w-full overflow-hidden relative z-10 space-y-12 sm:space-y-16">
         {/* Page Hero Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono font-bold uppercase tracking-widest">
@@ -1074,7 +1074,7 @@ export default function PricingPage() {
             Explore Active Demo
           </Link>
         </div>
-      </main>
+      </div>
 
       {/* DEDICATED MARKETING FOOTER */}
       <footer className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400 mt-12">

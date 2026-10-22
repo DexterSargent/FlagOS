@@ -311,7 +311,7 @@ export default function PlayerProfilePage() {
         <div className="absolute bottom-20 right-10 w-[35rem] h-[35rem] bg-blue-950/25 rounded-full blur-[180px]"></div>
       </div>
 
-      <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 md:p-8 space-y-8 relative z-10 flex-1">
+      <div className="max-w-7xl mx-auto w-full p-4 sm:p-6 md:p-8 space-y-8 relative z-10 flex-1">
         <Link
           href={effectiveTeamId ? `/teams/${effectiveTeamId}` : "/"}
           className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 text-xs sm:text-sm font-semibold max-w-full"
@@ -882,7 +882,7 @@ export default function PlayerProfilePage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
     </div>
   );

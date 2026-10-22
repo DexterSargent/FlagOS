@@ -1652,7 +1652,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         </button>
       </div>
 
-      <main className="flex-1 min-h-0 p-1.5 sm:p-2 md:p-3 flex flex-col overflow-hidden relative">
+      <div className="flex-1 min-h-0 p-1.5 sm:p-2 md:p-3 flex flex-col overflow-hidden relative">
         {/* SPOT BALL OVERLAY */}
         {!isBallSpotted && step !== 'CONVERSION' && step !== 'HALFTIME' && step !== 'GAME_OVER' && !isTimeoutActive && (
           <div className="absolute inset-0 z-40 bg-black/90 backdrop-blur-lg flex items-center justify-center p-2 sm:p-4 md:p-8 overflow-hidden">
@@ -2813,7 +2813,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             )}
           </PlayEntryWizard>
         )}
-      </main>
+      </div>
 
       {/* PLAY LOG DRAWER MODAL */}
       {isPlayLogDrawerOpen && (

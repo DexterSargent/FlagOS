@@ -335,7 +335,7 @@ export default function LeagueDirectoryPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#07090E] text-slate-900 dark:text-white transition-colors duration-200">
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8">
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8">
         {/* ========================================================= */}
         {/* HERO SECTION & DIRECTORY VALUE PROPOSITION                */}
         {/* ========================================================= */}
@@ -1258,7 +1258,7 @@ export default function LeagueDirectoryPage() {
             Create Your League
           </Link>
         </section>
-      </main>
+      </div>
 
       {/* ========================================================= */}
       {/* CONTACT COMMISSIONER INQUIRY MODAL                        */}

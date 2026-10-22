@@ -428,7 +428,7 @@ export default function FlagOSPlatformLandingPage() {
 
 
       {/* HERO SECTION */}
-      <main className="flex-1 w-full relative z-10">
+      <div className="flex-1 w-full relative z-10">
         <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-5 md:pt-16 md:pb-5 text-center space-y-6 sm:space-y-8">
           {/* Official Logo */}
           <div className="flex flex-col items-center justify-center pt-1 pb-1">
@@ -1117,7 +1117,7 @@ export default function FlagOSPlatformLandingPage() {
             )}
           </section>
         )}
-      </main>
+      </div>
 
       <footer className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">

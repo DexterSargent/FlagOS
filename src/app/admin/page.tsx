@@ -562,15 +562,15 @@ export default function PlatformAdminPage() {
 
   if (authLoading || (!user && !isPlatformAdmin)) {
     return (
-      <main className="flex min-h-[70vh] items-center justify-center bg-neutral-950 text-neutral-300">
+      <div className="flex min-h-[70vh] items-center justify-center bg-neutral-950 text-neutral-300">
         <LoaderCircle className="h-6 w-6 animate-spin text-cyan-400" aria-label="Checking access" />
-      </main>
+      </div>
     );
   }
 
   if (!isPlatformAdmin) {
     return (
-      <main className="flex min-h-[70vh] items-center justify-center bg-neutral-950 px-6 text-white">
+      <div className="flex min-h-[70vh] items-center justify-center bg-neutral-950 px-6 text-white">
         <section className="max-w-md rounded-3xl border border-amber-500/20 bg-neutral-900 p-8 text-center">
           <LockKeyhole className="mx-auto h-9 w-9 text-amber-400" />
           <h1 className="mt-4 text-xl font-black">Restricted platform area</h1>
@@ -584,12 +584,12 @@ export default function PlatformAdminPage() {
             </button>
           )}
         </section>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-4 py-8 text-white sm:px-6 lg:px-10">
+    <div className="min-h-screen bg-neutral-950 px-4 py-8 text-white sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -1362,6 +1362,6 @@ export default function PlatformAdminPage() {
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

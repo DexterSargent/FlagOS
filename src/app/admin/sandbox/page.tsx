@@ -144,10 +144,10 @@ export default function Sandbox() {
 
   if (!isPlatformAdmin) {
     return (
-      <main className="min-h-screen bg-black text-white p-12">
+      <div className="min-h-screen bg-black text-white p-12">
         <h1 className="text-2xl font-bold">Access denied</h1>
         <p className="mt-2 text-neutral-400">This tool is available to the platform administrator only.</p>
-      </main>
+      </div>
     );
   }
 

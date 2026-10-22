@@ -499,7 +499,7 @@ export default function MyStoryPage() {
           </div>
 
           {/* Narrative Articles Column */}
-          <main className="lg:col-span-8 space-y-16 sm:space-y-20">
+          <div className="lg:col-span-8 space-y-16 sm:space-y-20">
             {STORY_SECTIONS.map((section, idx) => {
               const currentPhoto = photos[section.id];
 
@@ -697,7 +697,7 @@ export default function MyStoryPage() {
                 Back to FlagOS
               </Link>
             </footer>
-          </main>
+          </div>
         </div>
       </div>
 
