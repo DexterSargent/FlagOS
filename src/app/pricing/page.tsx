@@ -31,6 +31,7 @@ import { createSecureRecord } from "@/lib/secureWrites";
 import { FlagOSText } from "@/components/FlagOSText";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
+import AccountMenu from "@/components/AccountMenu";
 
 export default function PricingPage() {
   const router = useRouter();
@@ -393,7 +394,7 @@ export default function PricingPage() {
                 <span className="hidden sm:inline">League Portal:</span>
                 <span className="text-cyan-300 truncate max-w-[80px] sm:max-w-none">{settings?.shortcode || "Active"}</span>
               </Link>
-            ) : user ? (<Link href="/login" className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-white hover:text-[#3CA505] text-xs font-semibold transition-colors">Account</Link>) : (
+            ) : user ? null : (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <Link
                 href="/login"
@@ -417,7 +418,7 @@ export default function PricingPage() {
               </div>
             )}
 
-            {user && (<button onClick={() => void logout()} className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-white/5 hover:bg-red-500/10 text-neutral-300 hover:text-red-300 border border-white/10 text-xs font-bold transition-colors cursor-pointer shrink-0" aria-label="Sign out" title="Sign out"><LogOut className="w-3.5 h-3.5" /><span className="hidden sm:inline">Sign Out</span></button>)}
+            {user && <AccountMenu />}
 
 
             {/* Mobile Menu Toggle Button */}

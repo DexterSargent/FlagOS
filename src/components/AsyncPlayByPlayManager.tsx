@@ -72,6 +72,8 @@ import {
   isTrackablePlayer,
 } from "@/lib/opponentPlaceholder";
 import GameTeamStats from "@/components/match/GameTeamStats";
+import SiteControls from "@/components/SiteControls";
+import PoweredByFooter from "@/components/PoweredByFooter";
 
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
@@ -1209,6 +1211,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
             Team Stats
           </button>
         </div>
+        {!isEmbedded && <SiteControls />}
       </header>
 
       {/* CLOCKLESS SCOREBOARD HEADER (TIMERS & TIMEOUTS REMOVED) */}
@@ -2087,6 +2090,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           </div>
         </div>
       )}
+      {!isEmbedded && <PoweredByFooter compact />}
     </div>
   );
 }

@@ -9,6 +9,8 @@ import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
 const InteractiveDemoGuard = dynamic(() => import("./InteractiveDemoGuard"), { ssr: false });
 const LeagueHeader = dynamic(() => import("./LeagueHeader"));
 const LeagueFooter = dynamic(() => import("./LeagueFooter"));
+const SiteHeader = dynamic(() => import("./SiteHeader"));
+const PoweredByFooter = dynamic(() => import("./PoweredByFooter"));
 
 import { useAuth } from "@/lib/authContext";
 
@@ -27,11 +29,10 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     setIsEmbedded(isEmbedQuery || (isIframe && isEmbedQuery));
   }, [pathname, searchParams]);
 
-  // Certain views require full-screen chrome-less layout:
+  // Views that skip the league header/footer entirely:
   // 1. Embedded preview iframe (e.g. interactive landing feature frame)
-  // 2. Play-by-play live game scorekeeper operator console
-  // 3. Dedicated authentication / login portal
-  // 4. Standalone admin sandbox
+  // 2. Play-by-play views (they render their own controls inside the console header)
+  // 3. Login portal and admin sandbox (they get the minimal site header instead)
   const isPlayByPlay = pathname ? pathname.includes("/play-by-play") : false;
   const isLogin = pathname === "/login";
   const isAdminSandbox = pathname === "/admin/sandbox";
@@ -40,8 +41,9 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const isMyStoryPage = pathname === "/my-story";
   const hideChrome = isEmbedded || isPlayByPlay || isLogin || isAdminSandbox;
 
-  // Individual team portals and routes (team hub, roster, playbook, schedule, stats, all teams)
-  const isTeamRoute = Boolean(pathname?.startsWith("/teams"));
+  // Individual team portals (team hub, roster, playbook, schedule, stats) carry their own team nav.
+  // The league-wide /teams directory is a league page and keeps the league header/footer.
+  const isTeamRoute = Boolean(pathname?.startsWith("/teams/"));
 
   // User is logged in as an individual team (coach/team admin or rostered player, not a league commissioner)
   const isLoggedInAsIndividualTeam =
@@ -57,6 +59,9 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/league") ||
     pathname === "/schedule" ||
     pathname === "/stats" ||
+    pathname === "/teams" ||
+    // League box-score pages (live play-by-play stays chrome-less via hideChrome)
+    pathname?.startsWith("/matches/") ||
     pathname?.startsWith("/join")
   );
 
@@ -74,14 +79,27 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     !isLoggedInAsIndividualTeam &&
     isLeagueRoute;
 
+  // Every other page still gets the theme toggle, account menu and "Powered by FlagOS" footer.
+  // Marketing pages, team portals and play-by-play views render these inside their own chrome.
+  const showSiteChrome =
+    !isEmbedded &&
+    !showLeagueNav &&
+    !isLandingPage &&
+    !isPricingPage &&
+    !isMyStoryPage &&
+    !isTeamRoute &&
+    !isPlayByPlay;
+
   return (
     <div className="flex flex-col min-h-screen w-full max-w-full overflow-x-clip">
       <RoleSwitcherBar />
       {showLeagueNav && <LeagueHeader />}
+      {showSiteChrome && <SiteHeader />}
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-full overflow-x-clip">
         {children}
       </main>
       {showLeagueNav && <LeagueFooter />}
+      {showSiteChrome && <PoweredByFooter />}
       {isEmbedded && <InteractiveDemoGuard />}
       <LeagueCustomizerModal />
     </div>

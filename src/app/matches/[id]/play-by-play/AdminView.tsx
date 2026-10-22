@@ -4,6 +4,7 @@ import { useState, useEffect, use, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Zap, RotateCcw, Flag, Maximize, Minimize, Play, Pause, AlertCircle, Timer, Save, Plus, Minus, X, ChevronRight, ChevronDown, ChevronUp, Undo, AlertTriangle, Shield, Check } from "lucide-react";
+import SiteControls from "@/components/SiteControls";
 import { db } from "@/lib/firebase";
 import { createSecureRecord } from "@/lib/secureWrites";
 import { collection, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
@@ -1616,6 +1617,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           </div>
+          {!isEmbedded && (
+            <div className="hidden md:block shrink-0">
+              <SiteControls />
+            </div>
+          )}
         </div>
       </header>
 

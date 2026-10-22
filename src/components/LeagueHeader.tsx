@@ -35,6 +35,7 @@ import {
 import { renderFlagOS } from "@/components/FlagOSText";
 import { FlagOSLogo, FLAGOS_LOGO, isDefaultFlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
+import AccountMenu from "@/components/AccountMenu";
 import { useTheme } from "@/lib/themeContext";
 
 interface LeagueHeaderProps {
@@ -521,17 +522,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               </Link>
             )}
 
-            {user && !isDemoLeague && (
-              <button
-                onClick={() => void logout()}
-                className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-red-500/10 text-slate-700 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-400 border border-slate-200 dark:border-white/10 text-xs font-bold transition-colors cursor-pointer shrink-0"
-                title="Sign out"
-                aria-label="Sign out"
-              >
-                <LogOut className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden xl:inline">Sign Out</span>
-              </button>
-            )}
+            {user && !isDemoLeague && <AccountMenu />}
 
             {/* Mobile Menu Toggle */}
             <button

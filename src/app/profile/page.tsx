@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  ChevronLeft,
   User,
   Shield,
   BookOpen,
@@ -318,6 +319,14 @@ export default function PlayerProfilePage() {
       </div>
 
       <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 md:p-8 space-y-8 relative z-10 flex-1">
+        <Link
+          href={effectiveTeamId ? `/teams/${effectiveTeamId}` : "/"}
+          className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 text-xs sm:text-sm font-semibold max-w-full"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1 shrink-0" />
+          <span className="truncate">{effectiveTeamId ? `Back to ${teamName}` : "Home"}</span>
+        </Link>
+
         {/* ============================================================== */}
         {/* TOP DEMO / ROLE SWITCHER BANNER (IF ADMIN OR PREVIEWING)       */}
         {/* ============================================================== */}

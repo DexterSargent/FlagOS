@@ -63,6 +63,8 @@ import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
 import { isDemoTeamId } from "@/lib/demoSandboxRuntime";
+import TeamNavBar from "@/components/team/TeamNavBar";
+import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
 type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
 
@@ -824,6 +826,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (isBlockedLeagueAdmin) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-red-500/30 rounded-3xl shadow-2xl space-y-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-red-500/5 via-transparent to-transparent pointer-events-none" />
@@ -865,6 +868,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
+        <TeamPortalFooter section="Team Playbook" />
       </div>
     );
   }
@@ -873,6 +877,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (!isEmbedded && isOpponentCoach) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-amber-500/30 rounded-3xl shadow-2xl space-y-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
@@ -905,6 +910,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
+        <TeamPortalFooter section="Team Playbook" />
       </div>
     );
   }
@@ -913,6 +919,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (!isEmbedded && isOpponentPlayer) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-amber-500/30 rounded-3xl shadow-2xl space-y-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
@@ -943,6 +950,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
+        <TeamPortalFooter section="Team Playbook" />
       </div>
     );
   }
@@ -951,6 +959,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (!isEmbedded && !canViewPlaybook) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+        <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-cyan-500/30 rounded-3xl shadow-2xl space-y-6">
             <div className="w-16 h-16 mx-auto rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
@@ -981,6 +990,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
+        <TeamPortalFooter section="Team Playbook" />
       </div>
     );
   }
@@ -1074,9 +1084,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         <div className="absolute bottom-20 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[160px] opacity-20 animate-pulse delay-1000" style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }} />
       </div>
 
+      <TeamNavBar
+        teamId={teamId}
+        className={viewLevel === "editor" ? "max-sm:hidden [@media(max-height:450px)]:hidden" : ""}
+      />
+
       <div className={`mx-auto ${
         viewLevel === "editor"
-          ? "max-w-[1600px] p-1.5 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 h-full min-h-0 flex-1 overflow-hidden"
+          ? "max-w-[1600px] p-1.5 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 min-h-0 flex-1 overflow-hidden"
           : isEmbedded
           ? "max-w-7xl space-y-3 p-2 sm:p-3 flex-1"
           : "max-w-7xl space-y-6 p-4 sm:p-6 md:p-8 flex-1"

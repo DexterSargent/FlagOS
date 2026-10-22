@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { collection, query, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -12,8 +12,8 @@ import {
   DirectoryLeague,
   buildDirectoryCatalog,
   calculateDistanceInMiles,
-  REGION_PRESETS,
-  RegionPreset,
+  DIRECTORY_FORMAT_OPTIONS,
+  FormatChoice,
   RulesetFormat,
   LeagueDivision,
   CompetitionTier,
@@ -54,7 +54,7 @@ export default function LeagueDirectoryPage() {
   const [isLoadingRemote, setIsLoadingRemote] = useState<boolean>(true);
 
   // Quick Category Filter ("all" | "live" | "my")
-  const [selectedCategory, setSelectedCategory] = useState<"all" | "live" | "my">("all");
+  const [selectedCategory, setSelectedCategory] = useState<"all" | "my">("all");
 
   useEffect(() => {
     let isCurrent = true;
@@ -125,7 +125,9 @@ export default function LeagueDirectoryPage() {
 
   // Filters State
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFormat, setSelectedFormat] = useState<string>("all");
+  const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
+  const [isFormatDropdownOpen, setIsFormatDropdownOpen] = useState<boolean>(false);
+  const formatDropdownRef = useRef<HTMLDivElement>(null);
   const [selectedDivision, setSelectedDivision] = useState<string>("all");
   const [selectedTier, setSelectedTier] = useState<string>("all");
   const [selectedDay, setSelectedDay] = useState<string>("all");
@@ -144,6 +146,26 @@ export default function LeagueDirectoryPage() {
   const [maxDistanceMiles, setMaxDistanceMiles] = useState<number>(0);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+
+  // Click outside listener for format dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        formatDropdownRef.current &&
+        !formatDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsFormatDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleFormat = (fmtId: string) => {
+    setSelectedFormats((prev) =>
+      prev.includes(fmtId) ? prev.filter((f) => f !== fmtId) : [...prev, fmtId]
+    );
+  };
 
   // Contact Commissioner Modal State
   const [contactingLeague, setContactingLeague] = useState<DirectoryLeague | null>(null);
@@ -176,12 +198,6 @@ export default function LeagueDirectoryPage() {
     );
   };
 
-  const handleSelectRegion = (region: RegionPreset) => {
-    setUserCoords({ lat: region.latitude, lon: region.longitude });
-    setLocationLabel(region.name);
-    setMaxDistanceMiles(region.radiusDefault * 2);
-    setLocationError(null);
-  };
 
   // Filtered & Ranked Leagues
   const processedLeagues = useMemo(() => {
@@ -202,8 +218,7 @@ export default function LeagueDirectoryPage() {
         };
       })
       .filter((league) => {
-        // Quick Category filter (All vs Live vs My)
-        if (selectedCategory === "live" && !league.isLive) return false;
+        // Category filter (All vs My)
         if (selectedCategory === "my" && !league.isUserLeague) return false;
 
         // Search text matching
@@ -228,11 +243,18 @@ export default function LeagueDirectoryPage() {
           }
         }
 
-        // Ruleset format filter
-        if (selectedFormat !== "all") {
-          if (selectedFormat === "5v5" && !league.rulesFormat.includes("5v5")) return false;
-          if (selectedFormat === "7v7" && !league.rulesFormat.includes("7v7")) return false;
-          if (selectedFormat === "contact" && !league.rulesFormat.includes("Contact")) return false;
+        // Ruleset format multi-select filter (4v4 to 8v8)
+        if (selectedFormats.length > 0) {
+          const formatStr = (league.rulesFormat || "").toLowerCase();
+          const matchesAny = selectedFormats.some((fmt) => {
+            const num = parseInt(fmt[0], 10);
+            return (
+              formatStr.includes(fmt.toLowerCase()) ||
+              formatStr.includes(`${num} on ${num}`) ||
+              formatStr.includes(`${num}v${num}`)
+            );
+          });
+          if (!matchesAny) return false;
         }
 
         // Division filter
@@ -292,7 +314,7 @@ export default function LeagueDirectoryPage() {
     selectedCategory,
     searchQuery,
     maxDistanceMiles,
-    selectedFormat,
+    selectedFormats,
     selectedDivision,
     selectedTier,
     selectedDay,
@@ -323,7 +345,7 @@ export default function LeagueDirectoryPage() {
   const handleResetFilters = () => {
     setSelectedCategory("all");
     setSearchQuery("");
-    setSelectedFormat("all");
+    setSelectedFormats([]);
     setSelectedDivision("all");
     setSelectedTier("all");
     setSelectedDay("all");
@@ -392,12 +414,22 @@ export default function LeagueDirectoryPage() {
               </Link>
               <button
                 type="button"
-                onClick={() => setSelectedCategory("live")}
+                onClick={() => setSelectedCategory("all")}
                 className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/15 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 text-cyan-300" />
-                <span>View Live Leagues ({liveCount})</span>
+                <span>All Leagues ({catalog.length})</span>
               </button>
+              {myLeaguesCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("my")}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 font-bold text-xs uppercase tracking-wider transition-all border border-purple-500/30 cursor-pointer"
+                >
+                  <Users className="w-4 h-4 text-purple-300" />
+                  <span>My Leagues ({myLeaguesCount})</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -426,45 +458,32 @@ export default function LeagueDirectoryPage() {
         {/* INTERACTIVE PROXIMITY & LOCATION CONTROL BAR              */}
         {/* ========================================================= */}
         <section id="league-directory-results" className="bg-white dark:bg-[#0B0F19] rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-lg p-4 sm:p-6 space-y-4 transition-colors">
-          {/* Quick Category Switcher Tabs */}
+          {/* Category Switcher Tabs: All Leagues vs My Leagues */}
           <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-slate-200/80 dark:border-white/5">
             <button
               type="button"
               onClick={() => setSelectedCategory("all")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedCategory === "all"
                   ? "bg-slate-900 text-white dark:bg-white dark:text-black shadow-sm"
                   : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              All Circuits ({catalog.length})
+              <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
+              <span>All Leagues ({catalog.length})</span>
             </button>
             <button
               type="button"
-              onClick={() => setSelectedCategory("live")}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                selectedCategory === "live"
-                  ? "bg-cyan-500 text-black font-black shadow-sm shadow-cyan-500/20"
-                  : "bg-cyan-500/10 text-cyan-800 dark:text-cyan-300 border border-cyan-500/20 hover:bg-cyan-500/20"
+              onClick={() => setSelectedCategory("my")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                selectedCategory === "my"
+                  ? "bg-purple-600 text-white font-black shadow-sm"
+                  : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Live FlagOS Leagues ({liveCount})</span>
+              <Users className="w-3.5 h-3.5 text-purple-500" />
+              <span>My Leagues ({myLeaguesCount})</span>
             </button>
-            {myLeaguesCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setSelectedCategory("my")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                  selectedCategory === "my"
-                    ? "bg-purple-600 text-white font-black shadow-sm"
-                    : "bg-purple-500/10 text-purple-800 dark:text-purple-300 border border-purple-500/20 hover:bg-purple-500/20"
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                <span>My Leagues ({myLeaguesCount})</span>
-              </button>
-            )}
           </div>
 
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
@@ -535,37 +554,20 @@ export default function LeagueDirectoryPage() {
             </div>
           </div>
 
-          {/* Quick Major Metro Hub Chips */}
-          <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-200 dark:border-white/5 text-xs">
-            <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400 uppercase tracking-wider mr-1 flex items-center gap-1">
-              <Compass className="w-3 h-3 text-cyan-500" />
-              <span>Quick Regions:</span>
-            </span>
-            {REGION_PRESETS.map((reg) => {
-              const isSelected = locationLabel === reg.name;
-              return (
-                <button
-                  key={reg.id}
-                  type="button"
-                  onClick={() => handleSelectRegion(reg)}
-                  className={`px-2.5 py-1 rounded-lg font-medium text-[11px] transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-cyan-500 text-black font-bold shadow-sm"
-                      : "bg-slate-200/60 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 text-slate-700 dark:text-neutral-300"
-                  }`}
-                >
-                  {reg.name}
-                </button>
-              );
-            })}
-
-            {locationLabel && (
-              <span className="ml-auto text-[11px] text-slate-500 dark:text-neutral-400 font-mono flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-emerald-500" />
-                <span>Center: <strong>{locationLabel}</strong></span>
+          {/* Active Proximity Center Indicator */}
+          {locationLabel && (
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-white/5 text-xs">
+              <span className="text-[11px] text-slate-500 dark:text-neutral-400 font-mono flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-cyan-500" />
+                <span>Proximity Anchor: <strong className="text-slate-800 dark:text-white">{locationLabel}</strong></span>
               </span>
-            )}
-          </div>
+              {maxDistanceMiles > 0 && (
+                <span className="text-[11px] font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                  Radius: {maxDistanceMiles} miles
+                </span>
+              )}
+            </div>
+          )}
 
           {locationError && (
             <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs">
@@ -581,19 +583,114 @@ export default function LeagueDirectoryPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Filter Pills Scrollable Row */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-              {/* Format Filter */}
-              <div className="flex items-center gap-1 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1.5 text-xs font-bold shrink-0 shadow-sm">
-                <span className="text-[10px] text-slate-400 uppercase">Format:</span>
-                <select
-                  value={selectedFormat}
-                  onChange={(e) => setSelectedFormat(e.target.value)}
-                  className="bg-transparent text-cyan-600 dark:text-cyan-400 outline-none cursor-pointer"
+              {/* Ruleset Format Multi-Select Dropdown (4v4 to 8v8) */}
+              <div className="relative shrink-0" ref={formatDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsFormatDropdownOpen((prev) => !prev)}
+                  aria-expanded={isFormatDropdownOpen}
+                  aria-haspopup="listbox"
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                    selectedFormats.length > 0
+                      ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-800 dark:text-cyan-300 shadow-sm"
+                      : "bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/10 text-slate-800 dark:text-white hover:border-slate-300 dark:hover:border-white/20 shadow-sm"
+                  }`}
                 >
-                  <option value="all" className="dark:bg-[#0B0F19] text-black dark:text-white">All Formats</option>
-                  <option value="5v5" className="dark:bg-[#0B0F19] text-black dark:text-white">5v5 Non-Contact</option>
-                  <option value="contact" className="dark:bg-[#0B0F19] text-black dark:text-white">5v5 Contact (Jamming)</option>
-                  <option value="7v7" className="dark:bg-[#0B0F19] text-black dark:text-white">7v7 Screen Passing</option>
-                </select>
+                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-neutral-400">Format:</span>
+                  <span className="font-bold">
+                    {selectedFormats.length === 0 || selectedFormats.length === DIRECTORY_FORMAT_OPTIONS.length
+                      ? "All (4v4 – 8v8)"
+                      : selectedFormats.length <= 2
+                      ? selectedFormats.join(", ")
+                      : `${selectedFormats.length} Formats`}
+                  </span>
+                  {selectedFormats.length > 0 && selectedFormats.length < DIRECTORY_FORMAT_OPTIONS.length && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-cyan-500 text-black">
+                      {selectedFormats.length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-slate-400 dark:text-neutral-400 transition-transform duration-200 ${
+                      isFormatDropdownOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {isFormatDropdownOpen && (
+                  <div
+                    role="listbox"
+                    aria-label="Filter by Ruleset Format"
+                    className="absolute left-0 mt-2 w-64 sm:w-72 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-30 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-100"
+                  >
+                    <div className="flex items-center justify-between px-2 py-1.5 border-b border-slate-100 dark:border-white/5">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-400">
+                        Formats (4v4 to 8v8)
+                      </span>
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFormats(DIRECTORY_FORMAT_OPTIONS.map((f) => f.id))}
+                          className="text-cyan-600 dark:text-cyan-400 hover:underline font-semibold cursor-pointer"
+                        >
+                          All
+                        </button>
+                        <span className="text-slate-300 dark:text-white/20">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFormats([])}
+                          className="text-slate-500 dark:text-neutral-400 hover:text-red-500 dark:hover:text-red-400 cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="py-1 space-y-1">
+                      {DIRECTORY_FORMAT_OPTIONS.map((opt) => {
+                        const isSelected = selectedFormats.includes(opt.id);
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => toggleFormat(opt.id)}
+                            className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-cyan-500/10 dark:bg-cyan-500/15 text-slate-900 dark:text-white font-bold"
+                                : "hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-neutral-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? "bg-cyan-500 border-cyan-500 text-black"
+                                    : "border-slate-300 dark:border-white/20 bg-transparent"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <div>
+                                <span className="text-xs font-black uppercase tracking-tight block">
+                                  {opt.label}
+                                </span>
+                                <span className="text-[10px] text-slate-500 dark:text-neutral-400 block leading-tight">
+                                  {opt.subtitle}
+                                </span>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold uppercase">
+                                Active
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Division Filter */}
@@ -643,7 +740,7 @@ export default function LeagueDirectoryPage() {
                 </select>
               </div>
 
-              {(searchQuery || selectedFormat !== "all" || selectedDivision !== "all" || selectedTier !== "all" || selectedDay !== "all" || selectedStatus !== "all") && (
+              {(searchQuery || selectedFormats.length > 0 || selectedDivision !== "all" || selectedTier !== "all" || selectedDay !== "all" || selectedStatus !== "all") && (
                 <button
                   type="button"
                   onClick={handleResetFilters}

@@ -28,6 +28,7 @@ import { useAuth } from "@/lib/authContext";
 import { FlagOSText } from "@/components/FlagOSText";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
+import AccountMenu from "@/components/AccountMenu";
 
 interface StorySection {
   id: string;
@@ -390,6 +391,7 @@ export default function MyStoryPage() {
               )}
             </button>
             <ThemeToggle size="sm" />
+            <AccountMenu />
           </div>
         </div>
       </header>

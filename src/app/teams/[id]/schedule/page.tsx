@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Calendar, Clock, MapPin, Trophy, History, PlayCircle, Shield, Plus, X, Sparkles, Timer, Trash2 } from "lucide-react";
+import { Calendar, Clock, MapPin, Trophy, History, PlayCircle, Shield, Plus, X, Sparkles, Timer, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where, deleteDoc, updateDoc, limit } from "firebase/firestore";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
@@ -16,6 +16,8 @@ import { loadTeamManagedMatches } from "@/lib/teamSeasonData";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
+import TeamNavBar from "@/components/team/TeamNavBar";
+import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
 // Date-only strings parse as UTC and display a day early in western time zones.
 function localMatchDate(value: string): Date {
@@ -330,17 +332,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }}
         />
       </div>
+      <TeamNavBar teamId={teamId} />
 
       <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
         {scheduleError && <p role="alert" className="text-red-300">{scheduleError}</p>}
-        {/* Navigation */}
-        <Link
-          href={`/teams/${teamId}`}
-          className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Back to {teamName} Portal
-        </Link>
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
@@ -586,6 +581,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </div>
+      <TeamPortalFooter section="Official Schedule" />
 
       {/* SCHEDULE MATCH MODAL */}
       {isScheduleModalOpen && canScheduleMatches && (

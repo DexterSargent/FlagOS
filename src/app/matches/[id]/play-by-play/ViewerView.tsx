@@ -25,6 +25,8 @@ import { isTrackablePlayer } from "@/lib/opponentPlaceholder";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor, getTeamBadgeStyle } from "@/lib/teamColors";
 import GameTeamStats from "@/components/match/GameTeamStats";
+import SiteControls from "@/components/SiteControls";
+import PoweredByFooter from "@/components/PoweredByFooter";
 import { useTheme } from "@/lib/themeContext";
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
@@ -525,6 +527,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
             <MapPin className="w-3 h-3 text-cyan-400" />
             <span>{effectiveMatchData.location || settings.defaultLocation}</span>
           </span>
+          {!isEmbedded && <SiteControls />}
         </div>
       </header>
 
@@ -737,6 +740,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           )}
         </div>
       </div>
+      {!isEmbedded && <PoweredByFooter compact />}
     </div>
   );
 }

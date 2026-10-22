@@ -42,6 +42,8 @@ import type { TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
 import { getFormationPositions, getPlayerPositions, type DepthFormation } from "@/lib/depthChart";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
+import TeamNavBar from "@/components/team/TeamNavBar";
+import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
 import { TEAM_ROSTER_WALKTHROUGH } from "@/lib/walkthroughData";
 
@@ -561,18 +563,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }}
         />
       </div>
+      <TeamNavBar teamId={teamId} />
 
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
         {loadError && <p role="alert" className="text-red-300">{loadError}</p>}
         {statsLoading && <p role="status" className="text-neutral-400">Loading season statistics...</p>}
-        {/* Navigation */}
-        <Link
-          href={`/teams/${teamId}`}
-          className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Back to {teamName} Portal
-        </Link>
 
         {/* Header & Add Player Button */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
@@ -896,6 +891,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
       </div>
+      <TeamPortalFooter section="Official Roster" />
 
       {/* Add Player Modal (Team Admin & League Admin) */}
       {isAddModalOpen && (

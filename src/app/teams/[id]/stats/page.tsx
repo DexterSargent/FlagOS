@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, type LucideIcon } from "lucide-react";
+import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
@@ -13,6 +13,8 @@ import { loadTeamSeasonSummary, getPlayerNumber, TeamSeasonSummaryError } from "
 import { getAccentOnDark, getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors";
 import { calculateTeamComprehensiveStats, type TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
 import { useTeamColors } from "@/lib/teamColorContext";
+import TeamNavBar from "@/components/team/TeamNavBar";
+import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -336,16 +338,9 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         aria-hidden="true"
         style={{ background: `radial-gradient(ellipse 80% 100% at 50% 0%, ${accent}2E 0%, transparent 70%)` }}
       />
+      <TeamNavBar teamId={teamId} />
 
       <div className="max-w-6xl mx-auto relative z-10 flex-1 w-full px-4 py-5 sm:px-6 sm:py-8 md:px-10 space-y-6 sm:space-y-8">
-        <Link
-          href={`/teams/${teamId}`}
-          className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 text-xs sm:text-sm font-semibold max-w-full"
-        >
-          <ChevronLeft className="w-4 h-4 mr-1 shrink-0" />
-          <span className="truncate">Back to {teamName}</span>
-        </Link>
-
         {/* Header */}
         <header className="flex flex-col items-center text-center gap-2">
           <span
@@ -416,6 +411,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           ))
         )}
       </div>
+      <TeamPortalFooter section="Stat Leaders" />
     </div>
   );
 }

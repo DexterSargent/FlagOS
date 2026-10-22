@@ -39,7 +39,6 @@ import { isPrimaryTeamAdmin, getTeamAdminEmails, getTeamAdminAccounts, isDexterU
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, AVAILABLE_ICONS, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
-import { FlagOSText } from "@/components/FlagOSText";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -55,6 +54,8 @@ import {
 import { loadTeamSeasonSummary, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
 import { TEAM_HUB_WALKTHROUGH } from "@/lib/walkthroughData";
+import TeamNavBar from "@/components/team/TeamNavBar";
+import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
 const TeamStatsCustomizerModal = dynamic(() => import("@/components/team/TeamStatsCustomizerModal"));
 
@@ -482,6 +483,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30 selection:text-cyan-200 relative font-sans flex flex-col">
+      <TeamNavBar teamId={teamId} />
 
       {/* Dynamic Background with ambient glows styled to team colors */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -505,7 +507,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-full border border-white/10 backdrop-blur-md text-sm font-semibold"
             >
               <ChevronLeft className="w-4 h-4" />
-              All Teams
+              League Home
             </Link>
           )}
           <Link
@@ -1350,21 +1352,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       />}
 
       {/* Standalone / Paid Team Portal Footer with subtle Powered by FlagOS Disclaimer */}
-      <footer className="relative z-10 w-full border-t border-white/10 bg-black/80 backdrop-blur-md py-8 px-6 text-xs text-neutral-400 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
-            <span className="font-bold text-white uppercase whitespace-nowrap">{team.name}</span>
-            <span>•</span>
-            <span className="whitespace-nowrap">{team.tagline ? team.tagline : isStandaloneOrPaidTeam ? "Independent Team Portal" : "Official Team Portal"}</span>
-            <span>•</span>
-            <span className="whitespace-nowrap">{settings.seasonTitle || "2026"}</span>
-          </div>
-          <div className="flex items-center gap-2 text-neutral-400 font-medium">
-            <span>Powered by</span>
-            <FlagOSText />
-          </div>
-        </div>
-      </footer>
+      <TeamPortalFooter section={team.tagline ? team.tagline : isStandaloneOrPaidTeam ? "Independent Team Portal" : "Official Team Portal"} />
 
     </div>
   );

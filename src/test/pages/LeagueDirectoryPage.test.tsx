@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import LeagueDirectoryPage from "@/app/leagues/page";
 
@@ -19,13 +19,13 @@ vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({
     activeLeagueId: "default",
     settings: {
-      leagueName: "FlagOS Demo League",
-      shortcode: "DEMO",
+      leagueName: "FlagOS Live Premier Circuit",
+      shortcode: "FLPC",
       tagline: "The Flag Football Operating System",
       seasonTitle: "2026 Championship",
       visibility: "public",
       rulesFormat: "5v5 Non-Contact",
-      division: "Co-Ed",
+      division: "Women's Flag",
       defaultLocation: "Metropolitan Sports Complex",
       primaryColor: "#0284c7",
       accentColor: "#38bdf8",
@@ -46,6 +46,8 @@ vi.mock("@/lib/leagueContext", () => ({
         shortcode: "MWFL",
         visibility: "public",
         teamCount: 6,
+        rulesFormat: "7v7 Screen",
+        division: "Co-Ed",
         primaryColor: "#10b981",
         accentColor: "#059669",
       },
@@ -88,16 +90,23 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     mockGetDocs.mockResolvedValue({ docs: [] });
   });
 
-  it("renders page hero and public directory circuits while excluding private leagues", async () => {
+  it("renders page hero and live public leagues without any fake mock circuits while excluding private leagues", async () => {
     render(<LeagueDirectoryPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
     });
-    expect(screen.getByText(/York University Women's Flag League/i)).toBeInTheDocument();
-    expect(screen.getByText(/Toronto Flag League/i)).toBeInTheDocument();
-    expect(screen.getByText(/GTA Premier 5v5 Flag Championship/i)).toBeInTheDocument();
-    // Private circuits must be strictly excluded
+
+    // Public active league and user league are present in directory headings
+    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+
+    // Fake mock circuits are completely absent
+    expect(screen.queryByText("Toronto Flag League")).toBeNull();
+    expect(screen.queryByText("GTA Premier 5v5 Flag Championship")).toBeNull();
+    expect(screen.queryByText("Hamilton Steel City Flag Circuit")).toBeNull();
+
+    // Private leagues must be strictly excluded
     expect(screen.queryByText("Secret Private Circuit")).toBeNull();
   });
 
@@ -116,6 +125,8 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
                 visibility: "public",
                 primaryColor: "#e11d48",
                 accentColor: "#fb7185",
+                rulesFormat: "7v7 Screen",
+                division: "Men's Open",
                 rules: { playersOnField: 7, contactLevel: "screen" },
                 defaultLocation: "Downsview Park Stadium",
               }),
@@ -139,7 +150,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     render(<LeagueDirectoryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Ontario Premier Flag Championship")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Ontario Premier Flag Championship" })).toBeInTheDocument();
     });
 
     expect(screen.getByText("OPFC")).toBeInTheDocument();
@@ -162,28 +173,98 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     expect(mockSwitchLeague).toHaveBeenCalled();
   });
 
-  it("filters directory by category: All Circuits vs Live Leagues vs My Leagues", async () => {
+  it("filters directory with two clean tabs: All Leagues vs My Leagues", async () => {
     render(<LeagueDirectoryPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
     });
 
-    // Click "My Leagues"
-    const myLeaguesBtn = screen.getByRole("button", { name: /My Leagues/i });
-    fireEvent.click(myLeaguesBtn);
+    // Check tabs exist
+    const allBtns = screen.getAllByRole("button", { name: /All Leagues/i });
+    const myLeaguesBtns = screen.getAllByRole("button", { name: /My Leagues/i });
+    expect(allBtns.length).toBeGreaterThan(0);
+    expect(myLeaguesBtns.length).toBeGreaterThan(0);
 
-    expect(screen.getByText("Metro West Flag League")).toBeInTheDocument();
-    expect(screen.queryByText("Toronto Flag League")).toBeNull();
+    // Click "My Leagues" tab button
+    const myLeaguesTabBtn = myLeaguesBtns[myLeaguesBtns.length - 1];
+    fireEvent.click(myLeaguesTabBtn);
 
-    // Click back to "All Circuits"
-    const allBtn = screen.getByRole("button", { name: /All Circuits/i });
-    fireEvent.click(allBtn);
+    // Only user's own leagues appear in card headings
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeNull();
 
-    expect(screen.getByText(/Toronto Flag League/i)).toBeInTheDocument();
+    // Click back to "All Leagues" tab button
+    const allTabBtn = allBtns[allBtns.length - 1];
+    fireEvent.click(allTabBtn);
+
+    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
   });
 
-  it("filters circuits by keyword search (city or league name)", async () => {
+  it("does not render quick regions buttons", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    // Quick regions preset buttons are removed
+    expect(screen.queryByText(/Quick Regions:/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Hamilton / Niagara" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "London / SW Ontario" })).toBeNull();
+  });
+
+  it("filters leagues by multi-select ruleset format dropdown (4v4 to 8v8)", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    // Both 5v5 (FlagOS Live Premier) and 7v7 (Metro West) are present initially
+    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+
+    // Open format multi-select dropdown
+    const formatBtn = screen.getByRole("button", { name: /Format:/i });
+    fireEvent.click(formatBtn);
+
+    // Dropdown listbox should be visible with options 4v4 to 8v8
+    const listbox = screen.getByRole("listbox", { name: /Filter by Ruleset Format/i });
+    expect(listbox).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: /4v4/i })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: /5v5/i })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: /6v6/i })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: /7v7/i })).toBeInTheDocument();
+    expect(within(listbox).getByRole("option", { name: /8v8/i })).toBeInTheDocument();
+
+    // Select 7v7 format
+    const option7v7 = within(listbox).getByRole("option", { name: /7v7/i });
+    fireEvent.click(option7v7);
+
+    // Metro West (7v7) remains, FlagOS Live Premier (5v5) is filtered out
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeNull();
+
+    // Also select 5v5 format
+    const option5v5 = within(listbox).getByRole("option", { name: /5v5/i });
+    fireEvent.click(option5v5);
+
+    // Now both 5v5 and 7v7 match
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+
+    // Click Clear button in dropdown
+    const clearBtn = within(listbox).getByRole("button", { name: "Clear" });
+    fireEvent.click(clearBtn);
+
+    // All leagues displayed
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+  });
+
+  it("filters circuits by keyword search (league name or location)", async () => {
     render(<LeagueDirectoryPage />);
 
     await waitFor(() => {
@@ -191,38 +272,10 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     });
 
     const searchInput = screen.getByPlaceholderText(/Search by city/i);
-    fireEvent.change(searchInput, { target: { value: "Ottawa" } });
+    fireEvent.change(searchInput, { target: { value: "Metro West" } });
 
-    expect(screen.getByText(/National Capital Flag League/i)).toBeInTheDocument();
-    expect(screen.queryByText(/York University Women's Flag League/i)).toBeNull();
-  });
-
-  it("switches metro regions and updates distance calculations", async () => {
-    render(<LeagueDirectoryPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
-    });
-
-    const regionBtn = screen.getByRole("button", { name: "Hamilton / Niagara" });
-    fireEvent.click(regionBtn);
-
-    expect(screen.getByText(/Hamilton Steel City Flag Circuit/i)).toBeInTheDocument();
-    expect(screen.getByText(/Center:/i)).toHaveTextContent("Hamilton / Niagara");
-  });
-
-  it("filters by ruleset format (e.g. 7v7 Screen)", async () => {
-    render(<LeagueDirectoryPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
-    });
-
-    const formatSelect = screen.getByDisplayValue("All Formats");
-    fireEvent.change(formatSelect, { target: { value: "7v7" } });
-
-    expect(screen.getByText(/National Capital Flag League/i)).toBeInTheDocument();
-    expect(screen.queryByText(/York University Women's Flag League/i)).toBeNull();
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeNull();
   });
 
   it("filters by division (e.g. Women's Flag)", async () => {
@@ -235,8 +288,8 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     const divisionSelect = screen.getByDisplayValue("All Divisions");
     fireEvent.change(divisionSelect, { target: { value: "womens" } });
 
-    expect(screen.getByText(/York University Women's Flag League/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Hamilton Steel City Flag Circuit/i)).toBeNull();
+    expect(screen.getByRole("heading", { name: "FlagOS Live Premier Circuit" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Metro West Flag League" })).toBeNull();
   });
 
   it("switches view modes between Cards, Venues, and Compare Table", async () => {
