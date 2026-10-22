@@ -678,11 +678,15 @@ export default function PlayCanvas({
     </div>
   );
 
-  // Show Opposing Side toggle (offense if defensive playbook, defense if offensive playbook). OFF by default.
+  // Show Opposing Side toggle (offense if defensive playbook, defense if offensive playbook).
   const [showOpposingSide, setShowOpposingSide] = useState<boolean>(false);
+  const isOpponentRequired = mode === "man" || play.players.some(
+    (player) => player.side === "defense" && player.coverageType === "man"
+  );
+  const isShowingOpponent = showOpposingSide || isOpponentRequired;
 
-  // Filter visible players based on showOpposingSide
-  const visiblePlayers = (play.players || []).filter((p) => (showOpposingSide ? true : p.side === play.type));
+  // Man coverage needs the opposing players visible for assignment and target lines.
+  const visiblePlayers = (play.players || []).filter((p) => (isShowingOpponent ? true : p.side === play.type));
 
   // Compute legal status across visible players in play
   const legalityByPlayer = useMemo(
@@ -2237,24 +2241,27 @@ export default function PlayCanvas({
               type="button"
               data-tour="opponent-toggle"
               data-testid="toggle-opponent-btn"
-              onClick={() => setShowOpposingSide((prev) => !prev)}
+              onClick={() => setShowOpposingSide((prev) => (isOpponentRequired ? true : !prev))}
+              aria-pressed={isShowingOpponent}
               className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                showOpposingSide
+                isShowingOpponent
                   ? "bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm"
                   : "bg-white/5 border-white/10 text-neutral-400 hover:text-white hover:bg-white/10"
               }`}
               title={
-                showOpposingSide
+                isOpponentRequired
+                  ? "Opponent is required for man coverage"
+                  : isShowingOpponent
                   ? `Hide opposing ${play.type === "offense" ? "defense" : "offense"}`
                   : `Show opposing ${play.type === "offense" ? "defense" : "offense"}`
               }
             >
-              {showOpposingSide ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{showOpposingSide ? "Opponent On" : "Opponent Off"}</span>
+              {isShowingOpponent ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{isShowingOpponent ? "Opponent On" : "Opponent Off"}</span>
             </button>
 
             {/* Opponent Scheme Selector Dropdown (When Opponent is ON) */}
-            {showOpposingSide && (
+            {isShowingOpponent && (
               <div ref={opponentMenuRef} className="relative">
                 <button
                   type="button"
@@ -2375,7 +2382,7 @@ export default function PlayCanvas({
             )}
 
             {/* Custom Zone Quick Add Buttons for Defense */}
-            {(play.type === "defense" || showOpposingSide) && !readOnly && (
+            {(play.type === "defense" || isShowingOpponent) && !readOnly && (
               <div data-tour="custom-zones" className="flex items-center gap-1">
                 <button
                   type="button"
@@ -2618,7 +2625,7 @@ export default function PlayCanvas({
             {/* ============================================================== */}
             {/* DEFENSIVE ZONE BUBBLES                                         */}
             {/* ============================================================== */}
-            {(play.type === "defense" || showOpposingSide) &&
+            {(play.type === "defense" || isShowingOpponent) &&
               play.zones?.map((zone) => {
                 const isSelected = selectedZoneId === zone.id;
                 const isRect = zone.shape === "rectangle";
@@ -2791,7 +2798,7 @@ export default function PlayCanvas({
               .map((def) => {
                 const targetOff = play.players.find((p) => p.id === def.manTargetId);
                 if (!targetOff) return null;
-                if (!showOpposingSide && selectedPlayerId !== def.id) return null;
+                if (!isShowingOpponent && selectedPlayerId !== def.id) return null;
 
                 const defPos = getAnimatedPlayerPos(def, progress);
                 const targetPos = getAnimatedPlayerPos(targetOff, progress);
@@ -3275,7 +3282,7 @@ export default function PlayCanvas({
                   )}
 
                   {/* Open / Covered indicator during simulation against opponent */}
-                  {showOpposingSide && isOffense && player.route && player.route.length > 0 && (
+                  {isShowingOpponent && isOffense && player.route && player.route.length > 0 && (
                     (() => {
                       const defenders = play.players.filter((p) => p.side === "defense");
                       if (defenders.length === 0) return null;

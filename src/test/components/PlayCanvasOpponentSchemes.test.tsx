@@ -110,6 +110,39 @@ describe("PlayCanvas - Opponent Schemes & Rush Toggle", () => {
     expect(screen.getByText("Opponent Off")).toBeInTheDocument();
   });
 
+  it("keeps the opponent visible for plays with man coverage", () => {
+    const manCoveragePlay: PlayDiagram = {
+      id: "play-man-test",
+      teamId: "team_apex",
+      name: "Man Lock",
+      type: "defense",
+      formation: "Man Lock",
+      situation: "Standard",
+      losY: 65,
+      players: [
+        { id: "def-cb", side: "defense", label: "CB", role: "Cornerback", x: 20, y: 58, coverageType: "man" },
+        { id: "off-wr", side: "offense", label: "WR", role: "Wide Receiver", x: 20, y: 65 },
+      ],
+    };
+
+    render(
+      <PlayCanvas
+        play={manCoveragePlay}
+        onChange={vi.fn()}
+        playbook={mockDefensePlaybook}
+        allPlaybooks={[mockDefensePlaybook, mockOffensePlaybook]}
+      />
+    );
+
+    expect(screen.getByText("Opponent On")).toBeInTheDocument();
+    expect(screen.getByTestId("opponent-play-selector-btn")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("toggle-opponent-btn"));
+
+    expect(screen.getByText("Opponent On")).toBeInTheDocument();
+    expect(screen.getByTestId("opponent-play-selector-btn")).toBeInTheDocument();
+  });
+
   it("allows a defensive play to select an offensive play from team playbooks and populates it", () => {
     let currentPlay: PlayDiagram = {
       id: "play-def-test",
