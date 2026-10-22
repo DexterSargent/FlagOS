@@ -54,7 +54,7 @@ export default function JoinLeague() {
           where("leagueId", "==", activeLeagueId),
           limit(1920),
         ));
-        const pData = snap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
+        const pData = snap.docs.map(d => ({ ...d.data(), id: d.id } as Player));
         // Sort alphabetically and exclude current free agents from the search list
         const filtered = pData.filter(p => p.teamId !== "Free Agent");
         filtered.sort((a, b) => a.playerName.localeCompare(b.playerName));

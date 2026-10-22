@@ -149,7 +149,9 @@ export default function PlatformAdminPage() {
             shortcode: getText(data.shortcode, ""),
             seasonTitle: getText(data.seasonTitle, "2026 Season"),
             visibility: getText(data.visibility, "public"),
-            subscriptionStatus: getText(data.subscription?.status, "Not set"),
+            subscriptionStatus: data.isArchived === true || data.seasonStatus === "archived"
+              ? "archived"
+              : getText(data.subscription?.status, "Not set"),
             subscription: typeof data.subscription === "object" && data.subscription !== null
               ? (data.subscription as Record<string, unknown>)
               : { status: getText(data.subscription?.status, "Not set") },
@@ -304,7 +306,7 @@ export default function PlatformAdminPage() {
     setUpdatingLeagueId(league.id);
     setError("");
     try {
-      await updateDoc(doc(db, "leagues", league.id), { visibility });
+      await createSecureRecord("league_update", { leagueId: league.id, visibility });
       setLeagues((current) => current.map((entry) => entry.id === league.id ? { ...entry, visibility } : entry));
       setSuccessMessage(`Visibility for "${league.name}" set to ${visibility}.`);
     } catch (updateError) {
@@ -340,9 +342,10 @@ export default function PlatformAdminPage() {
     setError("");
 
     try {
+      const isArchiving = editForm.subscriptionStatus === "archived";
+      const wasArchived = editingLeague.subscriptionStatus === "archived";
       const updatedFields = {
         leagueName: editForm.name,
-        name: editForm.name,
         shortcode: editForm.shortcode.toUpperCase(),
         seasonTitle: editForm.seasonTitle,
         visibility: editForm.visibility,
@@ -352,9 +355,14 @@ export default function PlatformAdminPage() {
           ...(typeof editingLeague.subscription === "object" ? editingLeague.subscription : {}),
           status: editForm.subscriptionStatus,
         },
+        ...(isArchiving
+          ? { isArchived: true, seasonStatus: "archived", archivedAt: new Date().toISOString() }
+          : wasArchived
+          ? { isArchived: false, seasonStatus: "active" }
+          : {}),
       };
 
-      await updateDoc(doc(db, "leagues", editingLeague.id), updatedFields);
+      await createSecureRecord("league_update", { leagueId: editingLeague.id, ...updatedFields });
 
       // Cascade subscription status to member teams if requested
       if (editForm.cascadeSubscription) {
@@ -400,6 +408,7 @@ export default function PlatformAdminPage() {
             ? {
                 ...l,
                 ...updatedFields,
+                name: editForm.name,
                 subscriptionStatus: editForm.subscriptionStatus,
               }
             : l
@@ -410,7 +419,7 @@ export default function PlatformAdminPage() {
       setEditingLeague(null);
     } catch (saveError) {
       console.error("Failed to update league:", saveError);
-      setError("Failed to update league. Check console for details.");
+      setError(`Failed to update league: ${saveError instanceof Error ? saveError.message : "please try again."}`);
     } finally {
       setActionInProgress(false);
     }
@@ -704,6 +713,8 @@ export default function PlatformAdminPage() {
                               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
                               : league.subscriptionStatus?.toLowerCase() === "trial"
                               ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                              : league.subscriptionStatus?.toLowerCase() === "archived"
+                              ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
                               : "border-white/10 bg-white/5 text-neutral-300"
                           }`}>
                             {league.subscriptionStatus}
@@ -1102,6 +1113,7 @@ export default function PlatformAdminPage() {
                     <option value="trial">Trial</option>
                     <option value="past_due">Past Due</option>
                     <option value="canceled">Canceled</option>
+                    <option value="archived">Archived (read-only)</option>
                     <option value="none">None</option>
                   </select>
                 </div>

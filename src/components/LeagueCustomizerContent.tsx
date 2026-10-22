@@ -201,6 +201,9 @@ export default function LeagueCustomizerContent() {
   // Join link is only viewable by league admin if turned off, and viewable to all if turned on
   const canViewJoinLink = isFreeAgentRegistrationEnabled || isLeagueAdmin;
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const describeSaveError = (err: unknown) =>
+    `Changes were not saved: ${err instanceof Error ? err.message : "please try again."}`;
   const [ifafPresetNotice, setIfafPresetNotice] = useState(false);
 
   // Lock body scroll while modal is open so main page behind modal does not scroll
@@ -278,6 +281,7 @@ export default function LeagueCustomizerContent() {
   const handleSaveLeagueSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setSaveError("");
     try {
       const sanitizedMinRoster = Math.max(rules.playersOnField, rules.minRosterSize);
       const sanitizedMaxRoster = Math.min(30, Math.max(sanitizedMinRoster, rules.maxRosterSize || 30));
@@ -305,6 +309,7 @@ export default function LeagueCustomizerContent() {
       closeCustomizer();
     } catch (err) {
       console.error("Error saving league settings:", err);
+      setSaveError(describeSaveError(err));
     }
     setSaving(false);
   };
@@ -423,6 +428,13 @@ export default function LeagueCustomizerContent() {
 
         {/* Scrollable Modal Content */}
         <div className="overflow-y-auto overscroll-contain flex-1 min-h-0 p-4 sm:p-6 md:p-8">
+        {saveError && (
+          <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-red-500/40 bg-red-950/40 p-3 text-xs text-red-200">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+            <span className="flex-1">{saveError}</span>
+            <button type="button" onClick={() => setSaveError("")} className="font-bold text-red-300 hover:text-white cursor-pointer">Dismiss</button>
+          </div>
+        )}
         {/* ============================================================
             TAB: LEAGUE BRANDING & IDENTITY (LEAGUE ADMIN EXCLUSIVE)
            ============================================================ */}
@@ -2290,9 +2302,14 @@ export default function LeagueCustomizerContent() {
                         disabled={archivingInProgress}
                         onClick={async () => {
                           setArchivingInProgress(true);
-                          await archiveLeague("pause_subscription");
+                          setSaveError("");
+                          try {
+                            await archiveLeague("pause_subscription");
+                            setShowArchivePrompt(false);
+                          } catch (err) {
+                            setSaveError(describeSaveError(err));
+                          }
                           setArchivingInProgress(false);
-                          setShowArchivePrompt(false);
                         }}
                         className="p-3.5 rounded-xl bg-black/60 border border-white/10 hover:border-purple-400 text-left transition-all cursor-pointer group"
                       >
@@ -2309,9 +2326,14 @@ export default function LeagueCustomizerContent() {
                         disabled={archivingInProgress}
                         onClick={async () => {
                           setArchivingInProgress(true);
-                          await archiveLeague("new_season");
+                          setSaveError("");
+                          try {
+                            await archiveLeague("new_season");
+                            setShowArchivePrompt(false);
+                          } catch (err) {
+                            setSaveError(describeSaveError(err));
+                          }
                           setArchivingInProgress(false);
-                          setShowArchivePrompt(false);
                         }}
                         className="p-3.5 rounded-xl bg-black/60 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer group"
                       >
@@ -2349,7 +2371,12 @@ export default function LeagueCustomizerContent() {
                 <button
                   type="button"
                   onClick={async () => {
-                    await resumeSubscription();
+                    setSaveError("");
+                    try {
+                      await resumeSubscription();
+                    } catch (err) {
+                      setSaveError(describeSaveError(err));
+                    }
                   }}
                   className="py-2.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
                 >
@@ -2371,7 +2398,12 @@ export default function LeagueCustomizerContent() {
                 <button
                   type="button"
                   onClick={async () => {
-                    await resumeSubscription();
+                    setSaveError("");
+                    try {
+                      await resumeSubscription();
+                    } catch (err) {
+                      setSaveError(describeSaveError(err));
+                    }
                   }}
                   className="py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer"
                 >

@@ -20,7 +20,7 @@ import { useTheme } from "@/lib/themeContext";
 
 export default function LeagueFooter() {
   const { settings, openCustomizer, activeLeagueId, isDemoLeague, subscription } = useLeague();
-  const { canRegisterAsPlayer, isAuthorized, isLeagueAdmin } = useAuth();
+  const { canRegisterAsPlayer, isAuthorized, isLeagueAdmin, user } = useAuth();
   const { resolvedTheme } = useTheme();
 
   const isCustomOrPaidLeague =
@@ -71,7 +71,7 @@ export default function LeagueFooter() {
                 <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold block text-white">Primary Field</span>
-                  <span className="text-neutral-400">{settings.defaultLocation || "Central Stadium Field"}</span>
+                  <span className="text-neutral-400">{settings.defaultLocation || "Location to be announced"}</span>
                 </div>
               </div>
 
@@ -87,7 +87,7 @@ export default function LeagueFooter() {
                       {settings.contactEmail}
                     </a>
                   ) : (
-                    <span className="text-neutral-400">commissioner@flagleague.com</span>
+                    <span className="text-neutral-400">Contact your league administrator</span>
                   )}
                 </div>
               </div>
@@ -96,7 +96,7 @@ export default function LeagueFooter() {
                 <FileText className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold block text-white">Rulebook</span>
-                  <span className="text-neutral-400">{settings.rulebookTitle || "Official 7v7 Non-Contact Rules"}</span>
+                  <span className="text-neutral-400">{settings.rulebookTitle || "IFAF 5v5 Flag Football Rules"}</span>
                 </div>
               </div>
             </div>
@@ -163,8 +163,8 @@ export default function LeagueFooter() {
                 {isCustomOrPaidLeague ? "Plans" : "Pricing"}
               </Link>
               <span className="text-neutral-600">•</span>
-              <Link href="/login" className="text-neutral-300 hover:text-white transition-colors">
-                Sign In
+              <Link href={user ? "/profile" : "/login"} className="text-neutral-300 hover:text-white transition-colors">
+                {user ? "My Account" : "Sign In"}
               </Link>
             </div>
           </div>

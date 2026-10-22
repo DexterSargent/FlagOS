@@ -292,7 +292,6 @@ export default function StatsAndStandings() {
 
             if (play.isTouchdown) {
               statsMap[play.qbPlayerId].passTD += 1;
-              statsMap[play.qbPlayerId].totalTDs += 1;
             }
           }
 
@@ -399,12 +398,12 @@ export default function StatsAndStandings() {
   };
 
   const statCategories = [
-    { title: "Total Touchdowns", key: "totalTDs", subtab: "receiving" as const, icon: Trophy, color: "text-yellow-400" },
+    { title: "Total Touchdowns", key: "totalTDs", subtab: "receiving" as const, group: "Scoring", icon: Trophy, color: "text-yellow-400" },
     { title: "Passing TDs", key: "passTD", subtab: "passing" as const, icon: Goal, color: "text-cyan-400" },
     { title: "Completions", key: "passComp", subtab: "passing" as const, icon: CheckCircle2, color: "text-sky-400" },
     { title: "Receptions", key: "receptions", subtab: "receiving" as const, icon: Hand, color: "text-blue-400" },
     { title: "Receiving TDs", key: "recTD", subtab: "receiving" as const, icon: Goal, color: "text-blue-400" },
-    { title: "Rushing TDs", key: "rushTD", subtab: "receiving" as const, icon: Footprints, color: "text-emerald-400" },
+    { title: "Rushing TDs", key: "rushTD", subtab: "receiving" as const, group: "Rushing", icon: Footprints, color: "text-emerald-400" },
     { title: "Flags", key: "flagPulls", subtab: "defense" as const, icon: Flag, color: "text-amber-400" },
     { title: "Sacks", key: "sacks", subtab: "defense" as const, icon: Zap, color: "text-orange-500" },
     { title: "Interceptions", key: "int", subtab: "defense" as const, icon: Crosshair, color: "text-purple-400" },
@@ -537,7 +536,7 @@ export default function StatsAndStandings() {
               </span>
               <span className="text-neutral-500 text-xs">•</span>
               <span className="text-[11px] font-mono text-neutral-400">
-                Official Rules: {settings.rulebookTitle || "7v7 Non-Contact Rules"}
+                Official Rules: {settings.rulebookTitle || "IFAF 5v5 Flag Football Rules"}
               </span>
             </div>
             <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight flex items-center gap-3">
@@ -714,7 +713,7 @@ export default function StatsAndStandings() {
                             </div>
                             <div>
                               <h3 className="text-lg font-black uppercase tracking-wider text-white">{cat.title}</h3>
-                              <span className="text-[11px] text-neutral-500 font-medium capitalize">{cat.subtab} Category</span>
+                              <span className="text-[11px] text-neutral-500 font-medium capitalize">{("group" in cat && cat.group) || cat.subtab} Category</span>
                             </div>
                           </div>
 

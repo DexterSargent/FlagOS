@@ -447,7 +447,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const playerSnap = await getDoc(doc(db, "players", playerId));
           if (playerSnap.exists()) {
-            foundPlayer = { id: playerSnap.id, ...playerSnap.data() };
+            foundPlayer = { ...playerSnap.data(), id: playerSnap.id };
           }
         } catch (e) {
           console.error("Error loading dev player data:", e);

@@ -119,7 +119,9 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
           </div>
           {isLeagueAdmin && (
             <button
-              onClick={() => resumeSubscription()}
+              onClick={() => resumeSubscription().catch((err: unknown) => {
+                window.alert(err instanceof Error ? err.message : "Could not resume the subscription.");
+              })}
               className="bg-amber-400 hover:bg-amber-300 text-black font-black text-[11px] px-3 py-1 rounded-lg uppercase tracking-wider shrink-0 transition-all cursor-pointer shadow"
             >
               Update Payment &amp; Resume

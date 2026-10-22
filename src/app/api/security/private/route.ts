@@ -159,8 +159,8 @@ async function lookupByEmail(token: DecodedIdToken) {
       .map((snapshot) => {
         const privateData = playerPrivate.get(snapshot.id) || {};
         return {
-          id: snapshot.id,
           ...snapshot.data(),
+          id: snapshot.id,
           teamId: snapshot.get("teamId"),
           email: privateData.email || "",
           emails: Array.isArray(privateData.emails) ? privateData.emails : [],

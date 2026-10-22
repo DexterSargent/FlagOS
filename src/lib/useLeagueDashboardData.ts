@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
+import { isPlayoffMatch } from "@/lib/standingsEngine";
 import {
   getSandboxTeams,
   getSandboxPlayers,
@@ -159,7 +160,7 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
     completed.forEach((m) => {
       const h = map[m.homeTeamId];
       const a = map[m.awayTeamId];
-      if (h && a && !m.isPreseason) {
+      if (h && a && !m.isPreseason && !isPlayoffMatch(m)) {
         h.pf += m.homeScore || 0;
         h.pa += m.awayScore || 0;
         a.pf += m.awayScore || 0;
@@ -245,12 +246,14 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
         }
       }
 
-      if (play.defenders && Array.isArray(play.defenders)) {
+      // Same rules as /stats: INT and PBU aren't flag pulls; flaggers only count on interceptions.
+      const outcome = play.passOutcome;
+      if (play.defenders && Array.isArray(play.defenders) && outcome !== "Interception" && outcome !== "PBU") {
         play.defenders.forEach((d: string) => {
           if (stats[d]) stats[d].flagPulls += 1;
         });
       }
-      if (play.flaggers && Array.isArray(play.flaggers)) {
+      if (outcome === "Interception" && play.flaggers && Array.isArray(play.flaggers)) {
         play.flaggers.forEach((flagger: string) => {
           if (stats[flagger]) stats[flagger].flagPulls += 1;
         });
@@ -491,7 +494,6 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
         }
         if (play.isTouchdown || play.result === "Touchdown") {
           stats.passTD += 1;
-          stats.totalTDs += 1;
         }
       }
 
@@ -550,7 +552,6 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
             if (play.result === "Complete" || play.result === "Touchdown") stats.passComp += 1;
             if (play.result === "Touchdown") {
               stats.passTD += 1;
-              stats.totalTDs += 1;
             }
           }
           if (play.receiver === pName && play.playType === "Pass") {

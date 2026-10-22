@@ -16,6 +16,13 @@ const MAX_STRING_LENGTH = 2_000;
 const MAX_LOGO_LENGTH = 350_000;
 const PER_MINUTE_WRITE_LIMIT = 120;
 const PER_HOUR_WRITE_LIMIT = 500;
+const LEAGUE_UPDATE_FIELDS = new Set([
+  "leagueName", "shortcode", "tagline", "seasonTitle", "logoUrl", "icon", "primaryColor", "accentColor",
+  "secondaryColor", "tertiaryColor", "themePreset", "defaultLocation", "rulebookTitle", "rulebookUrl",
+  "announcement", "seasonStatus", "isArchived", "archivedAt", "visibility", "rules", "playoffFormat",
+  "subscription", "teamCount", "contactEmail", "adminEmails",
+  "registrationFeePerTeam", "individualFee", "amenities",
+]);
 
 type Entity =
   | "league"
@@ -26,6 +33,8 @@ type Entity =
   | "player_private_update"
   | "player_update"
   | "league_private_update"
+  | "league_update"
+  | "match_update"
   | "delete_player"
   | "delete_team"
   | "delete_league"
@@ -443,11 +452,37 @@ async function authorizeWrite(
     return;
   }
 
-  if (entity === "league_private_update") {
+  if (entity === "league_private_update" || entity === "league_update") {
     const leagueId = data.leagueId;
     if (!isDocumentId(leagueId) || !(await isLeagueAdmin(transaction, leagueId, token))) {
       fail("You do not have permission to manage this league's private details.", 403);
     }
+    if (entity === "league_update" && !(await transaction.get(adminDb.doc(`leagues/${leagueId}`))).exists) {
+      fail("The league was not found.", 404);
+    }
+    return;
+  }
+
+  if (entity === "match_update") {
+    if (!isDocumentId(data.matchId)) fail("A valid match ID is required.");
+    const match = await transaction.get(adminDb.doc(`matches/${String(data.matchId)}`));
+    const matchData = match.data();
+    if (!matchData) fail("The match was not found.", 404);
+    const leagueId = typeof matchData.leagueId === "string" ? matchData.leagueId : "";
+    if (!leagueId || !(await isLeagueAdmin(transaction, leagueId, token))) {
+      fail("Only the league administrator can change this matchup.", 403);
+    }
+    if (matchData.status === "completed" || matchData.status === "Final" || matchData.status === "in_progress") {
+      fail("Teams cannot be changed once a game has started.", 409);
+    }
+    for (const key of ["homeTeamId", "awayTeamId"]) {
+      const teamId = data[key];
+      if (teamId === "") continue;
+      if (!isDocumentId(teamId)) fail(`${key} is invalid.`);
+      const team = await transaction.get(adminDb.doc(`teams/${String(teamId)}`));
+      if (team.get("leagueId") !== leagueId) fail("Both teams must belong to this league.", 400);
+    }
+    data.leagueId = leagueId;
     return;
   }
 
@@ -593,6 +628,8 @@ function getRecordCollection(entity: Entity): string {
     case "team_private_update":
     case "player_private_update":
     case "league_private_update":
+    case "league_update":
+    case "match_update":
     case "player_update":
     case "delete_player":
     case "delete_team":
@@ -625,6 +662,8 @@ function getCountQuery(scope: Scope): Query {
 
 function buildRecord(entity: Entity, data: Record<string, unknown>): Record<string, unknown> {
   const record = { ...data };
+  // Firestore assigns the document ID; a client-supplied id would shadow it on read.
+  delete record.id;
   if (entity === "league") {
     delete record.adminEmails;
     delete record.contactEmail;
@@ -700,7 +739,7 @@ export async function POST(request: Request) {
     const { entity, data } = body as { entity?: unknown; data?: unknown };
     if (![
       "league", "team", "player", "assign_player", "team_private_update", "player_private_update",
-      "league_private_update", "player_update", "match", "play", "play_batch", "red_play", "playbook",
+      "league_private_update", "league_update", "match_update", "player_update", "match", "play", "play_batch", "red_play", "playbook",
       "delete_player", "delete_team", "delete_league", "depth_chart",
     ].includes(String(entity))) {
       fail("Unsupported record type.");
@@ -766,6 +805,58 @@ export async function POST(request: Request) {
             !data.adminEmails.every(validEmail))) ||
         (data.contactEmail !== undefined && data.contactEmail !== "" && !validEmail(data.contactEmail)))) {
       fail("League contact data is invalid or exceeds its limits.");
+    }
+    if (requestedEntity === "league_update") {
+      const unknownKey = Object.keys(data).find((key) => key !== "leagueId" && !LEAGUE_UPDATE_FIELDS.has(key));
+      if (unknownKey) fail(`League field "${unknownKey}" cannot be updated.`);
+      const stringLimits: Record<string, number> = {
+        leagueName: 100, shortcode: 12, tagline: 240, seasonTitle: 100, logoUrl: MAX_LOGO_LENGTH, icon: 100,
+        themePreset: 50, defaultLocation: 200, rulebookTitle: 200, rulebookUrl: 2048, announcement: 2000,
+        archivedAt: 64,
+      };
+      for (const [key, max] of Object.entries(stringLimits)) {
+        if (data[key] !== undefined && (typeof data[key] !== "string" || (data[key] as string).length > max)) {
+          fail(`League field "${key}" is invalid.`);
+        }
+      }
+      for (const key of ["primaryColor", "accentColor", "secondaryColor", "tertiaryColor"]) {
+        if (data[key] !== undefined && (typeof data[key] !== "string" || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(data[key] as string))) {
+          fail(`League color "${key}" is invalid.`);
+        }
+      }
+      if ((data.visibility !== undefined && !["public", "private"].includes(String(data.visibility))) ||
+        (data.seasonStatus !== undefined && !["active", "completed", "archived"].includes(String(data.seasonStatus))) ||
+        (data.isArchived !== undefined && typeof data.isArchived !== "boolean") ||
+        (data.teamCount !== undefined && (typeof data.teamCount !== "number" || data.teamCount < 0 || data.teamCount > 64)) ||
+        (data.registrationFeePerTeam !== undefined && data.registrationFeePerTeam !== null &&
+          (typeof data.registrationFeePerTeam !== "number" || data.registrationFeePerTeam < 0 || data.registrationFeePerTeam > 100_000)) ||
+        (data.individualFee !== undefined && data.individualFee !== null &&
+          (typeof data.individualFee !== "number" || data.individualFee < 0 || data.individualFee > 100_000)) ||
+        (data.amenities !== undefined && data.amenities !== null &&
+          (!Array.isArray(data.amenities) || data.amenities.length > 30 ||
+            !data.amenities.every((item) => typeof item === "string" && item.length <= 100))) ||
+        (data.adminEmails !== undefined &&
+          (!Array.isArray(data.adminEmails) || data.adminEmails.length > 10 || !data.adminEmails.every(validEmail))) ||
+        (data.contactEmail !== undefined && data.contactEmail !== "" && !validEmail(data.contactEmail))) {
+        fail("League settings are invalid or exceed their limits.");
+      }
+      for (const key of ["rules", "playoffFormat", "subscription"]) {
+        const value = data[key];
+        if (value !== undefined && (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 40)) {
+          fail(`League field "${key}" is invalid.`);
+        }
+      }
+      if (data.leagueName !== undefined && !(data.leagueName as string).trim()) fail("A league name is required.");
+    }
+    if (requestedEntity === "match_update" &&
+      (Object.keys(data).some((key) =>
+        !["matchId", "homeTeamId", "awayTeamId", "homeTeamName", "awayTeamName", "manualMatchup"].includes(key)) ||
+        typeof data.homeTeamId !== "string" || typeof data.awayTeamId !== "string" ||
+        (data.homeTeamId !== "" && data.homeTeamId === data.awayTeamId) ||
+        (data.homeTeamName !== undefined && (typeof data.homeTeamName !== "string" || data.homeTeamName.length > 100)) ||
+        (data.awayTeamName !== undefined && (typeof data.awayTeamName !== "string" || data.awayTeamName.length > 100)) ||
+        (data.manualMatchup !== undefined && typeof data.manualMatchup !== "boolean"))) {
+      fail("Matchup data is invalid.");
     }
     if (requestedEntity === "league" &&
       (typeof data.leagueName !== "string" || typeof data.shortcode !== "string")) {
@@ -922,7 +1013,8 @@ export async function POST(request: Request) {
       const hourStart = typeof rate.hourStart === "number" ? rate.hourStart : 0;
       const minuteCount = now - minuteStart < 60_000 ? Number(rate.minuteCount || 0) : 0;
       const hourCount = now - hourStart < 3_600_000 ? Number(rate.hourCount || 0) : 0;
-      if (minuteCount + writeUnits > PER_MINUTE_WRITE_LIMIT || hourCount + writeUnits > PER_HOUR_WRITE_LIMIT) {
+      if (!isPlatformAdmin(token) &&
+        (minuteCount + writeUnits > PER_MINUTE_WRITE_LIMIT || hourCount + writeUnits > PER_HOUR_WRITE_LIMIT)) {
         fail("Write rate limit reached. Please wait before trying again.", 429);
       }
 
@@ -1041,6 +1133,40 @@ export async function POST(request: Request) {
           ...(data.contactEmail !== undefined ? { contactEmail: normalizeEmail(data.contactEmail as string) } : {}),
         }, { merge: true });
         createdId = leagueId;
+      } else if (requestedEntity === "league_update") {
+        const leagueId = String(data.leagueId);
+        const leagueRef = adminDb.doc(`leagues/${leagueId}`);
+        const publicFields: Record<string, unknown> = { ...data };
+        delete publicFields.leagueId;
+        delete publicFields.adminEmails;
+        delete publicFields.contactEmail;
+        if (publicFields.subscription) {
+          const subscription = { ...(publicFields.subscription as Record<string, unknown>) };
+          delete subscription.adminEmails;
+          publicFields.subscription = subscription;
+        }
+        if (publicFields.shortcode) publicFields.shortcode = String(publicFields.shortcode).toUpperCase();
+        transaction.set(leagueRef, { ...publicFields, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (data.adminEmails !== undefined || data.contactEmail !== undefined) {
+          transaction.set(adminDb.doc(`league_private/${leagueId}`), {
+            leagueId,
+            ...(data.adminEmails !== undefined ? { adminEmails: normalizedEmails(data.adminEmails) } : {}),
+            ...(data.contactEmail !== undefined ? { contactEmail: normalizeEmail(data.contactEmail as string) } : {}),
+          }, { merge: true });
+        }
+        createdId = leagueId;
+      } else if (requestedEntity === "match_update") {
+        const matchId = String(data.matchId);
+        const update: Record<string, unknown> = {
+          homeTeamId: data.homeTeamId,
+          awayTeamId: data.awayTeamId,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (data.homeTeamName !== undefined) update.homeTeamName = data.homeTeamName;
+        if (data.awayTeamName !== undefined) update.awayTeamName = data.awayTeamName;
+        if (data.manualMatchup !== undefined) update.manualMatchup = data.manualMatchup;
+        transaction.update(adminDb.doc(`matches/${matchId}`), update);
+        createdId = matchId;
       } else if (requestedEntity === "delete_player") {
         const playerId = String(data.playerId);
         transaction.delete(adminDb.doc(`players/${playerId}`));

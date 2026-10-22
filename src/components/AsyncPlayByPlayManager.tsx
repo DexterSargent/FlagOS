@@ -214,7 +214,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           try {
             const matchDoc = await getDoc(doc(db, "matches", matchId));
             if (matchDoc.exists()) {
-              mData = { id: matchDoc.id, ...matchDoc.data() };
+              mData = { ...matchDoc.data(), id: matchDoc.id };
             }
           } catch (e) {
             console.warn("Could not load match from remote Firestore:", e);
@@ -325,7 +325,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         try {
           const q = query(collection(db, "plays"), where("matchId", "==", matchId), where("isHidden", "==", false), orderBy("timestamp", "asc"), limit(500));
           const snap = await getDocs(q);
-          pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          pList = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
         } catch (e) {
           console.warn("Could not query Firestore plays:", e);
           firestoreFailed = true;

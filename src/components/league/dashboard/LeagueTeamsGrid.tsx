@@ -106,7 +106,7 @@ export function LeagueTeamsGrid({
                     Roster
                   </Link>
                   <Link
-                    href={`/teams/${team.id}`}
+                    href={isAdminView ? `/teams/${team.id}?edit=1` : `/teams/${team.id}`}
                     className={`py-1.5 px-2.5 rounded-lg text-center font-semibold transition-colors ${
                       isAdminView
                         ? "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-500/20"

@@ -151,7 +151,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       try {
         const docSnap = await getDoc(doc(db, "matches", matchId));
         if (docSnap.exists()) {
-          setMatchData(docSnap.data());
+          setMatchData({ ...docSnap.data(), id: docSnap.id });
         }
       } catch (error) {
         console.error("Error fetching match:", error);
@@ -189,6 +189,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   }
 
   const gameState = getGameDisplayState(matchData, now);
+  const isIndependentMatch = Boolean(matchData.isStandalone || matchData.isIndependent);
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col">
@@ -196,9 +197,12 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       <div className="max-w-4xl mx-auto space-y-8 flex-1 w-full p-6 md:p-12">
 
         {/* Navigation */}
-        <Link href="/schedule" className="inline-flex items-center text-neutral-400 hover:text-white transition-colors">
+        <Link
+          href={isIndependentMatch && matchData.managingTeamId ? `/teams/${matchData.managingTeamId}/schedule` : "/schedule"}
+          className="inline-flex items-center text-neutral-400 hover:text-white transition-colors"
+        >
           <ChevronLeft className="w-5 h-5 mr-1" />
-          Back to Schedule
+          {isIndependentMatch ? "Back to Team Schedule" : "Back to Schedule"}
         </Link>
 
         {/* Match Header */}
@@ -214,7 +218,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
             <div className="text-center md:text-left">
               <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
                 <span className="text-xs font-bold tracking-widest text-cyan-400 uppercase">
-                  {renderFlagOS(settings.leagueName)} • Week {matchData.week}
+                  {isIndependentMatch ? "Independent Game" : renderFlagOS(settings.leagueName)} • {/^\d+$/.test(String(matchData.week ?? "")) ? `Week ${matchData.week}` : matchData.week || "Game"}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-white/5 text-[10px] font-mono text-neutral-400">
                   {settings.seasonTitle || "2026 Season"}
@@ -283,7 +287,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   </button>
                 </>
               )}
-              {isPlatformAdmin && matchData.status !== 'completed' && (
+              {isPlatformAdmin && matchData.status !== 'completed' && matchData.homeTeamId && matchData.awayTeamId && (
                 <button
                   onClick={handleSimulateGame}
                   disabled={isSimulating}
@@ -294,7 +298,11 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   <span>{isSimulating ? "Simulating Game..." : "⚡ Simulate Game"}</span>
                 </button>
               )}
-              {matchData.status !== 'completed' ? (
+              {matchData.status !== 'completed' && (!matchData.homeTeamId || !matchData.awayTeamId) ? (
+                <span className="px-4 py-2.5 rounded-xl border border-white/10 text-neutral-400 text-xs font-semibold">
+                  Teams to be decided
+                </span>
+              ) : matchData.status !== 'completed' ? (
                 <Link
                   href={`/matches/${matchId}/play-by-play`}
                   className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"

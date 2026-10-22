@@ -187,6 +187,13 @@ export function resolveLeaguePlayoffFormat(
   return playoffFormat;
 }
 
+const LEAGUE_UPDATE_KEYS: (keyof LeagueSettings)[] = [
+  "leagueName", "shortcode", "tagline", "seasonTitle", "logoUrl", "icon", "primaryColor", "accentColor",
+  "secondaryColor", "tertiaryColor", "themePreset", "defaultLocation", "rulebookTitle", "rulebookUrl",
+  "announcement", "seasonStatus", "isArchived", "archivedAt", "visibility", "playoffFormat",
+  "subscription", "contactEmail", "adminEmails",
+];
+
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   leagueName: "FlagOS League",
   shortcode: "FLAG",
@@ -200,8 +207,8 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   tertiaryColor: "#ffffff",
   themePreset: "gridiron-green",
   defaultLocation: "Turf Field 1",
-  contactEmail: "commissioner@flagos.app",
-  rulebookTitle: "Official 7v7 Non-Contact Rules",
+  contactEmail: "",
+  rulebookTitle: "IFAF 5v5 Flag Football Rules",
   rulebookUrl: "",
   announcement: "",
   visibility: "public",
@@ -815,11 +822,16 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       return updated;
     });
 
+    const payload: Record<string, unknown> = { leagueId: activeLeagueId };
+    for (const key of LEAGUE_UPDATE_KEYS) {
+      if (key in newSettings && merged[key] !== undefined) payload[key] = merged[key];
+    }
+    if (newSettings.rules) payload.rules = merged.rules;
     try {
-      const targetDoc = doc(db, "leagues", activeLeagueId);
-      await setDoc(targetDoc, merged, { merge: true });
+      await createSecureRecord("league_update", payload);
     } catch (err) {
       console.error("Failed to sync league settings to Firestore:", err);
+      throw err instanceof Error ? err : new Error("Could not save league settings.");
     }
   };
 
@@ -939,8 +951,11 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
     }
 
     try {
-      const targetDoc = doc(db, "leagues", activeLeagueId);
-      await setDoc(targetDoc, { subscription: nextSub, playoffFormat: nextSettings.playoffFormat }, { merge: true });
+      await createSecureRecord("league_update", {
+        leagueId: activeLeagueId,
+        subscription: nextSub,
+        playoffFormat: nextSettings.playoffFormat,
+      });
     } catch (err) {
       console.error("Failed to sync updated subscription to Firestore:", err);
     }

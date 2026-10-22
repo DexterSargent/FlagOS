@@ -363,6 +363,171 @@ export function isPlayoffActive(matches: any[]): boolean {
   return false;
 }
 
+export function isPlayoffMatch(m: any): boolean {
+  return Boolean(m?.isPlayoff || m?.week?.toString().toLowerCase().includes("playoff"));
+}
+
+function isStartedMatch(m: any): boolean {
+  return m?.status === "in_progress" || m?.status === "completed" || m?.status === "Final";
+}
+
+function getCompletedWinnerId(m: any): string | undefined {
+  if (!m || (m.status !== "completed" && m.status !== "Final")) return undefined;
+  const home = Number(m.homeScore ?? 0);
+  const away = Number(m.awayScore ?? 0);
+  if (home === away) return undefined;
+  return (home > away ? m.homeTeamId : m.awayTeamId) || undefined;
+}
+
+export function getPlayoffBracketSize(teamsCount: number): number {
+  let size = 2;
+  while (size < teamsCount) size *= 2;
+  return size;
+}
+
+/** Standard tournament seed order, e.g. size 8 -> [1, 8, 4, 5, 2, 7, 3, 6]. */
+export function getPlayoffSeedOrder(size: number): number[] {
+  let order = [1, 2];
+  while (order.length < size) {
+    const nextSize = order.length * 2;
+    order = order.flatMap((seed) => [seed, nextSize + 1 - seed]);
+  }
+  return order;
+}
+
+export function getPlayoffRoundName(roundIdx: number, totalRounds: number, teamsCount: number): string {
+  const roundsFromEnd = totalRounds - 1 - roundIdx;
+  if (teamsCount === 14 || teamsCount === 12) {
+    if (roundsFromEnd === 0) return "League Championship";
+    if (roundsFromEnd === 1) return "Conference Championships";
+    if (roundsFromEnd === 2) return "Divisional Round";
+    if (roundsFromEnd === 3) return "Wild Card Round";
+  }
+  if (roundsFromEnd === 0) return "Championship";
+  if (roundsFromEnd === 1) return "Semifinals";
+  if (roundsFromEnd === 2) return "Quarterfinals";
+  if (roundsFromEnd === 3) return "Round of 16";
+  if (roundsFromEnd === 4) return "Round of 32";
+  if (roundsFromEnd === 5) return "Round of 64";
+  return `Round ${roundIdx + 1}`;
+}
+
+/** Playoff games of one round, in bracket order (bracketSlot, then legacy `order`). */
+function getPlayoffRoundDocs(playoffMatches: any[], roundName: string): any[] {
+  const slotOf = (m: any) =>
+    typeof m.bracketSlot === "number" ? m.bracketSlot : typeof m.order === "number" ? m.order : 0;
+  return playoffMatches
+    .filter((m) => m.playoffRound === roundName)
+    .sort((a, b) => slotOf(a) - slotOf(b));
+}
+
+export interface PlayoffFixtureTemplate {
+  playoffRound: string;
+  roundIndex: number;
+  bracketSlot: number;
+  homeTeamName: string;
+  awayTeamName: string;
+}
+
+/**
+ * Empty single-elimination fixtures for a playoff field. Teams stay TBD until the regular
+ * season ends; {@link computePlayoffMatchupUpdates} then seeds and advances them.
+ */
+export function buildPlayoffFixtureTemplates(teamsCount: number): PlayoffFixtureTemplate[] {
+  const count = Math.max(2, Math.floor(teamsCount));
+  const size = getPlayoffBracketSize(count);
+  const totalRounds = Math.round(Math.log2(size));
+  const seeds = getPlayoffSeedOrder(size);
+  const fixtures: PlayoffFixtureTemplate[] = [];
+  let slotLabels: string[] = [];
+  const round0Name = getPlayoffRoundName(0, totalRounds, count);
+  let realMatchIdx = 0;
+  for (let i = 0; i < size / 2; i++) {
+    const seedA = seeds[2 * i];
+    const seedB = seeds[2 * i + 1];
+    if (seedB > count) {
+      slotLabels.push(`#${seedA} Seed`);
+      continue;
+    }
+    fixtures.push({
+      playoffRound: round0Name,
+      roundIndex: 0,
+      bracketSlot: realMatchIdx,
+      homeTeamName: `#${seedA} Seed`,
+      awayTeamName: `#${seedB} Seed`,
+    });
+    realMatchIdx += 1;
+    slotLabels.push(`Winner ${round0Name} ${realMatchIdx}`);
+  }
+  for (let r = 1; r < totalRounds; r++) {
+    const roundName = getPlayoffRoundName(r, totalRounds, count);
+    const next: string[] = [];
+    for (let m = 0; m < slotLabels.length / 2; m++) {
+      fixtures.push({
+        playoffRound: roundName,
+        roundIndex: r,
+        bracketSlot: m,
+        homeTeamName: slotLabels[2 * m],
+        awayTeamName: slotLabels[2 * m + 1],
+      });
+      next.push(`Winner ${roundName} ${m + 1}`);
+    }
+    slotLabels = next;
+  }
+  return fixtures;
+}
+
+export interface PlayoffMatchupUpdate {
+  matchId: string;
+  homeTeamId: string;
+  homeTeamName: string;
+  awayTeamId: string;
+  awayTeamName: string;
+}
+
+/**
+ * Once every regular-season game is final, returns the playoff games whose stored teams
+ * differ from the bracket (seeded from standings, winners advanced). Games that have
+ * started or were set manually by an admin are never touched.
+ */
+export function computePlayoffMatchupUpdates(
+  standings: TeamStanding[],
+  format: PlayoffFormat,
+  matches: any[] = []
+): PlayoffMatchupUpdate[] {
+  if (format?.structure === "double_elimination") return [];
+  const regular = matches.filter((m) => !isPlayoffMatch(m) && !m.isPreseason);
+  if (regular.length === 0 || !regular.every((m) => m.status === "completed" || m.status === "Final")) {
+    return [];
+  }
+  const updates: PlayoffMatchupUpdate[] = [];
+  for (const round of generatePlayoffBracket(standings, format, matches)) {
+    for (const node of round.matches) {
+      const stored = node.actualMatchId ? matches.find((m) => m.id === node.actualMatchId) : null;
+      if (!stored || isStartedMatch(stored) || stored.manualMatchup) continue;
+      const next: PlayoffMatchupUpdate = {
+        matchId: stored.id,
+        homeTeamId: node.homeTeam?.teamId || "",
+        homeTeamName: node.homeTeam?.teamName || node.homeSeedLabel,
+        awayTeamId: node.awayTeam?.teamId || "",
+        awayTeamName: node.awayTeam?.teamName || node.awaySeedLabel,
+      };
+      if ((stored.homeTeamId || "") !== next.homeTeamId || (stored.awayTeamId || "") !== next.awayTeamId ||
+        stored.homeTeamName !== next.homeTeamName || stored.awayTeamName !== next.awayTeamName) {
+        updates.push(next);
+      }
+    }
+  }
+  return updates;
+}
+
+/** The champion's team ID once the final game of the bracket is complete. */
+export function getPlayoffChampionId(rounds: BracketRound[]): string | undefined {
+  const finalRound = rounds.filter((round) => round.bracketType !== "losers").at(-1);
+  if (!finalRound || finalRound.matches.length !== 1) return undefined;
+  return finalRound.matches[0].winnerTeamId;
+}
+
 /**
  * Generates an interactive tournament bracket structured according to the playoff format,
  * supporting ANY team count from 2 up to total teams,
@@ -385,244 +550,124 @@ export function generatePlayoffBracket(
       ? format.teamsCount
       : defaultCount;
   const teamsCount = Math.max(2, Math.min(standings.length, effectiveFormatCount));
-  const playoffMatches = matches.filter(
-    (m) => m.isPlayoff || m.week?.toString().toLowerCase().includes("playoff")
-  );
+  const playoffMatches = matches.filter(isPlayoffMatch);
 
-  const getTeamBySeed = (seedNum: number): TeamStanding | null => {
-    return standings.find((s) => s.rank === seedNum) || null;
-  };
+  const getTeamBySeed = (seedNum: number): TeamStanding | null =>
+    standings.find((s) => s.rank === seedNum) || null;
+  const getTeamById = (teamId: unknown): TeamStanding | null =>
+    typeof teamId === "string" && teamId ? standings.find((s) => s.teamId === teamId) || null : null;
 
-  // Find power of 2: P = 2^k where P >= teamsCount
-  let P = 2;
-  while (P < teamsCount) {
-    P *= 2;
-  }
-  const totalRoundsCount = Math.round(Math.log2(P)); // e.g. 1 for 2, 2 for 4, 3 for 8, 4 for 16, 5 for 32
+  const P = getPlayoffBracketSize(teamsCount);
+  const totalRoundsCount = Math.round(Math.log2(P));
+  const seedsOrder = getPlayoffSeedOrder(P);
 
-  // Generate standard tournament seeds order for size P
-  // (e.g. P=8 -> [1, 8, 4, 5, 2, 7, 3, 6])
-  let seedsOrder = [1, 2];
-  while (seedsOrder.length < P) {
-    const nextSize = seedsOrder.length * 2;
-    const nextList: number[] = [];
-    for (const s of seedsOrder) {
-      nextList.push(s);
-      nextList.push(nextSize + 1 - s);
-    }
-    seedsOrder = nextList;
-  }
-
-  const getRoundName = (roundIdx: number, totalRounds: number) => {
-    const roundsFromEnd = totalRounds - 1 - roundIdx;
-    if (teamsCount === 14 || teamsCount === 12) {
-      if (roundsFromEnd === 0) return "League Championship";
-      if (roundsFromEnd === 1) return "Conference Championships";
-      if (roundsFromEnd === 2) return "Divisional Round";
-      if (roundsFromEnd === 3) return "Wild Card Round";
-    }
-    if (roundsFromEnd === 0) return "Championship";
-    if (roundsFromEnd === 1) return "Semifinals";
-    if (roundsFromEnd === 2) return "Quarterfinals";
-    if (roundsFromEnd === 3) return "Round of 16";
-    if (roundsFromEnd === 4) return "Round of 32";
-    if (roundsFromEnd === 5) return "Round of 64";
-    return `Round ${roundIdx + 1}`;
-  };
-
-  // Special case: P = 2 (Championship only for 2 teams)
-  if (P === 2) {
-    const s1 = getTeamBySeed(1);
-    const s2 = getTeamBySeed(2);
-    const m = playoffMatches.find(
-      (match) => match.playoffRound === "Championship" || match.order === 0
-    );
-    const champMatch: BracketMatchNode = {
-      id: "bracket_champ_1",
-      roundName: "Championship",
-      roundIndex: 0,
-      matchIndex: 0,
-      homeTeam: s1,
-      awayTeam: s2,
-      homeSeedLabel: "#1 Seed",
-      awaySeedLabel: "#2 Seed",
-      actualMatchId: m?.id,
-      date: m?.date,
-      time: m?.time,
-      location: m?.location,
-      status: m ? (m.status as any) : "projected",
-      liveHeartbeatAt: m?.liveHeartbeatAt,
-      homeScore: m?.homeScore,
-      awayScore: m?.awayScore,
-      winnerTeamId:
-        m?.status === "completed"
-          ? (m.homeScore ?? 0) > (m.awayScore ?? 0)
-            ? m.homeTeamId
-            : m.awayTeamId
-          : undefined,
-    };
-    return [{ name: "Championship", roundIndex: 0, matches: [champMatch] }];
-  }
-
-  // General P >= 4:
   interface RoundSlotInfo {
     team: TeamStanding | null;
     label: string;
     isBye?: boolean;
-    winnerTeamId?: string;
     source?: BracketSource;
   }
 
-  let previousRoundSlots: RoundSlotInfo[] = [];
+  // A stored game's own teams win once it has started or an admin set them by hand;
+  // otherwise the bracket position (seed or advancing winner) decides who plays.
+  const buildNode = (
+    id: string,
+    roundName: string,
+    roundIndex: number,
+    matchIndex: number,
+    home: RoundSlotInfo,
+    away: RoundSlotInfo,
+    actualM: any,
+  ): BracketMatchNode => {
+    const useStoredTeams = Boolean(actualM && (isStartedMatch(actualM) || actualM.manualMatchup));
+    const homeTeam = useStoredTeams ? getTeamById(actualM.homeTeamId) || home.team : home.team;
+    const awayTeam = useStoredTeams ? getTeamById(actualM.awayTeamId) || away.team : away.team;
+    const seedLabel = (slot: RoundSlotInfo, team: TeamStanding | null) =>
+      team ? `#${team.rank} Seed${slot.isBye && team === slot.team ? " (Bye)" : ""}` : slot.label;
+    return {
+      id,
+      roundName,
+      roundIndex,
+      matchIndex,
+      homeTeam,
+      awayTeam,
+      homeSource: home.source,
+      awaySource: away.source,
+      homeSeedLabel: seedLabel(home, homeTeam),
+      awaySeedLabel: seedLabel(away, awayTeam),
+      actualMatchId: actualM?.id,
+      date: actualM?.date,
+      time: actualM?.time,
+      location: actualM?.location,
+      status: actualM ? (actualM.status === "Final" ? "completed" : actualM.status) : "projected",
+      liveHeartbeatAt: actualM?.liveHeartbeatAt,
+      homeScore: actualM?.homeScore,
+      awayScore: actualM?.awayScore,
+      winnerTeamId: getCompletedWinnerId(actualM),
+    };
+  };
+
+  const winnerSlot = (node: BracketMatchNode, fallbackLabel: string): RoundSlotInfo => {
+    const winner = getTeamById(node.winnerTeamId);
+    return {
+      team: winner,
+      label: winner ? winner.teamName : fallbackLabel,
+      source: { matchId: node.id, result: "winner" },
+    };
+  };
+
   const rounds: BracketRound[] = [];
-  const numPairs = P / 2;
-  const round0Name = getRoundName(0, totalRoundsCount);
+  let previousRoundSlots: RoundSlotInfo[] = [];
+  const round0Name = getPlayoffRoundName(0, totalRoundsCount, teamsCount);
+  const round0Docs = getPlayoffRoundDocs(playoffMatches, round0Name);
   const round0Matches: BracketMatchNode[] = [];
 
-  // Round 0
-  for (let i = 0; i < numPairs; i++) {
+  for (let i = 0; i < P / 2; i++) {
     const seedA = seedsOrder[2 * i];
     const seedB = seedsOrder[2 * i + 1];
-
     if (seedB > teamsCount) {
-      // seedA has a first round bye!
-      const teamA = getTeamBySeed(seedA);
-      previousRoundSlots.push({
-        team: teamA,
-        label: `#${seedA} Seed (Bye)`,
-        isBye: true,
-        winnerTeamId: teamA?.teamId,
-      });
-    } else {
-      // Real match in Round 0
-      const teamA = getTeamBySeed(seedA);
-      const teamB = getTeamBySeed(seedB);
-      const matchIdx = round0Matches.length;
-
-      const actualM = playoffMatches.find(
-        (m) =>
-          (m.playoffRound === round0Name || (!m.playoffRound && m.order === matchIdx)) &&
-          (!m.homeTeamId || m.homeTeamId === teamA?.teamId || m.awayTeamId === teamA?.teamId)
-      );
-
-      const isCompleted = actualM?.status === "completed";
-      const winnerId = isCompleted
-        ? (actualM.homeScore ?? 0) > (actualM.awayScore ?? 0)
-          ? actualM.homeTeamId
-          : actualM.awayTeamId
-        : undefined;
-
-      const node: BracketMatchNode = {
-        id: `bracket_r0_${matchIdx}`,
-        roundName: round0Name,
-        roundIndex: 0,
-        matchIndex: matchIdx,
-        homeTeam: teamA,
-        awayTeam: teamB,
-        homeSeedLabel: `#${seedA} Seed`,
-        awaySeedLabel: `#${seedB} Seed`,
-        actualMatchId: actualM?.id,
-        date: actualM?.date,
-        time: actualM?.time,
-        location: actualM?.location,
-        status: actualM ? (actualM.status as any) : "projected",
-        liveHeartbeatAt: actualM?.liveHeartbeatAt,
-        homeScore: actualM?.homeScore,
-        awayScore: actualM?.awayScore,
-        winnerTeamId: winnerId,
-      };
-
-      round0Matches.push(node);
-
-      const winningTeamObj = winnerId ? standings.find((s) => s.teamId === winnerId) || null : null;
-      previousRoundSlots.push({
-        // NO PREDICTIONS: if game not played yet, team is strictly null!
-        team: winningTeamObj,
-        label: winningTeamObj ? winningTeamObj.teamName : `Winner Match ${matchIdx + 1}`,
-        source: { matchId: node.id, result: "winner" },
-        winnerTeamId: winnerId,
-      });
+      previousRoundSlots.push({ team: getTeamBySeed(seedA), label: `#${seedA} Seed (Bye)`, isBye: true });
+      continue;
     }
+    const matchIdx = round0Matches.length;
+    const node = buildNode(
+      totalRoundsCount === 1 ? "bracket_champ_1" : `bracket_r0_${matchIdx}`,
+      round0Name,
+      0,
+      matchIdx,
+      { team: getTeamBySeed(seedA), label: `#${seedA} Seed` },
+      { team: getTeamBySeed(seedB), label: `#${seedB} Seed` },
+      round0Docs[matchIdx],
+    );
+    round0Matches.push(node);
+    previousRoundSlots.push(winnerSlot(node, `Winner ${round0Name} ${matchIdx + 1}`));
   }
 
   if (round0Matches.length > 0) {
-    rounds.push({
-      name: round0Name,
-      roundIndex: 0,
-      matches: round0Matches,
-    });
+    rounds.push({ name: round0Name, roundIndex: 0, matches: round0Matches });
   }
 
-  // Build subsequent rounds (1 to totalRoundsCount - 1)
   for (let r = 1; r < totalRoundsCount; r++) {
-    const roundName = getRoundName(r, totalRoundsCount);
+    const roundName = getPlayoffRoundName(r, totalRoundsCount, teamsCount);
+    const roundDocs = getPlayoffRoundDocs(playoffMatches, roundName);
     const roundMatches: BracketMatchNode[] = [];
     const nextSlots: RoundSlotInfo[] = [];
-    const matchesInThisRound = previousRoundSlots.length / 2;
 
-    for (let m = 0; m < matchesInThisRound; m++) {
-      const slotHome = previousRoundSlots[2 * m];
-      const slotAway = previousRoundSlots[2 * m + 1];
-
-      const actualM = playoffMatches.find(
-        (pm) =>
-          pm.playoffRound === roundName &&
-          (pm.order === m ||
-            (slotHome.team && pm.homeTeamId === slotHome.team.teamId) ||
-            (slotAway.team && pm.awayTeamId === slotAway.team.teamId))
-      );
-
-      const isCompleted = actualM?.status === "completed";
-      const winnerId = isCompleted
-        ? (actualM.homeScore ?? 0) > (actualM.awayScore ?? 0)
-          ? actualM.homeTeamId
-          : actualM.awayTeamId
-        : undefined;
-
-      const node: BracketMatchNode = {
-        id: `bracket_r${r}_${m}`,
+    for (let m = 0; m < previousRoundSlots.length / 2; m++) {
+      const node = buildNode(
+        `bracket_r${r}_${m}`,
         roundName,
-        roundIndex: r,
-        matchIndex: m,
-        // STRICTLY NO PREDICTIONS: only filled if team had a BYE or finished match!
-        homeTeam: slotHome.team,
-        awayTeam: slotAway.team,
-        homeSource: slotHome.source,
-        awaySource: slotAway.source,
-        homeSeedLabel: slotHome.team
-          ? `#${slotHome.team.rank} Seed${slotHome.isBye ? " (Bye)" : ""}`
-          : slotHome.label,
-        awaySeedLabel: slotAway.team
-          ? `#${slotAway.team.rank} Seed${slotAway.isBye ? " (Bye)" : ""}`
-          : slotAway.label,
-        actualMatchId: actualM?.id,
-        date: actualM?.date,
-        time: actualM?.time,
-        location: actualM?.location,
-        status: actualM ? (actualM.status as any) : "projected",
-        liveHeartbeatAt: actualM?.liveHeartbeatAt,
-        homeScore: actualM?.homeScore,
-        awayScore: actualM?.awayScore,
-        winnerTeamId: winnerId,
-      };
-
+        r,
+        m,
+        previousRoundSlots[2 * m],
+        previousRoundSlots[2 * m + 1],
+        roundDocs[m],
+      );
       roundMatches.push(node);
-
-      const winningTeamObj = winnerId ? standings.find((s) => s.teamId === winnerId) || null : null;
-      nextSlots.push({
-        team: winningTeamObj,
-        label: winningTeamObj ? winningTeamObj.teamName : `Winner ${roundName} ${m + 1}`,
-        source: { matchId: node.id, result: "winner" },
-        winnerTeamId: winnerId,
-      });
+      nextSlots.push(winnerSlot(node, `Winner ${roundName} ${m + 1}`));
     }
 
-    rounds.push({
-      name: roundName,
-      roundIndex: r,
-      matches: roundMatches,
-    });
-
+    rounds.push({ name: roundName, roundIndex: r, matches: roundMatches });
     previousRoundSlots = nextSlots;
   }
 

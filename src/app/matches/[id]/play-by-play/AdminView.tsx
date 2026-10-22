@@ -210,7 +210,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           limit(500),
         );
         const snap = await getDocs(q);
-        pList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        pList = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
       }
       setMatchPlaysList(pList);
       if (pList.length > 0) {

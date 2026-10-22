@@ -17,7 +17,7 @@ export default function Sandbox() {
     setLoading(true);
     try {
       const matchesSnap = await getDocs(query(collection(db, "matches"), limit(2)));
-      const matches = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+      const matches = matchesSnap.docs.map(d => ({ ...(d.data() as any), id: d.id }));
 
       if (matches.length === 0) {
         alert("No matches found in DB.");
@@ -34,7 +34,7 @@ export default function Sandbox() {
           limit(60),
         ))
         : null;
-      const players = playersSnap?.docs.map(d => ({ id: d.id, ...d.data() as any })) || [];
+      const players = playersSnap?.docs.map(d => ({ ...(d.data() as any), id: d.id })) || [];
 
       for (const match of matches) {
         const homeRoster = players.filter(p => p.teamId === match.homeTeamId);

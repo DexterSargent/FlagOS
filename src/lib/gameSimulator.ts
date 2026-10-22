@@ -132,7 +132,7 @@ export async function simulateFullGame(
     try {
       const snap = await getDoc(doc(db, "matches", matchId));
       if (snap.exists()) {
-        matchData = { id: snap.id, ...snap.data() };
+        matchData = { ...snap.data(), id: snap.id };
       }
     } catch (e) {
       console.warn("Could not load match from Firestore, checking sandbox:", e);

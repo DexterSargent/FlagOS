@@ -57,7 +57,7 @@ export function TeamColorScope({
       return;
     }
     getDoc(doc(db, "teams", teamId))
-      .then((snap) => { if (!cancelled && snap.exists()) setDemoTeam({ id: snap.id, ...snap.data() }); })
+      .then((snap) => { if (!cancelled && snap.exists()) setDemoTeam({ ...snap.data(), id: snap.id }); })
       .catch((e) => console.warn("Could not load team for TeamColorScope:", e))
       .finally(() => { if (!cancelled) setDemoLoading(false); });
     const handleCustomUpdate = (e: any) => {

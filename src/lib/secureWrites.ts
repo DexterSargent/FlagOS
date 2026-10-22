@@ -12,6 +12,8 @@ export type SecureEntity =
   | "player_private_update"
   | "player_update"
   | "league_private_update"
+  | "league_update"
+  | "match_update"
   | "delete_player"
   | "delete_team"
   | "delete_league"

@@ -129,7 +129,7 @@ export default function TeamsPage() {
         limit(64),
       ));
       const tData = teamsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Team))
+        .map(d => ({ ...d.data(), id: d.id } as Team))
         .filter(t => isRealTeam(t) && !isStandaloneTeam(t as any) && (t as any).leagueId === activeLeagueId);
       tData.sort((a, b) => a.name.localeCompare(b.name));
       setTeams(tData);
@@ -139,7 +139,7 @@ export default function TeamsPage() {
         where("leagueId", "==", activeLeagueId),
         limit(1920),
       ));
-      const pData = playersSnap.docs.map(d => ({ id: d.id, ...d.data() } as Player));
+      const pData = playersSnap.docs.map(d => ({ ...d.data(), id: d.id } as Player));
       setPlayers(pData);
 
       const matchesSnap = await getDocs(query(
@@ -149,7 +149,7 @@ export default function TeamsPage() {
         limit(512),
       ));
       const mData = matchesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as any))
+        .map(d => ({ ...d.data(), id: d.id } as any))
         .filter(m =>
           !m.isHidden &&
           (!m.leagueId || m.leagueId === activeLeagueId)
@@ -162,7 +162,7 @@ export default function TeamsPage() {
         where("isHidden", "!=", true),
         limit(10_000),
       ));
-      const playData = playsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const playData = playsSnap.docs.map(d => ({ ...d.data(), id: d.id }));
       setPlays(playData);
     } catch (e) {
       console.warn("Unable to fetch live teams data, falling back to sandbox:", e);
@@ -1382,7 +1382,7 @@ export default function TeamsPage() {
 
       {/* Player Stats Modal */}
       {selectedPlayerForStats && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedPlayerForStats(null)}></div>
           <div className="relative bg-neutral-900 border border-white/10 rounded-3xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-200">
             {activeTeam && canManageTeam(activeTeam.id) && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -50,7 +50,10 @@ import {
 import {
   calculateStandings,
   isPlayoffActive,
+  isPlayoffMatch,
   generatePlayoffBracket,
+  computePlayoffMatchupUpdates,
+  getPlayoffChampionId,
 } from "@/lib/standingsEngine";
 import PlayoffBracketView from "@/components/schedule/PlayoffBracketView";
 import AutomatedScheduleBuilderModal from "@/components/schedule/AutomatedScheduleBuilderModal";
@@ -75,6 +78,8 @@ interface Match {
   isPreseason?: boolean;
   isPlayoff?: boolean;
   playoffRound?: string;
+  bracketSlot?: number;
+  manualMatchup?: boolean;
   order?: number;
 }
 
@@ -128,10 +133,9 @@ export default function Calendar() {
 
   // Active Main View: "schedule" (Regular Season) vs "playoffs" (Playoff Picture / Playoffs)
   const [activeView, setActiveView] = useState<"schedule" | "playoffs">("schedule");
-  // Week Filter for Regular Season view (defaults to Week 1 for private live or Week 16 for demo)
-  const [selectedWeekFilter, setSelectedWeekFilter] = useState<string | null>(
-    activeLeagueId === "league_private_live" ? "Week 1" : "Week 16"
-  );
+  // Week Filter for Regular Season view; resolved to the current week once matches load
+  const [selectedWeekFilter, setSelectedWeekFilter] = useState<string | null>(null);
+  const weekFilterResolvedRef = useRef(false);
 
   const [isEmbedded, setIsEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -155,7 +159,10 @@ export default function Calendar() {
       } catch (e) { }
       if (isEmbedQuery || isIframe) setIsEmbedded(true);
       if (sp.get("view") === "playoffs") setActiveView("playoffs");
-      if (sp.get("week")) setSelectedWeekFilter(sp.get("week"));
+      if (sp.get("week")) {
+        setSelectedWeekFilter(sp.get("week"));
+        weekFilterResolvedRef.current = true;
+      }
     }
   }, []);
 
@@ -164,6 +171,7 @@ export default function Calendar() {
   // Manual Match Edit/Create Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Partial<Match> | null>(null);
+  const [matchSaveError, setMatchSaveError] = useState<string | null>(null);
 
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
 
@@ -246,7 +254,7 @@ export default function Calendar() {
     )).then((teamsSnap) => {
       setTeams(
         teamsSnap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
+          .map((d) => ({ ...d.data(), id: d.id }))
           .filter((t: any) => isRealTeam(t) && (!t.leagueId || t.leagueId === activeLeagueId))
       );
     }).catch((err) => {
@@ -263,7 +271,7 @@ export default function Calendar() {
       ),
       (snap) => {
         const mData = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as Match))
+          .map((d) => ({ ...d.data(), id: d.id } as Match))
           .filter((m: any) => !m.isHidden && (!m.leagueId || m.leagueId === activeLeagueId));
 
         setMatches(sortMatches(mData));
@@ -294,6 +302,40 @@ export default function Calendar() {
     return generatePlayoffBracket(standings, playoffFormat, matches);
   }, [standings, playoffFormat, matches]);
 
+  const championTeam = useMemo(() => {
+    const championId = getPlayoffChampionId(bracketRounds);
+    return championId ? teams.find((t) => t.id === championId) : undefined;
+  }, [bracketRounds, teams]);
+
+  const playoffMatches = useMemo(
+    () => matches
+      .filter((m) => isPlayoffMatch(m))
+      .sort((a, b) => (a.matchdayIndex ?? 0) - (b.matchdayIndex ?? 0) || (a.bracketSlot ?? 0) - (b.bracketSlot ?? 0)),
+    [matches],
+  );
+
+  // Once the regular season is final, seed the playoff games from standings and advance winners.
+  const appliedPlayoffUpdatesRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!isLeagueAdmin || isDemoLeague || isEmbedded || loading || teams.length === 0) return;
+    const updates = computePlayoffMatchupUpdates(standings, playoffFormat, matches).filter((update) => {
+      const key = `${update.matchId}:${update.homeTeamId}:${update.awayTeamId}`;
+      if (appliedPlayoffUpdatesRef.current.has(key)) return false;
+      appliedPlayoffUpdatesRef.current.add(key);
+      return true;
+    });
+    if (updates.length === 0) return;
+    (async () => {
+      for (const update of updates) {
+        try {
+          await createSecureRecord("match_update", { ...update });
+        } catch (err) {
+          console.warn("Failed to update playoff matchup:", err);
+        }
+      }
+    })();
+  }, [isLeagueAdmin, isDemoLeague, isEmbedded, loading, teams.length, standings, playoffFormat, matches]);
+
   // Unique list of Regular Season Weeks for the week pill filter
   const regularSeasonWeeks = useMemo(() => {
     const set = new Set<string>();
@@ -309,6 +351,20 @@ export default function Calendar() {
     });
   }, [matches]);
 
+  // Default to the first week that still has unfinished games (or the last week).
+  useEffect(() => {
+    if (loading) return;
+    if (selectedWeekFilter && !regularSeasonWeeks.includes(selectedWeekFilter)) {
+      weekFilterResolvedRef.current = false;
+    }
+    if (weekFilterResolvedRef.current || regularSeasonWeeks.length === 0) return;
+    weekFilterResolvedRef.current = true;
+    const currentWeek = regularSeasonWeeks.find((week) =>
+      matches.some((m) => m.week === week && m.status !== "completed" && m.status !== "Final")
+    );
+    setSelectedWeekFilter(currentWeek || regularSeasonWeeks[regularSeasonWeeks.length - 1]);
+  }, [loading, regularSeasonWeeks, matches, selectedWeekFilter]);
+
   // Filtered Regular Season Matches
   const displayedRegularSeasonMatches = useMemo(() => {
     return matches.filter((m) => {
@@ -319,6 +375,11 @@ export default function Calendar() {
         return false;
       }
       return true;
+    }).sort((a, b) => {
+      if (selectedWeekFilter) return 0;
+      const weekA = parseInt(a.week?.replace(/\D/g, "") || "0", 10);
+      const weekB = parseInt(b.week?.replace(/\D/g, "") || "0", 10);
+      return weekA - weekB;
     });
   }, [matches, selectedWeekFilter]);
 
@@ -376,14 +437,19 @@ export default function Calendar() {
 
     const homeT = teams.find((t) => t.id === editingMatch.homeTeamId);
     const awayT = teams.find((t) => t.id === editingMatch.awayTeamId);
+    const isPlayoffGame = Boolean(editingMatch.isPlayoff || editingMatch.week?.toString().toLowerCase().includes("playoff"));
+    const originalMatch = editingMatch.id ? matches.find((m) => m.id === editingMatch.id) : undefined;
 
     const matchDataToSave = {
       ...editingMatch,
-      homeTeamName: homeT?.name || "",
-      awayTeamName: awayT?.name || "",
-      matchdayIndex: parseInt(editingMatch.week?.replace(/\D/g, "") || "0", 10),
+      homeTeamName: homeT?.name || (isPlayoffGame && !editingMatch.homeTeamId ? originalMatch?.homeTeamName || "TBD" : ""),
+      awayTeamName: awayT?.name || (isPlayoffGame && !editingMatch.awayTeamId ? originalMatch?.awayTeamName || "TBD" : ""),
+      matchdayIndex: isPlayoffGame && typeof editingMatch.matchdayIndex === "number"
+        ? editingMatch.matchdayIndex
+        : parseInt(editingMatch.week?.replace(/\D/g, "") || "0", 10),
       status: editingMatch.status || "upcoming",
     };
+    setMatchSaveError(null);
 
     if (isDemoLeague || isEmbedded) {
       if (editingMatch.id) {
@@ -397,10 +463,26 @@ export default function Calendar() {
 
     try {
       if (editingMatch.id) {
-        await updateDoc(doc(db, "matches", editingMatch.id), {
-          ...matchDataToSave,
-          leagueId: activeLeagueId,
-        });
+        const teamsChanged = !originalMatch ||
+          (originalMatch.homeTeamId || "") !== (matchDataToSave.homeTeamId || "") ||
+          (originalMatch.awayTeamId || "") !== (matchDataToSave.awayTeamId || "");
+        if (teamsChanged) {
+          await createSecureRecord("match_update", {
+            matchId: editingMatch.id,
+            homeTeamId: matchDataToSave.homeTeamId || "",
+            awayTeamId: matchDataToSave.awayTeamId || "",
+            homeTeamName: matchDataToSave.homeTeamName,
+            awayTeamName: matchDataToSave.awayTeamName,
+            ...(isPlayoffGame ? { manualMatchup: true } : {}),
+          });
+        }
+        const {
+          id: _id, homeTeamId: _home, awayTeamId: _away, leagueId: _league,
+          homeTeamName: _homeName, awayTeamName: _awayName,
+          createdAt: _created, managingTeamId: _managing, isStandalone: _standalone,
+          ...otherFields
+        } = matchDataToSave as any;
+        await updateDoc(doc(db, "matches", editingMatch.id), otherFields);
       } else {
         await createSecureRecord("match", {
           ...matchDataToSave,
@@ -410,6 +492,7 @@ export default function Calendar() {
       setIsModalOpen(false);
     } catch (e) {
       console.error(e);
+      setMatchSaveError(e instanceof Error ? e.message : "Could not save this game. Please try again.");
     }
   };
 
@@ -487,6 +570,10 @@ export default function Calendar() {
 
     // 3. Commit matches
     if (isDemoLeague || isEmbedded) {
+      generatedMatches = generatedMatches.map((m, i) => ({
+        ...m,
+        id: m.id || `sandbox_match_${Date.now()}_${i}`,
+      }));
       if (clearExisting) {
         setSandboxMatches(generatedMatches);
         setMatches(sortMatches(generatedMatches as Match[]));
@@ -760,15 +847,71 @@ export default function Calendar() {
           </div>
         ) : activeView === "playoffs" ? (
           /* Playoff Picture / Playoffs View */
-          <PlayoffBracketView
-            standings={standings}
-            bracketRounds={bracketRounds}
-            format={playoffFormat}
-            isPlayoffActive={playoffActive}
-            canManageSchedule={canManageSchedule}
-            onOpenScheduleBuilder={() => setIsAutoScheduleOpen(true)}
-            onOpenPlayoffFormatModal={() => setIsEditPlayoffFormatOpen(true)}
-          />
+          <div className="space-y-8">
+            {championTeam && (
+              <div className="flex items-center gap-4 p-5 md:p-6 rounded-3xl border border-amber-400/40 bg-gradient-to-r from-amber-500/15 via-amber-400/5 to-transparent">
+                <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center shrink-0">
+                  <Trophy className="w-6 h-6 text-amber-300" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">
+                    {playoffFormat.championshipName || "League Champion"}
+                  </p>
+                  <p className="text-xl md:text-2xl font-black text-white">{championTeam.name} are champions!</p>
+                </div>
+              </div>
+            )}
+            <PlayoffBracketView
+              standings={standings}
+              bracketRounds={bracketRounds}
+              format={playoffFormat}
+              isPlayoffActive={playoffActive}
+              canManageSchedule={canManageSchedule}
+              onOpenScheduleBuilder={() => setIsAutoScheduleOpen(true)}
+              onOpenPlayoffFormatModal={() => setIsEditPlayoffFormatOpen(true)}
+            />
+            {playoffMatches.length > 0 && (
+              <div className="rounded-3xl border border-white/10 bg-neutral-900/60 p-5 md:p-6 space-y-3">
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Playoff Games</h3>
+                  <p className="text-xs text-neutral-400">
+                    Matchups fill in automatically from final standings and advance as winners are decided.
+                    {canManageSchedule ? " Use Edit to set a matchup manually." : ""}
+                  </p>
+                </div>
+                <ul className="divide-y divide-white/5">
+                  {playoffMatches.map((match) => (
+                    <li key={match.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                      <Link href={`/matches/${match.id}`} className="min-w-0 hover:text-cyan-300">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                          {match.playoffRound || "Playoffs"} ? {match.date} {match.time}
+                        </p>
+                        <p className="text-sm font-semibold text-white truncate">
+                          {match.homeTeamName || "TBD"} vs {match.awayTeamName || "TBD"}
+                          {(match.status === "completed" || match.status === "Final") &&
+                            ` ? ${match.homeScore ?? 0}-${match.awayScore ?? 0}`}
+                        </p>
+                      </Link>
+                      {canManageSchedule && match.status !== "completed" && match.status !== "Final" && match.status !== "in_progress" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMatchSaveError(null);
+                            setEditingMatch(match);
+                            setIsModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-neutral-200 flex items-center gap-1.5"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          Edit
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         ) : (
           /* Regular Season View */
           <div className="space-y-12">
@@ -978,7 +1121,7 @@ export default function Calendar() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">{editingMatch.id ? "Edit Game" : "Schedule Game"}</h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => { setIsModalOpen(false); setMatchSaveError(null); }}
                 className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-neutral-400"
               >
                 <X className="w-5 h-5" />
@@ -1014,13 +1157,13 @@ export default function Calendar() {
                     />
                   </label>
                   <select
-                    required
+                    required={!editingMatch.isPlayoff}
                     value={editingMatch.homeTeamId || ""}
                     onChange={(e) => setEditingMatch({ ...editingMatch, homeTeamId: e.target.value })}
                     className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white"
                   >
-                    <option value="" disabled>
-                      Select Home
+                    <option value="" disabled={!editingMatch.isPlayoff}>
+                      {editingMatch.isPlayoff ? "To be decided" : "Select Home"}
                     </option>
                     {teams.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -1038,13 +1181,13 @@ export default function Calendar() {
                     />
                   </label>
                   <select
-                    required
+                    required={!editingMatch.isPlayoff}
                     value={editingMatch.awayTeamId || ""}
                     onChange={(e) => setEditingMatch({ ...editingMatch, awayTeamId: e.target.value })}
                     className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white"
                   >
-                    <option value="" disabled>
-                      Select Away
+                    <option value="" disabled={!editingMatch.isPlayoff}>
+                      {editingMatch.isPlayoff ? "To be decided" : "Select Away"}
                     </option>
                     {teams.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -1165,6 +1308,11 @@ export default function Calendar() {
                 </div>
               )}
 
+              {matchSaveError && (
+                <p role="alert" className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3">
+                  {matchSaveError}
+                </p>
+              )}
               <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3 mt-4">
                 {editingMatch.id ? (
                   <button
@@ -1179,7 +1327,7 @@ export default function Calendar() {
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => { setIsModalOpen(false); setMatchSaveError(null); }}
                     className="px-5 py-3 font-semibold text-neutral-400 hover:text-white text-xs cursor-pointer"
                   >
                     Cancel

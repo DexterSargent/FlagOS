@@ -99,6 +99,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   // Edit Team Modal / State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const editQueryHandledRef = useRef(false);
+  useEffect(() => {
+    if (editQueryHandledRef.current || !hasEditAccess || !team) return;
+    editQueryHandledRef.current = true;
+    if (new URLSearchParams(window.location.search).get("edit") === "1") setIsEditModalOpen(true);
+  }, [hasEditAccess, team]);
   const [editName, setEditName] = useState("");
   const [editShortcode, setEditShortcode] = useState("");
   const [editLogoUrl, setEditLogoUrl] = useState("");
@@ -1202,7 +1208,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
       {/* Team Coaches & Admins Management Modal */}
       {isStaffModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
           <div role="dialog" aria-modal="true" aria-labelledby="team-staff-modal-title" className="w-full max-w-xl rounded-3xl border border-white/15 bg-neutral-900 p-6 sm:p-8 shadow-2xl text-white">
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-3">

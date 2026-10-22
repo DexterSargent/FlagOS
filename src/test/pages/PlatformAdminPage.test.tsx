@@ -148,7 +148,10 @@ describe("Platform management page", () => {
     expect(screen.getAllByRole("link", { name: /Manage team/i })[0]).toHaveAttribute("href", "/teams/team_customer_1");
 
     fireEvent.click(screen.getByRole("button", { name: /Make private/i }));
-    await waitFor(() => expect(mockUpdateDoc).toHaveBeenCalled());
+    await waitFor(() => expect(mockCreateSecureRecord).toHaveBeenCalledWith(
+      "league_update",
+      { leagueId: "league_customer_1", visibility: "private" },
+    ));
     expect(await screen.findByRole("button", { name: /Make public/i })).toBeInTheDocument();
   });
 
@@ -178,9 +181,11 @@ describe("Platform management page", () => {
     // Submit form
     fireEvent.click(screen.getByRole("button", { name: /Save Changes/i }));
 
+    await waitFor(() => expect(mockCreateSecureRecord).toHaveBeenCalledWith(
+      "league_update",
+      expect.objectContaining({ leagueId: "league_customer_1", leagueName: "Updated League Title" }),
+    ));
     await waitFor(() => expect(mockUpdateDoc).toHaveBeenCalled());
-
-    // League should update in UI
     expect(await screen.findByText("Updated League Title")).toBeInTheDocument();
   });
 

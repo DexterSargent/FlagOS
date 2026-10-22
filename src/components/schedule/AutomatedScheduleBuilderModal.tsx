@@ -20,6 +20,7 @@ import {
 import { isRealTeam } from "@/components/TeamAssets";
 import { PlayoffFormat, getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
+import { buildPlayoffFixtureTemplates } from "@/lib/standingsEngine";
 
 interface AutomatedScheduleBuilderModalProps {
   isOpen: boolean;
@@ -36,6 +37,40 @@ interface AutomatedScheduleBuilderModalProps {
   ) => Promise<void>;
 }
 
+const BUILDER_PREFS_KEY = "flagos_schedule_builder_prefs";
+
+interface BuilderPrefs {
+  weeksCount: number;
+  gameDays: "saturdays" | "sundays" | "weekends";
+  venues: string[];
+  timeSlots: string[];
+}
+
+function readBuilderPrefs(): BuilderPrefs | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(BUILDER_PREFS_KEY) || "null");
+    if (!parsed || typeof parsed !== "object") return null;
+    const prefs: BuilderPrefs = {
+      weeksCount: Number.isInteger(parsed.weeksCount) && parsed.weeksCount > 0 ? parsed.weeksCount : 4,
+      gameDays: ["saturdays", "sundays", "weekends"].includes(parsed.gameDays) ? parsed.gameDays : "saturdays",
+      venues: Array.isArray(parsed.venues) && parsed.venues.length > 0 ? parsed.venues.map(String) : [],
+      timeSlots: Array.isArray(parsed.timeSlots) && parsed.timeSlots.length > 0 ? parsed.timeSlots.map(String) : [],
+    };
+    return prefs;
+  } catch {
+    return null;
+  }
+}
+
+function writeBuilderPrefs(prefs: BuilderPrefs) {
+  try {
+    window.localStorage.setItem(BUILDER_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // Storage may be unavailable (private mode); preferences are optional.
+  }
+}
+
 export default function AutomatedScheduleBuilderModal({
   isOpen,
   onClose,
@@ -50,17 +85,18 @@ export default function AutomatedScheduleBuilderModal({
 
   // Form State
   const eligibleTeams = teams.filter(isRealTeam);
-  const [weeksCount, setWeeksCount] = useState<number>(4);
+  const [savedPrefs] = useState(readBuilderPrefs);
+  const [weeksCount, setWeeksCount] = useState<number>(savedPrefs?.weeksCount ?? 4);
   const [startDate, setStartDate] = useState<string>(() => {
     // Default to next upcoming Saturday
     const d = new Date();
     d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7));
     return d.toISOString().split("T")[0];
   });
-  const [gameDays, setGameDays] = useState<"saturdays" | "sundays" | "weekends">("saturdays");
+  const [gameDays, setGameDays] = useState<"saturdays" | "sundays" | "weekends">(savedPrefs?.gameDays ?? "saturdays");
 
   // Venues / Fields
-  const [venues, setVenues] = useState<string[]>([
+  const [venues, setVenues] = useState<string[]>(savedPrefs?.venues.length ? savedPrefs.venues : [
     defaultLocation || "Field 1 - Championship Turf",
     "Field 2 - Prime Turf",
     "Field 3 - North Turf",
@@ -69,7 +105,7 @@ export default function AutomatedScheduleBuilderModal({
   const [newVenueInput, setNewVenueInput] = useState("");
 
   // Kickoff Times
-  const [timeSlots, setTimeSlots] = useState<string[]>([
+  const [timeSlots, setTimeSlots] = useState<string[]>(savedPrefs?.timeSlots.length ? savedPrefs.timeSlots : [
     "9:00 AM",
     "10:15 AM",
     "11:30 AM",
@@ -159,6 +195,7 @@ export default function AutomatedScheduleBuilderModal({
       return;
     }
 
+    writeBuilderPrefs({ weeksCount, gameDays, venues, timeSlots });
     setPhase("building");
     setBuildProgress(5);
     setCurrentStepText("Analyzing franchise roster and calculating round-robin matrix...");
@@ -261,176 +298,35 @@ export default function AutomatedScheduleBuilderModal({
       const playoffBaseDate = new Date(baseDate);
       playoffBaseDate.setDate(playoffBaseDate.getDate() + totalRounds * 7);
 
-      if (playoffTeamsCount === 4) {
-        // Semifinals
-        const sfDate = playoffBaseDate.toISOString().split("T")[0];
-        const sf1 = {
-          id: `match_playoff_sf1_${Date.now()}`,
+      // Playoff teams stay TBD until the regular season ends; the schedule page then
+      // seeds them from final standings and advances winners round by round.
+      const templates = buildPlayoffFixtureTemplates(playoffTeamsCount);
+      const playoffFixtures = templates.map((fixture, i) => {
+        const roundDate = new Date(playoffBaseDate);
+        roundDate.setDate(roundDate.getDate() + fixture.roundIndex * 7);
+        const roundSlot = templates.filter((t) => t.roundIndex === fixture.roundIndex).indexOf(fixture);
+        return {
           week: "Playoffs",
-          matchdayIndex: totalRounds + 1,
-          playoffRound: "Semifinals",
-          homeTeamId: eligibleTeams[0].id,
-          homeTeamName: `${eligibleTeams[0].name} (#1 Seed)`,
-          awayTeamId: eligibleTeams[3].id,
-          awayTeamName: `${eligibleTeams[3].name} (#4 Seed)`,
-          date: sfDate,
-          time: slotsToUse[0] || "10:00 AM",
-          location: fieldsToUse[0] || "Field 1",
+          matchdayIndex: totalRounds + 1 + fixture.roundIndex,
+          playoffRound: fixture.playoffRound,
+          bracketSlot: fixture.bracketSlot,
+          homeTeamId: "",
+          homeTeamName: fixture.homeTeamName,
+          awayTeamId: "",
+          awayTeamName: fixture.awayTeamName,
+          date: roundDate.toISOString().split("T")[0],
+          time: slotsToUse[roundSlot % slotsToUse.length] || "10:00 AM",
+          location: fieldsToUse[roundSlot % fieldsToUse.length] || "Field 1",
           status: "scheduled",
           isPreseason: false,
           isPlayoff: true,
           homeScore: 0,
           awayScore: 0,
-          order: 0,
+          order: 1000 + i,
         };
-        const sf2 = {
-          id: `match_playoff_sf2_${Date.now()}`,
-          week: "Playoffs",
-          matchdayIndex: totalRounds + 1,
-          playoffRound: "Semifinals",
-          homeTeamId: eligibleTeams[1].id,
-          homeTeamName: `${eligibleTeams[1].name} (#2 Seed)`,
-          awayTeamId: eligibleTeams[2].id,
-          awayTeamName: `${eligibleTeams[2].name} (#3 Seed)`,
-          date: sfDate,
-          time: slotsToUse[1] || "11:15 AM",
-          location: fieldsToUse[0] || "Field 1",
-          status: "scheduled",
-          isPreseason: false,
-          isPlayoff: true,
-          homeScore: 0,
-          awayScore: 0,
-          order: 1,
-        };
-
-        // Championship
-        const champDateObj = new Date(playoffBaseDate);
-        champDateObj.setDate(champDateObj.getDate() + 7);
-        const champ = {
-          id: `match_playoff_champ_${Date.now()}`,
-          week: "Playoffs",
-          matchdayIndex: totalRounds + 2,
-          playoffRound: "Championship",
-          homeTeamId: eligibleTeams[0].id,
-          homeTeamName: "Winner Semifinal 1",
-          awayTeamId: eligibleTeams[1].id,
-          awayTeamName: "Winner Semifinal 2",
-          date: champDateObj.toISOString().split("T")[0],
-          time: slotsToUse[0] || "1:00 PM",
-          location: fieldsToUse[0] || "Field 1",
-          status: "scheduled",
-          isPreseason: false,
-          isPlayoff: true,
-          homeScore: 0,
-          awayScore: 0,
-          order: 2,
-        };
-
-        createdMatches.push(sf1, sf2, champ);
-        setGeneratedStream((prev) => [...prev, sf1, sf2, champ]);
-      } else if (playoffTeamsCount === 8) {
-        // Quarterfinals
-        const qfDate = playoffBaseDate.toISOString().split("T")[0];
-        const qfPairs = [
-          { h: 0, a: 7, label: "Quarterfinal 1 (#1 vs #8)" },
-          { h: 3, a: 4, label: "Quarterfinal 2 (#4 vs #5)" },
-          { h: 1, a: 6, label: "Quarterfinal 3 (#2 vs #7)" },
-          { h: 2, a: 5, label: "Quarterfinal 4 (#3 vs #6)" },
-        ];
-
-        qfPairs.forEach((pair, idx) => {
-          const qfMatch = {
-            id: `match_playoff_qf${idx + 1}_${Date.now()}`,
-            week: "Playoffs",
-            matchdayIndex: totalRounds + 1,
-            playoffRound: "Quarterfinals",
-            homeTeamId: eligibleTeams[pair.h]?.id || `seed_${pair.h + 1}`,
-            homeTeamName: `${eligibleTeams[pair.h]?.name || "Team"} (#${pair.h + 1} Seed)`,
-            awayTeamId: eligibleTeams[pair.a]?.id || `seed_${pair.a + 1}`,
-            awayTeamName: `${eligibleTeams[pair.a]?.name || "Team"} (#${pair.a + 1} Seed)`,
-            date: qfDate,
-            time: slotsToUse[idx % slotsToUse.length],
-            location: fieldsToUse[idx % fieldsToUse.length],
-            status: "scheduled",
-            isPreseason: false,
-            isPlayoff: true,
-            homeScore: 0,
-            awayScore: 0,
-            order: idx,
-          };
-          createdMatches.push(qfMatch);
-          setGeneratedStream((prev) => [...prev, qfMatch]);
-        });
-
-        // Semifinals (Week + 1)
-        const sfDateObj = new Date(playoffBaseDate);
-        sfDateObj.setDate(sfDateObj.getDate() + 7);
-        const sfDate = sfDateObj.toISOString().split("T")[0];
-        const sf1 = {
-          id: `match_playoff_sf1_${Date.now()}`,
-          week: "Playoffs",
-          matchdayIndex: totalRounds + 2,
-          playoffRound: "Semifinals",
-          homeTeamId: eligibleTeams[0]?.id,
-          homeTeamName: "Winner QF 1",
-          awayTeamId: eligibleTeams[3]?.id,
-          awayTeamName: "Winner QF 2",
-          date: sfDate,
-          time: slotsToUse[0] || "10:00 AM",
-          location: fieldsToUse[0] || "Field 1",
-          status: "scheduled",
-          isPreseason: false,
-          isPlayoff: true,
-          homeScore: 0,
-          awayScore: 0,
-          order: 4,
-        };
-        const sf2 = {
-          id: `match_playoff_sf2_${Date.now()}`,
-          week: "Playoffs",
-          matchdayIndex: totalRounds + 2,
-          playoffRound: "Semifinals",
-          homeTeamId: eligibleTeams[1]?.id,
-          homeTeamName: "Winner QF 3",
-          awayTeamId: eligibleTeams[2]?.id,
-          awayTeamName: "Winner QF 4",
-          date: sfDate,
-          time: slotsToUse[1] || "11:15 AM",
-          location: fieldsToUse[0] || "Field 1",
-          status: "scheduled",
-          isPreseason: false,
-          isPlayoff: true,
-          homeScore: 0,
-          awayScore: 0,
-          order: 5,
-        };
-
-        // Championship (Week + 2)
-        const champDateObj = new Date(playoffBaseDate);
-        champDateObj.setDate(champDateObj.getDate() + 14);
-        const champ = {
-          id: `match_playoff_champ_${Date.now()}`,
-          week: "Playoffs",
-          matchdayIndex: totalRounds + 3,
-          playoffRound: "Championship",
-          homeTeamId: eligibleTeams[0]?.id,
-          homeTeamName: "Winner SF 1",
-          awayTeamId: eligibleTeams[1]?.id,
-          awayTeamName: "Winner SF 2",
-          date: champDateObj.toISOString().split("T")[0],
-          time: slotsToUse[0] || "1:00 PM",
-          location: fieldsToUse[0] || "Field 1",
-          status: "scheduled",
-          isPreseason: false,
-          isPlayoff: true,
-          homeScore: 0,
-          awayScore: 0,
-          order: 6,
-        };
-
-        createdMatches.push(sf1, sf2, champ);
-        setGeneratedStream((prev) => [...prev, sf1, sf2, champ]);
-      }
+      });
+      createdMatches.push(...playoffFixtures);
+      setGeneratedStream((prev) => [...prev, ...playoffFixtures]);
     }
 
     await new Promise((r) => setTimeout(r, 400));

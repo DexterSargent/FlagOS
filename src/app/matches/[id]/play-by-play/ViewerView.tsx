@@ -367,7 +367,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     }
     const unsub = onSnapshot(doc(db, "matches", matchId), (docSnap) => {
       if (docSnap.exists()) {
-        setMatchData(docSnap.data());
+        setMatchData({ ...docSnap.data(), id: docSnap.id });
       }
     }, (err) => {
       console.warn("ViewerView match snapshot warning:", err);
@@ -403,7 +403,10 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       p.sort((a, b) => {
         const tA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
         const tB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
-        return tB - tA;
+        if (tB !== tA) return tB - tA;
+        const halfDiff = Number(b.half || 0) - Number(a.half || 0);
+        if (halfDiff !== 0) return halfDiff;
+        return Number(a.gameClock ?? 0) - Number(b.gameClock ?? 0);
       });
       setPlays(p);
     }, (err) => {
@@ -637,7 +640,8 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                     <span>
                       {[
                         play.half
-                          ? settings.rules?.periodType === "quarters" || play.half > 2
+                          ? !effectiveMatchData.isAsyncStatKeeping && !effectiveMatchData.isIndependent &&
+                            (settings.rules?.periodType === "quarters" || play.half > 2)
                             ? `Q${play.half}`
                             : play.half === 2
                             ? "2nd Half"

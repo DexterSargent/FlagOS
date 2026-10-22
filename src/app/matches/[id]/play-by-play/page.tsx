@@ -42,7 +42,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
       try {
         const snap = await getDoc(doc(db, "matches", matchId));
         if (snap.exists()) {
-          setMatchData(snap.data());
+          setMatchData({ ...snap.data(), id: snap.id });
         } else {
           const m = getSandboxMatch(matchId);
           if (m) setMatchData(m);

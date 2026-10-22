@@ -65,6 +65,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [opponentName, setOpponentName] = useState("");
   const [isHostHome, setIsHostHome] = useState(true);
+  const [gameType, setGameType] = useState<"regular" | "playoff" | "championship">("regular");
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
   const [matchTime, setMatchTime] = useState("14:00");
   const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "");
@@ -141,7 +142,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         date: matchDate,
         time: matchTime,
         location: matchLocation || "Field 1",
-        week: "Exhibition",
+        week: gameType === "championship" ? "Championship" : gameType === "playoff" ? "Playoffs" : "Regular Season",
+        ...(gameType !== "regular"
+          ? { isPlayoff: true, playoffRound: gameType === "championship" ? "Championship" : "Playoffs" }
+          : {}),
         status: "scheduled" as const,
         isIndependent: true,
         isAsyncStatKeeping: true,
@@ -153,6 +157,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         if (!sandbox) throw new Error("The demo is not loaded.");
         sandbox.addSandboxMatch(newMatchDoc);
         setOpponentName("");
+        setGameType("regular");
         setIsScheduleModalOpen(false);
         setIsScheduling(false);
         return;
@@ -172,6 +177,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       });
 
       setOpponentName("");
+      setGameType("regular");
       setIsScheduleModalOpen(false);
     } catch (err) {
       console.error("Failed to schedule match:", err);
@@ -213,7 +219,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       try {
         const teamSnap = await getDoc(doc(db, "teams", teamId));
         const teamData = teamSnap.exists()
-          ? { id: teamSnap.id, ...teamSnap.data() } as { id: string; name?: string; leagueId?: unknown }
+          ? { ...teamSnap.data(), id: teamSnap.id } as { id: string; name?: string; leagueId?: unknown }
           : null;
         const leagueId = typeof teamData?.leagueId === "string" ? teamData.leagueId : "";
         if (teamData && !leagueId) {
@@ -255,7 +261,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
         const teamsMap: Record<string, any> = {};
         allTeamsSnap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
+          .map((d) => ({ ...d.data(), id: d.id }))
           .filter(isRealTeam)
           .forEach((t) => {
             teamsMap[t.id] = t;
@@ -327,6 +333,13 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   }
 
   const pastMatches = matches.filter((m) => m.status === "completed" || m.status === "Final");
+  const wonChampionship = pastMatches.find((m) => {
+    if (m.playoffRound !== "Championship") return false;
+    const isHome = m.homeTeamId === teamId;
+    const scored = Number((isHome ? m.homeScore : m.awayScore) ?? 0);
+    const allowed = Number((isHome ? m.awayScore : m.homeScore) ?? 0);
+    return scored > allowed;
+  });
   const upcomingMatches = matches.filter((m) => m.status !== "completed" && m.status !== "Final");
 
 
@@ -366,6 +379,11 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               {teamName} <span className="text-neutral-500 font-normal">Schedule</span>
             </h1>
             <p className="text-neutral-400 text-sm mt-1">Upcoming matchups, box scores, and live game tracking.</p>
+            {wonChampionship && (
+              <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-300">
+                <Trophy className="w-3.5 h-3.5" /> Champions {localMatchDate(wonChampionship.date).getFullYear()}
+              </p>
+            )}
           </div>
 
           {/* Schedule Game Button (Admins & Coaches) */}
@@ -463,7 +481,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             />
                             <span className="font-bold text-sm sm:text-base leading-tight min-w-0 break-words">{teamName}</span>
                           </div>
-                          <span className="text-xs font-black text-neutral-500 uppercase shrink-0">VS</span>
+                          <span className="text-xs font-black text-neutral-500 uppercase shrink-0">{isHome ? "VS" : "@"}</span>
                           <div className="flex items-center justify-end gap-2 sm:gap-3 min-w-0 flex-1 text-right">
                             <span className="font-bold text-sm sm:text-base leading-tight min-w-0 break-words text-neutral-300">{opponentName}</span>
                             <TeamLogo
@@ -555,9 +573,14 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                               Async
                             </span>
                           )}
+                          {m.isPlayoff && (
+                            <span className="text-[9px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                              {m.playoffRound || "Playoffs"}
+                            </span>
+                          )}
                         </div>
                         <div className="font-bold text-sm sm:text-base leading-snug text-white group-hover:text-cyan-400 transition-colors break-words">
-                          vs {opponentName}
+                          {isHome ? "vs" : "@"} {opponentName}
                         </div>
                         <div className="text-xs text-neutral-400 whitespace-nowrap">Box Score & Plays →</div>
                       </div>
@@ -660,6 +683,20 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                     Away / Visiting Team
                   </button>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="team-game-type" className="text-xs font-bold text-neutral-300 block mb-1">Game Type</label>
+                <select
+                  id="team-game-type"
+                  value={gameType}
+                  onChange={(e) => setGameType(e.target.value as "regular" | "playoff" | "championship")}
+                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-sm outline-none focus:border-emerald-400 font-semibold"
+                >
+                  <option value="regular">Regular season</option>
+                  <option value="playoff">Playoff game</option>
+                  <option value="championship">Championship game</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

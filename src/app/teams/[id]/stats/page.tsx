@@ -56,7 +56,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         } else {
           const teamSnap = await getDoc(doc(db, "teams", teamId));
           if (cancelled) return;
-          if (teamSnap.exists()) tObj = { id: teamSnap.id, ...teamSnap.data() };
+          if (teamSnap.exists()) tObj = { ...teamSnap.data(), id: teamSnap.id };
           const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
           if (tObj) setTeam(tObj);
           setLoading(false);
@@ -77,7 +77,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
               getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
               loadTeamSeasonData(teamId),
             ]);
-            players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            players = playersSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
             matches = season.matches;
             plays = season.plays;
           } else {
@@ -96,7 +96,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
                 limit(10_000),
               )),
             ]);
-            players = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            players = playersSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
             matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
             plays = playsSnap.docs.map((d) => d.data() as any);
           }
@@ -171,7 +171,6 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             }
             if (play.isTouchdown) {
               statsMap[play.qbPlayerId].passTD += 1;
-              statsMap[play.qbPlayerId].totalTDs += 1;
             }
           }
 

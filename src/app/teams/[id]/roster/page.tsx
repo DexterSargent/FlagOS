@@ -51,6 +51,16 @@ const TeamDepthCharts = dynamic(() => import("@/components/TeamDepthCharts"), {
   loading: () => <p role="status">Loading depth charts...</p>,
 });
 
+function compareByJersey(a: any, b: any): number {
+  const numA = parseInt(String(a.number ?? a.jerseyNumber ?? ""), 10);
+  const numB = parseInt(String(b.number ?? b.jerseyNumber ?? ""), 10);
+  const hasA = Number.isFinite(numA);
+  const hasB = Number.isFinite(numB);
+  if (hasA && hasB && numA !== numB) return numA - numB;
+  if (hasA !== hasB) return hasA ? -1 : 1;
+  return String(a.playerName || "").localeCompare(String(b.playerName || ""));
+}
+
 export default function TeamRosterPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
@@ -115,13 +125,13 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         playList = getSandboxPlays();
       } else {
         const teamSnap = await getDoc(doc(db, "teams", teamId));
-        if (teamSnap.exists()) tObj = { id: teamSnap.id, ...teamSnap.data() };
+        if (teamSnap.exists()) tObj = { ...teamSnap.data(), id: teamSnap.id };
         const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
         const playersSnap = await getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30)));
         if (version !== requestVersion.current) return;
-        pList = playersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        pList = playersSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
         setTeam(tObj && isRealTeam(tObj) ? tObj : null);
-        setPlayers([...pList].sort((a, b) => a.playerName.localeCompare(b.playerName)));
+        setPlayers([...pList].sort(compareByJersey));
         setLoading(false);
         if (isTeamOrLeagueAdmin) {
           requestPrivateData<{
@@ -178,7 +188,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       } else {
         setTeam(null);
       }
-      pList.sort((a: any, b: any) => a.playerName.localeCompare(b.playerName));
+      pList.sort(compareByJersey);
       setPlayers(pList);
       setMatches(mList);
 
@@ -242,7 +252,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           if (play.passOutcome === "Complete") statsMap[play.qbPlayerId].passComp += 1;
           if (play.isTouchdown) {
             statsMap[play.qbPlayerId].passTD += 1;
-            statsMap[play.qbPlayerId].totalTDs += 1;
           }
         }
 
@@ -346,7 +355,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           experience: newPlayerExperience.trim(),
           email: parsedEmails[0] || "",
         });
-        setPlayers((prev) => [...prev, newPlayerObj].sort((a: any, b: any) => a.playerName.localeCompare(b.playerName)));
+        setPlayers((prev) => [...prev, newPlayerObj].sort(compareByJersey));
         setNewPlayerName("");
         setNewPlayerNumber("");
         setNewPlayerEmails("");
@@ -381,7 +390,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         email: parsedEmails[0] || "",
       };
 
-      setPlayers((prev) => [...prev, newPlayerObj].sort((a, b) => a.playerName.localeCompare(b.playerName)));
+      setPlayers((prev) => [...prev, newPlayerObj].sort(compareByJersey));
       setNewPlayerName("");
       setNewPlayerNumber("");
       setNewPlayerEmails("");
@@ -895,7 +904,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Add Player Modal (Team Admin & League Admin) */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setIsAddModalOpen(false)}
@@ -1007,7 +1016,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Edit Player Modal (Team Admin & League Admin) */}
       {editingPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setEditingPlayer(null)}
@@ -1116,7 +1125,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Individual Player Stats Modal */}
       {selectedPlayerForStats && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setSelectedPlayerForStats(null)}
