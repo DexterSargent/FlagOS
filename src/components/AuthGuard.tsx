@@ -8,6 +8,7 @@ import { useLeague } from "@/lib/leagueContext";
 import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield, PlayCircle } from "lucide-react";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import { isDemoTeamId, useTeamRecord } from "@/lib/teamRecord";
+import { useEmbedState } from "@/lib/embedState";
 
 // The only pages publicly accessible without being logged in to an authorized email
 const PUBLIC_ROUTES = ["/", "/pricing", "/login"];
@@ -26,6 +27,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, userProfile, isPlayer, isAuthorized, loading, logout } = useAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
+  const { demoFlag, inIframe, embedQuery } = useEmbedState();
   const routeTeamId = pathname.startsWith("/teams/") ? pathname.split("/")[2] || null : null;
   const isCustomerTeamRoute = !!routeTeamId && !isDemoTeamId(routeTeamId);
   const { team: routeTeam, resolved: routeTeamResolved } = useTeamRecord(routeTeamId, isCustomerTeamRoute);
@@ -52,29 +54,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return true;
     }
 
-    // 3. Client-side storage or query parameter
-    if (typeof window !== "undefined") {
-      try {
-        if (window.location.search.includes("demo=true")) return true;
-        if (sessionStorage.getItem("flagos_demo_active") === "true") return true;
-        if (localStorage.getItem("flagos_demo_active") === "true") return true;
-      } catch {}
-    }
+    // 3. Client-side storage or query parameter (read after hydration)
+    if (demoFlag) return true;
 
     return false;
-  }, [pathname, isDemoLeague, activeLeagueId, isCustomerTeamRoute]);
+  }, [pathname, isDemoLeague, activeLeagueId, isCustomerTeamRoute, demoFlag]);
 
-  // Synchronous embed evaluation
-  const isEmbedShowcase = useMemo(() => {
-    if (isCustomerTeamRoute) return false;
-    if (typeof window !== "undefined") {
-      try {
-        const isEmbed = window.self !== window.top && window.location.search.includes("embed=true");
-        if (isEmbed && isShowcaseRoute(pathname)) return true;
-      } catch {}
-    }
-    return false;
-  }, [pathname, isCustomerTeamRoute]);
+  const isEmbedShowcase = !isCustomerTeamRoute && inIframe && embedQuery && isShowcaseRoute(pathname);
 
   // Determine if current path is strictly public
   const isPublic = PUBLIC_ROUTES.includes(pathname) || isPublicTeamRoute;

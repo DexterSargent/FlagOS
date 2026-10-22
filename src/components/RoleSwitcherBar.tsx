@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { DEMO_TEAM_IDS, isDemoMatchId, isDemoTeamId, subscribeDemoSandbox } from "@/lib/demoSandboxRuntime";
 import { isDexterUser } from "@/lib/teamAdminRbac";
+import { useEmbedState } from "@/lib/embedState";
 
 const RoleSwitcherContent = dynamic(() => import("./RoleSwitcherContent"), { ssr: false });
 
@@ -27,7 +28,7 @@ export default function RoleSwitcherBar() {
   const matchId = pathname?.startsWith("/matches/") ? pathname.split("/")[2] : null;
   const owner = isDexterUser(user?.email);
   const demoTeam = Boolean(teamId && isDemoLeague && DEMO_TEAM_IDS.includes(teamId));
-  const embedded = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true";
+  const embedded = useEmbedState().embedQuery;
   // Real customer team and game pages never show demo chrome.
   const customerPage = Boolean((teamId && !isDemoTeamId(teamId)) || (matchId && !isDemoMatchId(matchId)));
   const allowed = !embedded && (localOrDemo || owner || isDemoLeague) &&
