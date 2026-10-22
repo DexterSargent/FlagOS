@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -79,14 +79,24 @@ export async function loadMatchTeamId(matchId: string): Promise<string | null> {
   return teamId || null;
 }
 
+const subscribeNoop = () => () => {};
+
+/**
+ * False while hydrating server HTML (and on the server), true otherwise. Browser caches must only be
+ * read once this is true so the first client render matches the server markup.
+ */
+export function useCanReadBrowserCache(): boolean {
+  return useSyncExternalStore(subscribeNoop, () => true, () => false);
+}
+
+type TeamRecordState = { teamId?: string | null; team: TeamRecord | null; resolved: boolean };
+
 /** Resolves a real team document, painting the last cached copy first. */
 export function useTeamRecord(teamId?: string | null, enabled = true): { team: TeamRecord | null; resolved: boolean } {
-  const [state, setState] = useState(() => ({
-    teamId,
-    team: enabled ? getCachedTeamRecord(teamId) : null,
-    resolved: false,
-  }));
-  const current = state.teamId === teamId ? state : { teamId, team: enabled ? getCachedTeamRecord(teamId) : null, resolved: false };
+  const canReadCache = useCanReadBrowserCache();
+  const [state, setState] = useState<TeamRecordState>({ teamId, team: null, resolved: false });
+  const fetched = state.teamId === teamId && (state.resolved || state.team) ? state : null;
+  const team = fetched ? fetched.team : enabled && canReadCache ? getCachedTeamRecord(teamId) : null;
 
   useEffect(() => {
     if (!enabled || !teamId) return;
@@ -96,15 +106,22 @@ export function useTeamRecord(teamId?: string | null, enabled = true): { team: T
         if (!cancelled) setState({ teamId, team, resolved: true });
       })
       .catch(() => {
-        if (!cancelled) setState((prev) => ({ teamId, team: prev.teamId === teamId ? prev.team : null, resolved: true }));
+        if (!cancelled) {
+          setState((prev) => ({
+            teamId,
+            team: (prev.teamId === teamId ? prev.team : null) || getCachedTeamRecord(teamId),
+            resolved: true,
+          }));
+        }
       });
     const handleUpdate = (event: Event) => {
       const detail = (event as CustomEvent).detail;
       if (detail && typeof detail === "object" && (!detail.id || detail.id === teamId)) {
         rememberTeamRecord({ ...detail, id: teamId });
-        setState((prev) => prev.teamId === teamId
-          ? { ...prev, team: { ...(prev.team || { id: teamId }), ...detail } }
-          : prev);
+        setState((prev) => {
+          const base = (prev.teamId === teamId ? prev.team : null) || getCachedTeamRecord(teamId) || { id: teamId };
+          return { teamId, team: { ...base, ...detail }, resolved: prev.teamId === teamId && prev.resolved };
+        });
       }
     };
     window.addEventListener("flagos_team_updated", handleUpdate);
@@ -114,5 +131,5 @@ export function useTeamRecord(teamId?: string | null, enabled = true): { team: T
     };
   }, [teamId, enabled]);
 
-  return { team: current.team, resolved: current.resolved };
+  return { team, resolved: fetched?.resolved ?? false };
 }

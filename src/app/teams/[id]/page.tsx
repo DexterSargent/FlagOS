@@ -53,6 +53,8 @@ import {
   type TeamComprehensiveStats,
 } from "@/lib/teamStatsCalculator";
 import { loadTeamSeasonSummary, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
+import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { TEAM_HUB_WALKTHROUGH } from "@/lib/walkthroughData";
 
 const TeamStatsCustomizerModal = dynamic(() => import("@/components/team/TeamStatsCustomizerModal"));
 
@@ -514,10 +516,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             <Home className="w-4 h-4" />
             <span className="hidden sm:inline">Home</span>
           </Link>
+          <WalkthroughTrigger walkthrough={TEAM_HUB_WALKTHROUGH} variant="header" />
         </div>
 
         {/* Hero Section */}
-        <div className="text-center space-y-6 max-w-4xl mb-12 mt-12 md:mt-0">
+        <div data-tour="team-header-identity" className="text-center space-y-6 max-w-4xl mb-12 mt-12 md:mt-0">
           {/* Dedicated Team Logo Slot / Avatar Container */}
           <div className="flex flex-col items-center justify-center pt-2">
             {team.logoUrl ? (
@@ -685,6 +688,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 </button>
                 <button
                   type="button"
+                  data-tour="edit-team-btn"
                   onClick={() => setIsEditModalOpen(true)}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
                 >
@@ -705,7 +709,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           const stats = comprehensiveStats;
 
           return (
-            <div className="w-full max-w-6xl mb-8">
+            <div data-tour="team-record-badge" className="w-full max-w-6xl mb-8">
               <div className="bg-neutral-950/70 border border-white/10 rounded-3xl p-5 md:p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
                 <div
                   className="absolute -right-20 -top-20 w-60 h-60 rounded-full blur-3xl opacity-20 pointer-events-none"
@@ -799,7 +803,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         })()}
 
         {/* Bento Grid (Schedule, Roster, Stat Leaders, Playbook) */}
-        <div className={`grid grid-cols-1 sm:grid-cols-2 ${canAccessPlaybook ? "lg:grid-cols-4 max-w-6xl" : "lg:grid-cols-3 max-w-5xl"} gap-5 w-full`}>
+        <div data-tour="team-quick-links" className={`grid grid-cols-1 sm:grid-cols-2 ${canAccessPlaybook ? "lg:grid-cols-4 max-w-6xl" : "lg:grid-cols-3 max-w-5xl"} gap-5 w-full`}>
           {/* Bento 1: Schedule */}
           <Link
             href={`/teams/${teamId}/schedule`}

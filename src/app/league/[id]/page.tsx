@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
@@ -59,29 +59,25 @@ import {
 
 const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
+const noopSubscribe = () => () => {};
+const readEmbeddedFlag = () => {
+  const sp = new URLSearchParams(window.location.search);
+  return sp.get("embed") === "true" || sp.get("demo") === "true";
+};
+
 export default function FlagOSDashboard({ params }: { params?: Promise<{ id: string }> }) {
   const unwrappedParams = params ? use(params) : null;
   const leagueIdParam = unwrappedParams?.id;
   const { settings, openCustomizer, activeLeagueId, switchLeague, isDemoLeague } = useLeague();
 
-  const [isEmbedded, setIsEmbedded] = useState(() => {
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      return sp.get("embed") === "true" || sp.get("demo") === "true";
-    }
-    return false;
-  });
+  // Server snapshot is false so hydration matches; the client re-renders with the real URL flag.
+  const isEmbedded = useSyncExternalStore(
+    noopSubscribe,
+    readEmbeddedFlag,
+    () => false
+  );
 
   const isEffectiveDemo = isDemoLeague || isEmbedded || leagueIdParam === "default" || leagueIdParam === "demo";
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      if (sp.get("embed") === "true" || sp.get("demo") === "true") {
-        setIsEmbedded(true);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (leagueIdParam && leagueIdParam !== activeLeagueId) {
@@ -844,19 +840,21 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
           </div>
 
           {/* Section: Live & Upcoming Games */}
-          <LiveAndUpcomingGamesSection
-            games={liveAndUpcomingGames}
-            liveCount={liveMatches.length}
-            teams={teams}
-            standingsMap={standingsMap}
-            isLeagueAdmin={true}
-            isDemo={isEffectiveDemo}
-          />
+          <div data-tour="league-schedule-tab">
+            <LiveAndUpcomingGamesSection
+              games={liveAndUpcomingGames}
+              liveCount={liveMatches.length}
+              teams={teams}
+              standingsMap={standingsMap}
+              isLeagueAdmin={true}
+              isDemo={isEffectiveDemo}
+            />
+          </div>
 
           {/* Section: 2-Column Standings & League Superstars */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Standings Table */}
-            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div data-tour="league-standings-section" className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
@@ -877,7 +875,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         <th className="pb-2">Team</th>
                         <th className="pb-2 text-center">W</th>
                         <th className="pb-2 text-center">L</th>
-                        <th className="pb-2 text-center">T</th>
+                        <th className="pb-2 text-center hidden sm:table-cell">T</th>
                         <th className="pb-2 text-center">Diff</th>
                         <th className="pb-2 text-right">PTS</th>
                       </tr>
@@ -909,7 +907,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                             </td>
                             <td className="py-3 text-center font-bold text-emerald-400">{row.w}</td>
                             <td className="py-3 text-center text-red-400">{row.l}</td>
-                            <td className="py-3 text-center text-neutral-400">{row.t}</td>
+                            <td className="py-3 text-center text-neutral-400 hidden sm:table-cell">{row.t}</td>
                             <td className="py-3 text-center text-neutral-400 font-mono">
                               {row.pf - row.pa > 0 ? `+${row.pf - row.pa}` : row.pf - row.pa}
                             </td>
@@ -941,7 +939,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
             </div>
 
             {/* League Stat Leaders */}
-            <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+            <div data-tour="league-stats-tab" className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
                   <div className="flex items-center gap-2">
@@ -957,7 +955,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Passing TDs</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topPasser.name !== "-" ? topPasser.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-cyan-400 font-bold">
@@ -968,7 +966,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Receiving TDs</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topReceiver.name !== "-" ? topReceiver.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-blue-400 font-bold">
@@ -979,7 +977,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Total Touchdowns</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topScorer.name !== "-" ? topScorer.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-yellow-400 font-bold">
@@ -990,7 +988,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flags (Def)</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-emerald-400 font-bold">
@@ -1512,7 +1510,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     <th className="pb-2">Team</th>
                     <th className="pb-2 text-center">W</th>
                     <th className="pb-2 text-center">L</th>
-                    <th className="pb-2 text-center">T</th>
+                    <th className="pb-2 text-center hidden sm:table-cell">T</th>
                     <th className="pb-2 text-center">Diff</th>
                     <th className="pb-2 text-right">PTS</th>
                   </tr>
@@ -1557,7 +1555,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         </td>
                         <td className="py-3 text-center font-bold text-emerald-400">{row.w}</td>
                         <td className="py-3 text-center text-red-400">{row.l}</td>
-                        <td className="py-3 text-center text-neutral-400">{row.t}</td>
+                        <td className="py-3 text-center text-neutral-400 hidden sm:table-cell">{row.t}</td>
                         <td className="py-3 text-center text-neutral-400 font-mono">
                           {row.pf - row.pa > 0 ? `+${row.pf - row.pa}` : row.pf - row.pa}
                         </td>
@@ -2289,7 +2287,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     <th className="pb-2">Team</th>
                     <th className="pb-2 text-center">W</th>
                     <th className="pb-2 text-center">L</th>
-                    <th className="pb-2 text-center">T</th>
+                    <th className="pb-2 text-center hidden sm:table-cell">T</th>
                     <th className="pb-2 text-center">Diff</th>
                     <th className="pb-2 text-right">PTS</th>
                   </tr>
@@ -2334,7 +2332,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         </td>
                         <td className="py-3 text-center font-bold text-emerald-400">{row.w}</td>
                         <td className="py-3 text-center text-red-400">{row.l}</td>
-                        <td className="py-3 text-center text-neutral-400">{row.t}</td>
+                        <td className="py-3 text-center text-neutral-400 hidden sm:table-cell">{row.t}</td>
                         <td className="py-3 text-center text-neutral-400 font-mono">
                           {row.pf - row.pa > 0 ? `+${row.pf - row.pa}` : row.pf - row.pa}
                         </td>
@@ -2398,12 +2396,12 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     {settings.seasonTitle || "Active Season"}
                   </span>
-                  <span className="text-neutral-500 text-xs">•</span>
-                  <span className="text-[11px] font-mono text-neutral-400 uppercase">
+                  <span className="hidden sm:inline text-neutral-500 text-xs">•</span>
+                  <span className="hidden sm:inline text-[11px] font-mono text-neutral-400 uppercase">
                     Official Gameday Central
                   </span>
                 </div>
-                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase tracking-tight text-white leading-tight">
                   {renderFlagOS(settings.leagueName)} Gameday Central
                 </h1>
                 <p className="text-neutral-400 text-xs md:text-sm mt-1 max-w-2xl">
@@ -2460,7 +2458,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
               <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">League Top Scorer</span>
-                <div className="text-lg font-black text-white mt-1 truncate">
+                <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                   {topScorer.name !== "-" ? topScorer.name : "None yet"}
                 </div>
                 <span className="text-[11px] text-yellow-400 mt-1 block">{topScorer.totalTD} Touchdowns</span>
@@ -2468,7 +2466,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
               <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                 <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Passing Leader</span>
-                <div className="text-lg font-black text-white mt-1 truncate">
+                <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                   {topPasser.name !== "-" ? topPasser.name : "None yet"}
                 </div>
                 <span className="text-[11px] text-cyan-400 mt-1 block">{topPasser.passTD} Pass TDs</span>
@@ -2511,7 +2509,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                         <th className="pb-2">Team</th>
                         <th className="pb-2 text-center">W</th>
                         <th className="pb-2 text-center">L</th>
-                        <th className="pb-2 text-center">T</th>
+                        <th className="pb-2 text-center hidden sm:table-cell">T</th>
                         <th className="pb-2 text-center">Diff</th>
                         <th className="pb-2 text-right">PTS</th>
                       </tr>
@@ -2535,8 +2533,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                       primaryColor={teamObj?.primaryColor || teamObj?.color}
                                     />
                                   </div>
-                                  <span>{row.name}</span>
-                                  <span className="text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
+                                  <span className="truncate">{row.name}</span>
+                                  <span className="hidden sm:inline text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
                                 </div>
                               ) : (
                                 <Link
@@ -2553,14 +2551,14 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                                       primaryColor={teamObj?.primaryColor || teamObj?.color}
                                     />
                                   </div>
-                                  <span>{row.name}</span>
-                                  <span className="text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
+                                  <span className="truncate">{row.name}</span>
+                                  <span className="hidden sm:inline text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
                                 </Link>
                               )}
                             </td>
                             <td className="py-3 text-center font-bold text-emerald-400">{row.w}</td>
                             <td className="py-3 text-center text-red-400">{row.l}</td>
-                            <td className="py-3 text-center text-neutral-400">{row.t}</td>
+                            <td className="py-3 text-center text-neutral-400 hidden sm:table-cell">{row.t}</td>
                             <td className="py-3 text-center text-neutral-400 font-mono">
                               {row.pf - row.pa > 0 ? `+${row.pf - row.pa}` : row.pf - row.pa}
                             </td>
@@ -2607,7 +2605,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Passing TDs</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topPasser.name !== "-" ? topPasser.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-cyan-400 font-bold">
@@ -2618,7 +2616,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Receiving TDs</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topReceiver.name !== "-" ? topReceiver.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-blue-400 font-bold">
@@ -2629,7 +2627,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Total Touchdowns</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topScorer.name !== "-" ? topScorer.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-yellow-400 font-bold">
@@ -2640,7 +2638,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
 
                   <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flags (Def)</span>
-                    <div className="text-lg font-black text-white mt-1 truncate">
+                    <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
                       {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
                     </div>
                     <div className="flex items-center justify-between text-xs mt-2 text-emerald-400 font-bold">
@@ -2961,6 +2959,8 @@ function LiveAndUpcomingGamesSection({
   isEmbedded?: boolean;
   isDemo?: boolean;
 }) {
+  const { settings } = useLeague();
+  const periodPrefix = settings.rules?.periodType === "quarters" ? "Q" : "H";
   const formatClock = (seconds: number) => {
     const m = Math.floor(Math.max(0, seconds) / 60);
     const s = Math.max(0, seconds) % 60;
@@ -3061,7 +3061,11 @@ function LiveAndUpcomingGamesSection({
                           LIVE
                         </span>
                         <span className="text-neutral-400 font-mono text-[10px]">
-                          {m.matchState?.half ? `Half ${m.matchState.half}` : m.week || "In Progress"}
+                          {m.matchState?.half
+                            ? m.isAsyncStatKeeping || m.isIndependent
+                              ? `H${m.matchState.half}`
+                              : `${periodPrefix}${m.matchState.half}`
+                            : m.week || "In Progress"}
                         </span>
                       </div>
                     ) : (
@@ -3113,7 +3117,7 @@ function LiveAndUpcomingGamesSection({
                         </div>
                       </div>
                       {live ? (
-                        <span className="text-2xl font-black text-white font-mono pl-2 shrink-0">
+                        <span className={`text-2xl font-black font-mono tabular-nums pl-2 shrink-0 ${hScore >= aScore ? "text-white" : "text-neutral-500"}`}>
                           {hScore}
                         </span>
                       ) : (
@@ -3140,7 +3144,7 @@ function LiveAndUpcomingGamesSection({
                           />
                         </div>
                         <div className="min-w-0">
-                          <span className="font-bold text-sm text-neutral-200 truncate block">
+                          <span className="font-bold text-sm text-white truncate block">
                             {m.awayTeamName}
                           </span>
                           <span className="text-[10px] text-neutral-400 font-mono">
@@ -3149,7 +3153,7 @@ function LiveAndUpcomingGamesSection({
                         </div>
                       </div>
                       {live ? (
-                        <span className="text-2xl font-black text-white font-mono pl-2 shrink-0">
+                        <span className={`text-2xl font-black font-mono tabular-nums pl-2 shrink-0 ${aScore >= hScore ? "text-white" : "text-neutral-500"}`}>
                           {aScore}
                         </span>
                       ) : (

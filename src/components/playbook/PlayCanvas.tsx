@@ -119,6 +119,8 @@ const PositionNotesDialog = dynamic(() =>
 );
 const PlayNotesDialog = dynamic(() => import("./PlayCanvasDialogs").then((mod) => mod.PlayNotesDialog));
 const loadRouteCatalogDrawer = () => import("./RouteCatalogDrawer");
+import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { PLAY_DESIGNER_WALKTHROUGH } from "@/lib/walkthroughData";
 // The route tree drawer (40+ preset cards) is split out and warmed on hover/focus of its toggle.
 const RouteCatalogDrawer = dynamic(loadRouteCatalogDrawer, {
   loading: () => (
@@ -2038,12 +2040,13 @@ export default function PlayCanvas({
               placeholder="Play Name..."
               className="min-w-0 w-full text-sm font-bold text-white bg-black/40 hover:bg-black/60 focus:bg-black/80 focus:border-cyan-500 rounded-lg px-3 py-2 border border-white/10 outline-none transition-all"
             />
+            <WalkthroughTrigger walkthrough={PLAY_DESIGNER_WALKTHROUGH} variant="toolbar" className="shrink-0" />
           </div>
 
           {/* Formation Dropdown & Gameday Situation Dropdown */}
           <div className="flex items-center gap-2 max-sm:gap-1.5 flex-wrap max-sm:flex-nowrap [@media(max-height:450px)]:hidden">
             {/* Formation Dropdown */}
-            <div className="flex flex-col gap-0.5 flex-1 min-w-[130px] max-sm:min-w-0">
+            <div data-tour="formation-selector" className="flex flex-col gap-0.5 flex-1 min-w-[130px] max-sm:min-w-0">
               <span className="text-[10px] font-semibold text-neutral-400 max-sm:hidden">Formation</span>
               <select
                 aria-label="Play formation"
@@ -2142,6 +2145,7 @@ export default function PlayCanvas({
             {/* Opposing Side Toggle */}
             <button
               type="button"
+              data-tour="opponent-toggle"
               data-testid="toggle-opponent-btn"
               onClick={() => setShowOpposingSide((prev) => !prev)}
               className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
@@ -2164,6 +2168,7 @@ export default function PlayCanvas({
               <div ref={opponentMenuRef} className="relative">
                 <button
                   type="button"
+                  data-tour="opponent-scheme-selector"
                   data-testid="opponent-play-selector-btn"
                   onClick={() => setIsOpponentMenuOpen((prev) => !prev)}
                   className="flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-bold transition-all border bg-amber-500/15 border-amber-500/35 text-amber-200 hover:bg-amber-500/25 hover:text-white cursor-pointer"
@@ -2281,7 +2286,7 @@ export default function PlayCanvas({
 
             {/* Custom Zone Quick Add Buttons for Defense */}
             {(play.type === "defense" || showOpposingSide) && !readOnly && (
-              <div className="flex items-center gap-1">
+              <div data-tour="custom-zones" className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => handleCreateCustomZone("ellipse")}
@@ -2328,6 +2333,7 @@ export default function PlayCanvas({
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
+          data-tour="play-field"
           className="relative flex-1 [@media(max-width:639px)_and_(min-height:451px)]:flex-none w-full aspect-[16/10] md:aspect-auto [@media(max-width:639px)_and_(max-height:450px)]:aspect-auto [@media(max-width:639px)_and_(min-height:451px)]:aspect-[10/7] bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair min-h-[250px] md:min-h-0 [@media(max-width:639px)]:min-h-0 [@media(max-height:450px)]:min-h-[120px]"
           data-testid="designer-field"
         >
@@ -3373,7 +3379,7 @@ export default function PlayCanvas({
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
-        <div className="px-2 sm:px-3 py-1.5 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden">
+        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1.5 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden">
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleToggleAnimate}
@@ -3452,7 +3458,7 @@ export default function PlayCanvas({
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
           <div className="flex flex-col items-stretch gap-3">
             {/* Player Selection Pills with Coaching Notes Indicator */}
-            <div className="flex items-center gap-1.5 flex-wrap max-w-full">
+            <div data-tour="player-pills" className="flex items-center gap-1.5 flex-wrap max-w-full">
               <span className="hidden sm:flex [@media(min-width:600px)_and_(max-height:450px)]:hidden text-[10px] font-black uppercase tracking-wider text-neutral-400 mr-1 items-center gap-1">
                 <Users className="w-3 h-3 text-cyan-400" />
                 <span>Player:</span>
@@ -3629,6 +3635,7 @@ export default function PlayCanvas({
                   {/* Pre-Snap Motion Menu Button */}
                   <button
                     type="button"
+                    data-tour="motion-menu-toggle"
                     disabled={readOnly}
                     onClick={() => {
                       setIsMotionMenuOpen((prev) => !prev);
@@ -3652,6 +3659,7 @@ export default function PlayCanvas({
                   {/* Preset Routes Menu Toggle Button */}
                   <button
                     type="button"
+                    data-tour="route-drawer-toggle"
                     disabled={readOnly}
                     onClick={() => {
                       setIsPresetMenuOpen((prev) => !prev);

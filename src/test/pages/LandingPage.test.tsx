@@ -151,21 +151,26 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     ).toBeInTheDocument();
 
     // Switch to Playbook Studio
-    const playbookButton = screen.getByRole("button", { name: "Playbook Studio" });
+    const playbookButton = screen.getByRole("tab", { name: /Playbook Studio/ });
     fireEvent.click(playbookButton);
+    expect(playbookButton).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTitle("FlagOS Real Feature Live Sandbox")).toHaveAttribute(
+      "src",
+      "/teams/team_kc/playbook?embed=true&demo=true"
+    );
     expect(
       screen.getByText("Up to 5 custom offensive & defensive playbooks per team, interactive route designer & wristband export.")
     ).toBeInTheDocument();
 
-    // Switch to Automated Schedule-Builder
-    const scheduleButton = screen.getByRole("button", { name: "Automated Schedule-Builder" });
+    // Switch to Schedule Builder
+    const scheduleButton = screen.getByRole("tab", { name: /Schedule Builder/ });
     fireEvent.click(scheduleButton);
     expect(
       screen.getByText("Round-robin matchmaking engine, drag-and-drop game slot ordering, field assignments & playoff brackets.")
     ).toBeInTheDocument();
 
     // Switch to League Dashboard
-    const dashboardButton = screen.getByRole("button", { name: "League Dashboard" });
+    const dashboardButton = screen.getByRole("tab", { name: /League Dashboard/ });
     fireEvent.click(dashboardButton);
     expect(
       screen.getByText("Real-time standings, cumulative statistics, live match tickers, and public spectator portal.")

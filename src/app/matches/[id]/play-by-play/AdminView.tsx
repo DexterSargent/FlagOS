@@ -35,6 +35,8 @@ import {
 } from "@/lib/demoSandbox";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
+import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { STAT_KEEPER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -1443,7 +1445,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       )}
 
       {/* SINGLE-ROW SYNC SCOREBOARD & GAME CONTROLS */}
-      <header className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full overflow-hidden" style={{ top: "var(--role-switcher-height, 0px)" }}>
+      <header data-tour="score-header" className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full overflow-hidden" style={{ top: "var(--role-switcher-height, 0px)" }}>
         <div className="flex flex-nowrap items-center justify-between gap-1 sm:gap-1.5 md:gap-3 w-full min-w-0">
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             {!isEmbedded && (
@@ -1487,7 +1489,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           {/* GAME CLOCK & DOWN ADJUSTER */}
-          <div className="flex flex-col items-center bg-black/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
+          <div data-tour="game-clock-controls" className="flex flex-col items-center bg-black/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
             {/* TOP: PERIOD & GAME CLOCK */}
             <div className="flex items-center gap-0.5 sm:gap-1.5">
               <span className="hidden sm:block text-[8px] md:text-[10px] font-bold uppercase text-neutral-500">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
@@ -1504,7 +1506,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </div>
 
             {/* BOTTOM: UNDERNEATH THE CLOCK - COMPACT DOWN STEPPER */}
-            <div className="flex items-center justify-center gap-1 mt-0.5 pt-0.5 border-t border-white/10 w-full" title="Current Down (Use - and + to adjust)">
+            <div data-tour="down-selector" className="flex items-center justify-center gap-1 mt-0.5 pt-0.5 border-t border-white/10 w-full" title="Current Down (Use - and + to adjust)">
               <button
                 type="button"
                 onClick={() => setCurrentDown((d) => Math.max(1, d - 1))}
@@ -1598,6 +1600,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+            <WalkthroughTrigger walkthrough={STAT_KEEPER_WALKTHROUGH} variant="header" />
             <button onClick={() => setIsScoreboardFullscreen(true)} aria-label="Fullscreen scoreboard" className="bg-white/10 p-1 sm:p-1.5 md:p-2 rounded-md sm:rounded-lg hover:bg-white/20 text-neutral-300" title="Fullscreen Scoreboard">
               <Maximize className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
@@ -1624,6 +1627,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </span>
         </div>
         <button
+          data-tour="play-log-btn"
           onClick={() => setIsPlayLogDrawerOpen(true)}
           className="text-cyan-400 hover:text-cyan-300 shrink-0 ml-3 text-[11px] font-bold flex items-center gap-1 cursor-pointer bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 transition-colors"
         >
@@ -1694,6 +1698,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       THE CLOCK WILL BEGIN ON THE SNAP
                     </h2>
                     <button
+                      data-tour="spot-ball-btn"
                       onClick={() => {
                         setIsBallSpotted(true);
                         setIsFirstPlayOfHalf(false);
@@ -1727,6 +1732,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       Awaiting Spot
                     </h2>
                     <button
+                      data-tour="spot-ball-btn"
                       onClick={handleSpotBall}
                       className="py-1.5 sm:py-3 md:py-4 px-3 sm:px-6 md:px-8 bg-white hover:bg-neutral-200 text-black font-black text-[clamp(0.6rem,1.5vw,1.25rem)] rounded-full shadow-2xl active:scale-95 transition-transform cursor-pointer whitespace-nowrap"
                     >
@@ -1904,23 +1910,25 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* WIZARD: PLAY TYPE */}
         {step === 'PLAY_TYPE' && (
-          <PlayEntryWizard
-            step="type"
-            variant="sync"
-            possession={possession}
-            currentDown={currentDown}
-            downsPerSeries={downsPerSeries}
-            onDownChange={setCurrentDown}
-            accentColor={possessionTeamColors.tertiary}
-            onSelectType={(type) => {
-              if (type === "Penalty") {
-                setPlayType("Penalty");
-                setStep("DETAILS");
-              } else {
-                handlePlayTypeSelect(type);
-              }
-            }}
-          />
+          <div data-tour="play-type-selector" className="w-full flex-1 flex flex-col min-h-0">
+            <PlayEntryWizard
+              step="type"
+              variant="sync"
+              possession={possession}
+              currentDown={currentDown}
+              downsPerSeries={downsPerSeries}
+              onDownChange={setCurrentDown}
+              accentColor={possessionTeamColors.tertiary}
+              onSelectType={(type) => {
+                if (type === "Penalty") {
+                  setPlayType("Penalty");
+                  setStep("DETAILS");
+                } else {
+                  handlePlayTypeSelect(type);
+                }
+              }}
+            />
+          </div>
         )}
 
         {/* WIZARD: DETAILS */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -33,6 +33,10 @@ import {
   MapPin,
   Menu,
   X,
+  RotateCcw,
+  Loader2,
+  ExternalLink,
+  LayoutDashboard,
 } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -58,6 +62,29 @@ export default function FlagOSPlatformLandingPage() {
   const [activeFeatureTab, setActiveFeatureTab] = useState<"stats" | "playbook" | "live-clock" | "infrastructure">("stats");
   const [wizardMode, setWizardMode] = useState<"sync" | "async">("sync");
   const [frameKey, setFrameKey] = useState(0);
+  const [loadedFrameId, setLoadedFrameId] = useState<string | null>(null);
+  const frameId = `${activeFeatureTab}-${wizardMode}-${frameKey}`;
+  const isFrameLoading = loadedFrameId !== frameId;
+  const frameRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    const doc = frame?.contentDocument;
+    // The frame may finish loading before hydration attaches onLoad.
+    if (doc && doc.readyState === "complete" && doc.URL !== "about:blank") {
+      setLoadedFrameId(frameId);
+      return;
+    }
+    const fallback = window.setTimeout(() => setLoadedFrameId(frameId), 8000);
+    return () => window.clearTimeout(fallback);
+  }, [frameId]);
+
+  const featureTabs = [
+    { id: "stats", label: "Play-by-Play Wizard", shortLabel: "Play-by-Play", icon: Activity },
+    { id: "playbook", label: "Playbook Studio", shortLabel: "Playbook", icon: BookOpen },
+    { id: "live-clock", label: "Schedule Builder", shortLabel: "Schedule", icon: Calendar },
+    { id: "infrastructure", label: "League Dashboard", shortLabel: "Dashboard", icon: LayoutDashboard },
+  ] as const;
 
   const getFeatureUrl = () => {
     switch (activeFeatureTab) {
@@ -692,41 +719,32 @@ export default function FlagOSPlatformLandingPage() {
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
               <FlagOSText /> Powerhouse Features
             </h2>
-            <p className="text-neutral-400 text-xs sm:text-sm max-w-2xl mx-auto">
+            <p className="text-neutral-400 text-xs sm:text-sm max-w-3xl mx-auto text-balance">
               Test drive the actual system features directly in the sandboxed interactive frame below. Zero database writes.
             </p>
           </div>
 
           {/* Feature selector tabs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 items-center justify-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-3xl mx-auto text-[11px] sm:text-xs font-bold">
-            <button
-              onClick={() => setActiveFeatureTab("stats")}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "stats" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
-                }`}
-            >
-              Dynamic Play-by-Play Wizard
-            </button>
-            <button
-              onClick={() => setActiveFeatureTab("playbook")}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "playbook" ? "bg-emerald-500 text-black font-black" : "text-neutral-400 hover:text-white"
-                }`}
-            >
-              Playbook Studio
-            </button>
-            <button
-              onClick={() => setActiveFeatureTab("live-clock")}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "live-clock" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
-                }`}
-            >
-              Automated Schedule-Builder
-            </button>
-            <button
-              onClick={() => setActiveFeatureTab("infrastructure")}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl transition-all cursor-pointer text-center ${activeFeatureTab === "infrastructure" ? "bg-cyan-500 text-black font-black" : "text-neutral-400 hover:text-white"
-                }`}
-            >
-              League Dashboard
-            </button>
+          <div role="tablist" aria-label="Feature demos" className="grid grid-cols-2 md:grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-3xl mx-auto text-xs font-bold">
+            {featureTabs.map(({ id, label, shortLabel, icon: Icon }) => {
+              const active = activeFeatureTab === id;
+              return (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveFeatureTab(id)}
+                  className={`px-3 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${active
+                    ? "bg-emerald-400 text-black font-black shadow-[0_0_18px_rgba(52,211,153,0.35)]"
+                    : "text-neutral-400 hover:text-white hover:bg-white/5"
+                    }`}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="sm:hidden">{shortLabel}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* DYNAMIC PLAY-BY-PLAY WIZARD MODE SWITCHER (SYNCHRONOUS VS ASYNCHRONOUS) */}
@@ -769,27 +787,67 @@ export default function FlagOSPlatformLandingPage() {
 
           {/* INTERACTIVE APPLICATION FRAME */}
           <div className="bg-white dark:bg-[#090D16] border border-slate-200 dark:border-white/15 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative w-full max-w-full">
+            {/* Browser-style toolbar */}
+            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 bg-slate-100 dark:bg-[#0B0F1A] border-b border-slate-200 dark:border-white/10">
+              <div className="hidden sm:flex items-center gap-1.5 shrink-0" aria-hidden="true">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+              </div>
+              <div className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1 rounded-lg bg-white dark:bg-black/60 border border-slate-200 dark:border-white/10 text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+                <Lock className="w-3 h-3 shrink-0 text-emerald-500" />
+                <span className="truncate">{getDisplayUrl()}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFrameKey((k) => k + 1)}
+                className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                aria-label="Reset demo"
+                title="Reset demo"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+              <a
+                href={getFeatureUrl().replace("embed=true&", "")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
+                aria-label="Open demo in a new tab"
+                title="Open in new tab"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+
             {/* Embedded Real Feature App Frame */}
-            <div className="relative w-full h-[460px] sm:h-[560px] md:h-[680px] bg-black max-w-full overflow-hidden">
+            <div className="relative w-full h-[min(78svh,680px)] md:h-[720px] bg-black max-w-full overflow-hidden">
               <iframe
-                key={`${activeFeatureTab}-${wizardMode}-${frameKey}`}
+                key={frameId}
+                ref={frameRef}
                 src={getFeatureUrl()}
                 title="FlagOS Real Feature Live Sandbox"
                 loading="lazy"
+                onLoad={() => setLoadedFrameId(frameId)}
                 className="w-full h-full border-0 bg-black block"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
               />
+              {isFrameLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#05070C] text-neutral-400 pointer-events-none">
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+                  <span className="text-[11px] font-mono uppercase tracking-widest">Loading {getFeatureBadge().title}</span>
+                </div>
+              )}
             </div>
 
             {/* Frame Footer Info */}
-            <div className="bg-slate-50 dark:bg-[#0B0F1A] border-t border-slate-200 dark:border-white/10 px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 text-[11px] text-neutral-400 text-center sm:text-left">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
-                <span className="font-bold text-white">{getFeatureBadge().title}</span>
-                <span className="hidden sm:inline">•</span>
-                <span>{getFeatureBadge().desc}</span>
+            <div className="bg-slate-50 dark:bg-[#0B0F1A] border-t border-slate-200 dark:border-white/10 px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3 text-[11px] text-neutral-400">
+              <div className="min-w-0 flex items-center gap-1.5">
+                <span className="font-bold text-slate-900 dark:text-white whitespace-nowrap">{getFeatureBadge().title}</span>
+                <span className="hidden md:inline">•</span>
+                <span className="hidden md:inline truncate">{getFeatureBadge().desc}</span>
               </div>
-              <span className="font-mono text-[10px] text-neutral-500 shrink-0">
-                Isolated Client Sandbox
+              <span className="font-mono text-[10px] text-neutral-500 shrink-0 whitespace-nowrap">
+                <span className="hidden sm:inline">Isolated Client </span>Sandbox
               </span>
             </div>
           </div>

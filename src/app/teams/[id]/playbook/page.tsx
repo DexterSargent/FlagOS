@@ -42,6 +42,8 @@ import CreateFormationModal from "@/components/playbook/CreateFormationModal";
 import PrintArmbandModal from "@/components/playbook/PrintArmbandModal";
 import PlayQuestionsModal from "@/components/playbook/PlayQuestionsModal";
 import MiniPlayDiagram from "@/components/playbook/MiniPlayDiagram";
+import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { PLAYBOOK_STUDIO_WALKTHROUGH, PLAY_DESIGNER_WALKTHROUGH } from "@/lib/walkthroughData";
 import {
   Playbook,
   PlayDiagram,
@@ -1171,11 +1173,18 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
+            {/* Walkthrough & Guide Trigger */}
+            <WalkthroughTrigger
+              walkthrough={PLAYBOOK_STUDIO_WALKTHROUGH}
+              variant="header"
+            />
+
             {viewLevel === "plays" && hasEditAccess && (
               <button
                 type="button"
+                data-tour="new-play-btn"
                 onClick={handleCreatePlayInFormationClick}
-                className="px-5 py-2.5 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md"
+                className="px-5 py-2.5 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-md cursor-pointer"
                 style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#000000") }}
               >
                 <Plus className="w-4 h-4" />
@@ -1186,6 +1195,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             {viewLevel === "playbooks" && hasEditAccess && (
               <button
                 type="button"
+                data-tour="create-playbook-btn"
                 disabled={playbooks.length >= MAX_PLAYBOOKS_PER_TEAM}
                 onClick={() => setIsCreatePlaybookOpen(true)}
                 className={`px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg ${
@@ -1208,7 +1218,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   setEditingFormation(null);
                   setIsFormationModalOpen(true);
                 }}
-                className="px-5 py-2.5 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg"
+                className="px-5 py-2.5 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg cursor-pointer"
                 style={{ background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`, color: getReadableTextColor(palette.primary, "#000000") }}
               >
                 <Plus className="w-4 h-4" />
@@ -1219,6 +1229,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             {/* Print Armbands (Available for Formations view) */}
             {(viewLevel === "formations" || viewLevel === "plays") && canViewPlaybook && (
               <button
+                data-tour="print-armband-btn"
                 onClick={() => setIsPrintModalOpen(true)}
                 className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2 cursor-pointer"
               >
@@ -1231,6 +1242,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             {hasEditAccess && (
               <button
                 type="button"
+                data-tour="autosave-status"
                 onClick={flushAutoSave}
                 aria-label="Save to Cloud (Auto-save)"
                 title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
@@ -1318,6 +1330,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
+                              data-tour="edit-playbook-btn"
                               data-testid={`edit-playbook-btn-${book.id}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1608,6 +1621,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 {hasEditAccess && (
                   <button
                     type="button"
+                    data-tour="edit-playbook-btn"
                     data-testid="edit-playbook-level3-btn"
                     onClick={() => {
                       setEditingPlaybook(activePlaybook);
@@ -1631,7 +1645,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div data-tour="play-cards-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {playsInActiveFormation.map((play) => (
                   <div
                     key={play.id}

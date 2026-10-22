@@ -17,6 +17,7 @@ import {
   isDemoTeamId,
   isStandaloneTeam,
   loadMatchTeamId,
+  useCanReadBrowserCache,
   useTeamRecord,
   type TeamRecord,
 } from "./teamRecord";
@@ -945,21 +946,23 @@ function CustomerRouteLeague({ teamId: routeTeamId, matchId, children }: {
   matchId: string | null;
   children: React.ReactNode;
 }) {
-  const [matchTeam, setMatchTeam] = useState(() => ({
+  const canReadCache = useCanReadBrowserCache();
+  const [matchTeam, setMatchTeam] = useState<{ matchId: string | null; teamId: string | null; resolved: boolean }>(() => ({
     matchId,
-    teamId: matchId ? getCachedMatchTeamId(matchId) : null,
+    teamId: null,
     resolved: !matchId,
   }));
-  const currentMatchTeam = matchTeam.matchId === matchId
-    ? matchTeam
-    : { matchId, teamId: matchId ? getCachedMatchTeamId(matchId) : null, resolved: !matchId };
+  const storedMatchTeam = matchTeam.matchId === matchId ? matchTeam : { matchId, teamId: null, resolved: !matchId };
+  const currentMatchTeam = storedMatchTeam.resolved || !matchId || !canReadCache
+    ? storedMatchTeam
+    : { ...storedMatchTeam, teamId: getCachedMatchTeamId(matchId) };
 
   useEffect(() => {
     if (!matchId) return;
     let cancelled = false;
     loadMatchTeamId(matchId)
       .then((teamId) => { if (!cancelled) setMatchTeam({ matchId, teamId, resolved: true }); })
-      .catch(() => { if (!cancelled) setMatchTeam((prev) => ({ matchId, teamId: prev.matchId === matchId ? prev.teamId : null, resolved: true })); });
+      .catch(() => { if (!cancelled) setMatchTeam({ matchId, teamId: getCachedMatchTeamId(matchId), resolved: true }); });
     return () => { cancelled = true; };
   }, [matchId]);
 

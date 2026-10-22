@@ -42,6 +42,8 @@ import type { TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
 import { getFormationPositions, getPlayerPositions, type DepthFormation } from "@/lib/depthChart";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
+import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { TEAM_ROSTER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 const TeamDepthCharts = dynamic(() => import("@/components/TeamDepthCharts"), {
   loading: () => <p role="status">Loading depth charts...</p>,
@@ -609,36 +611,40 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             </p>
           </div>
 
-          {/* Add Player (Team Admin & League Admin) */}
-          {hasEditAccess && (
-            <button
-              onClick={() => {
-                if (isRosterFull) {
-                  alert(`Cannot add player: Maximum roster capacity (${maxRosterSize} players) reached under league rules.`);
-                  return;
+          <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
+            <WalkthroughTrigger walkthrough={TEAM_ROSTER_WALKTHROUGH} variant="header" />
+            {/* Add Player (Team Admin & League Admin) */}
+            {hasEditAccess && (
+              <button
+                data-tour="add-player-btn"
+                onClick={() => {
+                  if (isRosterFull) {
+                    alert(`Cannot add player: Maximum roster capacity (${maxRosterSize} players) reached under league rules.`);
+                    return;
+                  }
+                  setIsAddModalOpen(true);
+                }}
+                disabled={isRosterFull}
+                title={isRosterFull ? `Roster at max capacity (${maxRosterSize} players)` : "Add Player"}
+                className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all self-start md:self-auto ${
+                  isRosterFull
+                    ? "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-white/5 opacity-60"
+                    : "hover:opacity-90 shadow-lg hover:-translate-y-0.5"
+                }`}
+                style={
+                  !isRosterFull
+                    ? {
+                        background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+                        color: getReadableTextColor(palette.primary, "#FFFFFF"),
+                      }
+                    : undefined
                 }
-                setIsAddModalOpen(true);
-              }}
-              disabled={isRosterFull}
-              title={isRosterFull ? `Roster at max capacity (${maxRosterSize} players)` : "Add Player"}
-              className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all self-start md:self-auto ${
-                isRosterFull
-                  ? "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-white/5 opacity-60"
-                  : "hover:opacity-90 shadow-lg hover:-translate-y-0.5"
-              }`}
-              style={
-                !isRosterFull
-                  ? {
-                      background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
-                      color: getReadableTextColor(palette.primary, "#FFFFFF"),
-                    }
-                  : undefined
-              }
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>{isRosterFull ? `Roster Full (${maxRosterSize})` : "Add Player"}</span>
-            </button>
-          )}
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{isRosterFull ? `Roster Full (${maxRosterSize})` : "Add Player"}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Team Overview Stats Banner */}
@@ -730,7 +736,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {activeTab === "roster" ? (
-            <div className="overflow-x-auto hide-scrollbar">
+            <div data-tour="roster-list-table" className="overflow-x-auto hide-scrollbar">
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-black/50 text-neutral-500 text-xs font-semibold uppercase tracking-wider">
@@ -884,7 +890,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             </table>
           </div>
         ) : null}
-        <div hidden={activeTab !== "depth_chart"}>
+        <div data-tour="depth-chart-section" hidden={activeTab !== "depth_chart"}>
           <TeamDepthCharts teamId={teamId} players={players} canManage={!!canManageTeam(teamId)} signedIn={!!user}
             isDemo={isDemoLeague} showStats={showStats} playerStats={playerStats} onFormations={setDepthFormations} />
         </div>
