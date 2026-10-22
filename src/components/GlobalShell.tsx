@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import RoleSwitcherBar from "@/components/RoleSwitcherBar";
 import LeagueCustomizerModal from "@/components/LeagueCustomizerModal";
@@ -17,11 +17,11 @@ import { ShellChromeContext } from "@/lib/shellChrome";
 
 function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { role, isLeagueAdmin, isPlatformAdmin, managedTeamId, playerTeamId } = useAuth();
 
   // Always initialize to false so server HTML matches the first client render.
-  // The real embedded state is determined in useEffect (client-only).
+  // The real embedded state is determined in useEffect (client-only). Reading the query from
+  // window.location (instead of useSearchParams) keeps the shell out of a Suspense boundary.
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [suppressLeagueNav, setSuppressLeagueNav] = useState(false);
 
@@ -29,7 +29,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     const isEmbedQuery = window.location.search.includes("embed=true");
     const isIframe = window.self !== window.top;
     setIsEmbedded(isEmbedQuery || (isIframe && isEmbedQuery));
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   const shellChrome = useMemo(() => ({ setSuppressLeagueNav }), []);
 
@@ -115,9 +115,5 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
 }
 
 export default function GlobalShell({ children }: { children: React.ReactNode }) {
-  return (
-    <Suspense fallback={<main id="main-content" tabIndex={-1} className="flex-1 w-full">{children}</main>}>
-      <GlobalShellInner>{children}</GlobalShellInner>
-    </Suspense>
-  );
+  return <GlobalShellInner>{children}</GlobalShellInner>;
 }
