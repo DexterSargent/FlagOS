@@ -7,13 +7,14 @@ import { getDepthFormations } from "@/lib/depthChart";
 
 export const runtime = "nodejs";
 
-type PrivateAction = "lookup" | "team" | "league" | "admin_overview" | "depth_chart";
+type PrivateAction = "lookup" | "memberships" | "team" | "league" | "admin_overview" | "depth_chart";
 
 const PLATFORM_ADMIN_EMAIL = "dextersargent@gmail.com";
 const MAX_REQUEST_BYTES = 8_000;
 const MAX_READ_UNITS_PER_MINUTE = 2_000;
 const ACTION_READ_UNITS: Record<PrivateAction, number> = {
   lookup: 250,
+  memberships: 500,
   team: 70,
   league: 3,
   admin_overview: 1_200,
@@ -62,13 +63,13 @@ function parsePayload(value: unknown): { action: PrivateAction; data: Record<str
   const payload = value as Record<string, unknown>;
   const action = payload.action;
   // Filterless actions accept an omitted data object for client compatibility.
-  const data = payload.data === undefined && (action === "lookup" || action === "admin_overview")
+  const data = payload.data === undefined && (action === "lookup" || action === "memberships" || action === "admin_overview")
     ? {}
     : payload.data;
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     fail("Request data is required.");
   }
-  if (!["lookup", "team", "league", "admin_overview", "depth_chart"].includes(String(action))) {
+  if (!["lookup", "memberships", "team", "league", "admin_overview", "depth_chart"].includes(String(action))) {
     fail("Unsupported private-data request.");
   }
   return { action: action as PrivateAction, data: data as Record<string, unknown> };
@@ -165,6 +166,180 @@ async function lookupByEmail(token: DecodedIdToken) {
           emails: Array.isArray(privateData.emails) ? privateData.emails : [],
         };
       }),
+  };
+}
+
+const MAX_MEMBERSHIP_TEAMS = 12;
+const MEMBERSHIP_GAME_FIELDS = [
+  "date", "time", "status", "location", "isHidden",
+  "homeTeamId", "awayTeamId", "homeTeamName", "awayTeamName", "homeScore", "awayScore",
+];
+
+type MembershipGame = {
+  id: string;
+  date: string;
+  time: string;
+  status: string;
+  location: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  live: boolean;
+};
+
+function stringField(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function toMembershipGame(snapshot: FirebaseFirestore.DocumentSnapshot): MembershipGame {
+  const data = snapshot.data() || {};
+  return {
+    id: snapshot.id,
+    date: stringField(data.date),
+    time: stringField(data.time),
+    status: stringField(data.status),
+    location: stringField(data.location),
+    homeTeamId: stringField(data.homeTeamId),
+    awayTeamId: stringField(data.awayTeamId),
+    homeTeamName: stringField(data.homeTeamName),
+    awayTeamName: stringField(data.awayTeamName),
+    homeScore: typeof data.homeScore === "number" ? data.homeScore : null,
+    awayScore: typeof data.awayScore === "number" ? data.awayScore : null,
+    live: false,
+  };
+}
+
+const isFinalStatus = (status: string) => status === "completed" || status.toLowerCase() === "final";
+const gameSortKey = (game: MembershipGame) => `${game.date} ${game.time || "99:99"}`;
+
+/** Next live/upcoming game and most recent final for a team, from games it plays in or manages. */
+async function getTeamGames(teamId: string, leagueId: string) {
+  const matches = adminDb.collection("matches");
+  const queries = leagueId
+    ? [
+        matches.where("homeTeamId", "==", teamId).select(...MEMBERSHIP_GAME_FIELDS).limit(128).get(),
+        matches.where("awayTeamId", "==", teamId).select(...MEMBERSHIP_GAME_FIELDS).limit(128).get(),
+      ]
+    : [matches.where("managingTeamId", "==", teamId).select(...MEMBERSHIP_GAME_FIELDS).limit(256).get()];
+  const snapshots = await Promise.all(queries);
+  const games = new Map<string, MembershipGame>();
+  for (const snapshot of snapshots) {
+    for (const record of snapshot.docs) {
+      if (record.get("isHidden") === true) continue;
+      games.set(record.id, toMembershipGame(record));
+    }
+  }
+  // Compare against the league's calendar day rather than the server's UTC day.
+  const torontoDay = (offsetDays: number) =>
+    new Date(Date.now() + offsetDays * 86_400_000).toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+  const today = torontoDay(0);
+  const yesterday = torontoDay(-1);
+  const all = [...games.values()];
+  // A game left "in_progress" on another day is stale, not live.
+  const isLive = (game: MembershipGame) =>
+    game.status === "in_progress" && (!game.date || game.date === today || game.date === yesterday);
+  const live = all
+    .filter(isLive)
+    .sort((a, b) => gameSortKey(a).localeCompare(gameSortKey(b)))
+    .map((game) => ({ ...game, live: true }));
+  const upcoming = all
+    .filter((game) => !isLive(game) && !isFinalStatus(game.status) && game.date >= today)
+    .sort((a, b) => gameSortKey(a).localeCompare(gameSortKey(b)));
+  const finals = all.filter((game) => isFinalStatus(game.status)).sort((a, b) => gameSortKey(b).localeCompare(gameSortKey(a)));
+  return { nextGame: live[0] || upcoming[0] || null, lastGame: finals[0] || null };
+}
+
+/**
+ * Everything the signed-in account belongs to, grouped by league. Roles are per league/team:
+ * the same account can be a commissioner in one league, a coach in another and a player in a third.
+ * Teams without a league are returned separately as independent teams.
+ */
+async function getMemberships(token: DecodedIdToken) {
+  const email = normalizedEmail(token);
+  if (!email) return { leagues: [], independentTeams: [] };
+
+  const [lookup, adminLeagues, subscriptionLeagues, ownedPrivateLeagues, ownedLeagues] = await Promise.all([
+    lookupByEmail(token),
+    adminDb.collection("league_private").where("adminEmails", "array-contains", email).limit(25).get(),
+    adminDb.collection("league_private").where("subscriptionAdminEmails", "array-contains", email).limit(25).get(),
+    adminDb.collection("league_private").where("ownerUid", "==", token.uid).limit(25).get(),
+    adminDb.collection("leagues").where("ownerUid", "==", token.uid).limit(25).get(),
+  ]);
+
+  const commissionerLeagueIds = new Set<string>([
+    ...adminLeagues.docs, ...subscriptionLeagues.docs, ...ownedPrivateLeagues.docs, ...ownedLeagues.docs,
+  ].map((snapshot) => snapshot.id));
+
+  type TeamRole = "coach" | "player";
+  const teamRoles = new Map<string, { roles: Set<TeamRole>; player?: { id: string; name: string; number: string } }>();
+  const addTeamRole = (teamId: string, role: TeamRole) => {
+    if (!teamId || teamId === "team_free_agents") return null;
+    const entry = teamRoles.get(teamId) || { roles: new Set<TeamRole>() };
+    entry.roles.add(role);
+    teamRoles.set(teamId, entry);
+    return entry;
+  };
+  lookup.teams.forEach((team) => addTeamRole(team.id, "coach"));
+  lookup.players.forEach((player) => {
+    const entry = addTeamRole(stringField(player.teamId), "player");
+    if (entry && !entry.player) {
+      entry.player = {
+        id: player.id,
+        name: stringField((player as Record<string, unknown>).playerName),
+        number: String((player as Record<string, unknown>).number ?? ""),
+      };
+    }
+  });
+
+  const teamIds = [...teamRoles.keys()].slice(0, MAX_MEMBERSHIP_TEAMS);
+  const teamDocs = teamIds.length ? await adminDb.getAll(...teamIds.map((id) => adminDb.doc(`teams/${id}`))) : [];
+  const teams = teamDocs.filter((snapshot) => snapshot.exists).map((snapshot) => {
+    const data = snapshot.data() || {};
+    const entry = teamRoles.get(snapshot.id)!;
+    return {
+      id: snapshot.id,
+      name: stringField(data.name) || stringField(data.teamName) || "Team",
+      shortcode: stringField(data.shortcode),
+      leagueId: stringField(data.leagueId),
+      logoUrl: stringField(data.logoUrl),
+      primaryColor: stringField(data.primaryColor) || stringField(data.color),
+      roles: [...entry.roles],
+      player: entry.player || null,
+    };
+  });
+
+  const leagueIds = [...new Set([...commissionerLeagueIds, ...teams.map((team) => team.leagueId).filter(Boolean)])];
+  const [leagueDocs, games] = await Promise.all([
+    leagueIds.length ? adminDb.getAll(...leagueIds.map((id) => adminDb.doc(`leagues/${id}`))) : Promise.resolve([]),
+    Promise.all(teams.map((team) => getTeamGames(team.id, team.leagueId).catch((error) => {
+      console.error(`Membership games failed for team ${team.id}:`, error);
+      return { nextGame: null, lastGame: null };
+    }))),
+  ]);
+  const teamsWithGames = teams.map((team, index) => ({ ...team, ...games[index] }));
+
+  const leagues = leagueDocs.filter((snapshot) => snapshot.exists).map((snapshot) => {
+    const data = snapshot.data() || {};
+    return {
+      id: snapshot.id,
+      name: stringField(data.leagueName) || stringField(data.name) || "League",
+      shortcode: stringField(data.shortcode),
+      seasonTitle: stringField(data.seasonTitle),
+      logoUrl: stringField(data.logoUrl),
+      primaryColor: stringField(data.primaryColor),
+      accentColor: stringField(data.accentColor),
+      visibility: data.visibility === "private" ? "private" : "public",
+      isCommissioner: commissionerLeagueIds.has(snapshot.id),
+      teams: teamsWithGames.filter((team) => team.leagueId === snapshot.id),
+    };
+  });
+  const knownLeagueIds = new Set(leagues.map((league) => league.id));
+  return {
+    leagues,
+    independentTeams: teamsWithGames.filter((team) => !team.leagueId || !knownLeagueIds.has(team.leagueId)),
   };
 }
 
@@ -358,6 +533,9 @@ export async function POST(request: Request) {
     if (action === "lookup") {
       if (Object.keys(data).length) fail("Lookup does not accept caller-supplied filters.");
       result = await lookupByEmail(token);
+    } else if (action === "memberships") {
+      if (Object.keys(data).length) fail("Memberships do not accept caller-supplied filters.");
+      result = await getMemberships(token);
     } else if (action === "team") {
       result = await getTeamPrivate(String(data.teamId || ""), token);
     } else if (action === "league") {

@@ -74,6 +74,7 @@ export default function RoleSwitcherContent() {
     !isChromeLessPage &&
     !(pathname === "/admin" || (pathname?.startsWith("/admin/") && !pathname.startsWith("/admin/sandbox"))) &&
     pathname !== "/" &&
+    pathname !== "/leagues" &&
     pathname !== "/pricing" &&
     pathname !== "/login";
 

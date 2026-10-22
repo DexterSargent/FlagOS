@@ -43,19 +43,25 @@ import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
 import { FlagOSLogo, FLAGOS_LOGO } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountMenu from "@/components/AccountMenu";
+import SignedInHome from "@/components/home/SignedInHome";
 import { useTheme } from "@/lib/themeContext";
 
 export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
-  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin } = useAuth();
+  const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin, loading: authLoading } = useAuth();
   const isMe = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" || Boolean(isPlatformAdmin);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Set after mount (never during render) so returning members skip the marketing page while auth restores.
+  const [expectSignedIn, setExpectSignedIn] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    try {
+      setExpectSignedIn(Object.keys(localStorage).some((key) => key.startsWith("flagos_profile_")));
+    } catch {}
   }, []);
 
   // Interactive preview tabs & live frame state
@@ -202,6 +208,10 @@ export default function FlagOSPlatformLandingPage() {
 
     return matchesSearch && matchesFormat;
   });
+
+  if (user || (authLoading && expectSignedIn)) {
+    return <SignedInHome />;
+  }
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">

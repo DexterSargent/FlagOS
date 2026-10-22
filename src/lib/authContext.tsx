@@ -105,7 +105,7 @@ function clearCachedProfiles() {
   if (typeof window === "undefined") return;
   try {
     Object.keys(localStorage)
-      .filter((key) => key.startsWith(PROFILE_CACHE_PREFIX))
+      .filter((key) => key.startsWith(PROFILE_CACHE_PREFIX) || key.startsWith("flagos_memberships_"))
       .forEach((key) => localStorage.removeItem(key));
   } catch {}
 }

@@ -250,3 +250,93 @@ describe("private-data API", () => {
     expect(response.status).toBe(403);
   });
 });
+
+describe("memberships", () => {
+  const email = "dex@example.com";
+  const torontoDay = (offset: number) =>
+    new Date(Date.now() + offset * 86_400_000).toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+  const store: Record<string, Record<string, Record<string, unknown>>> = {
+    league_private: { metro: { adminEmails: [email] } },
+    leagues: {
+      metro: { leagueName: "Metro Flag", visibility: "private" },
+      sunday: { leagueName: "Sunday Social", seasonTitle: "Fall" },
+    },
+    team_private: { york: { adminEmails: [email] } },
+    player_private: { p1: { email } },
+    players: { p1: { teamId: "sharks", playerName: "Dex", number: 12 } },
+    teams: { york: { name: "York Lions", leagueId: "" }, sharks: { name: "Sharks", leagueId: "sunday" } },
+    matches: {
+      live: { managingTeamId: "york", status: "in_progress", date: torontoDay(0), homeTeamId: "york", homeScore: 7, awayScore: 0 },
+      stale: { managingTeamId: "york", status: "in_progress", date: "2020-01-01", homeTeamId: "york" },
+      hidden: { managingTeamId: "york", status: "in_progress", date: torontoDay(0), isHidden: true },
+      next: { homeTeamId: "sharks", awayTeamId: "jets", status: "scheduled", date: "2999-01-01", awayTeamName: "Jets" },
+      final: { homeTeamId: "jets", awayTeamId: "sharks", status: "completed", date: "2020-01-02", homeScore: 6, awayScore: 13 },
+    },
+  };
+  const snapshot = (id: string, data?: Record<string, unknown>) => ({
+    id, exists: Boolean(data), data: () => data, get: (field: string) => data?.[field],
+  });
+  function query(name: string, filters: [string, string, unknown][] = []): unknown {
+    return {
+      where: (field: string, op: string, value: unknown) => query(name, [...filters, [field, op, value]]),
+      select: () => query(name, filters),
+      limit: () => query(name, filters),
+      get: async () => ({
+        docs: Object.entries(store[name] || {})
+          .filter(([, data]) => filters.every(([field, op, value]) =>
+            op === "array-contains" ? Array.isArray(data[field]) && (data[field] as unknown[]).includes(value) : data[field] === value))
+          .map(([id, data]) => snapshot(id, data)),
+        get size() { return this.docs.length; },
+      }),
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    verifyIdTokenMock.mockResolvedValue({ ...token, email });
+    collectionMock.mockImplementation((name: string) => query(name));
+    getAllMock.mockImplementation(async (...refs: { path: string }[]) =>
+      refs.map(({ path }) => {
+        const [collection, id] = path.split("/");
+        return snapshot(id, store[collection]?.[id]);
+      }));
+  });
+
+  it("groups roles per league and returns independent teams separately", async () => {
+    const response = await POST(request({ action: "memberships" }));
+    expect(response.status).toBe(200);
+    const { data } = await response.json();
+
+    const metro = data.leagues.find((league: { id: string }) => league.id === "metro");
+    const sunday = data.leagues.find((league: { id: string }) => league.id === "sunday");
+    expect(metro).toMatchObject({ name: "Metro Flag", visibility: "private", isCommissioner: true, teams: [] });
+    expect(sunday).toMatchObject({ name: "Sunday Social", isCommissioner: false });
+    expect(sunday.teams).toEqual([
+      expect.objectContaining({
+        id: "sharks",
+        roles: ["player"],
+        player: { id: "p1", name: "Dex", number: "12" },
+        nextGame: expect.objectContaining({ id: "next", live: false }),
+        lastGame: expect.objectContaining({ id: "final", homeScore: 6, awayScore: 13 }),
+      }),
+    ]);
+    expect(data.independentTeams).toEqual([
+      expect.objectContaining({ id: "york", roles: ["coach"], nextGame: expect.objectContaining({ id: "live", live: true }) }),
+    ]);
+  });
+
+  it("does not treat games left in progress on another day as live", async () => {
+    store.matches.live.date = "2020-01-03";
+    try {
+      const { data } = await (await POST(request({ action: "memberships" }))).json();
+      expect(data.independentTeams[0].nextGame).toBeNull();
+    } finally {
+      store.matches.live.date = torontoDay(0);
+    }
+  });
+
+  it("rejects caller-supplied filters", async () => {
+    const response = await POST(request({ action: "memberships", data: { email: "someone-else@example.com" } }));
+    expect(response.status).toBe(400);
+  });
+});
