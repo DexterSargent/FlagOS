@@ -540,7 +540,7 @@ export function calculateTeamComprehensiveStats(
     const isConversionPlay = Boolean(
       play.isConversion === true ||
       play.playType === "Conversion" ||
-      (!play.isTouchdown && (
+      (!play.isTouchdown && !play.isPick6 && play.result !== "Pick 6" && (
         (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
         play.conversionSuccess === true
       ))

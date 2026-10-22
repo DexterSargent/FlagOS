@@ -128,7 +128,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           inferredTeam: null,
           passAtt: 0, passComp: 0, passTD: 0, passInt: 0, passFD: 0,
           receptions: 0, recTD: 0, recFD: 0,
-          rushAtt: 0, rushTD: 0,
+          rushAtt: 0, rushTD: 0, rushFD: 0,
           convPass: 0, convRec: 0,
           flagPulls: 0, sacks: 0, ffl: 0, int: 0, defTD: 0, pbu: 0, safeties: 0,
         };
@@ -139,55 +139,78 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       const offTeam = play.possessionTeamId;
       const defTeam = offTeam === matchData?.homeTeamId ? matchData?.awayTeamId : matchData?.homeTeamId;
 
-      // Passing
       const isConversionPlay = Boolean(
         play.isConversion === true ||
         play.playType === "Conversion" ||
-        (!play.isTouchdown && (
+        (!play.isTouchdown && !play.isPick6 && play.result !== "Pick 6" && (
           (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
           play.conversionSuccess === true
         ))
       );
 
       // Passing
-      if (play.playType === 'Pass' && play.qbPlayerId && !isConversionPlay) {
-        initPlayer(play.qbPlayerId);
-        statsMap[play.qbPlayerId].inferredTeam = offTeam;
-        statsMap[play.qbPlayerId].passAtt += 1;
-        if (play.passOutcome === 'Complete') statsMap[play.qbPlayerId].passComp += 1;
-        if (play.isTouchdown) statsMap[play.qbPlayerId].passTD += 1;
-        if (play.firstDown) statsMap[play.qbPlayerId].passFD += 1;
-        if (play.passOutcome === 'Interception') statsMap[play.qbPlayerId].passInt += 1;
+      if (play.playType === 'Pass' && (play.qbPlayerId || play.passer) && !isConversionPlay) {
+        const qb = play.qbPlayerId || play.passer;
+        initPlayer(qb);
+        statsMap[qb].inferredTeam = offTeam;
+        statsMap[qb].passAtt += 1;
+        if (play.passOutcome === 'Complete') statsMap[qb].passComp += 1;
+        if (play.isTouchdown || play.result === 'Touchdown') statsMap[qb].passTD += 1;
+        if (play.firstDown || play.result === 'First Down' || play.isTouchdown || play.result === 'Touchdown') statsMap[qb].passFD += 1;
+        if (play.passOutcome === 'Interception') statsMap[qb].passInt += 1;
       }
       // Receiving
-      if (play.playType === 'Pass' && play.passOutcome === 'Complete' && play.receiverPlayerId && !isConversionPlay) {
-        initPlayer(play.receiverPlayerId);
-        statsMap[play.receiverPlayerId].inferredTeam = offTeam;
-        statsMap[play.receiverPlayerId].receptions += 1;
-        if (play.isTouchdown) statsMap[play.receiverPlayerId].recTD += 1;
-        if (play.firstDown) statsMap[play.receiverPlayerId].recFD += 1;
+      if (play.playType === 'Pass' && play.passOutcome === 'Complete' && (play.receiverPlayerId || play.receiver) && !isConversionPlay) {
+        const rec = play.receiverPlayerId || play.receiver;
+        initPlayer(rec);
+        statsMap[rec].inferredTeam = offTeam;
+        statsMap[rec].receptions += 1;
+        if (play.isTouchdown || play.result === 'Touchdown') statsMap[rec].recTD += 1;
+        if (play.firstDown || play.result === 'First Down' || play.isTouchdown || play.result === 'Touchdown') statsMap[rec].recFD += 1;
       }
       // Rushing
-      if (play.playType === 'Run' && play.runnerPlayerId && !isConversionPlay) {
-        initPlayer(play.runnerPlayerId);
-        statsMap[play.runnerPlayerId].inferredTeam = offTeam;
-        statsMap[play.runnerPlayerId].rushAtt += 1;
-        if (play.isTouchdown) statsMap[play.runnerPlayerId].rushTD += 1;
+      if (play.playType === 'Run' && (play.runnerPlayerId || play.ballCarrierPlayerId) && !isConversionPlay) {
+        const runner = play.runnerPlayerId || play.ballCarrierPlayerId;
+        initPlayer(runner);
+        statsMap[runner].inferredTeam = offTeam;
+        statsMap[runner].rushAtt += 1;
+        if (play.isTouchdown || play.result === 'Touchdown') statsMap[runner].rushTD += 1;
+        if (play.firstDown || play.result === 'First Down' || play.isTouchdown || play.result === 'Touchdown') statsMap[runner].rushFD += 1;
       }
       // Conversions
       if (isConversionPlay) {
         if (play.conversionSuccess || play.passOutcome === 'Complete' || (play.points && play.points > 0)) {
-          const passer = play.conversionPasser || play.qbPlayerId;
-          const receiver = play.conversionReceiver || play.receiverPlayerId;
-          if (passer) {
-            initPlayer(passer);
-            statsMap[passer].inferredTeam = offTeam;
-            statsMap[passer].convPass += 1;
-          }
-          if (receiver) {
-            initPlayer(receiver);
-            statsMap[receiver].inferredTeam = offTeam;
-            statsMap[receiver].convRec += 1;
+          const passer = play.conversionPasser || play.qbPlayerId || play.passer;
+          const receiver = play.conversionReceiver || play.receiverPlayerId || play.receiver;
+          const runner = play.conversionRunner || play.runnerPlayerId || play.ballCarrierPlayerId;
+          if (play.playType === 'Pass') {
+            if (passer) {
+              initPlayer(passer);
+              statsMap[passer].inferredTeam = offTeam;
+              statsMap[passer].convPass += 1;
+            }
+            if (receiver) {
+              initPlayer(receiver);
+              statsMap[receiver].inferredTeam = offTeam;
+              statsMap[receiver].convRec += 1;
+            }
+          } else if (play.playType === 'Run') {
+            if (runner) {
+              initPlayer(runner);
+              statsMap[runner].inferredTeam = offTeam;
+              statsMap[runner].convRec += 1;
+            }
+          } else {
+            if (passer) {
+              initPlayer(passer);
+              statsMap[passer].inferredTeam = offTeam;
+              statsMap[passer].convPass += 1;
+            }
+            if (receiver) {
+              initPlayer(receiver);
+              statsMap[receiver].inferredTeam = offTeam;
+              statsMap[receiver].convRec += 1;
+            }
           }
         }
       } else if (play.conversionSuccess) {
@@ -201,6 +224,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           statsMap[play.conversionReceiver].inferredTeam = offTeam;
           statsMap[play.conversionReceiver].convRec += 1;
         }
+        if (play.conversionRunner) {
+          initPlayer(play.conversionRunner);
+          statsMap[play.conversionRunner].inferredTeam = offTeam;
+          statsMap[play.conversionRunner].convRec += 1;
+        }
       }
       // Defense
       if (play.defenders && Array.isArray(play.defenders)) {
@@ -209,21 +237,40 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           statsMap[defenderName].inferredTeam = defTeam;
           if (play.passOutcome === 'Interception') {
             statsMap[defenderName].int += 1;
-            if (play.isPick6) statsMap[defenderName].defTD += 1;
+            if (play.isPick6 || play.result === 'Pick 6') statsMap[defenderName].defTD += 1;
           } else if (play.passOutcome === 'PBU') {
             statsMap[defenderName].pbu += 1;
           } else if (play.passOutcome === 'Sack') {
             statsMap[defenderName].sacks += 1;
             statsMap[defenderName].flagPulls += 1;
-            if (play.isSafety) statsMap[defenderName].safeties += 1;
+            if (play.isSafety || play.result === 'Safety') statsMap[defenderName].safeties += 1;
           } else if (play.passOutcome === 'FFL') {
             statsMap[defenderName].ffl += 1;
             statsMap[defenderName].flagPulls += 1;
-            if (play.isSafety) statsMap[defenderName].safeties += 1;
+            if (play.isSafety || play.result === 'Safety') statsMap[defenderName].safeties += 1;
           } else {
             statsMap[defenderName].flagPulls += 1;
           }
         });
+      }
+      if (play.flaggers && Array.isArray(play.flaggers)) {
+        play.flaggers.forEach((flaggerName: string) => {
+          initPlayer(flaggerName);
+          const flaggerTeam = play.passOutcome === 'Interception' ? offTeam : defTeam;
+          statsMap[flaggerName].inferredTeam = flaggerTeam;
+          statsMap[flaggerName].flagPulls += 1;
+        });
+      }
+      if (play.defFlagPullPlayerId) {
+        initPlayer(play.defFlagPullPlayerId);
+        statsMap[play.defFlagPullPlayerId].inferredTeam = defTeam;
+        statsMap[play.defFlagPullPlayerId].flagPulls += 1;
+      }
+      if (play.interceptorPlayerId) {
+        initPlayer(play.interceptorPlayerId);
+        statsMap[play.interceptorPlayerId].inferredTeam = defTeam;
+        statsMap[play.interceptorPlayerId].int += 1;
+        if (play.isPick6 || play.result === 'Pick 6') statsMap[play.interceptorPlayerId].defTD += 1;
       }
     });
 
@@ -623,50 +670,60 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                 </button>
               </div>
 
-              <div className="bg-neutral-900 border border-white/5 rounded-2xl p-3 sm:p-6 shadow-lg overflow-x-auto scrollbar-thin">
+              <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/5 rounded-2xl p-3 sm:p-6 shadow-md overflow-x-auto scrollbar-thin">
                 <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
                   <thead>
-                    <tr className="border-b border-white/10 text-neutral-500 font-bold uppercase tracking-widest">
+                    <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 font-bold uppercase tracking-wider text-[11px]">
                       <th className="pb-4 pr-4">Player</th>
-                      <th className="pb-4 px-4 text-center">C/ATT</th>
-                      <th className="pb-4 px-4 text-center">PASS TD</th>
-                      <th className="pb-4 px-4 text-center">PASS FD</th>
-                      <th className="pb-4 px-4 text-center">INT</th>
-                      <th className="pb-4 px-4 text-center">REC</th>
-                      <th className="pb-4 px-4 text-center">REC TD</th>
-                      <th className="pb-4 px-4 text-center">REC FD</th>
-                      <th className="pb-4 px-4 text-center">RUSH</th>
-                      <th className="pb-4 px-4 text-center">RUSH TD</th>
-                      <th className="pb-4 px-4 text-center">FLAGS</th>
-                      <th className="pb-4 px-4 text-center">FFL</th>
-                      <th className="pb-4 px-4 text-center">SACKS</th>
-                      <th className="pb-4 px-4 text-center">DEF INT</th>
-                      <th className="pb-4 pl-4 text-center">DEF TD</th>
+                      <th className="pb-4 px-3 text-center">C/ATT</th>
+                      <th className="pb-4 px-3 text-center">PASS TD</th>
+                      <th className="pb-4 px-3 text-center">PASS FD</th>
+                      <th className="pb-4 px-3 text-center">INT</th>
+                      <th className="pb-4 px-3 text-center">REC</th>
+                      <th className="pb-4 px-3 text-center">REC TD</th>
+                      <th className="pb-4 px-3 text-center">REC FD</th>
+                      <th className="pb-4 px-3 text-center">RUSH</th>
+                      <th className="pb-4 px-3 text-center">RUSH TD</th>
+                      <th className="pb-4 px-3 text-center">RUSH FD</th>
+                      <th className="pb-4 px-3 text-center">PAT PASS</th>
+                      <th className="pb-4 px-3 text-center">PAT REC</th>
+                      <th className="pb-4 px-3 text-center">FLAGS</th>
+                      <th className="pb-4 px-3 text-center">FFL</th>
+                      <th className="pb-4 px-3 text-center">SACKS</th>
+                      <th className="pb-4 px-3 text-center">PBU</th>
+                      <th className="pb-4 px-3 text-center">DEF INT</th>
+                      <th className="pb-4 px-3 text-center">DEF TD</th>
+                      <th className="pb-4 pl-3 text-center">SAF</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                     {calculateBoxScore().map((stat: any, idx) => (
-                      <tr key={idx} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3 pr-4 font-bold text-white">{stat.name}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.passComp}/{stat.passAtt}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.passTD}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.passFD}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.passInt}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.receptions}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.recTD}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.recFD}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.rushAtt}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.rushTD}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.flagPulls}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.ffl}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.sacks}</td>
-                        <td className="py-3 px-4 text-center text-neutral-300">{stat.int}</td>
-                        <td className="py-3 pl-4 text-center text-neutral-300">{stat.defTD}</td>
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                        <td className="py-3 pr-4 font-bold text-slate-900 dark:text-white">{stat.name}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.passComp}/{stat.passAtt}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.passTD}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.passFD}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.passInt}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.receptions}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.recTD}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.recFD}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.rushAtt}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.rushTD}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.rushFD}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.convPass}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.convRec}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.flagPulls}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.ffl}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.sacks}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.pbu}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.int}</td>
+                        <td className="py-3 px-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.defTD}</td>
+                        <td className="py-3 pl-3 text-center text-slate-700 dark:text-neutral-300 font-medium">{stat.safeties}</td>
                       </tr>
                     ))}
                     {calculateBoxScore().length === 0 && (
                       <tr>
-                        <td colSpan={14} className="py-8 text-center text-neutral-600 font-bold">No stats logged yet.</td>
+                        <td colSpan={20} className="py-8 text-center text-slate-400 dark:text-neutral-600 font-bold">No stats logged yet.</td>
                       </tr>
                     )}
                   </tbody>
