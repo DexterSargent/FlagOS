@@ -547,7 +547,7 @@ export function applyCustomRoutePreset(
 export interface RoutePresetDefinition {
   name: string;
   shortName: string;
-  category: "Quick & Short" | "Intermediate" | "Deep" | "Cross & Motion" | "Custom";
+  category: "Quick & Short" | "Intermediate" | "Deep" | "Crossing" | "Motion" | "Custom";
   defaultBreakYards: number;
   minBreakYards: number;
   maxBreakYards: number;
@@ -639,7 +639,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
   {
     name: "Drag / Cross",
     shortName: "Drag",
-    category: "Cross & Motion",
+    category: "Crossing",
     defaultBreakYards: 3,
     minBreakYards: 1,
     maxBreakYards: 7,
@@ -657,7 +657,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
   {
     name: "Wheel",
     shortName: "Wheel",
-    category: "Cross & Motion",
+    category: "Crossing",
     defaultBreakYards: 3,
     minBreakYards: 2,
     maxBreakYards: 8,
@@ -690,10 +690,14 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
     maxBreakYards: 3,
     description: "Sets up behind or at the scrimmage line for quick dump-off or lead block",
   },
+];
+
+// Pre-snap motions live in the Motion menu, never in the post-snap route tree.
+export const PRE_SNAP_MOTION_CATALOG: RoutePresetDefinition[] = [
   {
     name: "Jet Motion",
     shortName: "Jet Motion",
-    category: "Cross & Motion",
+    category: "Motion",
     defaultBreakYards: 0,
     minBreakYards: 0,
     maxBreakYards: 4,
@@ -702,7 +706,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
   {
     name: "Orbit Motion",
     shortName: "Orbit Motion",
-    category: "Cross & Motion",
+    category: "Motion",
     defaultBreakYards: 4,
     minBreakYards: 2,
     maxBreakYards: 8,
@@ -711,7 +715,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
   {
     name: "Shift / Re-align",
     shortName: "Shift",
-    category: "Cross & Motion",
+    category: "Motion",
     defaultBreakYards: 0,
     minBreakYards: 0,
     maxBreakYards: 3,
@@ -720,13 +724,15 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
   {
     name: "Return Motion",
     shortName: "Return Motion",
-    category: "Cross & Motion",
+    category: "Motion",
     defaultBreakYards: 1,
     minBreakYards: 0,
     maxBreakYards: 4,
     description: "Fakes pre-snap motion toward center, then plants and resets to original flank",
   },
 ];
+
+const ALL_PRESET_DEFINITIONS = [...ROUTE_PRESETS_CATALOG, ...PRE_SNAP_MOTION_CATALOG];
 
 /**
  * Route generator presets: calculates waypoints relative to a player's starting (x, y),
@@ -740,7 +746,7 @@ export function generateRoutePreset(
   customBreakYards?: number
 ): RoutePoint[] {
   const isLeftSide = startX < 50;
-  const match = ROUTE_PRESETS_CATALOG.find(
+  const match = ALL_PRESET_DEFINITIONS.find(
     (r) =>
       r.name.toLowerCase() === routeName.toLowerCase() ||
       r.shortName.toLowerCase() === routeName.toLowerCase() ||
@@ -918,7 +924,7 @@ export function generateRoutePresetDetails(
   losY = DEFAULT_LOS_Y,
   customBreakYards?: number
 ): { route: RoutePoint[]; breakYards: number } {
-  const match = ROUTE_PRESETS_CATALOG.find(
+  const match = ALL_PRESET_DEFINITIONS.find(
     (r) =>
       r.name.toLowerCase() === routeName.toLowerCase() ||
       r.shortName.toLowerCase() === routeName.toLowerCase() ||

@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Check, Plus, Star, X, Zap } from "lucide-react";
 import { ROUTE_PRESETS_CATALOG, type CustomRoutePreset, type PlayerNode } from "@/lib/playbookTypes";
 
@@ -9,12 +9,8 @@ export interface RouteCatalogDrawerProps {
   readOnly: boolean;
   isDemo: boolean;
   customPresets: CustomRoutePreset[];
-  effectiveRouteDepth: number;
-  minRouteDepthYards: number;
-  maxRouteDepthYards: number;
-  isUsingRouteDefaultDepth: boolean;
+  playerSwitcher?: ReactNode;
   onClose: () => void;
-  onDepthChange: (depth: number) => void;
   onApplyPreset: (presetName: string) => void;
   onApplyCustomPreset: (preset: CustomRoutePreset) => void;
   onDeleteCustomPreset: (presetId: string, presetName: string, e: MouseEvent) => void;
@@ -26,12 +22,8 @@ export default function RouteCatalogDrawer({
   readOnly,
   isDemo,
   customPresets,
-  effectiveRouteDepth,
-  minRouteDepthYards,
-  maxRouteDepthYards,
-  isUsingRouteDefaultDepth,
+  playerSwitcher,
   onClose,
-  onDepthChange,
   onApplyPreset,
   onApplyCustomPreset,
   onDeleteCustomPreset,
@@ -58,55 +50,11 @@ export default function RouteCatalogDrawer({
           </button>
         </div>
 
-        {/* Adjustable route depth */}
-        <div data-testid="route-depth-control" className="rounded-xl bg-black/50 border border-white/10 p-2.5 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-black uppercase tracking-wider text-neutral-300">
-              Route depth
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={readOnly}
-                onClick={() => onDepthChange(effectiveRouteDepth - 1)}
-                aria-label="Decrease route depth"
-                className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white text-lg font-black cursor-pointer"
-              >
-                −
-              </button>
-              <span
-                data-testid="route-depth-value"
-                className="min-w-16 text-center text-sm font-mono font-black text-cyan-300 tabular-nums"
-              >
-                {effectiveRouteDepth} yd
-              </span>
-              <button
-                type="button"
-                disabled={readOnly}
-                onClick={() => onDepthChange(effectiveRouteDepth + 1)}
-                aria-label="Increase route depth"
-                className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white text-lg font-black cursor-pointer"
-              >
-                +
-              </button>
-            </div>
-          </div>
-          <input
-            type="range"
-            min={minRouteDepthYards}
-            max={maxRouteDepthYards}
-            step={1}
-            value={effectiveRouteDepth}
-            disabled={readOnly}
-            onChange={(e) => onDepthChange(parseInt(e.target.value, 10))}
-            aria-label="Route depth in yards"
-            className="w-full h-6 cursor-pointer accent-cyan-400"
-          />
-          <div className="hidden sm:block text-[10px] text-neutral-400 font-mono">
-            How far downfield the route breaks. Pick a route below to use this depth
-            {isUsingRouteDefaultDepth ? " (currently the route default)" : ""}.
-          </div>
-        </div>
+        {playerSwitcher}
+
+        <p className="text-[10px] text-neutral-400 font-mono">
+          Tap a route to apply it to {selectedPlayer.label}. Set the depth with the rail beside the field.
+        </p>
 
         {/* Custom Team Presets Section */}
         {customPresets.length > 0 && (
@@ -153,8 +101,7 @@ export default function RouteCatalogDrawer({
         {/* Standard Catalog Route Tree */}
         <div className="space-y-1.5">
           <div className="text-[10px] font-bold text-neutral-400 flex flex-wrap items-center justify-between gap-1">
-            <span>Standard Route Tree Catalog ({ROUTE_PRESETS_CATALOG.length})</span>
-            <span className="text-[10px] text-cyan-400/80 font-mono">Click to preview route on {selectedPlayer.label}</span>
+            <span>Standard Route Tree ({ROUTE_PRESETS_CATALOG.length})</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {ROUTE_PRESETS_CATALOG.map((rp) => {
@@ -168,6 +115,7 @@ export default function RouteCatalogDrawer({
                   disabled={readOnly}
                   onClick={() => onApplyPreset(rp.name)}
                   data-testid={`catalog-route-${rp.shortName.toLowerCase()}`}
+                  title={rp.description}
                   className={`p-2 sm:p-2.5 rounded-xl text-xs font-bold text-left transition-all border flex items-start justify-between gap-2 cursor-pointer ${
                     isCurrent
                       ? "bg-cyan-500 text-black border-cyan-400 shadow-md font-extrabold"
@@ -186,7 +134,7 @@ export default function RouteCatalogDrawer({
                       </span>
                     </div>
                     <div
-                      className={`text-[11px] leading-relaxed mt-1 ${
+                      className={`text-[11px] leading-snug mt-1 line-clamp-2 ${
                         isCurrent ? "text-black/80 font-medium" : "text-neutral-400 font-normal"
                       }`}
                     >

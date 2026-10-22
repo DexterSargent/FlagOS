@@ -20,6 +20,7 @@ import {
   FIELD_POSITION_PRESETS,
   RoutePresetDefinition,
   ROUTE_PRESETS_CATALOG,
+  PRE_SNAP_MOTION_CATALOG,
   CustomRoutePreset,
   MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM,
   getTeamCustomRoutePresets,
@@ -98,10 +99,11 @@ import {
 const MIN_ROUTE_DEPTH_YARDS = 1;
 const MAX_ROUTE_DEPTH_YARDS = 25;
 
-const PRE_SNAP_MOTION_PRESETS = [
-  { name: "Jet Motion", short: "Jet", description: "Fast sweep across the formation toward the snap" },
-  { name: "Orbit Motion", short: "Orbit", description: "Loops behind the QB before the snap" },
-];
+const PRE_SNAP_MOTION_PRESETS = PRE_SNAP_MOTION_CATALOG.map((motion) => ({
+  name: motion.name,
+  short: motion.name.split(/[\s/]/)[0],
+  description: motion.description,
+}));
 
 const DEFENSIVE_ZONE_CATEGORIES = [
   { id: "deep", label: "Deep", category: "Deep Zones" },
@@ -303,7 +305,11 @@ export default function PlayCanvas({
   // Close preset routes & opponent menu on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (presetMenuRef.current && !presetMenuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const isPlayerSwitch =
+        target instanceof Element && Boolean(target.closest('[data-tour="player-pills"], [data-player-switcher]'));
+      const isOnField = Boolean(containerRef.current?.contains(target));
+      if (presetMenuRef.current && !presetMenuRef.current.contains(target) && !isPlayerSwitch && !isOnField) {
         setIsPresetMenuOpen(false);
         setIsMotionMenuOpen(false);
       }
@@ -368,18 +374,27 @@ export default function PlayCanvas({
             r.name === selectedPlayer.quickRouteName || r.shortName === selectedPlayer.quickRouteName
         )
       : undefined;
+  const routeOrigin = selectedPlayer ? getPlayerRouteOrigin(selectedPlayer) : null;
   const maxRouteDepthYards = Math.max(
     MIN_ROUTE_DEPTH_YARDS,
-    Math.min(MAX_ROUTE_DEPTH_YARDS, Math.floor(((selectedPlayer?.y ?? 70) - 4) / YARD_HEIGHT_PCT))
+    Math.min(MAX_ROUTE_DEPTH_YARDS, Math.floor(((routeOrigin?.y ?? 70) - 4) / YARD_HEIGHT_PCT))
   );
   const effectiveRouteDepth =
     routeDepth ?? selectedPlayer?.routeDepthYards ?? currentCatalogRoute?.defaultBreakYards ?? 5;
 
   const handleDepthChange = (next: number) => {
     const depth = Math.max(MIN_ROUTE_DEPTH_YARDS, Math.min(maxRouteDepthYards, Math.round(next)));
+    if (depth === effectiveRouteDepth && routeDepth !== null) return;
     setRouteDepth(depth);
     if (currentCatalogRoute) handleApplyPreset(currentCatalogRoute.name, depth);
   };
+
+  useEffect(() => {
+    if (selectedPlayer?.side !== "offense") {
+      setIsPresetMenuOpen(false);
+      setIsMotionMenuOpen(false);
+    }
+  }, [selectedPlayer?.side]);
 
   const handleSaveCurrentRouteAsPreset = () => {
     if (!selectedPlayer?.route || selectedPlayer.route.length === 0) return;
@@ -587,6 +602,81 @@ export default function PlayCanvas({
     : "0 0 1000 700";
   const rushDistanceY = rushLineDistanceYards * YARD_HEIGHT_PCT;
   const rushY = losY - rushDistanceY;
+
+  // Where the 1000x700 field drawing actually lands inside the (letterboxed) SVG, in CSS pixels.
+  const [fieldBox, setFieldBox] = useState<{ scale: number; offX: number; offY: number; vbY: number } | null>(null);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const vb = svg.viewBox?.baseVal;
+      const { width, height } = svg.getBoundingClientRect();
+      if (!vb || !vb.width || !vb.height || !width || !height) return;
+      const scale = Math.min(width / vb.width, height / vb.height);
+      setFieldBox({
+        scale,
+        offX: (width - vb.width * scale) / 2,
+        offY: (height - vb.height * scale) / 2,
+        vbY: vb.y,
+      });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, [compactFieldViewBox]);
+
+  const [isDepthDragging, setIsDepthDragging] = useState(false);
+  const showDepthRail =
+    !readOnly &&
+    !animating &&
+    selectedPlayer?.side === "offense" &&
+    routeOrigin !== null &&
+    (Boolean(currentCatalogRoute) || isPresetMenuOpen);
+  const depthRailSide: "left" | "right" | null =
+    showDepthRail && routeOrigin ? (routeOrigin.x >= 50 ? "left" : "right") : null;
+  const depthToFieldY = (depth: number) => snapYToYard((routeOrigin?.y ?? losY) - depth * YARD_HEIGHT_PCT, losY);
+  const fieldYToPx = (yPct: number) => {
+    const box = fieldBox ?? { scale: 1, offY: 0, vbY: 0 };
+    return box.offY + ((yPct / 100) * 700 - box.vbY) * box.scale;
+  };
+  const updateDepthFromPointer = (e: React.PointerEvent) => {
+    const coords = getSvgCoordinates(e);
+    if (!coords || !routeOrigin) return;
+    handleDepthChange((routeOrigin.y - coords.y) / YARD_HEIGHT_PCT);
+  };
+
+  // Phone/landscape sheets cover the main player pills, so they carry their own switcher.
+  const sheetPlayerSwitcher = (
+    <div
+      data-player-switcher
+      role="group"
+      aria-label="Switch player"
+      className="flex sm:hidden [@media(max-height:450px)]:flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin"
+    >
+      {offensePlayers.map((p) => {
+        const isSelected = selectedPlayer?.id === p.id;
+        const hasRoute = Boolean(p.route && p.route.length > 0);
+        return (
+          <button
+            key={p.id}
+            type="button"
+            aria-pressed={isSelected}
+            aria-label={`Switch to ${p.label}`}
+            onClick={() => setSelectedPlayerId(p.id)}
+            className={`min-w-11 min-h-9 px-2.5 rounded-lg text-xs font-mono font-bold border flex items-center justify-center gap-1 shrink-0 cursor-pointer ${
+              isSelected
+                ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/25"
+                : "bg-black/60 text-neutral-300 border-white/10"
+            }`}
+          >
+            <span>{p.label}</span>
+            {hasRoute && <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-black" : "bg-cyan-400"}`} />}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   // Show Opposing Side toggle (offense if defensive playbook, defense if offensive playbook). OFF by default.
   const [showOpposingSide, setShowOpposingSide] = useState<boolean>(false);
@@ -2171,7 +2261,7 @@ export default function PlayCanvas({
                   data-tour="opponent-scheme-selector"
                   data-testid="opponent-play-selector-btn"
                   onClick={() => setIsOpponentMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-bold transition-all border bg-amber-500/15 border-amber-500/35 text-amber-200 hover:bg-amber-500/25 hover:text-white cursor-pointer"
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-bold transition-all border bg-amber-500/15 border-amber-500/35 text-amber-300 hover:bg-amber-500/25 hover:text-white cursor-pointer"
                   title={`Select opposing ${play.type === "defense" ? "offensive" : "defensive"} play to populate and run simulation against`}
                 >
                   <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
@@ -2469,9 +2559,9 @@ export default function PlayCanvas({
                 strokeWidth="2.5"
                 strokeDasharray="8 6"
               />
-              <rect x="25" y={(rushY / 100) * 700 - 10} width="130" height="20" rx="6" fill="#FACC15" />
+              <rect x={depthRailSide === "left" ? 845 : 25} y={(rushY / 100) * 700 - 10} width="130" height="20" rx="6" fill="#FACC15" />
               <text
-                x="90"
+                x={depthRailSide === "left" ? 910 : 90}
                 y={(rushY / 100) * 700 + 4}
                 fill="#000000"
                 fontSize="10"
@@ -2511,9 +2601,9 @@ export default function PlayCanvas({
                 stroke="#FFFFFF"
                 strokeWidth="1"
               />
-              <rect x="850" y={(losY / 100) * 700 - 10} width="120" height="20" rx="6" fill="#3ca505" />
+              <rect x={depthRailSide === "right" ? 30 : 850} y={(losY / 100) * 700 - 10} width="120" height="20" rx="6" fill="#3ca505" />
               <text
-                x="910"
+                x={depthRailSide === "right" ? 90 : 910}
                 y={(losY / 100) * 700 + 4}
                 fill="#000000"
                 fontSize="10"
@@ -3342,6 +3432,21 @@ export default function PlayCanvas({
             })}
             </AnimationProgressView>
 
+            {/* Depth guide while dragging the route depth rail */}
+            {isDepthDragging && showDepthRail && routeOrigin && (
+              <line
+                x1={routeOrigin.x >= 50 ? 20 : 980}
+                x2={(routeOrigin.x / 100) * 1000}
+                y1={(depthToFieldY(effectiveRouteDepth) / 100) * 700}
+                y2={(depthToFieldY(effectiveRouteDepth) / 100) * 700}
+                stroke="#22D3EE"
+                strokeWidth="2"
+                strokeDasharray="6 6"
+                opacity="0.7"
+                className="pointer-events-none"
+              />
+            )}
+
             {/* Live depth readout while holding a route point */}
             {draggedWaypointYards !== null &&
               draggedPlayerId &&
@@ -3376,6 +3481,116 @@ export default function PlayCanvas({
             <Move className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
             <span>Drag players or route points to adjust.</span>
           </div>
+
+          {/* Vertical route depth rail: sits beside the sideline and lines up with real yard lines */}
+          {showDepthRail &&
+            routeOrigin &&
+            (() => {
+              const box = fieldBox ?? { scale: 1, offX: 0, offY: 0, vbY: 0 };
+              const railOnLeft = depthRailSide === "left";
+              const sideInset = Math.max(2, box.offX + 20 * box.scale + 4);
+              const capHeight = 64;
+              const deepestPx = fieldYToPx(depthToFieldY(maxRouteDepthYards));
+              const shallowestPx = fieldYToPx(depthToFieldY(MIN_ROUTE_DEPTH_YARDS));
+              const trackTop = Math.max(deepestPx, capHeight + 6);
+              const trackHeight = Math.max(24, shallowestPx - trackTop);
+              const shownDepth = Math.max(MIN_ROUTE_DEPTH_YARDS, Math.min(maxRouteDepthYards, effectiveRouteDepth));
+              const thumbOffset = Math.min(trackHeight, Math.max(0, fieldYToPx(depthToFieldY(shownDepth)) - trackTop));
+              const ticks = [5, 10, 15, 20, 25].filter((d) => d <= maxRouteDepthYards);
+              return (
+                <div
+                  data-testid="route-depth-rail"
+                  className={`absolute z-10 w-11 flex flex-col items-center ${fieldBox ? "" : "invisible"}`}
+                  style={{
+                    [railOnLeft ? "left" : "right"]: sideInset,
+                    top: trackTop - capHeight,
+                    height: trackHeight + capHeight,
+                  }}
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleDepthChange(effectiveRouteDepth + 1)}
+                      disabled={effectiveRouteDepth >= maxRouteDepthYards}
+                      aria-label="Increase route depth"
+                      title="Deeper"
+                      className="w-7 h-7 rounded-full bg-black/80 border border-cyan-400/60 text-cyan-200 text-base font-black leading-none flex items-center justify-center shadow-md hover:bg-cyan-500 hover:text-black disabled:opacity-40 cursor-pointer"
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDepthChange(effectiveRouteDepth - 1)}
+                      disabled={effectiveRouteDepth <= MIN_ROUTE_DEPTH_YARDS}
+                      aria-label="Decrease route depth"
+                      title="Shallower"
+                      className="w-7 h-7 rounded-full bg-black/80 border border-cyan-400/60 text-cyan-200 text-base font-black leading-none flex items-center justify-center shadow-md hover:bg-cyan-500 hover:text-black disabled:opacity-40 cursor-pointer"
+                    >
+                      −
+                    </button>
+                  </div>
+                  <div
+                    role="slider"
+                    tabIndex={0}
+                    aria-label="Route depth in yards"
+                    aria-orientation="vertical"
+                    aria-valuemin={MIN_ROUTE_DEPTH_YARDS}
+                    aria-valuemax={maxRouteDepthYards}
+                    aria-valuenow={shownDepth}
+                    aria-valuetext={`${shownDepth} yards`}
+                    data-testid="route-depth-control"
+                    className="relative mt-1.5 w-full touch-none cursor-ns-resize outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 rounded-full"
+                    style={{ height: trackHeight }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      try {
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      } catch {}
+                      setIsDepthDragging(true);
+                      updateDepthFromPointer(e);
+                    }}
+                    onPointerMove={(e) => {
+                      if (isDepthDragging) updateDepthFromPointer(e);
+                    }}
+                    onPointerUp={() => setIsDepthDragging(false)}
+                    onPointerCancel={() => setIsDepthDragging(false)}
+                    onLostPointerCapture={() => setIsDepthDragging(false)}
+                    onKeyDown={(e) => {
+                      const step = e.key === "PageUp" ? 5 : e.key === "PageDown" ? -5 : e.key === "ArrowUp" || e.key === "ArrowRight" ? 1 : e.key === "ArrowDown" || e.key === "ArrowLeft" ? -1 : 0;
+                      if (e.key === "Home" || e.key === "End") {
+                        e.preventDefault();
+                        handleDepthChange(e.key === "Home" ? MIN_ROUTE_DEPTH_YARDS : maxRouteDepthYards);
+                      } else if (step) {
+                        e.preventDefault();
+                        handleDepthChange(effectiveRouteDepth + step);
+                      }
+                    }}
+                  >
+                    <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-1 rounded-full bg-white/25" />
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 bottom-0 w-1 rounded-full bg-cyan-400"
+                      style={{ top: thumbOffset }}
+                    />
+                    {ticks.map((d) => (
+                      <div
+                        key={d}
+                        className="absolute left-1/2 -translate-x-1/2 w-3 h-px bg-white/50 pointer-events-none"
+                        style={{ top: Math.max(0, fieldYToPx(depthToFieldY(d)) - trackTop) }}
+                      />
+                    ))}
+                    <div
+                      data-testid="route-depth-value"
+                      className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-cyan-400 text-black text-[11px] font-black font-mono tabular-nums px-1.5 py-0.5 shadow-lg ring-2 ring-black/50 pointer-events-none ${
+                        isDepthDragging ? "scale-110" : ""
+                      }`}
+                      style={{ top: thumbOffset }}
+                    >
+                      {shownDepth} yd
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
@@ -3727,6 +3942,7 @@ export default function PlayCanvas({
                       <X className="w-4 h-4" />
                     </button>
                   </div>
+                  {sheetPlayerSwitcher}
                   <div className="grid grid-cols-2 gap-2">
                     {PRE_SNAP_MOTION_PRESETS.map((motion) => {
                       const isCurrent =
@@ -3745,7 +3961,7 @@ export default function PlayCanvas({
                           className={`min-h-12 p-3 rounded-xl text-left transition-all border cursor-pointer ${
                             isCurrent
                               ? "bg-amber-500 text-black border-amber-400 shadow-md"
-                              : "bg-black/60 text-amber-200 hover:bg-amber-500/15 border-amber-500/30"
+                              : "bg-black/60 text-amber-300 hover:bg-amber-500/15 border-amber-500/30"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2 text-sm font-black">
@@ -3784,12 +4000,8 @@ export default function PlayCanvas({
                   readOnly={readOnly}
                   isDemo={isDemo}
                   customPresets={customPresets}
-                  effectiveRouteDepth={effectiveRouteDepth}
-                  minRouteDepthYards={MIN_ROUTE_DEPTH_YARDS}
-                  maxRouteDepthYards={maxRouteDepthYards}
-                  isUsingRouteDefaultDepth={routeDepth === null && Boolean(currentCatalogRoute)}
+                  playerSwitcher={sheetPlayerSwitcher}
                   onClose={() => setIsPresetMenuOpen(false)}
-                  onDepthChange={handleDepthChange}
                   onApplyPreset={(presetName) => handleApplyPreset(presetName, routeDepth ?? undefined)}
                   onApplyCustomPreset={handleApplyCustomPreset}
                   onDeleteCustomPreset={handleDeleteCustomPreset}

@@ -160,6 +160,59 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(screen.getByTestId("catalog-route-out")).toBeDefined();
   });
 
+  it("keeps motions in the Motion menu and only post-snap routes in the route tree", async () => {
+    render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("toggle-motion-btn"));
+    for (const motion of ["jet", "orbit", "shift", "return"]) {
+      expect(screen.getByTestId(`quick-route-${motion}-motion`)).toBeDefined();
+    }
+
+    fireEvent.click(screen.getByTestId("route-presets-toggle"));
+    const catalog = await screen.findByTestId("route-presets-catalog");
+    expect(catalog.textContent).not.toMatch(/Jet Motion|Orbit Motion|Shift \/ Re-align|Return Motion|Motion/);
+    expect(screen.getByTestId("catalog-route-drag")).toBeDefined();
+  });
+
+  it("lets the coach switch receivers without leaving the route menu", async () => {
+    render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("route-presets-toggle"));
+    await screen.findByTestId("route-presets-catalog");
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Select Y" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select Y" }));
+    expect(screen.getByTestId("route-presets-catalog")).toBeInTheDocument();
+    expect(screen.getByText("Route Assignment (Y):")).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Switch to Z" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Z" }));
+    expect(screen.getByTestId("route-presets-catalog")).toBeInTheDocument();
+    expect(screen.getByText("Route Assignment (Z):")).toBeInTheDocument();
+  });
+
+  it("adjusts route depth from the vertical rail beside the field", () => {
+    const handleChange = vi.fn();
+    const slantX = {
+      ...mockOffensePlay,
+      players: mockOffensePlay.players.map((p) =>
+        p.id === "p_x" ? { ...p, quickRouteName: "Slant", route: [{ x: 15, y: 63 }, { x: 29, y: 52.5 }] } : p
+      ),
+    };
+    render(<PlayCanvas play={slantX} onChange={handleChange} />);
+
+    const rail = screen.getByRole("slider", { name: "Route depth in yards" });
+    expect(rail).toHaveAttribute("aria-orientation", "vertical");
+    expect(rail).toHaveAttribute("aria-valuenow", "4");
+    fireEvent.keyDown(rail, { key: "ArrowUp" });
+
+    const updated = handleChange.mock.lastCall![0] as PlayDiagram;
+    const x = updated.players.find((p) => p.id === "p_x")!;
+    expect(x.quickRouteName).toBe("Slant");
+    expect(x.routeDepthYards).toBe(5);
+    expect(x.route?.[0].y).toBeCloseTo(70 - 5 * 1.75, 1);
+  });
+
   it("does not auto-select a receiver after clicking empty field space", () => {
     render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
