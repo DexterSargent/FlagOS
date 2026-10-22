@@ -20,6 +20,7 @@ import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { DEMO_TEAM_IDS, subscribeDemoSandbox, notifySandboxChange } from "./demoSandboxRuntime";
 import { requestPrivateData } from "./secureWrites";
 import { resolveConnectedAccount } from "./accountEmails";
+import { useEmbedState } from "./embedState";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
 type LoginResult = { success: true; message?: string; defaultPath?: string } | { success: false; message: string };
@@ -178,6 +179,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const embedState = useEmbedState();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [devRole, setDevRoleState] = useState<UserRole | null>(null);
   const [devTeamId, setDevTeamId] = useState<string | null>(null);
@@ -615,11 +617,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Check if inside embedded interactive demo frame
-  const isEmbed = typeof window !== "undefined" && (
-    (window.self !== window.top && window.location.search.includes("embed=true")) ||
-    new URLSearchParams(window.location.search).get("embed") === "true"
-  );
-  const isEmbedPlaybook = isEmbed && typeof window !== "undefined" && window.location.pathname.includes("/playbook");
+  const isEmbed = embedState.embedQuery;
+  const isEmbedPlaybook = isEmbed && embedState.playbookPath;
   // In the interactive demo frame, users are locked into admin role for everything except playbook
   // (In playbook, locked into team coach / team admin role so they can edit franchise playbooks)
   const lockedEmbedRole: UserRole | null = isEmbed ? (isEmbedPlaybook ? "team_admin" : "league_admin") : null;
