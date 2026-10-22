@@ -219,7 +219,6 @@ export default function PlayerProfilePage() {
               }
               if (play.isTouchdown) {
                 stats.passTD += 1;
-                stats.totalTDs += 1;
               }
             }
 

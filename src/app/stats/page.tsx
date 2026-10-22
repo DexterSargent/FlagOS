@@ -25,6 +25,7 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
+import { isPlayoffMatch } from "@/lib/standingsEngine";
 import { useAuth } from "@/lib/authContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -181,7 +182,7 @@ export default function StatsAndStandings() {
             const h = teamsMap[m.homeTeamId];
             const a = teamsMap[m.awayTeamId];
             if (h && a) {
-              if (!m.isPreseason) {
+              if (!m.isPreseason && !isPlayoffMatch(m)) {
                 h.played += 1;
                 a.played += 1;
                 h.pf += m.homeScore;

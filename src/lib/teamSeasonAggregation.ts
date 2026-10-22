@@ -155,10 +155,7 @@ export function summarizeGame(identity: TeamIdentity, match: AnyRecord, plays: A
       credit(play.qbPlayerId, "passAtt");
       if (play.passOutcome === "Complete") credit(play.qbPlayerId, "passComp");
       else if (play.passOutcome === "Interception") credit(play.qbPlayerId, "passInt");
-      if (play.isTouchdown) {
-        credit(play.qbPlayerId, "passTD");
-        credit(play.qbPlayerId, "totalTDs");
-      }
+      if (play.isTouchdown) credit(play.qbPlayerId, "passTD");
       if (play.passOutcome === "Complete") {
         credit(play.receiverPlayerId, "receptions");
         if (play.isTouchdown) {

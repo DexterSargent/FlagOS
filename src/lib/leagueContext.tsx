@@ -194,7 +194,7 @@ const LEAGUE_UPDATE_KEYS: (keyof LeagueSettings)[] = [
   "leagueName", "shortcode", "tagline", "seasonTitle", "logoUrl", "icon", "primaryColor", "accentColor",
   "secondaryColor", "tertiaryColor", "themePreset", "defaultLocation", "rulebookTitle", "rulebookUrl",
   "announcement", "seasonStatus", "isArchived", "archivedAt", "visibility", "playoffFormat",
-  "subscription", "contactEmail", "adminEmails",
+  "subscription", "contactEmail", "adminEmails", "registrationFeePerTeam", "individualFee", "amenities",
 ];
 
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {

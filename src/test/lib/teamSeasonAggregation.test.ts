@@ -58,7 +58,7 @@ describe("team season summaries", () => {
 
   it("keeps roster/stats page player semantics including passInt, defTD and conversions", () => {
     const aggregate = summarizeTeamSeason(york, matches, plays);
-    expect(aggregate.playerStats.Quinn).toMatchObject({ passAtt: 2, passComp: 1, passTD: 1, passInt: 1, totalTDs: 1, gamesPlayed: 2 });
+    expect(aggregate.playerStats.Quinn).toMatchObject({ passAtt: 2, passComp: 1, passTD: 1, passInt: 1, totalTDs: 0, gamesPlayed: 2 });
     expect(aggregate.playerStats.Riley).toMatchObject({ receptions: 1, recTD: 1, rushAtt: 1, rushTD: 0, totalTDs: 1 });
     expect(aggregate.playerStats.Dana).toMatchObject({ int: 1, defTD: 1, totalTDs: 1, gamesPlayed: 0 });
     expect(aggregate.playerStats.Sky).toMatchObject({ flagPulls: 2 });
