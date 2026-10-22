@@ -11,9 +11,9 @@ vi.mock("@/lib/secureWrites", () => ({
 
 vi.mock("firebase/firestore", () => ({
   getFirestore: vi.fn(),
-  doc: (...args: unknown[]) => mockDoc(...args),
-  setDoc: (...args: unknown[]) => mockSetDoc(...args),
-  getDoc: (...args: unknown[]) => mockGetDoc(...args),
+  doc: (db: unknown, coll: string, id: string) => mockDoc(db, coll, id),
+  setDoc: (ref: unknown, data: unknown) => mockSetDoc(ref, data),
+  getDoc: (ref: unknown) => mockGetDoc(ref),
   collection: vi.fn(),
   query: vi.fn(),
   where: vi.fn(),

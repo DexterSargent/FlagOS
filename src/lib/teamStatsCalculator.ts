@@ -517,6 +517,8 @@ export function calculateTeamComprehensiveStats(
   let penalties = 0;
   let penaltyYards = 0;
 
+  const matchMap = new Map(matches.map((m) => [m.id, m]));
+
   plays.forEach((play) => {
     // Only analyze plays from completed matches if matches exist; if no completed match list was given or play has matchId in set, process
     if (completedMatchIdSet.size > 0 && play.matchId && !completedMatchIdSet.has(play.matchId)) {
@@ -530,7 +532,7 @@ export function calculateTeamComprehensiveStats(
       isTargetTeam(play.teamName);
     // Determine if team is in the game (either on offense or defense)
     // If play has matchId, find the match; fallback to matches[0] if single match provided
-    const playMatch = matches.find((m) => m.id === play.matchId) || (matches.length === 1 ? matches[0] : undefined);
+    const playMatch = (play.matchId ? matchMap.get(play.matchId) : undefined) || (matches.length === 1 ? matches[0] : undefined);
     const isInvolved = isOffense || (playMatch && (isTargetTeam(playMatch.homeTeamId) || isTargetTeam(playMatch.awayTeamId)));
 
     if (!isInvolved && !isOffense) return;

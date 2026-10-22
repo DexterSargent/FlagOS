@@ -165,6 +165,16 @@ export default function StatsAndStandings() {
           };
         });
 
+        // Pre-group players by teamId for O(1) roster lookups
+        const playersByTeam = new Map<string, any[]>();
+        players.forEach((p) => {
+          if (p.teamId) {
+            const arr = playersByTeam.get(p.teamId);
+            if (arr) arr.push(p);
+            else playersByTeam.set(p.teamId, [p]);
+          }
+        });
+
         // Matches calculation
         matches.forEach((m) => {
           if (m.status === "completed" && typeof m.homeScore === "number" && typeof m.awayScore === "number" && !m.isHidden) {
@@ -194,18 +204,18 @@ export default function StatsAndStandings() {
                   a.pts += 1;
                 }
 
-                const dnp = m.didNotPlay || [];
+                const dnpSet = new Set(m.didNotPlay || []);
                 let matchPlayerNames: string[] = [];
                 if (m.roster && m.roster.home && m.roster.away) {
                   matchPlayerNames = [...m.roster.home, ...m.roster.away];
                 } else {
-                  const homeP = players.filter((p) => p.teamId === m.homeTeamId);
-                  const awayP = players.filter((p) => p.teamId === m.awayTeamId);
+                  const homeP = playersByTeam.get(m.homeTeamId) || [];
+                  const awayP = playersByTeam.get(m.awayTeamId) || [];
                   matchPlayerNames = [...homeP, ...awayP].map((p) => p.playerName);
                 }
 
                 matchPlayerNames.forEach((playerName) => {
-                  if (statsMap[playerName] && !dnp.includes(playerName)) {
+                  if (statsMap[playerName] && !dnpSet.has(playerName)) {
                     statsMap[playerName].gamesPlayed += 1;
                   }
                 });
@@ -246,8 +256,7 @@ export default function StatsAndStandings() {
         });
 
         sortedForRank.forEach((team, idx) => {
-          const originalTeam = computedStandings.find((t) => t.id === team.id);
-          if (originalTeam) (originalTeam as any).rank = idx + 1;
+          (team as any).rank = idx + 1;
         });
 
         // Completed matches set (only stats from completed games are tracked)

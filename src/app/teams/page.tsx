@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ChevronLeft, Users, Shield, Plus, Check, X, ArrowRightLeft, Calendar, Trophy, Activity, History, Trash2, UserPlus, Search, CheckCircle2, CreditCard, SlidersHorizontal } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -442,144 +442,192 @@ export default function TeamsPage() {
     }
   };
 
-  const activeTeam = teams.find(t => t.id === activeTeamId);
-  const teamPlayers = players
-    .filter(p => p.teamId === activeTeamId)
-    .sort((a, b) => a.playerName.localeCompare(b.playerName));
-
-  const competitiveTeams = teams.filter((team) => isRealTeam(team));
-  const freeAgentPlayers = players.filter(
-    (p) =>
-      p.status === "Free Agent" ||
-      !p.teamId ||
-      p.teamId === "Free Agent" ||
-      p.teamId === "team_free_agents" ||
-      !teams.some((t) => t.id === p.teamId)
+  const activeTeam = useMemo(() => teams.find(t => t.id === activeTeamId), [teams, activeTeamId]);
+  const teamPlayers = useMemo(
+    () =>
+      players
+        .filter(p => p.teamId === activeTeamId)
+        .sort((a, b) => a.playerName.localeCompare(b.playerName)),
+    [players, activeTeamId]
   );
 
-  const filteredFreeAgents = freeAgentPlayers.filter((p) => {
-    const matchesSearch =
-      !freeAgentSearch.trim() ||
-      p.playerName.toLowerCase().includes(freeAgentSearch.toLowerCase()) ||
-      (p.experience && p.experience.toLowerCase().includes(freeAgentSearch.toLowerCase())) ||
-      (p.positions && p.positions.some((pos) => pos.toLowerCase().includes(freeAgentSearch.toLowerCase()))) ||
-      (p.position && p.position.toLowerCase().includes(freeAgentSearch.toLowerCase()));
+  const teamIdSet = useMemo(() => new Set(teams.map((t) => t.id)), [teams]);
+  const competitiveTeams = useMemo(() => teams.filter((team) => isRealTeam(team)), [teams]);
+  const freeAgentPlayers = useMemo(
+    () =>
+      players.filter(
+        (p) =>
+          p.status === "Free Agent" ||
+          !p.teamId ||
+          p.teamId === "Free Agent" ||
+          p.teamId === "team_free_agents" ||
+          !teamIdSet.has(p.teamId)
+      ),
+    [players, teamIdSet]
+  );
 
-    const matchesPosition =
-      freeAgentPositionFilter === "ALL" ||
-      (p.positions && p.positions.includes(freeAgentPositionFilter)) ||
-      p.position === freeAgentPositionFilter;
+  const filteredFreeAgents = useMemo(() => {
+    const query = freeAgentSearch.trim().toLowerCase();
+    return freeAgentPlayers.filter((p) => {
+      const matchesSearch =
+        !query ||
+        p.playerName.toLowerCase().includes(query) ||
+        (p.experience && p.experience.toLowerCase().includes(query)) ||
+        (p.positions && p.positions.some((pos) => pos.toLowerCase().includes(query))) ||
+        (p.position && p.position.toLowerCase().includes(query));
 
-    return matchesSearch && matchesPosition;
-  });
+      const matchesPosition =
+        freeAgentPositionFilter === "ALL" ||
+        (p.positions && p.positions.includes(freeAgentPositionFilter)) ||
+        p.position === freeAgentPositionFilter;
+
+      return matchesSearch && matchesPosition;
+    });
+  }, [freeAgentPlayers, freeAgentSearch, freeAgentPositionFilter]);
 
   // Compute Stats
-  let wins = 0;
-  let losses = 0;
-  let pf = 0;
-  let pa = 0;
+  const {
+    wins,
+    losses,
+    pf,
+    pa,
+    teamMatches,
+    pastMatches,
+    upcomingMatches,
+    playerStats,
+    topPasser,
+    topRec,
+    topFlags,
+    topInts,
+  } = useMemo(() => {
+    let wins = 0;
+    let losses = 0;
+    let pf = 0;
+    let pa = 0;
 
-  const teamMatches = matches.filter(m => m.homeTeamId === activeTeamId || m.awayTeamId === activeTeamId);
-  teamMatches.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const teamMatches = matches.filter(m => m.homeTeamId === activeTeamId || m.awayTeamId === activeTeamId);
+    teamMatches.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const pastMatches = teamMatches.filter(m => m.status === 'completed');
-  const upcomingMatches = teamMatches.filter(m => m.status !== 'completed');
+    const pastMatches = teamMatches.filter(m => m.status === 'completed');
+    const upcomingMatches = teamMatches.filter(m => m.status !== 'completed');
 
-  const playerStats: Record<string, any> = {};
-  teamPlayers.forEach(p => {
-    playerStats[p.playerName] = {
-      gamesPlayed: 0,
-      passAtt: 0, passComp: 0, passTD: 0, passInt: 0,
-      receptions: 0, recTD: 0,
-      rushAtt: 0, rushTD: 0,
-      flagPulls: 0, sacks: 0, int: 0, defTD: 0, pbu: 0
-    };
-  });
-
-  pastMatches.forEach(m => {
-    const isHome = m.homeTeamId === activeTeamId;
-    const scored = isHome ? m.homeScore : m.awayScore;
-    const allowed = isHome ? m.awayScore : m.homeScore;
-    pf += scored || 0;
-    pa += allowed || 0;
-    if (scored > allowed) wins++;
-    else if (scored < allowed) losses++;
-
-    const dnp = m.didNotPlay || [];
+    const playerStats: Record<string, any> = {};
     teamPlayers.forEach(p => {
-      if (!dnp.includes(p.playerName)) {
-        playerStats[p.playerName].gamesPlayed += 1;
-      }
+      playerStats[p.playerName] = {
+        gamesPlayed: 0,
+        passAtt: 0, passComp: 0, passTD: 0, passInt: 0,
+        receptions: 0, recTD: 0,
+        rushAtt: 0, rushTD: 0,
+        flagPulls: 0, sacks: 0, int: 0, defTD: 0, pbu: 0
+      };
     });
-  });
 
-  const completedMatchIds = new Set(
-    matches
-      .filter((m: any) => (m.status === "completed" || m.status === "Final") && !m.isHidden)
-      .map((m: any) => m.id)
-  );
+    pastMatches.forEach(m => {
+      const isHome = m.homeTeamId === activeTeamId;
+      const scored = isHome ? m.homeScore : m.awayScore;
+      const allowed = isHome ? m.awayScore : m.homeScore;
+      pf += scored || 0;
+      pa += allowed || 0;
+      if (scored > allowed) wins++;
+      else if (scored < allowed) losses++;
 
-  plays.forEach(play => {
-    if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
-    const m = matches.find(match => match.id === play.matchId);
-    const dnp = m?.didNotPlay || [];
-    const isEligible = (name: string) => name && !dnp.includes(name);
-
-    const isConversionPlay = Boolean(
-      play.isConversion === true ||
-      play.playType === "Conversion" ||
-      (!play.isTouchdown && (
-        (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
-        play.conversionSuccess === true
-      ))
-    );
-
-    // Passing
-    if (play.playType === 'Pass' && isEligible(play.qbPlayerId) && playerStats[play.qbPlayerId] && !isConversionPlay) {
-      playerStats[play.qbPlayerId].passAtt += 1;
-      if (play.passOutcome === 'Complete') playerStats[play.qbPlayerId].passComp += 1;
-      if (play.isTouchdown) playerStats[play.qbPlayerId].passTD += 1;
-      if (play.passOutcome === 'Interception') playerStats[play.qbPlayerId].passInt += 1;
-    }
-    // Receiving
-    if (play.playType === 'Pass' && play.passOutcome === 'Complete' && isEligible(play.receiverPlayerId) && playerStats[play.receiverPlayerId] && !isConversionPlay) {
-      playerStats[play.receiverPlayerId].receptions += 1;
-      if (play.isTouchdown) playerStats[play.receiverPlayerId].recTD += 1;
-    }
-    // Rushing
-    if (play.playType === 'Run' && isEligible(play.runnerPlayerId) && playerStats[play.runnerPlayerId] && !isConversionPlay) {
-      playerStats[play.runnerPlayerId].rushAtt += 1;
-      if (play.isTouchdown) playerStats[play.runnerPlayerId].rushTD += 1;
-    }
-    // Defense
-    if (play.defenders && Array.isArray(play.defenders)) {
-      play.defenders.forEach((d: string) => {
-        if (isEligible(d) && playerStats[d]) {
-          playerStats[d].flagPulls += 1;
-          if (play.passOutcome === 'Interception') {
-            playerStats[d].int += 1;
-            if (play.isPick6) playerStats[d].defTD += 1;
-          } else if (play.passOutcome === 'PBU') {
-            playerStats[d].pbu += 1;
-          } else if (play.passOutcome === 'Sack') {
-            playerStats[d].sacks += 1;
-          }
+      const dnp = m.didNotPlay || [];
+      teamPlayers.forEach(p => {
+        if (!dnp.includes(p.playerName)) {
+          playerStats[p.playerName].gamesPlayed += 1;
         }
       });
-    }
-  });
+    });
 
-  let topPasser = { name: "N/A", val: 0 };
-  let topRec = { name: "N/A", val: 0 };
-  let topFlags = { name: "N/A", val: 0 };
-  let topInts = { name: "N/A", val: 0 };
+    const matchMap = new Map<string, any>();
+    const completedMatchIds = new Set<string>();
 
-  Object.entries(playerStats).forEach(([name, s]) => {
-    if (s.passTD > topPasser.val) topPasser = { name, val: s.passTD };
-    if (s.recTD > topRec.val) topRec = { name, val: s.recTD };
-    if (s.flagPulls > topFlags.val) topFlags = { name, val: s.flagPulls };
-    if (s.int > topInts.val) topInts = { name, val: s.int };
-  });
+    matches.forEach((m: any) => {
+      if (m?.id) {
+        matchMap.set(m.id, m);
+        if ((m.status === "completed" || m.status === "Final") && !m.isHidden) {
+          completedMatchIds.add(m.id);
+        }
+      }
+    });
+
+    plays.forEach(play => {
+      if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
+      const m = matchMap.get(play.matchId);
+      const dnp = m?.didNotPlay || [];
+      const isEligible = (name: string) => name && !dnp.includes(name);
+
+      const isConversionPlay = Boolean(
+        play.isConversion === true ||
+        play.playType === "Conversion" ||
+        (!play.isTouchdown && (
+          (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+          play.conversionSuccess === true
+        ))
+      );
+
+      // Passing
+      if (play.playType === 'Pass' && isEligible(play.qbPlayerId) && playerStats[play.qbPlayerId] && !isConversionPlay) {
+        playerStats[play.qbPlayerId].passAtt += 1;
+        if (play.passOutcome === 'Complete') playerStats[play.qbPlayerId].passComp += 1;
+        if (play.isTouchdown) playerStats[play.qbPlayerId].passTD += 1;
+        if (play.passOutcome === 'Interception') playerStats[play.qbPlayerId].passInt += 1;
+      }
+      // Receiving
+      if (play.playType === 'Pass' && play.passOutcome === 'Complete' && isEligible(play.receiverPlayerId) && playerStats[play.receiverPlayerId] && !isConversionPlay) {
+        playerStats[play.receiverPlayerId].receptions += 1;
+        if (play.isTouchdown) playerStats[play.receiverPlayerId].recTD += 1;
+      }
+      // Rushing
+      if (play.playType === 'Run' && isEligible(play.runnerPlayerId) && playerStats[play.runnerPlayerId] && !isConversionPlay) {
+        playerStats[play.runnerPlayerId].rushAtt += 1;
+        if (play.isTouchdown) playerStats[play.runnerPlayerId].rushTD += 1;
+      }
+      // Defense
+      if (play.defenders && Array.isArray(play.defenders)) {
+        play.defenders.forEach((d: string) => {
+          if (isEligible(d) && playerStats[d]) {
+            playerStats[d].flagPulls += 1;
+            if (play.passOutcome === 'Interception') {
+              playerStats[d].int += 1;
+              if (play.isPick6) playerStats[d].defTD += 1;
+            } else if (play.passOutcome === 'PBU') {
+              playerStats[d].pbu += 1;
+            } else if (play.passOutcome === 'Sack') {
+              playerStats[d].sacks += 1;
+            }
+          }
+        });
+      }
+    });
+
+    let topPasser = { name: "N/A", val: 0 };
+    let topRec = { name: "N/A", val: 0 };
+    let topFlags = { name: "N/A", val: 0 };
+    let topInts = { name: "N/A", val: 0 };
+
+    Object.entries(playerStats).forEach(([name, s]) => {
+      if (s.passTD > topPasser.val) topPasser = { name, val: s.passTD };
+      if (s.recTD > topRec.val) topRec = { name, val: s.recTD };
+      if (s.flagPulls > topFlags.val) topFlags = { name, val: s.flagPulls };
+      if (s.int > topInts.val) topInts = { name, val: s.int };
+    });
+
+    return {
+      wins,
+      losses,
+      pf,
+      pa,
+      teamMatches,
+      pastMatches,
+      upcomingMatches,
+      playerStats,
+      topPasser,
+      topRec,
+      topFlags,
+      topInts,
+    };
+  }, [matches, activeTeamId, teamPlayers, plays]);
 
   if (isDenied) {
     return deniedElement;
