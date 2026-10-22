@@ -884,12 +884,12 @@ export default function Calendar() {
                     <li key={match.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                       <Link href={`/matches/${match.id}`} className="min-w-0 hover:text-cyan-300">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
-                          {match.playoffRound || "Playoffs"} ? {match.date} {match.time}
+                          {match.playoffRound || "Playoffs"} • {match.date} {match.time}
                         </p>
                         <p className="text-sm font-semibold text-white truncate">
                           {match.homeTeamName || "TBD"} vs {match.awayTeamName || "TBD"}
                           {(match.status === "completed" || match.status === "Final") &&
-                            ` ? ${match.homeScore ?? 0}-${match.awayScore ?? 0}`}
+                            ` • ${match.homeScore ?? 0}-${match.awayScore ?? 0}`}
                         </p>
                       </Link>
                       {canManageSchedule && match.status !== "completed" && match.status !== "Final" && match.status !== "in_progress" && (
