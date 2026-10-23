@@ -649,7 +649,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const lockedEmbedRole: UserRole | null = isEmbed ? (isEmbedPlaybook ? "team_admin" : "league_admin") : null;
 
   // Determine effective role & player properties
-  const isDexter = !!user?.emailVerified && !!user.email && ["dextersargent@gmail.com", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
+  const isDexter = !!user?.emailVerified && !!user.email && ["dextersargent@flagos.ca", "dextersargent@gmail.com", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
   // Explicitly chosen role in dev Role Switcher takes precedence so admins/devs can simulate any persona
   const effectiveRole: UserRole =
     lockedEmbedRole || devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));

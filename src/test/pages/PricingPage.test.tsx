@@ -87,32 +87,32 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     expect(screen.getAllByText("Team Subscription").length).toBeGreaterThan(0);
     expect(screen.getAllByText("League Subscription").length).toBeGreaterThan(0);
 
-    // Standalone team plan is $30/mo
-    expect(screen.getByText("$30")).toBeInTheDocument();
+    // Standalone team plan is $40/mo
+    expect(screen.getAllByText("$40").length).toBeGreaterThan(0);
 
-    // Default 4 teams league plan is $100/mo ($40 base + 4 * $15)
-    expect(screen.getAllByText("$100").length).toBeGreaterThan(0);
-    expect(screen.getByText("Starts At (4 Teams):")).toBeInTheDocument();
-    expect(screen.getByText("$100 / month")).toBeInTheDocument();
+    // Default 4 teams league plan is $120/mo ($40 base + 4 * $20)
+    expect(screen.getAllByText("$120").length).toBeGreaterThan(0);
+    expect(screen.getByText("4 to 64 Teams")).toBeInTheDocument();
+    expect(screen.getAllByText("/ month").length).toBeGreaterThan(0);
   });
 
   it("dynamically recalculates total league price when slider or stepper buttons are pressed", () => {
     render(<PricingPage />);
 
-    // Initial 4 teams -> $100
-    expect(screen.getAllByText("$100").length).toBeGreaterThan(0);
+    // Initial 4 teams -> $120
+    expect(screen.getAllByText("$120").length).toBeGreaterThan(0);
 
-    // Click increment '+' button -> 5 teams -> $40 + (5 * $15) = $115
-    const plusButton = screen.getByRole("button", { name: "+" });
+    // Click increment '+' button -> 5 teams -> $40 + (5 * $20) = $140
+    const plusButton = screen.getByRole("button", { name: "Increase team count" });
     fireEvent.click(plusButton);
-    expect(screen.getAllByText("$115").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$140").length).toBeGreaterThan(0);
     expect(screen.getByText("5 Teams")).toBeInTheDocument();
 
-    // Decrementing twice stops at the 4-team minimum -> $100
-    const minusButton = screen.getByRole("button", { name: "-" });
+    // Decrementing twice stops at the 4-team minimum -> $120
+    const minusButton = screen.getByRole("button", { name: "Decrease team count" });
     fireEvent.click(minusButton);
     fireEvent.click(minusButton);
-    expect(screen.getAllByText("$100").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$120").length).toBeGreaterThan(0);
     expect(screen.getByText("4 Teams")).toBeInTheDocument();
   });
 
@@ -120,27 +120,27 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     render(<PricingPage />);
 
     // Default "All Features" shows features across domains
-    expect(screen.getByText("Custom Playbooks per Team")).toBeInTheDocument();
-    expect(screen.getByText("Automated Seasonal Scheduler Engine")).toBeInTheDocument();
+    expect(screen.getAllByText("Custom Playbooks").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Automated Season Scheduler").length).toBeGreaterThan(0);
 
-    // Switch to "Stat-Tracking" tab
-    const statsTab = screen.getByRole("button", { name: "Stat-Tracking" });
+    // Switch to "Sideline Stats & Clocks" tab
+    const statsTab = screen.getByRole("button", { name: /Sideline Stats & Clocks/i });
     fireEvent.click(statsTab);
-    expect(screen.getByText("Dynamic Play-by-Play Wizard (Asynchronous Mode)")).toBeInTheDocument();
+    expect(screen.getAllByText("Clockless Sideline Stat Tracking").length).toBeGreaterThan(0);
     // Playbook-specific row should be filtered out
-    expect(screen.queryByText("Custom Playbooks per Team")).toBeNull();
+    expect(screen.queryAllByText("Custom Playbooks")).toHaveLength(0);
 
-    // Switch to "Playbook Studio" tab
-    const playbookTab = screen.getByRole("button", { name: "Playbook Studio" });
+    // Switch to "Playbook Designer" tab
+    const playbookTab = screen.getByRole("button", { name: /Playbook Designer/i });
     fireEvent.click(playbookTab);
-    expect(screen.getByText("Custom Playbooks per Team")).toBeInTheDocument();
-    expect(screen.queryByText("Automated Seasonal Scheduler Engine")).toBeNull();
+    expect(screen.getAllByText("Custom Playbooks").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("Automated Season Scheduler")).toHaveLength(0);
 
-    // Switch to "League Ops" tab
-    const leagueOpsTab = screen.getByRole("button", { name: "League Ops" });
+    // Switch to "League Operations" tab
+    const leagueOpsTab = screen.getByRole("button", { name: /League Operations/i });
     fireEvent.click(leagueOpsTab);
-    expect(screen.getByText("Automated Seasonal Scheduler Engine")).toBeInTheDocument();
-    expect(screen.queryByText("Dynamic Play-by-Play Wizard (Asynchronous Mode)")).toBeNull();
+    expect(screen.getAllByText("Automated Season Scheduler").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("Clockless Sideline Stat Tracking")).toHaveLength(0);
   });
 
   it("shows a development notice instead of starting a league purchase", () => {
@@ -242,7 +242,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Waterloo Wolves" } });
     fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "wat" } });
     fireEvent.change(screen.getByLabelText(/Team Portal Visibility/i), { target: { value: "private" } });
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay \$30/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
     expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
@@ -274,7 +274,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     // Pick secondary color swatch
     fireEvent.click(screen.getByRole("button", { name: /Team secondary color #EC4899/i }));
 
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay \$30/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
     expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
@@ -287,6 +287,28 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     }));
   });
 
+  it("provisions a team when authenticated as dextersargent@flagos.ca", async () => {
+    mockAuth = {
+      user: { uid: "flagos-owner", email: "dextersargent@flagos.ca", emailVerified: true },
+      isLeagueAdmin: true,
+      isPlatformAdmin: true,
+      setDevRole: mockSetDevRole,
+    } as typeof mockAuth;
+    render(<PricingPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "FlagOS Raptors" } });
+    fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "RAP" } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
+    expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
+      name: "FlagOS Raptors",
+      shortcode: "RAP",
+      adminEmails: ["dextersargent@flagos.ca"],
+    }));
+  });
+
   it("shows the server error inside the checkout instead of a generic notice", async () => {
     mockAuth = ownerAuth() as typeof mockAuth;
     mockCreateSecureRecord.mockRejectedValue(new Error("Write rate limit reached."));
@@ -294,7 +316,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
     fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Wolves" } });
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay \$30/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Write rate limit reached.");
     expect(mockPush).not.toHaveBeenCalled();

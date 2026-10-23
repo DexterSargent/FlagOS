@@ -16,6 +16,7 @@ const manPlay: PlayDiagram = {
   type: "defense",
   formation: "Man Lock",
   situation: "Standard",
+  losY: 65,
   players: [
     {
       id: "cb",

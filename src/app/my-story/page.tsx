@@ -174,6 +174,7 @@ export default function MyStoryPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isMe =
+    user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca" ||
     user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
     Boolean(isPlatformAdmin);
 

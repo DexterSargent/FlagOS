@@ -320,7 +320,7 @@ export const isAuthorizedForLeague = (
   if (!isPrivate) return true;
   if (!userEmail) return false;
   const cleanEmail = userEmail.trim().toLowerCase();
-  if (cleanEmail === "dextersargent@gmail.com") return true;
+  if (cleanEmail === "dextersargent@flagos.ca" || cleanEmail === "dextersargent@gmail.com") return true;
   const directAdmins = leagueData?.adminEmails?.map((e) => e.trim().toLowerCase()) || [];
   const subAdmins = leagueData?.subscription?.adminEmails?.map((e) => e.trim().toLowerCase()) || [];
   return directAdmins.includes(cleanEmail) || subAdmins.includes(cleanEmail);

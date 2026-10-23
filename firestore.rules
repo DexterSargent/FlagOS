@@ -11,7 +11,8 @@ service cloud.firestore {
 
     function isPlatformAdmin() {
       return signedIn() &&
-        request.auth.token.email == 'dextersargent@gmail.com';
+        (request.auth.token.email == 'dextersargent@flagos.ca' ||
+         request.auth.token.email == 'dextersargent@gmail.com');
     }
 
     // Independent (league-free) teams can opt into a public portal by setting

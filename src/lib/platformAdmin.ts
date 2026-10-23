@@ -1,6 +1,13 @@
-/** The only account allowed to provision leagues and teams until real billing exists. */
-export const PLATFORM_ADMIN_EMAIL = "dextersargent@gmail.com";
+/** The primary platform administrator email. */
+export const PLATFORM_ADMIN_EMAIL = "dextersargent@flagos.ca";
+
+/** Authorized platform administrators allowed to provision leagues and teams without billing. */
+export const PLATFORM_ADMIN_EMAILS = [
+  "dextersargent@flagos.ca",
+  "dextersargent@gmail.com",
+];
 
 export function isPlatformAdminEmail(email: string | null | undefined): boolean {
-  return typeof email === "string" && email.trim().toLowerCase() === PLATFORM_ADMIN_EMAIL;
+  if (typeof email !== "string") return false;
+  return PLATFORM_ADMIN_EMAILS.includes(email.trim().toLowerCase());
 }

@@ -21,6 +21,8 @@ describe("Team Admin RBAC & Primary Admin Deletion Rights", () => {
   });
 
   it("identifies platform owner / Dexter emails", () => {
+    expect(isDexterUser("dextersargent@flagos.ca")).toBe(true);
+    expect(isDexterUser("DEXTERSARGENT@FLAGOS.CA")).toBe(true);
     expect(isDexterUser("dextersargent@gmail.com")).toBe(true);
     expect(isDexterUser("DEXTERSARGENT@GMAIL.COM")).toBe(true);
     expect(isDexterUser("dexter@yuwffl.ca")).toBe(true);

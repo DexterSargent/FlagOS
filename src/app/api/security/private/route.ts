@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 type PrivateAction = "lookup" | "memberships" | "team" | "league" | "admin_overview" | "depth_chart";
 
-const PLATFORM_ADMIN_EMAIL = "dextersargent@gmail.com";
+import { PLATFORM_ADMIN_EMAIL, isPlatformAdminEmail } from "@/lib/platformAdmin";
 const MAX_REQUEST_BYTES = 8_000;
 const MAX_READ_UNITS_PER_MINUTE = 2_000;
 const ACTION_READ_UNITS: Record<PrivateAction, number> = {
@@ -36,7 +36,7 @@ function normalizedEmail(token: DecodedIdToken): string {
 }
 
 function isPlatformAdmin(token: DecodedIdToken): boolean {
-  return normalizedEmail(token) === PLATFORM_ADMIN_EMAIL;
+  return isPlatformAdminEmail(token.email);
 }
 
 function isLeagueAdmin(data: FirebaseFirestore.DocumentData, token: DecodedIdToken): boolean {

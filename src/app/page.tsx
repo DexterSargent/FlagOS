@@ -50,7 +50,10 @@ export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
   const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin, loading: authLoading } = useAuth();
-  const isMe = user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" || Boolean(isPlatformAdmin);
+  const isMe =
+    user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca" ||
+    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
+    Boolean(isPlatformAdmin);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

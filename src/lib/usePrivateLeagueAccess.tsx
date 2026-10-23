@@ -32,6 +32,7 @@ export function usePrivateLeagueAccess(
 
   const isAuthorized =
     !isPrivate ||
+    user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca" ||
     user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
     Boolean(
       settings?.adminEmails &&

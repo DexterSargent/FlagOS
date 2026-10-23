@@ -5,7 +5,7 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { accountEmailKey } from "@/lib/accountEmailKey";
 import { validateDepthCharts } from "@/lib/depthChart";
-import { PLATFORM_ADMIN_EMAIL } from "@/lib/platformAdmin";
+import { PLATFORM_ADMIN_EMAIL, isPlatformAdminEmail } from "@/lib/platformAdmin";
 
 export const runtime = "nodejs";
 
@@ -186,7 +186,7 @@ function isDocumentId(value: unknown): value is string {
 }
 
 function isPlatformAdmin(token: DecodedIdToken): boolean {
-  return normalizeEmail(token.email) === PLATFORM_ADMIN_EMAIL;
+  return isPlatformAdminEmail(token.email);
 }
 
 function isLeagueAdminData(data: FirebaseFirestore.DocumentData, token: DecodedIdToken): boolean {

@@ -27,6 +27,7 @@ export function getTeamAdminAccounts(team: {
 }
 
 export const DEXTER_EMAILS = [
+  "dextersargent@flagos.ca",
   "dextersargent@gmail.com",
   "dexter@yuwffl.ca",
   "dexter.b.harvey@gmail.com",

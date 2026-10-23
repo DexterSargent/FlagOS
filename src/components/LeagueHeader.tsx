@@ -271,6 +271,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                       if (l.visibility === "private" || l.id === "league_private_live") {
                         const userEmail = (user?.email || "").trim().toLowerCase();
                         return (
+                          userEmail === "dextersargent@flagos.ca" ||
                           userEmail === "dextersargent@gmail.com" ||
                           (l.adminEmails && l.adminEmails.some((e) => e.toLowerCase() === userEmail))
                         );
