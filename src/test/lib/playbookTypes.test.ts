@@ -9,6 +9,7 @@ import {
   RUSH_LINE_DISTANCE,
   clampLegalPosition,
   checkLegalPosition,
+  calculateShadedPosition,
 } from "@/lib/playbookTypes";
 
 describe("playbookTypes", () => {
@@ -168,6 +169,77 @@ describe("playbookTypes", () => {
       expect(newPlay.type).toBe("offense");
       expect(newPlay.formation).toBe(formation.name);
       expect(newPlay.players.length).toBe(10);
+    });
+  });
+
+  describe("calculateShadedPosition", () => {
+    const losY = 60;
+    const receiverLeft = { x: 20, y: 60 };
+    const receiverRight = { x: 80, y: 60 };
+    const receiverCenter = { x: 50, y: 60 };
+
+    it("aligns head up directly across from the receiver", () => {
+      const posLeft = calculateShadedPosition(receiverLeft, "head_up", { losY });
+      expect(posLeft.x).toBe(20);
+      expect(posLeft.y).toBe(56); // losY - 4
+
+      const posRight = calculateShadedPosition(receiverRight, "head_up", { losY });
+      expect(posRight.x).toBe(80);
+
+      const posCenter = calculateShadedPosition(receiverCenter, "head_up", { losY });
+      expect(posCenter.x).toBe(50);
+    });
+
+    it("aligns inside shade towards the center of the field", () => {
+      // Left receiver (x < 50): inside shade shifts right towards 50
+      const posLeft = calculateShadedPosition(receiverLeft, "inside", { losY, offset: 3 });
+      expect(posLeft.x).toBe(23);
+
+      // Right receiver (x > 50): inside shade shifts left towards 50
+      const posRight = calculateShadedPosition(receiverRight, "inside", { losY, offset: 3 });
+      expect(posRight.x).toBe(77);
+
+      // Center receiver (x === 50): inside shade stays centered at 50
+      const posCenter = calculateShadedPosition(receiverCenter, "inside", { losY, offset: 3 });
+      expect(posCenter.x).toBe(50);
+    });
+
+    it("aligns outside shade towards the boundary sideline", () => {
+      // Left receiver (x < 50): outside shade shifts left towards sideline
+      const posLeft = calculateShadedPosition(receiverLeft, "outside", { losY, offset: 3 });
+      expect(posLeft.x).toBe(17);
+
+      // Right receiver (x > 50): outside shade shifts right towards sideline
+      const posRight = calculateShadedPosition(receiverRight, "outside", { losY, offset: 3 });
+      expect(posRight.x).toBe(83);
+
+      // Center receiver (x === 50): outside shade shifts towards boundary
+      const posCenter = calculateShadedPosition(receiverCenter, "outside", { losY, offset: 3 });
+      expect(posCenter.x).toBe(53);
+    });
+
+    it("preserves custom defender cushion when defender is on the defensive side of LOS", () => {
+      // Defender already set at cushion depth y: 52
+      const pos = calculateShadedPosition(receiverLeft, "inside", { currentDefenderY: 52, losY, offset: 2.8 });
+      expect(pos.x).toBe(22.8);
+      expect(pos.y).toBe(52);
+    });
+
+    it("bounds defender within field sidelines (5% to 95%)", () => {
+      const extremeLeftReceiver = { x: 6, y: 60 };
+      const extremeRightReceiver = { x: 94, y: 60 };
+
+      const posLeft = calculateShadedPosition(extremeLeftReceiver, "outside", { losY, offset: 3 });
+      expect(posLeft.x).toBeGreaterThanOrEqual(5);
+
+      const posRight = calculateShadedPosition(extremeRightReceiver, "outside", { losY, offset: 3 });
+      expect(posRight.x).toBeLessThanOrEqual(95);
+    });
+
+    it("accepts numeric shorthand for currentDefenderY", () => {
+      const pos = calculateShadedPosition(receiverRight, "head_up", 54, losY);
+      expect(pos.x).toBe(80);
+      expect(pos.y).toBe(54);
     });
   });
 });

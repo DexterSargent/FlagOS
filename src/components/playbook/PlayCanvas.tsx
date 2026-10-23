@@ -42,6 +42,8 @@ import {
   FLAG_5V5_FORMATIONS,
   STANDARD_DEFENSIVE_ZONES,
   StandardZoneTemplate,
+  DefensiveShade,
+  calculateShadedPosition,
 } from "@/lib/playbookTypes";
 import {
   advanceAnimationProgress,
@@ -90,6 +92,10 @@ import {
   MessageSquare,
   HelpCircle,
   FolderPlus,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Target,
 } from "lucide-react";
 import {
   STANDARD_OFFENSIVE_PRESETS,
@@ -806,14 +812,21 @@ export default function PlayCanvas({
 
     // Requirement: If you select man it should auto show offense, and the db should have a dotted line drawn to whichever receiver is clicked while the db is highlighted.
     if (isDefenderInMan && clickedPlayer.side === "offense" && selectedPlayerId !== playerId) {
+      const currentShade: DefensiveShade = currentSelected.shade || "head_up";
+      const newPos = calculateShadedPosition(clickedPlayer, currentShade, currentSelected.y, losY);
+
       const updatedPlayers = play.players.map((p) => {
         if (p.id === selectedPlayerId) {
           return {
             ...p,
             coverageType: "man" as const,
             manTargetId: playerId,
+            shade: currentShade,
+            x: newPos.x,
+            y: newPos.y,
             route: [],
             zoneId: undefined,
+            quickRouteName: "Man",
           };
         }
         return p;
@@ -1613,15 +1626,96 @@ export default function PlayCanvas({
     setShowOpposingSide(true); // Auto show offense
     setMode("man");
 
+    const currentShade: DefensiveShade = selectedPlayer.shade || "head_up";
+    let newX = selectedPlayer.x;
+    let newY = selectedPlayer.y;
+
+    if (selectedPlayer.manTargetId) {
+      const targetOff = play.players.find(
+        (p) => p.id === selectedPlayer.manTargetId && p.side === "offense"
+      );
+      if (targetOff) {
+        const newPos = calculateShadedPosition(targetOff, currentShade, selectedPlayer.y, losY);
+        newX = newPos.x;
+        newY = newPos.y;
+      }
+    }
+
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
         return {
           ...p,
           coverageType: "man" as const,
+          shade: currentShade,
+          x: newX,
+          y: newY,
           zoneId: undefined,
           route: [],
           quickRouteName: "Man",
           routeType: undefined,
+        };
+      }
+      return p;
+    });
+
+    onChange({ ...play, players: updatedPlayers });
+  };
+
+  // Choose receiver for man coverage and adjust DB beginning point
+  const handleSetManReceiver = (receiverId: string) => {
+    if (readOnly || !selectedPlayer) return;
+    const receiver = play.players.find((p) => p.id === receiverId && p.side === "offense");
+    if (!receiver) return;
+
+    const currentShade: DefensiveShade = selectedPlayer.shade || "head_up";
+    const newPos = calculateShadedPosition(receiver, currentShade, selectedPlayer.y, losY);
+
+    const updatedPlayers = play.players.map((p) => {
+      if (p.id === selectedPlayer.id) {
+        return {
+          ...p,
+          coverageType: "man" as const,
+          manTargetId: receiverId,
+          shade: currentShade,
+          x: newPos.x,
+          y: newPos.y,
+          route: [],
+          zoneId: undefined,
+          quickRouteName: "Man",
+        };
+      }
+      return p;
+    });
+
+    onChange({ ...play, players: updatedPlayers });
+  };
+
+  // Choose defensive shade (inside, head_up, outside) and adjust DB beginning point
+  const handleSetDefensiveShade = (newShade: DefensiveShade) => {
+    if (readOnly || !selectedPlayer) return;
+
+    const targetReceiver = selectedPlayer.manTargetId
+      ? play.players.find((p) => p.id === selectedPlayer.manTargetId && p.side === "offense")
+      : undefined;
+
+    let newX = selectedPlayer.x;
+    let newY = selectedPlayer.y;
+
+    if (targetReceiver) {
+      const newPos = calculateShadedPosition(targetReceiver, newShade, selectedPlayer.y, losY);
+      newX = newPos.x;
+      newY = newPos.y;
+    }
+
+    const updatedPlayers = play.players.map((p) => {
+      if (p.id === selectedPlayer.id) {
+        return {
+          ...p,
+          coverageType: "man" as const,
+          shade: newShade,
+          x: newX,
+          y: newY,
+          quickRouteName: "Man",
         };
       }
       return p;
@@ -3425,6 +3519,34 @@ export default function PlayCanvas({
                     />
                   )}
 
+                  {/* Defender shade badge when in man coverage */}
+                  {player.side === "defense" && player.coverageType === "man" && player.shade && (
+                    <g transform={`translate(${px}, ${py + 25})`} className="pointer-events-none select-none" data-testid={`shade-badge-${player.id}`}>
+                      <rect
+                        x="-20"
+                        y="-6"
+                        width="40"
+                        height="12"
+                        rx="6"
+                        fill="#0F172A"
+                        stroke="#EC4899"
+                        strokeWidth="1.2"
+                        className="drop-shadow-sm"
+                      />
+                      <text
+                        x="0"
+                        y="3"
+                        fill="#F472B6"
+                        fontSize="7"
+                        fontWeight="900"
+                        textAnchor="middle"
+                        className="uppercase tracking-wider"
+                      >
+                        {player.shade === "inside" ? "Inside" : player.shade === "outside" ? "Outside" : "Head Up"}
+                      </text>
+                    </g>
+                  )}
+
                   {/* Illegal Icon Alert Tag */}
                   {isIllegal && (
                     <g transform={`translate(${px + 10}, ${py - 18})`}>
@@ -4083,89 +4205,235 @@ export default function PlayCanvas({
                 </button>
               </div>
 
-              <div className="grid grid-cols-4 gap-1 [@media(min-width:600px)_and_(max-height:450px)]:col-start-2 [@media(min-width:600px)_and_(max-height:450px)]:row-start-2">
-                {DEFENSIVE_ZONE_CATEGORIES.map((item) => (
-                  <button
-                    key={item.category}
-                    type="button"
-                    data-testid={`coverage-category-${item.id}`}
-                    aria-pressed={defensiveZoneCategory === item.category}
-                    onClick={() => setDefensiveZoneCategory(item.category)}
-                    className={`rounded-lg px-2 py-1.5 [@media(min-width:600px)_and_(max-height:450px)]:py-1 text-[10px] font-black uppercase tracking-wide border transition-colors ${
-                      defensiveZoneCategory === item.category
-                        ? "bg-purple-500/20 border-purple-400/50 text-purple-200"
-                        : "bg-black/40 border-white/20 text-neutral-200 hover:text-white"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2 [@media(min-width:600px)_and_(max-height:450px)]:row-start-3 gap-1.5">
-                {STANDARD_DEFENSIVE_ZONES.filter(
-                  (zone) => zone.category === defensiveZoneCategory
-                ).map((zt) => {
-                  const isCurrent =
-                    selectedPlayer.quickRouteName === zt.name ||
-                    selectedPlayer.quickRouteName === zt.shortName;
-                  return (
-                    <button
-                      key={zt.id}
-                      type="button"
-                      disabled={readOnly}
-                      aria-pressed={isCurrent}
-                      onClick={() => handleAssignStandardZone(zt)}
-                      data-testid={`coverage-${zt.id}`}
-                      title={zt.description}
-                      className={`min-w-0 min-h-10 px-2 py-2 [@media(min-width:600px)_and_(max-height:450px)]:py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-purple-200 focus-visible:outline-offset-2 ${
-                        isCurrent
-                          ? "bg-purple-300 text-black border-purple-200 shadow-md"
-                          : "bg-black/50 text-neutral-100 hover:border-purple-300 hover:text-white border-white/20"
-                      }`}
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: zt.color }}
-                      />
-                      <span className="min-w-0 break-words text-left">{zt.shortName}</span>
-                      {isCurrent && <Check className="w-3 h-3 text-black stroke-[3] shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Conditional Man vs Zone Sections */}
+              {(selectedPlayer.coverageType === "man" || mode === "man") ? (
+                <div data-testid="man-coverage-controls" className="space-y-2 pt-1 border-t border-pink-500/20 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2">
+                  {/* Receiver Target Selection */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
+                      <span className="flex items-center gap-1 text-pink-300 font-black uppercase tracking-wider text-[10px]">
+                        <Target className="w-3 h-3" />
+                        <span>1. Choose Receiver to Cover</span>
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-normal">
+                        Tap on field or select below
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                      {play.players
+                        .filter((p) => p.side === "offense")
+                        .map((receiver) => {
+                          const isTarget = selectedPlayer.manTargetId === receiver.id;
+                          return (
+                            <button
+                              key={receiver.id}
+                              type="button"
+                              data-testid={`man-receiver-${receiver.label.toLowerCase()}`}
+                              disabled={readOnly}
+                              onClick={() => handleSetManReceiver(receiver.id)}
+                              aria-pressed={isTarget}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-all shrink-0 border flex items-center gap-1.5 ${
+                                isTarget
+                                  ? "bg-pink-400 text-neutral-950 border-pink-300 shadow-md font-extrabold"
+                                  : "bg-black/50 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/15"
+                              }`}
+                            >
+                              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                              <span>{receiver.label}</span>
+                              {receiver.role && receiver.role !== receiver.label && (
+                                <span className={`text-[10px] font-medium ${isTarget ? "text-neutral-900" : "text-neutral-400"}`}>
+                                  ({receiver.role})
+                                </span>
+                              )}
+                              {isTarget && <Check className="w-3 h-3 stroke-[3]" />}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
 
-              {/* Custom Zone Creation Options */}
-              <div className="pt-2 border-t border-white/10 space-y-1.5 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2">
-                <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                  <span>Custom Zones</span>
-                  <span className="text-[10px] text-neutral-400 normal-case font-normal">Shape & size controls</span>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    data-testid="create-custom-oval-zone"
-                    onClick={() => handleCreateCustomZone("ellipse")}
-                    className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
-                  >
-                    <Circle className="w-3.5 h-3.5" />
-                    <span>+ Custom Oval</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    data-testid="create-custom-box-zone"
-                    onClick={() => handleCreateCustomZone("rectangle")}
-                    className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
-                  >
-                    <Square className="w-3.5 h-3.5" />
-                    <span>+ Custom Box</span>
-                  </button>
-                </div>
-              </div>
+                  {/* Defensive Shade Selection */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
+                      <span className="flex items-center gap-1 text-pink-300 font-black uppercase tracking-wider text-[10px]">
+                        <AlignCenter className="w-3 h-3" />
+                        <span>2. Alignment Shade</span>
+                      </span>
+                      <span className="text-[10px] text-neutral-400 font-normal">
+                        Sets DB starting leverage
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        {
+                          id: "inside" as const,
+                          label: "Inside Shade",
+                          sub: "Center leverage",
+                          icon: AlignLeft,
+                          testId: "shade-inside",
+                        },
+                        {
+                          id: "head_up" as const,
+                          label: "Head Up",
+                          sub: "Direct alignment",
+                          icon: AlignCenter,
+                          testId: "shade-head_up",
+                        },
+                        {
+                          id: "outside" as const,
+                          label: "Outside Shade",
+                          sub: "Sideline leverage",
+                          icon: AlignRight,
+                          testId: "shade-outside",
+                        },
+                      ].map((item) => {
+                        const currentShade = selectedPlayer.shade || "head_up";
+                        const isCurrent = currentShade === item.id;
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            data-testid={item.testId}
+                            disabled={readOnly}
+                            onClick={() => handleSetDefensiveShade(item.id)}
+                            aria-pressed={isCurrent}
+                            className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all border flex flex-col items-center justify-center gap-0.5 text-center ${
+                              isCurrent
+                                ? "bg-pink-400 text-neutral-950 border-pink-300 shadow-md font-extrabold"
+                                : "bg-black/50 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/15"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1">
+                              <Icon className="w-3 h-3 shrink-0" />
+                              <span>{item.label}</span>
+                              {isCurrent && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <span
+                              className={`text-[9px] leading-tight ${
+                                isCurrent ? "text-neutral-900 font-semibold" : "text-neutral-400"
+                              }`}
+                            >
+                              {item.sub}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              {/* Inspector / Customizer Panel for Active Zone */}
-              {activeZone && renderZoneCustomizer(activeZone)}
+                  {/* Man Coverage Status Summary */}
+                  <div className="px-2.5 py-1.5 rounded-lg bg-pink-950/40 border border-pink-500/30 text-[11px] text-pink-200 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Lock className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                      {selectedPlayer.manTargetId ? (
+                        <span>
+                          Locked on <strong className="text-white">{play.players.find((p) => p.id === selectedPlayer.manTargetId)?.label || "Receiver"}</strong> (
+                          {selectedPlayer.shade === "inside"
+                            ? "Inside Shade"
+                            : selectedPlayer.shade === "outside"
+                            ? "Outside Shade"
+                            : "Head Up"}
+                          )
+                        </span>
+                      ) : (
+                        <span className="text-neutral-400">Choose a receiver above or tap on the field to lock.</span>
+                      )}
+                    </div>
+                    {selectedPlayer.manTargetId && (
+                      <span className="text-[10px] text-pink-300 uppercase font-black shrink-0">
+                        Mirrored
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-1 [@media(min-width:600px)_and_(max-height:450px)]:col-start-2 [@media(min-width:600px)_and_(max-height:450px)]:row-start-2">
+                    {DEFENSIVE_ZONE_CATEGORIES.map((item) => (
+                      <button
+                        key={item.category}
+                        type="button"
+                        data-testid={`coverage-category-${item.id}`}
+                        aria-pressed={defensiveZoneCategory === item.category}
+                        onClick={() => setDefensiveZoneCategory(item.category)}
+                        className={`rounded-lg px-2 py-1.5 [@media(min-width:600px)_and_(max-height:450px)]:py-1 text-[10px] font-black uppercase tracking-wide border transition-colors ${
+                          defensiveZoneCategory === item.category
+                            ? "bg-purple-500/20 border-purple-400/50 text-purple-200"
+                            : "bg-black/40 border-white/20 text-neutral-200 hover:text-white"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2 [@media(min-width:600px)_and_(max-height:450px)]:row-start-3 gap-1.5">
+                    {STANDARD_DEFENSIVE_ZONES.filter(
+                      (zone) => zone.category === defensiveZoneCategory
+                    ).map((zt) => {
+                      const isCurrent =
+                        selectedPlayer.quickRouteName === zt.name ||
+                        selectedPlayer.quickRouteName === zt.shortName;
+                      return (
+                        <button
+                          key={zt.id}
+                          type="button"
+                          disabled={readOnly}
+                          aria-pressed={isCurrent}
+                          onClick={() => handleAssignStandardZone(zt)}
+                          data-testid={`coverage-${zt.id}`}
+                          title={zt.description}
+                          className={`min-w-0 min-h-10 px-2 py-2 [@media(min-width:600px)_and_(max-height:450px)]:py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-purple-200 focus-visible:outline-offset-2 ${
+                            isCurrent
+                              ? "bg-purple-300 text-black border-purple-200 shadow-md"
+                              : "bg-black/50 text-neutral-100 hover:border-purple-300 hover:text-white border-white/20"
+                          }`}
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: zt.color }}
+                          />
+                          <span className="min-w-0 break-words text-left">{zt.shortName}</span>
+                          {isCurrent && <Check className="w-3 h-3 text-black stroke-[3] shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom Zone Creation Options */}
+                  <div className="pt-2 border-t border-white/10 space-y-1.5 [@media(min-width:600px)_and_(max-height:450px)]:col-span-2">
+                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                      <span>Custom Zones</span>
+                      <span className="text-[10px] text-neutral-400 normal-case font-normal">Shape & size controls</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        disabled={readOnly}
+                        data-testid="create-custom-oval-zone"
+                        onClick={() => handleCreateCustomZone("ellipse")}
+                        className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
+                      >
+                        <Circle className="w-3.5 h-3.5" />
+                        <span>+ Custom Oval</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={readOnly}
+                        data-testid="create-custom-box-zone"
+                        onClick={() => handleCreateCustomZone("rectangle")}
+                        className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
+                      >
+                        <Square className="w-3.5 h-3.5" />
+                        <span>+ Custom Box</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inspector / Customizer Panel for Active Zone */}
+                  {activeZone && renderZoneCustomizer(activeZone)}
+                </>
+              )}
             </div>
           ) : play.type !== "defense" ? (
             <div className="space-y-2">

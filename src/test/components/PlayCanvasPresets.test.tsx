@@ -86,7 +86,8 @@ describe("Man coverage animation", () => {
   it.each([0, 0.25, 0.5, 0.75, 1])("mirrors the receiver exactly at timeline progress %s", (progress) => {
     const play = { ...mockDefensePlay, players: [receiver, defender] };
     const { container } = render(<PlayCanvas play={play} onChange={vi.fn()} />);
-    fireEvent.click(screen.getByTitle("Show opposing offense"));
+    const toggle = screen.queryByTitle("Show opposing offense");
+    if (toggle) fireEvent.click(toggle);
     fireEvent.change(screen.getByRole("slider", { name: "Animation timeline" }), { target: { value: progress } });
     const recPos = position(container, "X");
     const dbPos = position(container, "CB1");
@@ -99,7 +100,8 @@ describe("Man coverage animation", () => {
     const motionReceiver = { ...receiver, motionPath: [{ x: 35, y: 70 }], motionName: "Jet Motion" };
     const play = { ...mockDefensePlay, players: [motionReceiver, defender] };
     const { container } = render(<PlayCanvas play={play} onChange={vi.fn()} />);
-    fireEvent.click(screen.getByTitle("Show opposing offense"));
+    const toggle = screen.queryByTitle("Show opposing offense");
+    if (toggle) fireEvent.click(toggle);
     fireEvent.change(screen.getByRole("slider", { name: "Animation timeline" }), { target: { value: progress } });
     const recPos = position(container, "X");
     const dbPos = position(container, "CB1");
@@ -467,5 +469,79 @@ describe("PlayCanvas Route Presets Suite", () => {
     const motionEnd = finalPlayer!.motionPath![finalPlayer!.motionPath!.length - 1];
     expect(finalPlayer!.route![0].x).toBe(motionEnd.x);
     expect(finalPlayer!.route![0].x).not.toBe(finalPlayer!.x);
+  });
+
+  it("allows defining receiver shade in man coverage and adjusts beginning point", () => {
+    const handleChange = vi.fn();
+    const initialPlay: PlayDiagram = {
+      ...mockDefensePlay,
+      players: mockDefensePlay.players.map((p) =>
+        p.id === "p_cb1" ? { ...p, coverageType: "zone" } : p
+      ),
+    };
+
+    const { rerender } = render(<PlayCanvas play={initialPlay} onChange={handleChange} />);
+
+    // Select CB1
+    const cb1Btn = screen.getByRole("button", { name: /CB1/i });
+    fireEvent.click(cb1Btn);
+
+    // Click "Man" coverage button
+    fireEvent.click(screen.getByRole("button", { name: /Man/i }));
+
+    const manPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const manCb1 = manPlay.players.find((p) => p.id === "p_cb1");
+    expect(manCb1?.coverageType).toBe("man");
+
+    // Re-render with man coverage active
+    rerender(<PlayCanvas play={manPlay} onChange={handleChange} />);
+
+    // Check that Receiver selector and Shade buttons are visible
+    expect(screen.getByTestId("man-coverage-controls")).toBeDefined();
+    expect(screen.getByTestId("shade-inside")).toBeDefined();
+    expect(screen.getByTestId("shade-head_up")).toBeDefined();
+    expect(screen.getByTestId("shade-outside")).toBeDefined();
+
+    // 1. Choose Receiver X (p_x is at x: 15, y: 70)
+    fireEvent.click(screen.getByTestId("man-receiver-x"));
+
+    const targetedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const targetedCb1 = targetedPlay.players.find((p) => p.id === "p_cb1");
+    expect(targetedCb1?.manTargetId).toBe("p_x");
+    // Default shade is head_up -> x should be exactly receiver X (15)
+    expect(targetedCb1?.x).toBe(15);
+
+    // Re-render with targeted play
+    rerender(<PlayCanvas play={targetedPlay} onChange={handleChange} />);
+
+    // 2. Select Inside Shade
+    // Receiver X is left of center (15 < 50), so inside shade shifts toward center (15 + 2.8 = 17.8)
+    fireEvent.click(screen.getByTestId("shade-inside"));
+
+    const insidePlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const insideCb1 = insidePlay.players.find((p) => p.id === "p_cb1");
+    expect(insideCb1?.shade).toBe("inside");
+    expect(insideCb1?.x).toBe(17.8);
+
+    // Re-render with inside shade
+    rerender(<PlayCanvas play={insidePlay} onChange={handleChange} />);
+
+    // 3. Select Outside Shade
+    // Receiver X is left of center (15 < 50), so outside shade shifts toward sideline (15 - 2.8 = 12.2)
+    fireEvent.click(screen.getByTestId("shade-outside"));
+
+    const outsidePlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const outsideCb1 = outsidePlay.players.find((p) => p.id === "p_cb1");
+    expect(outsideCb1?.shade).toBe("outside");
+    expect(outsideCb1?.x).toBe(12.2);
+
+    // 4. Select Head Up
+    // Should align directly over receiver X (15)
+    fireEvent.click(screen.getByTestId("shade-head_up"));
+
+    const headUpPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const headUpCb1 = headUpPlay.players.find((p) => p.id === "p_cb1");
+    expect(headUpCb1?.shade).toBe("head_up");
+    expect(headUpCb1?.x).toBe(15);
   });
 });

@@ -4,6 +4,8 @@ export type RouteType = "pass" | "motion" | "rush" | "block";
 
 export type DefensiveCoverageType = "man" | "zone" | "rush" | "spy";
 
+export type DefensiveShade = "inside" | "outside" | "head_up";
+
 export interface RoutePoint {
   x: number; // percentage across field (0 - 100)
   y: number; // percentage down field (0 - 100, smaller y = further downfield towards endzone)
@@ -194,6 +196,7 @@ export interface PlayerNode {
   motionName?: string; // e.g. "Jet Motion", "Orbit Motion", "Shift", "Return Motion"
   // Defensive Specific
   coverageType?: DefensiveCoverageType;
+  shade?: DefensiveShade; // defensive alignment shade relative to manTarget receiver: "inside" | "outside" | "head_up"
   manTargetId?: string; // id of offensive player to mirror / lock
   zoneId?: string; // id of zone to drop into
   notes?: string; // Coaching notes & assignment instructions for this specific position
@@ -235,6 +238,90 @@ export function getPlayerRouteOrigin(player: PlayerNode): RoutePoint {
     return motionPts[motionPts.length - 1];
   }
   return { x: player.x, y: player.y };
+}
+
+export interface ShadedPositionOptions {
+  currentDefenderY?: number;
+  losY?: number;
+  offset?: number;
+}
+
+/**
+ * Calculates the adjusted beginning point (x, y) for a defender playing man coverage
+ * with a specified shade relative to the target receiver.
+ *
+ * Inside shade:
+ * - When receiver is to the left of field center (x < 50), DB aligns inside towards center (+offset).
+ * - When receiver is to the right of field center (x > 50), DB aligns inside towards center (-offset).
+ * - When receiver is dead center (x === 50), DB aligns directly at center.
+ *
+ * Outside shade:
+ * - When receiver is to the left of field center (x < 50), DB aligns outside towards boundary (-offset).
+ * - When receiver is to the right of field center (x > 50), DB aligns outside towards boundary (+offset).
+ * - When receiver is dead center (x === 50), DB shades towards boundary (+offset).
+ *
+ * Head up:
+ * - DB aligns directly across from receiver (x === receiver.x).
+ *
+ * Cushion (y):
+ * - If currentDefenderY is on the defensive side of LOS and receiver (currentDefenderY < receiver.y - 1),
+ *   it preserves the defender's custom cushion depth.
+ * - Otherwise, it defaults to a standard cushion in front of the receiver (bounded by losY - 3).
+ */
+export function calculateShadedPosition(
+  receiver: { x: number; y: number },
+  shade: DefensiveShade = "head_up",
+  options?: ShadedPositionOptions | number,
+  losYParam?: number,
+  offsetParam?: number
+): { x: number; y: number } {
+  let currentDefenderY: number | undefined;
+  let losY = 60;
+  let offset = 2.8;
+
+  if (typeof options === "number") {
+    currentDefenderY = options;
+    if (typeof losYParam === "number") losY = losYParam;
+    if (typeof offsetParam === "number") offset = offsetParam;
+  } else if (options) {
+    currentDefenderY = options.currentDefenderY;
+    if (options.losY !== undefined) losY = options.losY;
+    if (options.offset !== undefined) offset = options.offset;
+  }
+
+  let targetX = receiver.x;
+  if (shade === "inside") {
+    if (receiver.x < 50) {
+      targetX = receiver.x + offset;
+    } else if (receiver.x > 50) {
+      targetX = receiver.x - offset;
+    }
+  } else if (shade === "outside") {
+    if (receiver.x < 50) {
+      targetX = receiver.x - offset;
+    } else if (receiver.x > 50) {
+      targetX = receiver.x + offset;
+    } else {
+      targetX = 50 + offset;
+    }
+  }
+
+  // Bound targetX within field lines (5% to 95%)
+  targetX = Math.round(Math.max(5, Math.min(95, targetX)) * 10) / 10;
+
+  let targetY: number;
+  if (
+    currentDefenderY !== undefined &&
+    currentDefenderY < receiver.y - 1 &&
+    currentDefenderY < losY
+  ) {
+    targetY = currentDefenderY;
+  } else {
+    targetY = Math.max(5, Math.min(receiver.y - 4, losY - 3));
+  }
+  targetY = Math.round(targetY * 10) / 10;
+
+  return { x: targetX, y: targetY };
 }
 
 export interface PlayQuestionAnswer {
