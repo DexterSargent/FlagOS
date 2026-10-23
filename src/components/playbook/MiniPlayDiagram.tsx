@@ -26,6 +26,11 @@ export default function MiniPlayDiagram({
   const rushDistanceY = (rushLineDistanceYards * 12) / 7;
   const rushY = losY - rushDistanceY;
   const isLight = theme === "light";
+  const shouldShowOpposingSide = showOpposingSide || (
+    play.type === "defense" && play.players.some(
+      (player) => player.side === "defense" && player.coverageType === "man"
+    )
+  );
 
   // Unique IDs for SVG definitions to prevent collisions when multiple plays render on one page
   const playUid = (play.id || "play").replace(/[^a-zA-Z0-9_-]/g, "");
@@ -149,7 +154,7 @@ export default function MiniPlayDiagram({
       </text>
 
       {/* Defensive Zones */}
-      {(play.type === "defense" || showOpposingSide) &&
+      {(play.type === "defense" || shouldShowOpposingSide) &&
         play.zones?.map((z) =>
           z.shape === "rectangle" ? (
             <rect
@@ -182,7 +187,7 @@ export default function MiniPlayDiagram({
         )}
 
       {/* Man Lock Lines (Visible when both sides are shown) */}
-      {showOpposingSide &&
+      {shouldShowOpposingSide &&
         play.players
           .filter((p) => p.side === "defense" && p.coverageType === "man" && p.manTargetId)
           .map((def) => {
@@ -205,7 +210,7 @@ export default function MiniPlayDiagram({
 
       {/* Route Lines */}
       {play.players
-        .filter((player) => (showOpposingSide ? true : player.side === play.type))
+        .filter((player) => (shouldShowOpposingSide ? true : player.side === play.type))
         .map((player) => {
           const isOffense = player.side === "offense";
           const isRush = player.routeType === "rush" || player.coverageType === "rush";
@@ -286,7 +291,7 @@ export default function MiniPlayDiagram({
 
       {/* Player Nodes */}
       {play.players
-        .filter((player) => (showOpposingSide ? true : player.side === play.type))
+        .filter((player) => (shouldShowOpposingSide ? true : player.side === play.type))
         .map((player) => {
         const px = (player.x / 100) * 1000;
         const py = (player.y / 100) * 700;
