@@ -56,7 +56,7 @@ export default function RouteCatalogDrawer({
         </div>
 
         <div className={`${styles.pickerBody} space-y-3`}>
-        <p className="text-[11px] text-neutral-600 dark:text-neutral-400 font-mono">
+        <p className={`${styles.pickerIntro} text-[11px] text-neutral-600 dark:text-neutral-400 font-mono`}>
           Tap a route to apply it to <strong className="text-neutral-900 dark:text-white">{selectedPlayer.label}</strong>. Adjust route depth with the rail beside the field.
         </p>
 

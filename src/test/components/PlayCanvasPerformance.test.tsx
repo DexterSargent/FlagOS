@@ -192,7 +192,7 @@ describe("PlayCanvas compact editing and player study", () => {
     receiver = latest.players.find((player) => player.id === "p_x")!;
     expect(receiver.route).toEqual([]);
     expect(receiver.motionPath).toEqual([{ x: 20, y: 70 }]);
-    expect(screen.queryByRole("button", { name: "Undo last route point" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo last route point" })).toBeDisabled();
     expect(screen.queryByText(/custom points?/i)).not.toBeInTheDocument();
   });
 

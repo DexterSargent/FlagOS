@@ -9,6 +9,7 @@
 }
 
 .toolbar {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -18,8 +19,54 @@
 }
 
 .toolbarMain,
-.toolbarActions {
+.toolbarActions,
+.toolbarExtras {
   display: contents;
+}
+
+.toolbarMore {
+  display: none;
+  align-self: stretch;
+}
+
+/* Phones: keep play details on one row and tuck occasional tools behind "More". */
+@media (max-width: 639px) {
+  .toolbarCollapsible {
+    flex-wrap: nowrap;
+  }
+
+  .toolbarCollapsible .metadata {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .toolbarCollapsible .toolbarMore {
+    display: flex;
+  }
+
+  .toolbarCollapsible .toolbarExtras {
+    display: none;
+  }
+
+  .toolbarCollapsible .toolbarExtras[data-open] {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    right: 0;
+    left: 0;
+    z-index: 40;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem;
+    border-width: 1px;
+    border-radius: 0.75rem;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
+  }
+
+  .toolbarCollapsible .toolbarExtras[data-open] > button > span:global(.hidden) {
+    display: inline;
+  }
 }
 
 .metadata {
@@ -142,42 +189,156 @@
   min-height: 9rem;
 }
 
-.sideDock .picker {
+/* Roomy docks show pickers in-flow under the tools instead of as covering sheets. */
+.inFlowDock .picker {
   position: static;
   overflow: visible;
   border-radius: 0.75rem;
 }
 
-.sideDock .pickerBody {
+.inFlowDock .pickerBody {
   overflow: visible;
 }
 
-.sideDock .picker [data-player-switcher] {
+.inFlowDock .picker [data-player-switcher] {
   display: none;
 }
 
-.routeActions {
+/* Offense pickers fill the remaining dock and scroll on their own, so pills and tools stay put. */
+.inFlowDock .assignmentContent:has(> * > .picker) {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.inFlowDock .assignmentContent:has(> * > .picker) > :has(> .picker) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.inFlowDock .assignmentContent > * > .picker {
+  flex: 1 1 auto;
+  min-height: 7rem;
+  overflow: hidden;
+}
+
+.inFlowDock .assignmentContent > * > .picker .pickerBody {
+  overflow-y: auto;
+}
+
+/* The highlighted Routes/Motion tool already labels an in-flow picker; spend the space on choices. */
+.inFlowDock .assignmentContent > * > .picker > .pickerHeader,
+.inFlowDock .assignmentContent > * > .picker .pickerIntro {
+  display: none;
+}
+
+/* One fixed row of equal tools so nothing jumps around as a route is drawn or cleared. */
+.toolTrayWrap {
+  flex: none;
+  container-type: inline-size;
+}
+
+.toolTray {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   gap: 0.25rem;
 }
 
-@media (max-width: 899px) {
-  .routeActions {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
+.toolTray > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.25rem 0.125rem;
+  border-width: 1px;
+  border-radius: 0.625rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+
+/* Neutral defaults sit below Tailwind utilities so per-tool colours and active states win. */
+@layer components {
+  .toolTray > button {
+    border-color: rgb(229 229 229);
+    background-color: rgb(245 245 245);
+    color: rgb(64 64 64);
   }
 
-  .routeActions > button {
-    justify-content: center;
-    padding-inline: 0.375rem;
+  .toolTray > button:hover:not(:disabled) {
+    background-color: rgb(229 229 229);
   }
 
-  .routeActions > button > svg:last-child {
-    display: none;
+  :global(.dark) .toolTray > button {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(255 255 255 / 0.05);
+    color: rgb(229 229 229);
+  }
+
+  :global(.dark) .toolTray > button:hover:not(:disabled) {
+    background-color: rgb(255 255 255 / 0.1);
+  }
+}
+.toolTray > button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.toolTray > button > svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.toolTray > button > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Narrow side docks: a wide row for the three main tools, a second row for the editing helpers. */
+@container (max-width: 19rem) {
+  .toolTray {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .toolTray > button {
+    grid-column: span 3;
+    flex-direction: row;
+    gap: 0.25rem;
+    min-height: 2.25rem;
+    font-size: 0.6875rem;
+  }
+
+  .toolTray > button:nth-child(-n + 3) {
+    grid-column: span 4;
   }
 }
 
+@container (min-width: 34rem) {
+  .toolTray > button {
+    flex-direction: row;
+    gap: 0.375rem;
+    min-height: 2.25rem;
+    font-size: 0.75rem;
+  }
+}
+
+.playerPills {
+  flex: none;
+  display: grid;
+  grid-auto-columns: minmax(2.5rem, 1fr);
+  grid-auto-flow: column;
+}
 @media (min-width: 900px), (min-width: 600px) and (max-height: 450px) {
   .workspace:not(.bottomDock) {
     flex-direction: row;

@@ -323,15 +323,15 @@ export default function PlayCanvas({
   const opponentMenuRef = useRef<HTMLDivElement>(null);
 
   // Close preset routes & opponent menu on outside click
-  const sideDockRef = useRef(false);
+  const inFlowDockRef = useRef(false);
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as Node;
       const isPlayerSwitch =
         target instanceof Element && Boolean(target.closest('[data-tour="player-pills"], [data-player-switcher]'));
       const isOnField = Boolean(containerRef.current?.contains(target));
-      // Side-docked pickers sit in-flow beside the field, so they stay open as the dock's resting content.
-      if (!sideDockRef.current && presetMenuRef.current && !presetMenuRef.current.contains(target) && !isPlayerSwitch && !isOnField) {
+      // In-flow pickers are the dock's resting content, so outside clicks leave them open.
+      if (!inFlowDockRef.current && presetMenuRef.current && !presetMenuRef.current.contains(target) && !isPlayerSwitch && !isOnField) {
         setIsPresetMenuOpen(false);
         setIsMotionMenuOpen(false);
       }
@@ -344,6 +344,22 @@ export default function PlayCanvas({
     }
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [isPresetMenuOpen, isMotionMenuOpen, isOpponentMenuOpen]);
+
+  // Phone toolbar overflow: secondary play tools collapse behind a single "More" button.
+  const [isToolbarMoreOpen, setIsToolbarMoreOpen] = useState(false);
+  const toolbarExtrasRef = useRef<HTMLDivElement>(null);
+  const toolbarMoreRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!isToolbarMoreOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (toolbarExtrasRef.current?.contains(target) || toolbarMoreRef.current?.contains(target)) return;
+      // Menus opened from the overflow (e.g. opponent plays) render inside it, so anything else closes it.
+      setIsToolbarMoreOpen(false);
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isToolbarMoreOpen]);
 
   useEffect(() => {
     const updateCompactLandscape = () => {
@@ -670,7 +686,7 @@ export default function PlayCanvas({
   // instead of letterboxing the field. `size` is the side dock width or the stacked field pane height.
   const workspaceRef = useRef<HTMLDivElement>(null);
   const playbackRef = useRef<HTMLDivElement>(null);
-  const [dockLayout, setDockLayout] = useState<{ side: boolean; size: number } | null>(null);
+  const [dockLayout, setDockLayout] = useState<{ side: boolean; size: number; inFlow: boolean } | null>(null);
   useLayoutEffect(() => {
     const workspace = workspaceRef.current;
     if (!workspace || typeof ResizeObserver === "undefined") return;
@@ -687,36 +703,38 @@ export default function PlayCanvas({
       const stackedHeightLimited = (height - 0.5 * rem - dockMinH - bar) / vbH < width / vbW;
       // On a near-tie, a height-limited stacked field would be letterboxed sideways; use that width for the dock instead.
       const preferSide = sideScale > stackedScale * 1.04 || (stackedHeightLimited && sideScale >= stackedScale * 0.95);
+      const stackedPane = Math.floor(Math.max(0, stackedScale) * vbH + bar);
+      // A tall enough stacked dock keeps pickers in-flow under the tools instead of covering them.
       const next = preferSide
-        ? { side: true, size: Math.floor(Math.min(Math.max(dockMinW, width - 0.75 * rem - sideScale * vbW - 2), 28 * rem)) }
-        : { side: false, size: Math.floor(Math.max(0, stackedScale) * vbH + bar) };
-      setDockLayout((current) => current?.side === next.side && current.size === next.size ? current : next);
+        ? { side: true, size: Math.floor(Math.min(Math.max(dockMinW, width - 0.75 * rem - sideScale * vbW - 2), 28 * rem)), inFlow: true }
+        : { side: false, size: stackedPane, inFlow: height - 0.5 * rem - stackedPane >= 15 * rem };
+      setDockLayout((current) => current?.side === next.side && current.size === next.size && current.inFlow === next.inFlow ? current : next);
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(workspace);
     return () => observer.disconnect();
   }, [compactFieldViewBox, readOnly]);
-  const isSideDock = dockLayout?.side === true;
+  const isInFlowDock = dockLayout?.inFlow === true;
   useEffect(() => {
-    sideDockRef.current = isSideDock;
-  }, [isSideDock]);
+    inFlowDockRef.current = isInFlowDock;
+  }, [isInFlowDock]);
 
-  // With a side dock there is room to keep the route catalog open, saving a tap per receiver.
-  const wasSideDockRef = useRef(false);
+  // When the dock has room, keep the route catalog open as its resting content, saving a tap per receiver.
+  const wasInFlowDockRef = useRef(false);
   useEffect(() => {
-    if (wasSideDockRef.current && !isSideDock) {
-      // Stacked pickers cover the dock, so don't carry an auto-opened catalog across a rotation.
+    if (wasInFlowDockRef.current && !isInFlowDock) {
+      // Overlay pickers cover the dock, so don't carry an auto-opened catalog across a resize or rotation.
       setIsPresetMenuOpen(false);
       setIsMotionMenuOpen(false);
     }
-    wasSideDockRef.current = isSideDock;
-  }, [isSideDock]);
+    wasInFlowDockRef.current = isInFlowDock;
+  }, [isInFlowDock]);
   useEffect(() => {
-    if (isSideDock && !readOnly && selectedPlayer?.side === "offense" && !isMotionMenuOpen) {
+    if (isInFlowDock && !readOnly && selectedPlayer?.side === "offense" && !isMotionMenuOpen) {
       setIsPresetMenuOpen(true);
     }
-  }, [isSideDock, readOnly, selectedPlayer?.id, selectedPlayer?.side, isMotionMenuOpen]);
+  }, [isInFlowDock, readOnly, selectedPlayer?.id, selectedPlayer?.side, isMotionMenuOpen]);
 
   const [isDepthDragging, setIsDepthDragging] = useState(false);
   const sliderTrackRef = useRef<HTMLDivElement>(null);
@@ -2415,7 +2433,7 @@ export default function PlayCanvas({
       <div
         data-testid="designer-toolbar"
         data-tour="play-command-bar"
-        className={`${styles.toolbar} bg-white dark:bg-[#0B0F19] border border-neutral-200 dark:border-white/10 rounded-xl shadow-sm`}
+        className={`${styles.toolbar} ${readOnly ? "" : styles.toolbarCollapsible} bg-white dark:bg-[#0B0F19] border border-neutral-200 dark:border-white/10 rounded-xl shadow-sm`}
       >
         {/* Left Section: Navigation, Play Name, Formation & Situation */}
         <div className={styles.toolbarMain}>
@@ -2524,6 +2542,7 @@ export default function PlayCanvas({
           )}
         </div>
 
+          <div ref={toolbarExtrasRef} id="designer-toolbar-extras" data-open={isToolbarMoreOpen || undefined} className={`${styles.toolbarExtras} bg-white dark:bg-[#0B0F19] border-neutral-200 dark:border-white/10`}>
           {/* Opposing Side Toggle */}
           <button
             type="button"
@@ -2697,24 +2716,6 @@ export default function PlayCanvas({
             variant="icon"
           />}
 
-          {/* Legal Alignment Status Badge */}
-          {alignmentIssues.length === 0 ? (
-            <div className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Legal</span>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 text-xs font-bold cursor-pointer"
-              title={alignmentIssues.map((i) => i.warning).join("\n")}
-            >
-              <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-red-500 dark:text-red-400" />
-              <span>{alignmentIssues.length}<span className="hidden sm:inline"> Warning{alignmentIssues.length > 1 ? "s" : ""}</span></span>
-            </div>
-          )}
-        </div>
-
-        <div className={styles.toolbarActions}>
           {onOpenQuestions && (
             <button
               type="button"
@@ -2745,6 +2746,42 @@ export default function PlayCanvas({
             </button>
           )}
 
+          </div>
+
+          {/* Legal Alignment Status Badge */}
+          {alignmentIssues.length === 0 ? (
+            <div className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Legal</span>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 text-xs font-bold cursor-pointer"
+              title={alignmentIssues.map((i) => i.warning).join("\n")}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-red-500 dark:text-red-400" />
+              <span>{alignmentIssues.length}<span className="hidden sm:inline"> Warning{alignmentIssues.length > 1 ? "s" : ""}</span></span>
+            </div>
+          )}
+          {!readOnly && (
+            <button
+              ref={toolbarMoreRef}
+              type="button"
+              onClick={() => setIsToolbarMoreOpen((open) => !open)}
+              aria-expanded={isToolbarMoreOpen}
+              aria-controls="designer-toolbar-extras"
+              aria-label="More play tools"
+              title="Opponent, play notes, Q&A and tour"
+              className={`${styles.toolbarMore} relative items-center justify-center w-9 shrink-0 rounded-xl border text-neutral-700 dark:text-neutral-200 cursor-pointer ${isToolbarMoreOpen ? "bg-neutral-200 dark:bg-white/15 border-neutral-300 dark:border-white/20" : "bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10"}`}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+              {(isShowingOpponent || play.questions?.some((q) => !q.answered)) && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
+              )}
+            </button>
+          )}        </div>
+
+        <div className={styles.toolbarActions}>
           {canEdit && onFlushAutoSave && (
             <button
               type="button"
@@ -4219,7 +4256,7 @@ export default function PlayCanvas({
       <div
         data-testid="designer-assignments-pane"
         style={dockLayout?.side ? { flex: `0 0 ${dockLayout.size}px` } : undefined}
-        className={`${styles.assignments} bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-xl`}
+        className={`${styles.assignments} ${isInFlowDock ? styles.inFlowDock : ""} bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-xl`}
       >
         <div className={`${styles.assignmentContent} p-2 sm:p-3 space-y-2 scrollbar-thin bg-white dark:bg-[#0A0E17]`}>
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
@@ -4300,147 +4337,42 @@ export default function PlayCanvas({
             </section>
           ) : (
           <>
-            {/* Selected Player Status & Action Buttons */}
+            {/* Defender / no-selection actions; offense actions live in the tool tray below */}
+            {selectedPlayer?.side !== "offense" && (
             <div data-tour="player-actions" className="flex items-center gap-1 flex-wrap">
-              {selectedPlayer?.side === "offense" && Boolean(selectedPlayer.route?.length) && (
-                <button
-                  type="button"
-                  onClick={handleUndoRoutePoint}
-                  aria-label="Undo last route point"
-                  title="Remove only the last route point"
-                  className="px-2 py-1 rounded-xl text-xs font-bold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 flex items-center gap-1"
-                >
-                  <Undo2 className="w-3.5 h-3.5" />
-                  <span>Undo</span>
-                </button>
-              )}
-
-              {/* View All Position Notes / Install Sheet */}
               <button
                 type="button"
                 onClick={() => setIsPositionNotesModalOpen(true)}
-                className="px-2.5 py-1 rounded-xl text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/10 transition-all flex items-center gap-1.5 [@media(min-width:600px)_and_(max-height:450px)]:hidden [@media(max-width:639px)]:px-1.5"
+                className="px-2.5 py-1 rounded-xl text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/10 transition-all flex items-center gap-1.5"
                 title="View & Edit Coaching Notes for all positions"
                 aria-label="View and edit position notes"
               >
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Notes</span>
               </button>
-
-              {/* Freehand Route Draw Mode Toggle */}
-              {!readOnly && selectedPlayer && selectedPlayer.side === "offense" && (
-                <button
-                  type="button"
-                  onClick={() => setMode(mode === "draw" ? "select" : "draw")}
-                  title={mode === "draw" ? "Drawing mode active: Click on field to add points" : "Enable Freehand Click-to-Draw"}
-                  aria-label={mode === "draw" ? "Stop drawing route" : "Draw route"}
-                  className={`px-2.5 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
-                    mode === "draw"
-                      ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/25"
-                      : "bg-neutral-100 hover:bg-neutral-200 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-white/10"
-                  }`}
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span>{mode === "draw" ? "Stop Drawing" : "Draw Route"}</span>
-                </button>
-              )}
-
-              {/* Clear Route Button */}
-              {!readOnly && selectedPlayer?.route && selectedPlayer.route.length > 0 && (
+              {selectedPlayer?.route && selectedPlayer.route.length > 0 && (
                 <button
                   type="button"
                   onClick={handleClearRoute}
                   title="Clear Route / Assignment"
                   aria-label="Clear route or assignment"
-                  className="px-2 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 bg-neutral-100 hover:bg-red-50 dark:bg-white/5 dark:hover:bg-red-500/10 border border-neutral-200 hover:border-red-300 dark:border-white/10 dark:hover:border-red-500/30 transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 bg-neutral-100 hover:bg-red-50 dark:bg-white/5 dark:hover:bg-red-500/10 border border-neutral-200 hover:border-red-300 dark:border-white/10 dark:hover:border-red-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear</span>
                 </button>
               )}
             </div>
-          {/* Position Coaching Notes Bar for Currently Selected Player */}
-          {selectedPlayer && (
-            <details className="group space-y-1.5 border-t border-neutral-200 dark:border-white/10 pt-2 hidden min-[900px]:block [@media(max-height:450px)]:hidden">
-              <summary className="flex items-center gap-1.5 cursor-pointer text-cyan-600 dark:text-cyan-400 font-mono text-[11px] font-bold min-h-10">
-                <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
-                <span>{selectedPlayer.label} notes:</span>
-              </summary>
-              <textarea
-                rows={2}
-                aria-label={`${selectedPlayer.label} coaching notes`}
-                disabled={readOnly}
-                value={selectedPlayer.notes || ""}
-                onChange={(e) => handleUpdatePlayerNotes(selectedPlayer.id, e.target.value)}
-                placeholder="Coaching assignment and read notes..."
-                className="w-full min-w-0 resize-y rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-black/40 px-2.5 py-2 text-xs leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
-              />
-            </details>
-          )}
-
+            )}
           {/* Offense Route Presets Controls */}
           {selectedPlayer?.side === "offense" ? (
             <div className="space-y-2 [@media(max-width:639px)]:space-y-1" ref={presetMenuRef}>
               {/* Header row: Route assignment info & Action Buttons */}
-              <div className="flex flex-col-reverse items-stretch gap-2">
-                <div className="hidden min-[900px]:flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1 max-sm:hidden">
-                    <Zap className="w-3 h-3" />
-                    <span>{selectedPlayer.label} route:</span>
-                  </span>
-                  {playerHasMotion(selectedPlayer) && (
-                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/40 text-[10px] flex items-center gap-1 shadow-sm">
-                      <Activity className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                      <span>{selectedPlayer.motionName || "Motion"} ⚡</span>
-                    </span>
-                  )}
-                  {selectedPlayer.quickRouteName && (
-                    <span
-                      className={`px-2 py-0.5 rounded-lg font-bold text-[11px] border ${
-                        selectedPlayer.routeType === "motion"
-                          ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40"
-                          : "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
-                      }`}
-                    >
-                      {selectedPlayer.quickRouteName}
-                    </span>
-                  )}
-                  {!selectedPlayer.quickRouteName && !playerHasMotion(selectedPlayer) && !selectedPlayer.route?.length && (
-                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
-                      No route drawn
-                    </span>
-                  )}
-                </div>
-
-                <div className={styles.routeActions}>
-                  {/* Pre-Snap Motion Menu Button */}
-                  <button
-                    type="button"
-                    data-tour="motion-menu-toggle"
-                    disabled={readOnly}
-                    onClick={() => {
-                      setIsMotionMenuOpen((prev) => !prev);
-                      setIsPresetMenuOpen(false);
-                    }}
-                    data-testid="toggle-motion-btn"
-                    aria-label={isMotionMenuOpen ? "Hide motion menu" : "Show motion menu"}
-                    aria-expanded={isMotionMenuOpen}
-                    className={`px-2 py-1 min-h-9 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-sm cursor-pointer ${
-                      isMotionMenuOpen || playerHasMotion(selectedPlayer)
-                        ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30"
-                        : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:border-amber-500/50"
-                    }`}
-                    title="Pre-snap motion options"
-                  >
-                    <Activity className="w-4 h-4" />
-                    <span>Motion</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isMotionMenuOpen ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {/* Preset Routes Menu Toggle Button */}
+              <div className={styles.toolTrayWrap}>
+                <div data-tour="player-actions" className={styles.toolTray}>
                   <button
                     type="button"
                     data-tour="route-drawer-toggle"
-                    disabled={readOnly}
                     onClick={() => {
                       setIsPresetMenuOpen((prev) => !prev);
                       setIsMotionMenuOpen(false);
@@ -4451,41 +4383,85 @@ export default function PlayCanvas({
                     data-testid="route-presets-toggle"
                     aria-label={isPresetMenuOpen ? "Hide route catalog" : "Show route catalog"}
                     aria-expanded={isPresetMenuOpen}
-                    className={`px-2 py-1 min-h-9 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-sm cursor-pointer ${
-                      isPresetMenuOpen
-                        ? "bg-cyan-500 text-black border-cyan-400 shadow-cyan-500/30"
-                        : "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border-cyan-500/30 dark:border-cyan-500/40"
-                    }`}
+                    title="Route library"
+                    className={isPresetMenuOpen ? "bg-cyan-500 text-black border-cyan-400" : "bg-cyan-500/10 text-cyan-800 dark:text-cyan-200 border-cyan-500/40 hover:bg-cyan-500/20"}
                   >
-                    <Zap className="w-4 h-4" />
+                    <Zap />
                     <span>Routes</span>
-                    <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isPresetMenuOpen ? "rotate-180" : ""}`} />
                   </button>
-
-                  {/* Add Preset Button */}
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      disabled={customPresets.length >= MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM}
-                      onClick={() => {
-                        if (!selectedPlayer.route || selectedPlayer.route.length === 0) {
-                          alert(`Please click on the field in Draw Mode to create a route for ${selectedPlayer.label} first, then click Add Preset.`);
-                          return;
-                        }
-                        setNewPresetName(`${selectedPlayer.label} Custom Route`);
-                        setIsSavePresetModalOpen(true);
-                      }}
-                      className="px-2 py-1 min-h-9 rounded-xl text-xs font-black bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 transition-all flex items-center gap-1 shadow-sm cursor-pointer"
-                      title={isDemo ? "Add temporary custom preset (session only)" : `Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
-                    >
-                      <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span className="hidden min-[900px]:inline">Save Preset</span>
-                      <span className="min-[900px]:hidden">Save</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    data-tour="motion-menu-toggle"
+                    onClick={() => {
+                      setIsMotionMenuOpen((prev) => !prev);
+                      setIsPresetMenuOpen(false);
+                    }}
+                    data-testid="toggle-motion-btn"
+                    aria-label={isMotionMenuOpen ? "Hide motion menu" : "Show motion menu"}
+                    aria-expanded={isMotionMenuOpen}
+                    title="Pre-snap motion options"
+                    className={isMotionMenuOpen || playerHasMotion(selectedPlayer) ? "bg-amber-500 text-black border-amber-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-200 border-amber-500/40 hover:bg-amber-500/20"}
+                  >
+                    <Activity />
+                    <span>Motion</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode(mode === "draw" ? "select" : "draw")}
+                    title={mode === "draw" ? "Drawing mode active: tap the field to add points" : "Tap the field to draw a custom route"}
+                    aria-label={mode === "draw" ? "Stop drawing route" : "Draw route"}
+                    aria-pressed={mode === "draw"}
+                    className={mode === "draw" ? "bg-amber-500 text-black border-amber-400" : undefined}
+                  >
+                    <Edit2 />
+                    <span>{mode === "draw" ? "Done" : "Draw"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUndoRoutePoint}
+                    disabled={!selectedPlayer.route?.length}
+                    aria-label="Undo last route point"
+                    title="Remove only the last route point"
+                  >
+                    <Undo2 />
+                    <span>Undo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearRoute}
+                    disabled={!selectedPlayer.route?.length}
+                    title="Clear Route / Assignment"
+                    aria-label="Clear route or assignment"
+                    className="hover:text-red-600 dark:hover:text-red-400"
+                  >
+                    <Trash2 />
+                    <span>Clear</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPositionNotesModalOpen(true)}
+                    title="View & Edit Coaching Notes for all positions"
+                    aria-label="View and edit position notes"
+                  >
+                    <Layers />
+                    <span>Notes</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedPlayer.route?.length || customPresets.length >= MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM}
+                    onClick={() => {
+                      setNewPresetName(`${selectedPlayer.label} Custom Route`);
+                      setIsSavePresetModalOpen(true);
+                    }}
+                    aria-label="Save Preset"
+                    className="text-emerald-800 dark:text-emerald-200"
+                    title={!selectedPlayer.route?.length ? "Draw or pick a route first, then save it as a reusable preset" : isDemo ? "Add temporary custom preset (session only)" : `Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
+                  >
+                    <Plus />
+                    <span>Save</span>
+                  </button>
                 </div>
               </div>
-
               {/* Pre-Snap Motion Menu (larger panel) */}
               {isMotionMenuOpen && (
                 <div
@@ -5122,6 +5098,24 @@ export default function PlayCanvas({
                 </div>
               )}
             </div>
+          )}
+          {/* Position Coaching Notes Bar for Currently Selected Player */}
+          {selectedPlayer && (
+            <details className="group space-y-1.5 border-t border-neutral-200 dark:border-white/10 pt-2 hidden min-[900px]:block [@media(max-height:450px)]:hidden">
+              <summary className="flex items-center gap-1.5 cursor-pointer text-cyan-600 dark:text-cyan-400 font-mono text-[11px] font-bold min-h-10">
+                <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+                <span>{selectedPlayer.label} notes:</span>
+              </summary>
+              <textarea
+                rows={2}
+                aria-label={`${selectedPlayer.label} coaching notes`}
+                disabled={readOnly}
+                value={selectedPlayer.notes || ""}
+                onChange={(e) => handleUpdatePlayerNotes(selectedPlayer.id, e.target.value)}
+                placeholder="Coaching assignment and read notes..."
+                className="w-full min-w-0 resize-y rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-black/40 px-2.5 py-2 text-xs leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
+              />
+            </details>
           )}
           </>
           )}

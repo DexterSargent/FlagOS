@@ -193,12 +193,12 @@ describe("PlayCanvas Route Presets Suite", () => {
     fireEvent.mouseDown(screen.getByRole("button", { name: "Select Y" }));
     fireEvent.click(screen.getByRole("button", { name: "Select Y" }));
     expect(screen.getByTestId("route-presets-catalog")).toBeInTheDocument();
-    expect(screen.getByText("Y route:")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select Y" })).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.mouseDown(screen.getByRole("button", { name: "Switch to Z" }));
     fireEvent.click(screen.getByRole("button", { name: "Switch to Z" }));
     expect(screen.getByTestId("route-presets-catalog")).toBeInTheDocument();
-    expect(screen.getByText("Z route:")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select Z" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("adjusts route depth from the vertical rail beside the field", () => {
@@ -226,11 +226,11 @@ describe("PlayCanvas Route Presets Suite", () => {
   it("does not auto-select a receiver after clicking empty field space", () => {
     render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
-    expect(screen.getByText("X route:")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select X" })).toHaveAttribute("aria-pressed", "true");
     const svg = screen.getByTestId("designer-field").querySelector("svg") as SVGSVGElement;
     fireEvent.pointerDown(svg, { clientX: 500, clientY: 350 });
 
-    expect(screen.queryByText(/ route:$/)).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { name: /^Select / }).filter((b) => b.getAttribute("aria-pressed") === "true" && /^Select (QB|C|X|Y|Z)$/.test(b.getAttribute("aria-label") ?? ""))).toHaveLength(0);
   });
 
   it("applies a route at a custom depth", async () => {
@@ -262,12 +262,12 @@ describe("PlayCanvas Route Presets Suite", () => {
   it("selects a defender when switching from an offense play to a defense play", () => {
     const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
-    expect(screen.getByText("X route:")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select X" })).toHaveAttribute("aria-pressed", "true");
 
     rerender(<PlayCanvas play={mockDefensePlay} onChange={vi.fn()} />);
 
     expect(screen.getByText("Coverage & Assignment (RUSH):")).toBeInTheDocument();
-    expect(screen.queryByText(/ route:$/)).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("button", { name: /^Select / }).filter((b) => b.getAttribute("aria-pressed") === "true" && /^Select (QB|C|X|Y|Z)$/.test(b.getAttribute("aria-label") ?? ""))).toHaveLength(0);
   });
 
   it("applies a route preset when clicking a quick-route button", async () => {
