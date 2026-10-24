@@ -11,7 +11,7 @@ describe("TeamLogo", () => {
     const football = container.querySelector("svg");
     expect(football).toBeInTheDocument();
     expect(football).toHaveStyle({ color: "#97233F" });
-    expect(football?.querySelector("ellipse")).toBeInTheDocument();
+    expect(football?.querySelector("path")).toBeInTheDocument();
   });
 
   it("replaces the demo shield fallback with a primary-color football", () => {
@@ -22,7 +22,7 @@ describe("TeamLogo", () => {
     const football = container.querySelector("svg");
     expect(football).toBeInTheDocument();
     expect(football).toHaveStyle({ color: "#97233F" });
-    expect(football?.querySelector("ellipse")).toBeInTheDocument();
+    expect(football?.querySelector("path")).toBeInTheDocument();
   });
 
   it("keeps the shield icon available for non-demo teams", () => {

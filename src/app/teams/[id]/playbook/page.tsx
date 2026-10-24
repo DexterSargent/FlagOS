@@ -1076,7 +1076,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className={`${viewLevel === "editor" ? "h-dvh overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
+    <div className={`${viewLevel === "editor" ? "min-h-screen xl:h-dvh overflow-y-auto xl:overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -1091,7 +1091,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
       <div className={`mx-auto ${
         viewLevel === "editor"
-          ? "max-w-[1600px] p-1.5 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 min-h-0 flex-1 overflow-hidden"
+          ? "max-w-[1600px] p-1.5 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 min-h-0 flex-1 overflow-y-auto xl:overflow-hidden"
           : isEmbedded
           ? "max-w-7xl space-y-3 p-2 sm:p-3 flex-1"
           : "max-w-7xl space-y-6 p-4 sm:p-6 md:p-8 flex-1"
@@ -1801,163 +1801,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
         {/* Full editor for the selected play */}
         {viewLevel === "editor" && activePlaybook && (
-          <div className="flex flex-col gap-2 flex-1 min-h-0 h-full overflow-hidden">
-            {/* Unified Studio Top Toolbar */}
-            <div data-testid="designer-toolbar" className="flex flex-wrap max-sm:flex-nowrap items-center justify-between gap-2 max-sm:gap-1 bg-[#0B0F19] p-2 max-sm:p-1.5 rounded-xl border border-white/10 shrink-0 [&_button]:min-h-9 [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-cyan-400">
-              {/* Left: Navigation & Formation */}
-              <div className="flex items-center gap-2 max-sm:gap-1.5 min-w-0 flex-1 basis-40 max-sm:basis-0">
-                <button
-                  onClick={() => setViewLevel("plays")}
-                  className="p-2 sm:p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
-                  title="Back to Plays"
-                  aria-label="Back to plays"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span className="hidden sm:inline">Plays</span>
-                </button>
-                {hasEditAccess && <span className="hidden sm:inline text-xs text-neutral-400 shrink-0">Category</span>}
-                <select
-                  value={activePlay?.formation ?? selectedFormationName}
-                  aria-label={hasEditAccess ? "Play category" : "Formation"}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    if (hasEditAccess && activePlay) {
-                      handleUpdateActivePlay({ ...activePlay, formation: name });
-                    } else {
-                      setSelectedFormationName(name);
-                      setViewLevel("plays");
-                    }
-                  }}
-                  title={hasEditAccess ? `Move play to category: ${activePlay?.formation}` : selectedFormationName}
-                  className="min-w-0 w-full max-w-64 h-9 px-2 rounded-lg bg-black/50 border border-white/10 text-xs font-semibold text-cyan-300 focus:border-cyan-400 outline-none"
-                >
-                  {activePlaybook.formations.map((f) => (
-                    <option key={f.id} value={f.name}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-
-              </div>
-
-              {/* Selected play and editing actions */}
-              <div className="flex items-center gap-1 shrink-0">
-                {activePlay && (
-                  <>
-                    {hasEditAccess && (
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicatePlay(activePlay)}
-                        className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
-                        title="Duplicate Play"
-                        aria-label="Duplicate Play"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {hasEditAccess && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePlay(activePlay.id)}
-                        className="p-2 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-white/10"
-                        title="Delete Play"
-                        aria-label="Delete Play"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {hasEditAccess && (
-                  <button
-                    onClick={handleCreatePlayInFormationClick}
-                    aria-label="New Play"
-                    className="px-2.5 py-1 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-1 shrink-0 transition-all cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">New Play</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Right: Actions (Q&A, Print, Save) */}
-              <div className="flex items-center justify-end gap-2 max-sm:gap-1 flex-wrap max-sm:flex-nowrap shrink-0">
-                {activePlay && (
-                  <button
-                    onClick={() => setIsQuestionsModalOpen(true)}
-                    className={`px-2.5 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl font-bold text-xs uppercase tracking-wider transition-all border flex items-center gap-1.5 cursor-pointer relative ${
-                      activePlay.questions && activePlay.questions.some((q) => !q.answered)
-                        ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/10"
-                        : activePlay.questions && activePlay.questions.length > 0
-                        ? "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border-cyan-500/30"
-                        : "bg-white/5 hover:bg-white/10 text-white border-white/10"
-                    }`}
-                    title="Ask coach questions or review discussion on this play"
-                    aria-label="Coach Q&A"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="hidden sm:[@media(min-height:451px)]:inline">Coach Q&A</span>
-                    {activePlay.questions && activePlay.questions.length > 0 && (
-                      <span
-                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                          activePlay.questions.some((q) => !q.answered)
-                            ? "bg-amber-500/30 text-amber-300 border border-amber-500/50"
-                            : "bg-cyan-500/20 text-cyan-300"
-                        }`}
-                      >
-                        {activePlay.questions.length}
-                      </span>
-                    )}
-                  </button>
-                )}
-                {canViewPlaybook && (
-                  <button
-                    onClick={() => setIsPrintModalOpen(true)}
-                    className="px-2.5 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-1.5 cursor-pointer"
-                    title="Print wristband playbook sheets"
-                    aria-label="Print playbook"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-cyan-400" />
-                    <span className="hidden md:inline">Print</span>
-                  </button>
-                )}
-                {/* Auto-Save Status Indicator in Editor */}
-                {hasEditAccess && (
-                  <button
-                    type="button"
-                    onClick={flushAutoSave}
-                    aria-label={autoSaveStatus === "saving" ? "Saving playbook" : "Save playbook"}
-                    title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
-                    className="px-2.5 py-1 max-sm:min-h-10 max-sm:min-w-10 max-sm:justify-center rounded-xl bg-white/5 border border-white/10 text-xs font-mono flex items-center gap-1.5 transition-all hover:bg-white/10 cursor-pointer"
-                    data-testid="editor-autosave-status-badge"
-                  >
-                    {autoSaveStatus === "saving" ? (
-                      <>
-                        <RefreshCw className="w-3 h-3 text-cyan-400 animate-spin" />
-                        <span className="text-cyan-300 hidden sm:inline">Saving to Cloud...</span>
-                      </>
-                    ) : autoSaveStatus === "unsaved" ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                        <span className="text-amber-300 hidden sm:inline">Unsaved</span>
-                      </>
-                    ) : autoSaveStatus === "offline" ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span className="text-neutral-400 hidden sm:inline">Saved locally</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-400" />
-                        <span className="text-neutral-400 hidden sm:inline">Saved to Cloud</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-
+          <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto xl:overflow-hidden">
             {/* Informative Player Notice */}
             {isPlayer && (
               <div className="px-3.5 py-1.5 [@media(max-height:450px)]:hidden bg-cyan-950/40 border-b border-cyan-500/20 text-cyan-300 text-xs flex items-center justify-between gap-2 shrink-0">
@@ -1977,14 +1821,23 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             )}
 
             {/* Tactical Playmaker Canvas Workspace */}
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-visible xl:overflow-hidden">
               {activePlay ? (
                 <PlayCanvas
                   play={activePlay}
                   onChange={handleUpdateActivePlay}
                   readOnly={!hasEditAccess}
+                  hasEditAccess={hasEditAccess}
                   playbook={activePlaybook}
                   allPlaybooks={playbooks}
+                  onBackToPlays={() => setViewLevel("plays")}
+                  onDuplicatePlay={hasEditAccess ? () => handleDuplicatePlay(activePlay) : undefined}
+                  onDeletePlay={hasEditAccess ? () => handleDeletePlay(activePlay.id) : undefined}
+                  onCreateNewPlay={hasEditAccess ? handleCreatePlayInFormationClick : undefined}
+                  onOpenQuestions={() => setIsQuestionsModalOpen(true)}
+                  onPrintPlaybook={() => setIsPrintModalOpen(true)}
+                  autoSaveStatus={autoSaveStatus}
+                  onFlushAutoSave={flushAutoSave}
                 />
               ) : (
                 <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-8 text-center text-neutral-400">

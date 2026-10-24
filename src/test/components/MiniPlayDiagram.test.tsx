@@ -112,4 +112,26 @@ describe("MiniPlayDiagram", () => {
     expect(screen.getByText("CB")).toBeInTheDocument();
     expect(container.querySelector('line[stroke="#EC4899"]')).toBeInTheDocument();
   });
+
+  it("darkens half of the receiver badge to indicate defender shade leverage", () => {
+    // Inside shade on WR at x: 20 (< 50) -> right half darkened
+    const insidePlay: PlayDiagram = {
+      ...manPlay,
+      players: manPlay.players.map((p) =>
+        p.id === "cb" ? { ...p, shade: "inside" } : p
+      ),
+    };
+    const { rerender } = render(<MiniPlayDiagram play={insidePlay} />);
+    expect(screen.getByTestId("mini-receiver-shaded-half-wr-right")).toBeInTheDocument();
+
+    // Outside shade on WR at x: 20 (< 50) -> left half darkened
+    const outsidePlay: PlayDiagram = {
+      ...manPlay,
+      players: manPlay.players.map((p) =>
+        p.id === "cb" ? { ...p, shade: "outside" } : p
+      ),
+    };
+    rerender(<MiniPlayDiagram play={outsidePlay} />);
+    expect(screen.getByTestId("mini-receiver-shaded-half-wr-left")).toBeInTheDocument();
+  });
 });

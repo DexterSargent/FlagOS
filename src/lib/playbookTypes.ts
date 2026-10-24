@@ -197,6 +197,7 @@ export interface PlayerNode {
   // Defensive Specific
   coverageType?: DefensiveCoverageType;
   shade?: DefensiveShade; // defensive alignment shade relative to manTarget receiver: "inside" | "outside" | "head_up"
+  cushionYards?: number; // cushion depth in yards between defender and target receiver in man coverage (e.g. 1 to 12 yards)
   manTargetId?: string; // id of offensive player to mirror / lock
   zoneId?: string; // id of zone to drop into
   notes?: string; // Coaching notes & assignment instructions for this specific position
@@ -242,8 +243,43 @@ export function getPlayerRouteOrigin(player: PlayerNode): RoutePoint {
 
 export interface ShadedPositionOptions {
   currentDefenderY?: number;
+  cushionYards?: number;
   losY?: number;
   offset?: number;
+}
+
+/**
+ * Determines which half of the receiver circle should be darkened ("left" | "right" | null)
+ * to visually indicate defensive alignment / shade leverage.
+ *
+ * Inside shade:
+ * - Receiver left of field center (x < 50): right half (leverage toward center field)
+ * - Receiver right of field center (x > 50): left half (leverage toward center field)
+ * - Receiver centered (x === 50): null (direct head-up alignment)
+ *
+ * Outside shade:
+ * - Receiver left of field center (x < 50): left half (leverage toward boundary sideline)
+ * - Receiver right of field center (x > 50): right half (leverage toward boundary sideline)
+ * - Receiver centered (x === 50): right half (boundary leverage)
+ *
+ * Head up:
+ * - null (neither half darkened)
+ */
+export function getReceiverShadedHalf(
+  receiverX: number,
+  shade: DefensiveShade = "head_up"
+): "left" | "right" | null {
+  if (shade === "inside") {
+    if (receiverX < 50) return "right";
+    if (receiverX > 50) return "left";
+    return null;
+  }
+  if (shade === "outside") {
+    if (receiverX < 50) return "left";
+    if (receiverX > 50) return "right";
+    return "right";
+  }
+  return null;
 }
 
 /**
@@ -264,6 +300,7 @@ export interface ShadedPositionOptions {
  * - DB aligns directly across from receiver (x === receiver.x).
  *
  * Cushion (y):
+ * - If cushionYards is provided, DB aligns exactly cushionYards in front of receiver (1 yard = YARD_HEIGHT_PCT).
  * - If currentDefenderY is on the defensive side of LOS and receiver (currentDefenderY < receiver.y - 1),
  *   it preserves the defender's custom cushion depth.
  * - Otherwise, it defaults to a standard cushion in front of the receiver (bounded by losY - 3).
@@ -276,6 +313,7 @@ export function calculateShadedPosition(
   offsetParam?: number
 ): { x: number; y: number } {
   let currentDefenderY: number | undefined;
+  let cushionYards: number | undefined;
   let losY = 60;
   let offset = 2.8;
 
@@ -285,6 +323,7 @@ export function calculateShadedPosition(
     if (typeof offsetParam === "number") offset = offsetParam;
   } else if (options) {
     currentDefenderY = options.currentDefenderY;
+    cushionYards = options.cushionYards;
     if (options.losY !== undefined) losY = options.losY;
     if (options.offset !== undefined) offset = options.offset;
   }
@@ -310,7 +349,11 @@ export function calculateShadedPosition(
   targetX = Math.round(Math.max(5, Math.min(95, targetX)) * 10) / 10;
 
   let targetY: number;
-  if (
+  if (cushionYards !== undefined && cushionYards > 0) {
+    // 1 yard = YARD_HEIGHT_PCT (1.75% of field height)
+    targetY = receiver.y - (cushionYards * YARD_HEIGHT_PCT);
+    targetY = Math.max(5, Math.min(receiver.y - 1.5, targetY));
+  } else if (
     currentDefenderY !== undefined &&
     currentDefenderY < receiver.y - 1 &&
     currentDefenderY < losY
@@ -1023,6 +1066,183 @@ export function generateRoutePresetDetails(
   );
   const route = generateRoutePreset(routeName, startX, startY, losY, breakYards);
   return { route, breakYards };
+}
+
+/**
+ * Automatically generates a concise, descriptive coaching note for a player's assignment.
+ *
+ * Offense:
+ * - Dig/In at 8yds -> "8yd Dig"
+ * - Post at 10yds -> "10yd Post"
+ * - Pre-snap motion + route -> "Jet Motion + 8yd Dig"
+ * - QB default -> "Dropback & Read Progression"
+ * - Center default -> "Snap & Block / Checkdown"
+ *
+ * Defense:
+ * - Man inside shade, 5yds off -> "Man inside shade, 5yds off on X" (or "Man inside shade, 5yds off")
+ * - Man outside shade, 3yds off -> "Man outside shade, 3yds off on Z"
+ * - Zone drop -> "Deep Half (Left) Zone" or "Zone Drop"
+ * - Pass Rush -> "Pass Rush from 7yds"
+ * - QB Spy -> "QB Spy"
+ */
+export function generatePlayerAssignmentNote(
+  player: PlayerNode,
+  allPlayers?: PlayerNode[],
+  zones?: ZoneBubble[]
+): string {
+  if (player.side === "defense") {
+    if (player.coverageType === "man") {
+      const shade = player.shade || "head_up";
+      const shadeText =
+        shade === "inside"
+          ? "inside shade"
+          : shade === "outside"
+          ? "outside shade"
+          : "head up";
+
+      const cushion = player.cushionYards ?? 5;
+      const cushionText = `${cushion}yd${cushion === 1 ? "" : "s"} off`;
+
+      const targetPlayer =
+        player.manTargetId && allPlayers
+          ? allPlayers.find((p) => p.id === player.manTargetId && p.side === "offense")
+          : undefined;
+
+      if (targetPlayer) {
+        return `Man ${shadeText}, ${cushionText} on ${targetPlayer.label}`;
+      }
+      return `Man ${shadeText}, ${cushionText}`;
+    }
+
+    if (player.coverageType === "rush" || player.label === "RUSH") {
+      return "Pass Rush from 7yds";
+    }
+
+    if (player.coverageType === "spy") {
+      return "QB Spy";
+    }
+
+    if (player.coverageType === "zone" || player.zoneId) {
+      if (player.zoneId && zones) {
+        const found = zones.find((z) => z.id === player.zoneId);
+        if (found) {
+          const zoneTemplate = STANDARD_DEFENSIVE_ZONES.find(
+            (t) => t.name.toLowerCase() === found.name.toLowerCase()
+          );
+          const zoneName = zoneTemplate?.name || found.name;
+          return zoneName.toLowerCase().includes("zone") ? zoneName : `${zoneName} Zone`;
+        }
+      }
+      return "Zone Coverage Drop";
+    }
+
+    return "Coverage Assignment";
+  }
+
+  // Offense
+  const hasMotion = playerHasMotion(player);
+  const motionName =
+    player.motionName ||
+    (player.quickRouteName?.includes("Motion") ? player.quickRouteName : undefined);
+
+  if (player.label === "QB" && (!player.route || player.route.length === 0)) {
+    return "Dropback & Read Progression";
+  }
+
+  if (player.label === "C" && (!player.route || player.route.length === 0)) {
+    return "Snap & Block / Checkdown";
+  }
+
+  if (player.quickRouteName) {
+    const rawName = player.quickRouteName;
+    const cleanLower = rawName.toLowerCase().replace(/\s+/g, "");
+    const catalogItem = ROUTE_PRESETS_CATALOG.find((r) => {
+      const rLower = r.name.toLowerCase().replace(/\s+/g, "");
+      const sLower = r.shortName.toLowerCase().replace(/\s+/g, "");
+      if (rLower === cleanLower || sLower === cleanLower) return true;
+      if (cleanLower.includes("dig") || cleanLower.includes("in")) {
+        if (r.shortName === "Dig") return true;
+      }
+      if (rLower.includes("/") && cleanLower.includes("/")) {
+        const partsR = r.name.toLowerCase().split("/").map((s) => s.trim());
+        const partsC = rawName.toLowerCase().split("/").map((s) => s.trim());
+        if (partsR.some((p) => partsC.includes(p))) return true;
+      }
+      return false;
+    });
+    const routeName =
+      catalogItem?.shortName ||
+      (rawName.includes("/") ? rawName.split("/")[0].trim() : rawName);
+
+    const depth = player.routeDepthYards ?? catalogItem?.defaultBreakYards ?? 5;
+
+    // Pure pre-snap motion preset
+    if (
+      rawName.toLowerCase().includes("motion") ||
+      rawName.toLowerCase().includes("shift")
+    ) {
+      return rawName;
+    }
+
+    const routeDesc = `${depth}yd ${routeName}`;
+    if (hasMotion && motionName && !motionName.toLowerCase().includes(routeName.toLowerCase())) {
+      return `${motionName} + ${routeDesc}`;
+    }
+    return routeDesc;
+  }
+
+  if (player.route && player.route.length > 0 && player.routeType !== "motion") {
+    return "Custom Route";
+  }
+
+  if (hasMotion && motionName) {
+    return motionName;
+  }
+
+  return "Pass Route";
+}
+
+/**
+ * Updates the overall play.notes string by maintaining an 'Assignments:' block
+ * for the active squad while preserving any custom high-level coach notes above it.
+ */
+export function updatePlayNotesWithAssignments(
+  currentPlayNotes: string | undefined,
+  players: PlayerNode[],
+  zones?: ZoneBubble[],
+  playSide?: "offense" | "defense"
+): string {
+  const activeSide =
+    playSide ||
+    (players.some((p) => p.side === "defense") && !players.some((p) => p.side === "offense")
+      ? "defense"
+      : "offense");
+  const relevantPlayers = players.filter((p) => p.side === activeSide);
+
+  const assignmentLines = relevantPlayers
+    .map((p) => {
+      const note = p.notes || generatePlayerAssignmentNote(p, players, zones);
+      return `• ${p.label}: ${note}`;
+    })
+    .join("\n");
+
+  const header = "Assignments:";
+  const trimmed = (currentPlayNotes || "").trim();
+
+  if (trimmed.includes(header)) {
+    const parts = trimmed.split(header);
+    const preamble = parts[0].trim();
+    if (preamble.length > 0) {
+      return `${preamble}\n\n${header}\n${assignmentLines}`;
+    }
+    return `${header}\n${assignmentLines}`;
+  }
+
+  if (trimmed.length > 0) {
+    return `${trimmed}\n\n${header}\n${assignmentLines}`;
+  }
+
+  return `${header}\n${assignmentLines}`;
 }
 
 // Standard Squad Offense Preset Lineup (Supports 4 to 8 players per side)

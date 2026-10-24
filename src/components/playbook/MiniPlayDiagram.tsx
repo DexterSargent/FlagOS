@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useLeague } from "@/lib/leagueContext";
-import { PlayDiagram, DEFAULT_LOS_Y, RUSH_LINE_DISTANCE, playerHasMotion, getPlayerMotionPath } from "@/lib/playbookTypes";
+import { PlayDiagram, DEFAULT_LOS_Y, RUSH_LINE_DISTANCE, playerHasMotion, getPlayerMotionPath, getReceiverShadedHalf } from "@/lib/playbookTypes";
 
 interface MiniPlayDiagramProps {
   play: PlayDiagram;
@@ -334,6 +334,40 @@ export default function MiniPlayDiagram({
               stroke={stroke}
               strokeWidth="2"
             />
+            {(() => {
+              if (!isOffense) return null;
+              const coveringDefender = play.players.find(
+                (d) => d.side === "defense" && d.coverageType === "man" && d.manTargetId === player.id
+              );
+              if (!coveringDefender) return null;
+              const shade = coveringDefender.shade || "head_up";
+              const darkenedSide = getReceiverShadedHalf(player.x, shade);
+              if (!darkenedSide) return null;
+
+              return (
+                <g data-testid={`mini-receiver-shaded-half-${player.id}-${darkenedSide}`}>
+                  <path
+                    d={
+                      darkenedSide === "left"
+                        ? `M ${px} ${py - 17} A 17 17 0 0 0 ${px} ${py + 17} Z`
+                        : `M ${px} ${py - 17} A 17 17 0 0 1 ${px} ${py + 17} Z`
+                    }
+                    fill="#000000"
+                    fillOpacity="0.55"
+                  />
+                  <line
+                    x1={px}
+                    y1={py - 17}
+                    x2={px}
+                    y2={py + 17}
+                    stroke="#FFFFFF"
+                    strokeWidth="1"
+                    strokeOpacity="0.35"
+                    strokeDasharray="2 2"
+                  />
+                </g>
+              );
+            })()}
             {showLabels && (
               <text
                 x={px}

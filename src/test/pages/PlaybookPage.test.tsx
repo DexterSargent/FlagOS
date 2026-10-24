@@ -278,7 +278,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     expect(cached[0].plays.find((item: { id: string }) => item.id === plays[0].id))
       .toEqual({ ...book.plays.find((item) => item.id === plays[0].id), formation: "Empty Category" });
     const prompt = vi.spyOn(window, "prompt").mockReturnValue("Custom Category");
-    fireEvent.change(screen.getByRole("combobox", { name: "Play formation" }), { target: { value: "__ADD_NEW__" } });
+    fireEvent.change(await screen.findByRole("combobox", { name: "Play category" }), { target: { value: "__ADD_NEW__" } });
     fireEvent.change(screen.getByRole("combobox", { name: "Play category" }), { target: { value: formation.name } });
     cached = JSON.parse(localStorage.getItem("flagos_playbooks_team_apex")!);
     expect(cached[0].formations.some((item: { name: string }) => item.name === "Custom Category")).toBe(true);

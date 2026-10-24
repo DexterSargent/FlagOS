@@ -826,8 +826,8 @@ html.light a.text-white:not([class*="bg-"]):not(button *) {
 }
 
 /* SVG Icon visibility on light surfaces */
-html.light svg.text-white:not(button[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *):not(a[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *),
-html.light .lucide.text-white:not(button[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *):not(a[class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *) {
+html.light svg.text-white:not([class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *):not([style*="background"] *),
+html.light .lucide.text-white:not([class*="bg-"]:not(.bg-white\/5):not(.bg-white\/10) *):not([style*="background"] *) {
   color: #0f172a !important;
   stroke: #0f172a !important;
 }

@@ -8,6 +8,7 @@ import { useTeamColors } from "@/lib/teamColorContext";
 import { useEmbedState } from "@/lib/embedState";
 import { getAccentOnDark } from "@/lib/teamColors";
 import { TeamLogo } from "@/components/TeamAssets";
+import { useLeague } from "@/lib/leagueContext";
 import SiteControls from "@/components/SiteControls";
 
 type TeamSection = "overview" | "schedule" | "roster" | "stats" | "playbook";
@@ -42,6 +43,7 @@ export function useCanAccessTeamPlaybook(teamId: string): boolean {
 export default function TeamNavBar({ teamId, className = "" }: { teamId: string; className?: string }) {
   const pathname = usePathname();
   const { team, palette } = useTeamColors();
+  const { isDemoLeague } = useLeague();
   const { embedQuery } = useEmbedState();
   const canAccessPlaybook = useCanAccessTeamPlaybook(teamId);
   const active = getActiveTeamSection(pathname, teamId);
@@ -72,10 +74,11 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
               logoUrl={team?.logoUrl}
               icon={team?.icon}
               primaryColor={accent}
+              isDemo={isDemoLeague}
               className="w-6 h-6"
             />
           </span>
-          <span className="hidden md:block truncate text-sm font-black uppercase tracking-wide text-white max-w-[14rem]">
+          <span className="hidden lg:block truncate text-sm font-black uppercase tracking-wide text-white max-w-[14rem]">
             {teamName}
           </span>
         </Link>

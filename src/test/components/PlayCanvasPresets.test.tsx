@@ -525,6 +525,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
     // Re-render with inside shade
     rerender(<PlayCanvas play={insidePlay} onChange={handleChange} />);
+    expect(screen.getByTestId("receiver-shaded-half-p_x-right")).toBeDefined();
 
     // 3. Select Outside Shade
     // Receiver X is left of center (15 < 50), so outside shade shifts toward sideline (15 - 2.8 = 12.2)
@@ -535,6 +536,11 @@ describe("PlayCanvas Route Presets Suite", () => {
     expect(outsideCb1?.shade).toBe("outside");
     expect(outsideCb1?.x).toBe(12.2);
 
+    // Re-render with outside shade
+    rerender(<PlayCanvas play={outsidePlay} onChange={handleChange} />);
+    // Outside shade on left receiver (15 < 50) darkens the outside/left half of the receiver badge
+    expect(screen.getByTestId("receiver-shaded-half-p_x-left")).toBeDefined();
+
     // 4. Select Head Up
     // Should align directly over receiver X (15)
     fireEvent.click(screen.getByTestId("shade-head_up"));
@@ -543,5 +549,98 @@ describe("PlayCanvas Route Presets Suite", () => {
     const headUpCb1 = headUpPlay.players.find((p) => p.id === "p_cb1");
     expect(headUpCb1?.shade).toBe("head_up");
     expect(headUpCb1?.x).toBe(15);
+
+    // Re-render with head up -> no half is darkened
+    rerender(<PlayCanvas play={headUpPlay} onChange={handleChange} />);
+    expect(screen.queryByTestId("receiver-shaded-half-p_x-right")).toBeNull();
+    expect(screen.queryByTestId("receiver-shaded-half-p_x-left")).toBeNull();
+
+    // 5. Cushion Depth Controls
+    expect(screen.getByTestId("cushion-depth-controls")).toBeDefined();
+
+    // Select Press cushion (1 yard)
+    fireEvent.click(screen.getByTestId("cushion-preset-1"));
+    const pressPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const pressCb1 = pressPlay.players.find((p) => p.id === "p_cb1");
+    expect(pressCb1?.cushionYards).toBe(1);
+    expect(pressCb1?.y).toBe(68.3); // 70 - 1.75 = 68.25 -> 68.3
+
+    // Select Soft cushion (7 yards)
+    fireEvent.click(screen.getByTestId("cushion-preset-7"));
+    const softPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const softCb1 = softPlay.players.find((p) => p.id === "p_cb1");
+    expect(softCb1?.cushionYards).toBe(7);
+    expect(softCb1?.y).toBe(57.8); // 70 - (7 * 1.75) = 57.75 -> 57.8
+  });
+
+  describe("Automatic Assignment Notes in Play and Player Notes", () => {
+    it("automatically populates '8yd Dig' in player notes and play notes when Dig / In route is set to 8yds depth", async () => {
+      const handleChange = vi.fn();
+      const digPlay: PlayDiagram = {
+        ...mockOffensePlay,
+        players: mockOffensePlay.players.map((p) =>
+          p.id === "p_x"
+            ? { ...p, quickRouteName: "Dig / In", routeDepthYards: 9, route: [{ x: 15, y: 54 }, { x: 30, y: 54 }] }
+            : p
+        ),
+      };
+
+      const { rerender } = render(<PlayCanvas play={digPlay} onChange={handleChange} />);
+
+      // Select Receiver X
+      const xBtn = screen.getByRole("button", { name: "Select X" });
+      fireEvent.click(xBtn);
+
+      // Decrease depth from 9 to 8
+      const decreaseBtn = screen.getByLabelText("Decrease route depth");
+      fireEvent.click(decreaseBtn);
+
+      expect(handleChange).toHaveBeenCalled();
+      const finalPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+      const finalX = finalPlay.players.find((p) => p.id === "p_x");
+
+      // Expect player's note to be '8yd Dig'
+      expect(finalX?.notes).toBe("8yd Dig");
+
+      // Expect play notes to contain '• X: 8yd Dig'
+      expect(finalPlay.notes).toContain("Assignments:");
+      expect(finalPlay.notes).toContain("• X: 8yd Dig");
+    });
+
+    it("automatically populates 'Man inside shade, 5yds off' when defender selects man inside shade with 5yds cushion", () => {
+      const handleChange = vi.fn();
+      const { rerender } = render(<PlayCanvas play={mockDefensePlay} onChange={handleChange} />);
+
+      // Select CB1
+      const cb1Btn = screen.getByRole("button", { name: /CB1/i });
+      fireEvent.click(cb1Btn);
+
+      // Click Man coverage
+      fireEvent.click(screen.getByRole("button", { name: /Man/i }));
+      const manPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+      rerender(<PlayCanvas play={manPlay} onChange={handleChange} />);
+
+      // Select Receiver X
+      fireEvent.click(screen.getByTestId("man-receiver-x"));
+      const targetedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+      rerender(<PlayCanvas play={targetedPlay} onChange={handleChange} />);
+
+      // Select Inside shade
+      fireEvent.click(screen.getByTestId("shade-inside"));
+      const shadePlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+      rerender(<PlayCanvas play={shadePlay} onChange={handleChange} />);
+
+      // Select 5yds cushion
+      fireEvent.click(screen.getByTestId("cushion-preset-5"));
+      const finalPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+      const finalCb1 = finalPlay.players.find((p) => p.id === "p_cb1");
+
+      // Expect defender's note to reflect man inside shade, 5yds off
+      expect(finalCb1?.notes).toContain("Man inside shade, 5yds off");
+
+      // Expect play notes to contain the assignment
+      expect(finalPlay.notes).toContain("Assignments:");
+      expect(finalPlay.notes).toContain("• CB1: Man inside shade, 5yds off");
+    });
   });
 });

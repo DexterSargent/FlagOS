@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth, UserRole } from "@/lib/authContext";
-import { Crown, Whistle, BicepsFlexed, X, Settings, RotateCcw, Sparkles, Eye, ArrowLeft } from "lucide-react";
+import { Crown, Whistle, BicepsFlexed, X, RotateCcw, Sparkles, Eye, ArrowLeft } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
 import { DEMO_TEAM_IDS, isDemoMatchId, isDemoTeamId } from "@/lib/demoSandboxRuntime";
@@ -14,7 +14,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 export default function RoleSwitcherContent() {
   const pathname = usePathname();
   const { user, role, managedTeamId, playerId, setDevRole, isLeagueAdmin, isPlayer } = useAuth();
-  const { isDemoLeague, openCustomizer, resetDemoSession } = useLeague();
+  const { isDemoLeague, resetDemoSession } = useLeague();
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [players, setPlayers] = useState<Array<{ id: string; teamId: string; playerName: string; number?: string }>>([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -379,22 +379,6 @@ export default function RoleSwitcherContent() {
               )}
             </div>
           )}
-
-          {/* League Customizer / Settings Button */}
-          <button
-            onClick={openCustomizer}
-            aria-label="League settings"
-            className="flex items-center gap-1 px-0.5 sm:px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-neutral-200 font-bold border border-slate-200 dark:border-white/20 text-[11px] transition-all shadow-sm cursor-pointer shrink-0"
-            title="Configure league rules, colors, and branding"
-          >
-            <Settings className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-            <span className="hidden lg:inline">Settings</span>
-          </button>
-
-          {/* Light / Dark Mode Toggle */}
-          <div className="shrink-0">
-            <ThemeToggle size="sm" />
-          </div>
 
           {/* Reset Session Button */}
           <button

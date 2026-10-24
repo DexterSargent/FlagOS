@@ -644,33 +644,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* Team Overview Stats Banner */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
-            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Record</span>
-            <div className="text-2xl font-black text-white mt-1">
-              {wins}-{losses}{ties > 0 ? `-${ties}` : ""}
-            </div>
-            {seasonTeamStats?.playoffRecordFormatted && (
-              <span className="block text-[11px] text-neutral-500 mt-0.5 truncate">
-                Reg. {seasonTeamStats.regularRecordFormatted} · Playoffs {seasonTeamStats.playoffRecordFormatted}
-              </span>
-            )}
-          </div>
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
-            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Games Played</span>
-            <div className="text-2xl font-black text-white mt-1">{seasonTeamStats?.gp ?? teamMatches.length}</div>
-          </div>
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
-            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Points Scored</span>
-            <div className="text-2xl font-black text-emerald-400 mt-1">{pf}</div>
-          </div>
-          <div className="bg-neutral-900/60 border border-white/5 rounded-2xl p-4 sm:p-5 backdrop-blur-md min-w-0">
-            <span className="block text-[11px] sm:text-xs uppercase font-bold text-neutral-500 tracking-wide sm:tracking-wider whitespace-nowrap">Points Allowed</span>
-            <div className="text-2xl font-black text-red-400 mt-1">{pa}</div>
-          </div>
-        </div>
-
         {/* Players List Table */}
         <div className="bg-neutral-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
           <div className="bg-neutral-900 px-4 sm:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

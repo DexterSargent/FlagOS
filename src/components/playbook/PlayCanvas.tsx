@@ -44,6 +44,9 @@ import {
   StandardZoneTemplate,
   DefensiveShade,
   calculateShadedPosition,
+  getReceiverShadedHalf,
+  generatePlayerAssignmentNote,
+  updatePlayNotesWithAssignments,
 } from "@/lib/playbookTypes";
 import {
   advanceAnimationProgress,
@@ -96,6 +99,10 @@ import {
   AlignLeft,
   AlignRight,
   Target,
+  ChevronLeft,
+  Copy,
+  Printer,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   STANDARD_OFFENSIVE_PRESETS,
@@ -160,19 +167,36 @@ interface PlayCanvasProps {
   play: PlayDiagram;
   onChange: (updatedPlay: PlayDiagram) => void;
   readOnly?: boolean;
+  hasEditAccess?: boolean;
   playbook?: Playbook | null;
   allPlaybooks?: Playbook[];
   onOpenQuestions?: () => void;
+  onBackToPlays?: () => void;
+  onDuplicatePlay?: () => void;
+  onDeletePlay?: () => void;
+  onCreateNewPlay?: () => void;
+  onPrintPlaybook?: () => void;
+  autoSaveStatus?: "saving" | "unsaved" | "offline" | "saved";
+  onFlushAutoSave?: () => void;
 }
 
 export default function PlayCanvas({
   play: committedPlay,
   onChange: onPlayChange,
   readOnly = false,
+  hasEditAccess,
   playbook,
   allPlaybooks = [],
   onOpenQuestions,
+  onBackToPlays,
+  onDuplicatePlay,
+  onDeletePlay,
+  onCreateNewPlay,
+  onPrintPlaybook,
+  autoSaveStatus,
+  onFlushAutoSave,
 }: PlayCanvasProps) {
+  const canEdit = hasEditAccess ?? !readOnly;
   // Pointer drags edit a local draft so the parent (and its localStorage persistence) only
   // receives the released result instead of one full playbook write per pointer move.
   const [dragDraft, setDragDraft] = useState<PlayDiagram | null>(null);
@@ -297,6 +321,7 @@ export default function PlayCanvas({
   const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState(false);
   const [isPresetMenuOpen, setIsPresetMenuOpen] = useState(false);
   const [isMotionMenuOpen, setIsMotionMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const presetMenuRef = useRef<HTMLDivElement>(null);
   const [newPresetName, setNewPresetName] = useState("");
   const [isPositionNotesModalOpen, setIsPositionNotesModalOpen] = useState(false);
@@ -375,10 +400,18 @@ export default function PlayCanvas({
 
   const currentCatalogRoute =
     selectedPlayer?.quickRouteName && selectedPlayer.routeType !== "motion"
-      ? ROUTE_PRESETS_CATALOG.find(
-          (r) =>
-            r.name === selectedPlayer.quickRouteName || r.shortName === selectedPlayer.quickRouteName
-        )
+      ? ROUTE_PRESETS_CATALOG.find((r) => {
+          const q = (selectedPlayer.quickRouteName || "").toLowerCase().trim();
+          if (r.name.toLowerCase() === q || r.shortName.toLowerCase() === q) return true;
+          if (q.includes("dig") && r.shortName === "Dig") return true;
+          if (q.includes("in") && r.shortName === "Dig") return true;
+          if (r.name.toLowerCase().includes("/") && q.includes("/")) {
+            const partsR = r.name.toLowerCase().split("/").map((s) => s.trim());
+            const partsQ = q.split("/").map((s) => s.trim());
+            return partsR.some((p) => partsQ.includes(p));
+          }
+          return false;
+        })
       : undefined;
   const routeOrigin = selectedPlayer ? getPlayerRouteOrigin(selectedPlayer) : null;
   const maxRouteDepthYards = Math.max(
@@ -392,7 +425,11 @@ export default function PlayCanvas({
     const depth = Math.max(MIN_ROUTE_DEPTH_YARDS, Math.min(maxRouteDepthYards, Math.round(next)));
     if (depth === effectiveRouteDepth && routeDepth !== null) return;
     setRouteDepth(depth);
-    if (currentCatalogRoute) handleApplyPreset(currentCatalogRoute.name, depth);
+    if (currentCatalogRoute) {
+      handleApplyPreset(currentCatalogRoute.name, depth);
+    } else if (selectedPlayer?.quickRouteName) {
+      handleApplyPreset(selectedPlayer.quickRouteName, depth);
+    }
   };
 
   useEffect(() => {
@@ -497,7 +534,8 @@ export default function PlayCanvas({
     const updated = play.players.map((p) =>
       p.id === playerId ? { ...p, notes } : p
     );
-    onChange({ ...play, players: updated });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updated, play.zones, play.type);
+    onChange({ ...play, players: updated, notes: nextPlayNotes });
   };
 
   const playbookFormations = Array.from(
@@ -633,6 +671,7 @@ export default function PlayCanvas({
   }, [compactFieldViewBox]);
 
   const [isDepthDragging, setIsDepthDragging] = useState(false);
+  const sliderTrackRef = useRef<HTMLDivElement>(null);
   const showDepthRail =
     !readOnly &&
     !animating &&
@@ -647,9 +686,13 @@ export default function PlayCanvas({
     return box.offY + ((yPct / 100) * 700 - box.vbY) * box.scale;
   };
   const updateDepthFromPointer = (e: React.PointerEvent) => {
-    const coords = getSvgCoordinates(e);
-    if (!coords || !routeOrigin) return;
-    handleDepthChange((routeOrigin.y - coords.y) / YARD_HEIGHT_PCT);
+    const el = sliderTrackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.height <= 0) return;
+    const ratio = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    const target = Math.round(maxRouteDepthYards - ratio * (maxRouteDepthYards - MIN_ROUTE_DEPTH_YARDS));
+    handleDepthChange(target);
   };
 
   // Phone/landscape sheets cover the main player pills, so they carry their own switcher.
@@ -813,7 +856,11 @@ export default function PlayCanvas({
     // Requirement: If you select man it should auto show offense, and the db should have a dotted line drawn to whichever receiver is clicked while the db is highlighted.
     if (isDefenderInMan && clickedPlayer.side === "offense" && selectedPlayerId !== playerId) {
       const currentShade: DefensiveShade = currentSelected.shade || "head_up";
-      const newPos = calculateShadedPosition(clickedPlayer, currentShade, currentSelected.y, losY);
+      const currentCushion = currentSelected.cushionYards ?? 5;
+      const newPos = calculateShadedPosition(clickedPlayer, currentShade, {
+        cushionYards: currentCushion,
+        losY,
+      });
 
       const updatedPlayers = play.players.map((p) => {
         if (p.id === selectedPlayerId) {
@@ -822,6 +869,7 @@ export default function PlayCanvas({
             coverageType: "man" as const,
             manTargetId: playerId,
             shade: currentShade,
+            cushionYards: currentCushion,
             x: newPos.x,
             y: newPos.y,
             route: [],
@@ -1046,6 +1094,14 @@ export default function PlayCanvas({
         }
       }
 
+      let draggedCushion = player.cushionYards;
+      if (player.coverageType === "man" && player.manTargetId) {
+        const targetOff = play.players.find((t) => t.id === player.manTargetId && t.side === "offense");
+        if (targetOff) {
+          draggedCushion = Math.max(1, Math.min(15, Math.round(((targetOff.y - clamped.y) / YARD_HEIGHT_PCT) * 10) / 10));
+        }
+      }
+
       const updatedPlayers = play.players.map((p) => {
         if (p.id === draggedPlayerId) {
           return {
@@ -1053,6 +1109,7 @@ export default function PlayCanvas({
             x: clamped.x,
             y: clamped.y,
             route: updatedRoute,
+            ...(draggedCushion !== undefined ? { cushionYards: draggedCushion } : {}),
             ...(updatedMotionPath !== undefined ? { motionPath: updatedMotionPath } : {}),
           };
         }
@@ -1313,46 +1370,49 @@ export default function PlayCanvas({
 
       const updatedPlayers = play.players.map((p) => {
         if (p.id === targetPlayer.id) {
-          if (hadPostSnapRoute) {
-            return {
-              ...p,
-              hasMotion: true,
-              motionPath: motionPts,
-              motionName: presetName,
-              route: updatedPostSnapRoute,
-              routeType: "pass" as RouteType,
-              coverageType: undefined,
-              zoneId: undefined,
-              manTargetId: undefined,
-            };
-          } else {
-            return {
-              ...p,
-              hasMotion: true,
-              motionPath: motionPts,
-              motionName: presetName,
-              route: motionPts,
-              quickRouteName: presetName,
-              routeType: "motion" as RouteType,
-              coverageType: undefined,
-              zoneId: undefined,
-              manTargetId: undefined,
-            };
-          }
+          const updatedP: PlayerNode = hadPostSnapRoute
+            ? {
+                ...p,
+                hasMotion: true,
+                motionPath: motionPts,
+                motionName: presetName,
+                route: updatedPostSnapRoute,
+                routeType: "pass" as RouteType,
+                coverageType: undefined,
+                zoneId: undefined,
+                manTargetId: undefined,
+              }
+            : {
+                ...p,
+                hasMotion: true,
+                motionPath: motionPts,
+                motionName: presetName,
+                route: motionPts,
+                quickRouteName: presetName,
+                routeType: "motion" as RouteType,
+                coverageType: undefined,
+                zoneId: undefined,
+                manTargetId: undefined,
+              };
+          updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+          return updatedP;
         }
         // IFAF & Flag Rule: Only 1 player can be in pre-snap motion simultaneously
         if (playerHasMotion(p) && p.side === "offense") {
-          return {
+          const clearedP: PlayerNode = {
             ...p,
             hasMotion: false,
             motionPath: undefined,
             motionName: undefined,
             routeType: (p.routeType === "motion" ? "pass" : p.routeType) as RouteType,
           };
+          clearedP.notes = generatePlayerAssignmentNote(clearedP, play.players, play.zones);
+          return clearedP;
         }
         return p;
       });
-      onChange({ ...play, players: updatedPlayers });
+      const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+      onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
       return;
     }
 
@@ -1368,7 +1428,7 @@ export default function PlayCanvas({
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === targetPlayer.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           routeDepthYards: depthYards,
           hasMotion: hasMotion,
@@ -1381,10 +1441,13 @@ export default function PlayCanvas({
           zoneId: undefined,
           manTargetId: undefined,
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
       }
       return p;
     });
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Toggle pre-snap motion on/off for selected offensive player
@@ -1513,7 +1576,7 @@ export default function PlayCanvas({
     if (readOnly || !selectedPlayer) return;
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return {
+        const cleared: PlayerNode = {
           ...p,
           route: [],
           quickRouteName: undefined,
@@ -1524,11 +1587,15 @@ export default function PlayCanvas({
           motionPath: undefined,
           motionName: undefined,
           routeType: (p.routeType === "motion" ? "pass" : p.routeType) as RouteType,
+          notes: undefined,
         };
+        cleared.notes = generatePlayerAssignmentNote(cleared, play.players, play.zones);
+        return cleared;
       }
       return p;
     });
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Assign Zone to selected defender
@@ -1542,7 +1609,7 @@ export default function PlayCanvas({
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === playerToAssign.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           coverageType: "zone" as const,
           zoneId,
@@ -1551,10 +1618,13 @@ export default function PlayCanvas({
           manTargetId: undefined,
           routeType: undefined,
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
       }
       return p;
     });
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Select Zone Coverage for defender
@@ -1563,7 +1633,7 @@ export default function PlayCanvas({
     setMode("select");
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           coverageType: "zone" as const,
           manTargetId: undefined,
@@ -1571,10 +1641,13 @@ export default function PlayCanvas({
           routeType: undefined,
           quickRouteName: p.quickRouteName || "Zone Drop",
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
       }
       return p;
     });
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Assign Standard Zone from templates to selected defender
@@ -1604,7 +1677,7 @@ export default function PlayCanvas({
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           coverageType: zoneTemplate.id === "qb-spy" ? ("spy" as const) : ("zone" as const),
           zoneId: matchingZone.id,
@@ -1613,11 +1686,14 @@ export default function PlayCanvas({
           manTargetId: undefined,
           routeType: undefined,
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, nextZones);
+        return updatedP;
       }
       return p;
     });
 
-    onChange({ ...play, zones: nextZones, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, nextZones, play.type);
+    onChange({ ...play, zones: nextZones, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Select Man Coverage for defender: auto-shows offense and activates man targeting
@@ -1627,6 +1703,7 @@ export default function PlayCanvas({
     setMode("man");
 
     const currentShade: DefensiveShade = selectedPlayer.shade || "head_up";
+    const currentCushion = selectedPlayer.cushionYards ?? 5;
     let newX = selectedPlayer.x;
     let newY = selectedPlayer.y;
 
@@ -1635,7 +1712,10 @@ export default function PlayCanvas({
         (p) => p.id === selectedPlayer.manTargetId && p.side === "offense"
       );
       if (targetOff) {
-        const newPos = calculateShadedPosition(targetOff, currentShade, selectedPlayer.y, losY);
+        const newPos = calculateShadedPosition(targetOff, currentShade, {
+          cushionYards: currentCushion,
+          losY,
+        });
         newX = newPos.x;
         newY = newPos.y;
       }
@@ -1643,10 +1723,11 @@ export default function PlayCanvas({
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           coverageType: "man" as const,
           shade: currentShade,
+          cushionYards: currentCushion,
           x: newX,
           y: newY,
           zoneId: undefined,
@@ -1654,11 +1735,14 @@ export default function PlayCanvas({
           quickRouteName: "Man",
           routeType: undefined,
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
       }
       return p;
     });
 
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Choose receiver for man coverage and adjust DB beginning point
@@ -1668,31 +1752,83 @@ export default function PlayCanvas({
     if (!receiver) return;
 
     const currentShade: DefensiveShade = selectedPlayer.shade || "head_up";
-    const newPos = calculateShadedPosition(receiver, currentShade, selectedPlayer.y, losY);
+    const currentCushion = selectedPlayer.cushionYards ?? 5;
+    const newPos = calculateShadedPosition(receiver, currentShade, {
+      cushionYards: currentCushion,
+      losY,
+    });
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           coverageType: "man" as const,
           manTargetId: receiverId,
           shade: currentShade,
+          cushionYards: currentCushion,
           x: newPos.x,
           y: newPos.y,
           route: [],
           zoneId: undefined,
           quickRouteName: "Man",
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
       }
       return p;
     });
 
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Choose defensive shade (inside, head_up, outside) and adjust DB beginning point
   const handleSetDefensiveShade = (newShade: DefensiveShade) => {
     if (readOnly || !selectedPlayer) return;
+
+    const currentCushion = selectedPlayer.cushionYards ?? 5;
+    const targetReceiver = selectedPlayer.manTargetId
+      ? play.players.find((p) => p.id === selectedPlayer.manTargetId && p.side === "offense")
+      : undefined;
+
+    let newX = selectedPlayer.x;
+    let newY = selectedPlayer.y;
+
+    if (targetReceiver) {
+      const newPos = calculateShadedPosition(targetReceiver, newShade, {
+        cushionYards: currentCushion,
+        losY,
+      });
+      newX = newPos.x;
+      newY = newPos.y;
+    }
+
+    const updatedPlayers = play.players.map((p) => {
+      if (p.id === selectedPlayer.id) {
+        const updatedP: PlayerNode = {
+          ...p,
+          coverageType: "man" as const,
+          shade: newShade,
+          cushionYards: currentCushion,
+          x: newX,
+          y: newY,
+          quickRouteName: "Man",
+        };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
+      }
+      return p;
+    });
+
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
+  };
+
+  // Choose defensive cushion depth (yards between DB and receiver) and adjust DB position
+  const handleSetDefensiveCushion = (newCushion: number) => {
+    if (readOnly || !selectedPlayer) return;
+    const clampedCushion = Math.max(1, Math.min(15, newCushion));
+    const currentShade: DefensiveShade = selectedPlayer.shade || "head_up";
 
     const targetReceiver = selectedPlayer.manTargetId
       ? play.players.find((p) => p.id === selectedPlayer.manTargetId && p.side === "offense")
@@ -1702,26 +1838,34 @@ export default function PlayCanvas({
     let newY = selectedPlayer.y;
 
     if (targetReceiver) {
-      const newPos = calculateShadedPosition(targetReceiver, newShade, selectedPlayer.y, losY);
+      const newPos = calculateShadedPosition(targetReceiver, currentShade, {
+        cushionYards: clampedCushion,
+        losY,
+      });
       newX = newPos.x;
       newY = newPos.y;
+    } else {
+      newY = Math.max(5, Math.round((losY - (clampedCushion * YARD_HEIGHT_PCT)) * 10) / 10);
     }
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           coverageType: "man" as const,
-          shade: newShade,
+          cushionYards: clampedCushion,
           x: newX,
           y: newY,
           quickRouteName: "Man",
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
       }
       return p;
     });
 
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Set rush for defender: draws line to QB, with bend point (does NOT auto-show opponent)
@@ -1743,7 +1887,7 @@ export default function PlayCanvas({
 
     const updatedPlayers = play.players.map((p) => {
       if (p.id === selectedPlayer.id) {
-        return {
+        const updatedP: PlayerNode = {
           ...p,
           coverageType: "rush" as const,
           routeType: "rush" as const,
@@ -1755,11 +1899,14 @@ export default function PlayCanvas({
             { x: qb.x, y: qb.y },
           ],
         };
+        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        return updatedP;
       }
       return p;
     });
 
-    onChange({ ...play, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+    onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
   // Bend rush line to specific side
@@ -1819,22 +1966,26 @@ export default function PlayCanvas({
 
     let updatedPlayers = play.players;
     if (selectedPlayer && selectedPlayer.side === "defense") {
-      updatedPlayers = play.players.map((p) =>
-        p.id === selectedPlayer.id
-          ? {
-              ...p,
-              coverageType: "zone" as const,
-              zoneId: newZone.id,
-              quickRouteName: newZone.name,
-              route: [{ x: newZone.x, y: newZone.y }],
-              manTargetId: undefined,
-              routeType: undefined,
-            }
-          : p
-      );
+      updatedPlayers = play.players.map((p) => {
+        if (p.id === selectedPlayer.id) {
+          const updatedP: PlayerNode = {
+            ...p,
+            coverageType: "zone" as const,
+            zoneId: newZone.id,
+            quickRouteName: newZone.name,
+            route: [{ x: newZone.x, y: newZone.y }],
+            manTargetId: undefined,
+            routeType: undefined,
+          };
+          updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, nextZones);
+          return updatedP;
+        }
+        return p;
+      });
     }
 
-    onChange({ ...play, zones: nextZones, players: updatedPlayers });
+    const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, nextZones, play.type);
+    onChange({ ...play, zones: nextZones, players: updatedPlayers, notes: nextPlayNotes });
     setSelectedZoneId(newZone.id);
   };
 
@@ -2207,18 +2358,34 @@ export default function PlayCanvas({
     animationModel.getPosition(player, progress, animating);
 
   return (
-    <div className="flex flex-col md:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-2 sm:gap-3 [@media(max-width:639px)_and_(min-height:451px)]:gap-1.5 w-full max-w-full overflow-hidden [@media(max-width:639px)_and_(min-height:451px)]:overflow-y-auto font-sans h-full min-h-0 [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400">
+    <div className="flex flex-col gap-2 w-full max-w-full overflow-y-auto xl:overflow-hidden font-sans xl:h-full min-h-0 [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400">
       {/* ============================================================== */}
-      {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
+      {/* UNIFIED STUDIO TOP COMMAND BAR: ALL CONTROLS IN 1-2 ROWS       */}
       {/* ============================================================== */}
-      <div data-testid="designer-field-pane" className="flex flex-1 [@media(max-width:639px)_and_(min-height:451px)]:flex-none md:flex-1 [@media(max-width:599px)_and_(max-height:450px)]:flex-[0_0_42%] [@media(min-width:600px)_and_(max-height:450px)]:flex-1 min-w-0 min-h-0 flex-col bg-[#07090E] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
-        {/* ============================================================== */}
-        {/* UNIFIED TOP COMMAND BAR: NAME, FORMATION, SITUATION & CONTROLS */}
-        {/* ============================================================== */}
-        <div data-tour="play-command-bar" className="p-2 sm:p-3 [@media(max-height:450px)]:p-1.5 [@media(max-width:639px)_and_(min-height:451px)]:p-1.5 bg-[#0B0F19] border-b border-white/10 flex flex-col gap-2 [@media(max-width:639px)_and_(min-height:451px)]:gap-1.5 shrink-0">
+      <div
+        data-testid="designer-toolbar"
+        data-tour="play-command-bar"
+        className="p-2 sm:p-2.5 bg-white dark:bg-[#0B0F19] border border-neutral-200 dark:border-white/10 rounded-2xl flex flex-wrap items-center justify-between gap-2 shrink-0 shadow-sm"
+      >
+        {/* Left Section: Navigation, Play Name, Formation & Situation */}
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+          {/* Back button */}
+          {onBackToPlays && (
+            <button
+              type="button"
+              onClick={onBackToPlays}
+              className="p-2 sm:p-1.5 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer shrink-0"
+              title="Back to Plays"
+              aria-label="Back to plays"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Plays</span>
+            </button>
+          )}
+
           {/* Play Name Editable Field */}
-          <div className="flex items-center gap-2 min-w-0 w-full">
-            <span className="text-[10px] font-black uppercase text-cyan-400 font-mono tracking-wider [@media(max-width:639px)]:hidden">Play:</span>
+          <div className="flex items-center gap-1.5 min-w-[130px] max-w-[210px] flex-1">
+            <span className="text-[10px] font-black uppercase text-cyan-600 dark:text-cyan-400 font-mono tracking-wider shrink-0 hidden md:inline">Play:</span>
             <input
               type="text"
               aria-label="Play name"
@@ -2226,301 +2393,417 @@ export default function PlayCanvas({
               value={play.name}
               onChange={(e) => onChange({ ...play, name: e.target.value })}
               placeholder="Play Name..."
-              className="min-w-0 w-full text-sm font-bold text-white bg-black/40 hover:bg-black/60 focus:bg-black/80 focus:border-cyan-500 rounded-lg px-3 py-2 border border-white/10 outline-none transition-all"
+              className="min-w-0 w-full text-xs sm:text-sm font-bold text-neutral-900 dark:text-white bg-neutral-100 dark:bg-black/40 hover:bg-neutral-200 dark:hover:bg-black/60 focus:bg-white dark:focus:bg-black/80 focus:border-cyan-500 rounded-lg px-2.5 py-1.5 border border-neutral-200 dark:border-white/10 outline-none transition-all"
             />
-            <WalkthroughTrigger walkthrough={PLAY_DESIGNER_WALKTHROUGH} variant="toolbar" className="shrink-0" />
           </div>
 
-          {/* Formation Dropdown & Gameday Situation Dropdown */}
-          <div className="flex items-center gap-2 max-sm:gap-1.5 flex-wrap max-sm:flex-nowrap [@media(max-height:450px)]:hidden">
-            {/* Formation Dropdown */}
-            <div data-tour="formation-selector" className="flex flex-col gap-0.5 flex-1 min-w-[130px] max-sm:min-w-0">
-              <span className="text-[10px] font-semibold text-neutral-400 max-sm:hidden">Formation</span>
-              <select
-                aria-label="Play formation"
-                title={play.formation}
-                disabled={readOnly}
-                value={play.formation}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "__ADD_NEW__") {
-                    const customForm = prompt("Enter new formation name for this playbook:");
-                    if (customForm && customForm.trim()) {
-                      const trimmedForm = customForm.trim();
-                      const updated = playbook?.formationsAreCategories
-                        ? play.players
-                        : applyFormationToSquad(play.players, trimmedForm, play.type, losY);
-                      onChange({ ...play, formation: trimmedForm, players: updated });
+          {/* Formation Dropdown (THE ONLY ONE) */}
+          <div data-tour="formation-selector" className="flex items-center gap-1 min-w-[120px] max-w-[160px]">
+            <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden xl:inline shrink-0">Formation:</span>
+            <select
+              aria-label={onBackToPlays && canEdit ? "Play category" : "Play formation"}
+              title={play.formation}
+              disabled={readOnly}
+              value={play.formation}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "__ADD_NEW__") {
+                  const customForm = prompt("Enter new formation / category name for this playbook:");
+                  if (customForm && customForm.trim()) {
+                    const trimmedForm = customForm.trim();
+                    if (playbook && !playbook.formations.some((f) => f.name.toLowerCase() === trimmedForm.toLowerCase())) {
+                      playbook.formations.push({
+                        id: `form_${Date.now()}`,
+                        name: trimmedForm,
+                        side: playbook.type || play.type || "offense",
+                      });
                     }
-                  } else {
                     const updated = playbook?.formationsAreCategories
                       ? play.players
-                      : applyFormationToSquad(play.players, val, play.type, losY);
-                    onChange({ ...play, formation: val, players: updated });
+                      : applyFormationToSquad(play.players, trimmedForm, play.type, losY);
+                    onChange({ ...play, formation: trimmedForm, players: updated });
                   }
-                }}
-                className="w-full min-w-0 bg-black/40 border border-white/10 rounded-lg p-2 text-xs font-semibold text-cyan-300 outline-none focus:border-cyan-400 cursor-pointer"
-              >
-                {playbookFormations.map((fName) => (
-                  <option key={fName} value={fName} className="bg-[#0B0F19] text-white">
-                    {fName}
-                  </option>
-                ))}
-                {!readOnly && (
-                  <option value="__ADD_NEW__" className="bg-[#0B0F19] text-amber-300 font-bold">
-                    + Add New Formation...
-                  </option>
-                )}
-              </select>
-            </div>
-
-            {/* Gameday Situation Dropdown */}
-            <div className="flex flex-col gap-0.5 flex-1 min-w-[120px] max-sm:min-w-0">
-              <span className="text-[10px] font-semibold text-neutral-400 max-sm:hidden">Situation</span>
-              <select
-                aria-label="Play situation"
-                disabled={readOnly}
-                value={play.situation || "Standard"}
-                onChange={(e) => onChange({ ...play, situation: e.target.value })}
-                className="w-full min-w-0 bg-black/40 border border-white/10 rounded-lg p-2 text-xs font-semibold text-neutral-200 outline-none focus:border-cyan-400 cursor-pointer"
-              >
-                {SITUATION_OPTIONS.map((sit) => (
-                  <option key={sit} value={sit} className="bg-[#0B0F19] text-white">
-                    {sit}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Coach Play Notes Button */}
-            <button
-              type="button"
-              onClick={() => setIsPlayNotesModalOpen(true)}
-              className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0 ${
-                play.notes && play.notes.trim().length > 0
-                  ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300"
-                  : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
-              }`}
-              title="Open general coaching notes & scheme progression"
+                } else {
+                  const updated = playbook?.formationsAreCategories
+                    ? play.players
+                    : applyFormationToSquad(play.players, val, play.type, losY);
+                  onChange({ ...play, formation: val, players: updated });
+                }
+              }}
+              className="w-full bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs font-semibold text-neutral-900 dark:text-cyan-300 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer"
             >
-              <MessageSquare className="w-3.5 h-3.5" />
-            </button>
+              {playbookFormations.map((fName) => (
+                <option key={fName} value={fName} className="bg-white dark:bg-[#0B0F19] text-neutral-900 dark:text-white">
+                  {fName}
+                </option>
+              ))}
+              {!readOnly && (
+                <option value="__ADD_NEW__" className="bg-white dark:bg-[#0B0F19] text-amber-600 dark:text-amber-300 font-bold">
+                  + Add Formation...
+                </option>
+              )}
+            </select>
+          </div>
 
-            {/* Coach Q&A Button */}
-            {onOpenQuestions && (
+          {/* Gameday Situation Dropdown */}
+          <div className="flex items-center gap-1 min-w-[95px] max-w-[130px]">
+            <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden 2xl:inline shrink-0">Situation:</span>
+            <select
+              aria-label="Play situation"
+              disabled={readOnly}
+              value={play.situation || "Standard"}
+              onChange={(e) => onChange({ ...play, situation: e.target.value })}
+              className="w-full bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs font-semibold text-neutral-900 dark:text-neutral-200 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer"
+            >
+              {SITUATION_OPTIONS.map((sit) => (
+                <option key={sit} value={sit} className="bg-white dark:bg-[#0B0F19] text-neutral-900 dark:text-white">
+                  {sit}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Opposing Side Toggle */}
+          <button
+            type="button"
+            data-tour="opponent-toggle"
+            data-testid="toggle-opponent-btn"
+            onClick={() => setShowOpposingSide((prev) => (isOpponentRequired ? true : !prev))}
+            aria-pressed={isShowingOpponent}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0 ${
+              isShowingOpponent
+                ? "bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-300 shadow-sm"
+                : "bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+            }`}
+            title={
+              isOpponentRequired
+                ? "Opponent is required for man coverage"
+                : isShowingOpponent
+                ? `Hide opposing ${play.type === "offense" ? "defense" : "offense"}`
+                : `Show opposing ${play.type === "offense" ? "defense" : "offense"}`
+            }
+          >
+            {isShowingOpponent ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{isShowingOpponent ? "Opponent On" : "Opponent Off"}</span>
+          </button>
+
+          {/* Opponent Scheme Selector Dropdown (When Opponent is ON) */}
+          {isShowingOpponent && (
+            <div ref={opponentMenuRef} className="relative">
               <button
                 type="button"
-                onClick={onOpenQuestions}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                  play.questions && play.questions.some((q) => !q.answered)
-                    ? "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-sm"
-                    : play.questions && play.questions.length > 0
-                    ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300"
-                    : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
-                }`}
-                title="Ask coach questions or view tactical Q&A for this play"
+                data-tour="opponent-scheme-selector"
+                data-testid="opponent-play-selector-btn"
+                onClick={() => setIsOpponentMenuOpen((prev) => !prev)}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-xs font-bold transition-all border bg-amber-500/15 border-amber-500/35 text-amber-600 dark:text-amber-300 hover:bg-amber-500/25 hover:text-amber-900 dark:hover:text-white cursor-pointer"
+                title={`Select opposing ${play.type === "defense" ? "offensive" : "defensive"} play to populate and run simulation against`}
               >
-                <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden xl:inline">Q&A</span>
-                {play.questions && play.questions.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-white/10 text-white">
-                    {play.questions.length}
-                  </span>
-                )}
+                <FolderPlus className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                <span className="max-w-[100px] sm:max-w-[140px] truncate">
+                  {selectedOpponentPlayTitle ? `Vs: ${selectedOpponentPlayTitle}` : `Choose Opponent`}
+                </span>
+                <ChevronDown className="w-3 h-3 text-amber-500 dark:text-amber-400" />
               </button>
-            )}
 
-            {/* Opposing Side Toggle */}
-            <button
-              type="button"
-              data-tour="opponent-toggle"
-              data-testid="toggle-opponent-btn"
-              onClick={() => setShowOpposingSide((prev) => (isOpponentRequired ? true : !prev))}
-              aria-pressed={isShowingOpponent}
-              className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                isShowingOpponent
-                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300 shadow-sm"
-                  : "bg-white/5 border-white/10 text-neutral-400 hover:text-white hover:bg-white/10"
-              }`}
-              title={
-                isOpponentRequired
-                  ? "Opponent is required for man coverage"
-                  : isShowingOpponent
-                  ? `Hide opposing ${play.type === "offense" ? "defense" : "offense"}`
-                  : `Show opposing ${play.type === "offense" ? "defense" : "offense"}`
-              }
-            >
-              {isShowingOpponent ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{isShowingOpponent ? "Opponent On" : "Opponent Off"}</span>
-            </button>
-
-            {/* Opponent Scheme Selector Dropdown (When Opponent is ON) */}
-            {isShowingOpponent && (
-              <div ref={opponentMenuRef} className="relative">
-                <button
-                  type="button"
-                  data-tour="opponent-scheme-selector"
-                  data-testid="opponent-play-selector-btn"
-                  onClick={() => setIsOpponentMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-xl text-xs font-bold transition-all border bg-amber-500/15 border-amber-500/35 text-amber-300 hover:bg-amber-500/25 hover:text-white cursor-pointer"
-                  title={`Select opposing ${play.type === "defense" ? "offensive" : "defensive"} play to populate and run simulation against`}
+              {isOpponentMenuOpen && (
+                <div
+                  data-testid="opponent-plays-menu"
+                  className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 max-h-96 overflow-y-auto bg-white dark:bg-[#0B0F19] border border-amber-500/30 rounded-2xl shadow-2xl p-2 z-50 space-y-2 scrollbar-thin text-neutral-900 dark:text-white"
                 >
-                  <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="max-w-[110px] sm:max-w-[160px] truncate">
-                    {selectedOpponentPlayTitle ? `Vs: ${selectedOpponentPlayTitle}` : `Choose Opponent Play`}
-                  </span>
-                  <ChevronDown className="w-3 h-3 text-amber-400" />
-                </button>
-
-                {isOpponentMenuOpen && (
-                  <div
-                    data-testid="opponent-plays-menu"
-                    className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 max-h-96 overflow-y-auto bg-[#0B0F19] border border-amber-500/30 rounded-2xl shadow-2xl p-2 z-50 space-y-2 scrollbar-thin text-white"
-                  >
-                    <div className="px-2 py-1 border-b border-white/10 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold block">
-                          Opposing {play.type === "defense" ? "Offense" : "Defense"} Scheme
-                        </span>
-                        <span className="text-[11px] text-neutral-400 block">
-                          Populate into field &amp; run to test coverage reads
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsOpponentMenuOpen(false)}
-                        className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    {/* Team's Other Playbooks */}
-                    {availableOpposingPlaybooks.length > 0 && (
-                      <div className="space-y-1.5">
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2 block font-bold">
-                          Your Team Playbooks:
-                        </span>
-                        {availableOpposingPlaybooks.map((book) => (
-                          <div key={book.id} className="space-y-1 bg-white/5 rounded-xl p-1.5">
-                            <div className="flex items-center gap-1.5 px-1.5 py-0.5 text-xs font-bold text-neutral-300">
-                              {book.type === "offense" ? (
-                                <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                              ) : (
-                                <Shield className="w-3.5 h-3.5 text-purple-400" />
-                              )}
-                              <span className="truncate">{book.title}</span>
-                            </div>
-                            <div className="space-y-0.5 pl-2">
-                              {book.plays.length === 0 ? (
-                                <span className="text-[11px] text-neutral-500 italic block py-0.5 px-2">
-                                  No plays in this playbook yet
-                                </span>
-                              ) : (
-                                book.plays.map((oppPlay) => (
-                                  <button
-                                    key={oppPlay.id}
-                                    type="button"
-                                    data-testid={`select-opp-play-${oppPlay.id}`}
-                                    onClick={() => handleSelectOpponentPlay(oppPlay, book.title)}
-                                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-cyan-500/20 text-xs text-neutral-200 hover:text-white transition-colors flex items-center justify-between group cursor-pointer"
-                                  >
-                                    <span className="truncate font-semibold">{oppPlay.name}</span>
-                                    <span className="text-[10px] font-mono text-neutral-500 group-hover:text-cyan-300 shrink-0 ml-1">
-                                      {oppPlay.formation}
-                                    </span>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Standard System Presets */}
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 px-2 block font-bold">
-                        Standard {play.type === "defense" ? "Offensive" : "Defensive"} Schemes:
+                  <div className="px-2 py-1 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 font-bold block">
+                        Opposing {play.type === "defense" ? "Offense" : "Defense"} Scheme
                       </span>
-                      {systemOpponentPresets.map((oppPlay) => (
+                      <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block">
+                        Populate into field &amp; run to test coverage reads
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsOpponentMenuOpen(false)}
+                      className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {availableOpposingPlaybooks.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400 px-2 block font-bold">
+                        Your Team Playbooks:
+                      </span>
+                      {availableOpposingPlaybooks.map((book) => (
+                        <div key={book.id} className="space-y-1 bg-neutral-100 dark:bg-white/5 rounded-xl p-1.5">
+                          <div className="flex items-center gap-1.5 px-1.5 py-0.5 text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                            {book.type === "offense" ? (
+                              <Zap className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
+                            ) : (
+                              <Shield className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />
+                            )}
+                            <span className="truncate">{book.title}</span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1">
+                            {book.plays.map((oppPlay) => (
+                              <button
+                                key={oppPlay.id}
+                                type="button"
+                                onClick={() => handleSelectOpponentPlay(oppPlay, book.title)}
+                                className={`text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                                  selectedOpponentPlayTitle === oppPlay.name
+                                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/30"
+                                    : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white"
+                                }`}
+                              >
+                                <span className="truncate">{oppPlay.name}</span>
+                                <span className="text-[10px] text-neutral-400 shrink-0 ml-1">
+                                  {oppPlay.formation}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 px-2 block font-bold">
+                      Standard Opponent Presets:
+                    </span>
+                    <div className="grid grid-cols-1 gap-1">
+                      {systemOpponentPresets.map((preset) => (
                         <button
-                          key={oppPlay.id}
+                          key={preset.id}
                           type="button"
-                          data-testid={`select-opp-preset-${oppPlay.id}`}
-                          onClick={() => handleSelectOpponentPlay(oppPlay, "Standard")}
-                          className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-amber-500/20 text-xs text-neutral-200 hover:text-white transition-colors flex items-center justify-between group cursor-pointer"
+                          onClick={() => handleSelectOpponentPlay(preset, "Preset")}
+                          className={`text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                            selectedOpponentPlayTitle === `Preset: ${preset.name}` || selectedOpponentPlayTitle === preset.name
+                              ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/30"
+                              : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white"
+                          }`}
                         >
-                          <span className="truncate font-semibold">{oppPlay.name}</span>
-                          <span className="text-[10px] font-mono text-neutral-500 group-hover:text-amber-300 shrink-0 ml-1">
-                            {oppPlay.formation}
+                          <div>
+                            <span className="font-semibold block">{preset.name}</span>
+                            <span className="text-[10px] text-neutral-400 block line-clamp-1">
+                              {preset.situation || "Standard Scheme"}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 shrink-0 ml-2">
+                            {preset.formation}
                           </span>
                         </button>
                       ))}
                     </div>
+                  </div>
 
-                    {/* Reset Button */}
-                    <div className="pt-1 border-t border-white/10">
+                  {selectedOpponentPlayTitle && (
+                    <div className="pt-1 border-t border-neutral-200 dark:border-white/10">
                       <button
                         type="button"
                         onClick={handleResetOpponentAlignment}
-                        className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-red-500/20 text-xs text-neutral-400 hover:text-red-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                        className="w-full text-center px-2 py-1.5 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                       >
-                        <RotateCcw className="w-3 h-3 text-red-400" />
-                        <span>Reset Opponent to Default Spots</span>
+                        Reset / Clear Opponent
                       </button>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Custom Zone Quick Add Buttons for Defense */}
-            {(play.type === "defense" || isShowingOpponent) && !readOnly && (
-              <div data-tour="custom-zones" className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleCreateCustomZone("ellipse")}
-                  data-testid="add-custom-oval-zone-btn"
-                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 hover:bg-purple-500/25 hover:text-white text-xs font-bold cursor-pointer transition-colors"
-                  title="Add custom oval zone bubble"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <Circle className="w-3 h-3" />
-                  <span className="hidden lg:inline">Oval Zone</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleCreateCustomZone("rectangle")}
-                  data-testid="add-custom-box-zone-btn"
-                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-300 hover:bg-purple-500/25 hover:text-white text-xs font-bold cursor-pointer transition-colors"
-                  title="Add custom box/rectangle zone"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <Square className="w-3 h-3" />
-                  <span className="hidden lg:inline">Box Zone</span>
-                </button>
-              </div>
-            )}
+          {/* Coach Play Notes Button */}
+          <button
+            type="button"
+            onClick={() => setIsPlayNotesModalOpen(true)}
+            aria-label="Coach notes"
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0 ${
+              play.notes && play.notes.trim().length > 0
+                ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-600 dark:text-cyan-300"
+                : "bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+            }`}
+            title="Open general coaching notes & scheme progression"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Notes</span>
+          </button>
 
-            {/* Legal Alignment Status Badge */}
-            {alignmentIssues.length === 0 ? (
-              <div className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Legal</span>
-              </div>
-            ) : (
-              <div
-                className="flex items-center gap-1 px-2 py-1 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 text-xs font-bold cursor-pointer"
-                title={alignmentIssues.map((i) => i.warning).join("\n")}
+          {/* Guided Tour Trigger */}
+          <WalkthroughTrigger
+            walkthrough={PLAY_DESIGNER_WALKTHROUGH}
+            variant="toolbar"
+          />
+
+          {/* Custom Zones Buttons (when defensive play) */}
+          {play.type === "defense" && !readOnly && (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleCreateCustomZone("ellipse")}
+                data-testid="add-custom-oval-zone-btn"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-600 dark:text-purple-300 hover:bg-purple-500/25 hover:text-purple-900 dark:hover:text-white text-xs font-bold cursor-pointer transition-colors"
+                title="Add custom oval zone bubble"
               >
-                <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-red-400" />
-                <span>{alignmentIssues.length}<span className="hidden sm:inline"> Warning{alignmentIssues.length > 1 ? "s" : ""}</span></span>
-              </div>
-            )}
-          </div>
+                <Plus className="w-3.5 h-3.5" />
+                <Circle className="w-3 h-3" />
+                <span className="hidden lg:inline">Oval Zone</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCreateCustomZone("rectangle")}
+                data-testid="add-custom-box-zone-btn"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-600 dark:text-purple-300 hover:bg-purple-500/25 hover:text-purple-900 dark:hover:text-white text-xs font-bold cursor-pointer transition-colors"
+                title="Add custom box/rectangle zone"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <Square className="w-3 h-3" />
+                <span className="hidden lg:inline">Box Zone</span>
+              </button>
+            </div>
+          )}
+
+          {/* Legal Alignment Status Badge */}
+          {alignmentIssues.length === 0 ? (
+            <div className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Legal</span>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 text-xs font-bold cursor-pointer"
+              title={alignmentIssues.map((i) => i.warning).join("\n")}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-red-500 dark:text-red-400" />
+              <span>{alignmentIssues.length}<span className="hidden sm:inline"> Warning{alignmentIssues.length > 1 ? "s" : ""}</span></span>
+            </div>
+          )}
         </div>
 
+        {/* Right Section: Actions (Duplicate, Delete, New Play, Q&A, Print, Auto-Save) */}
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
+          {canEdit && onDuplicatePlay && (
+            <button
+              type="button"
+              onClick={onDuplicatePlay}
+              className="p-2 rounded-xl text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/10 transition-colors"
+              title="Duplicate Play"
+              aria-label="Duplicate Play"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {canEdit && onDeletePlay && (
+            <button
+              type="button"
+              onClick={onDeletePlay}
+              className="p-2 rounded-xl text-neutral-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 bg-neutral-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-500/10 border border-neutral-200 dark:border-white/10 transition-colors"
+              title="Delete Play"
+              aria-label="Delete Play"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {canEdit && onCreateNewPlay && (
+            <button
+              type="button"
+              onClick={onCreateNewPlay}
+              aria-label="New Play"
+              className="px-2.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-1 shrink-0 transition-all cursor-pointer shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">New Play</span>
+            </button>
+          )}
+
+          {onOpenQuestions && (
+            <button
+              type="button"
+              onClick={onOpenQuestions}
+              className={`px-2.5 py-1.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all border flex items-center gap-1.5 cursor-pointer relative shrink-0 ${
+                play.questions && play.questions.some((q) => !q.answered)
+                  ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-600 dark:text-amber-300 border-amber-500/40 shadow-sm"
+                  : play.questions && play.questions.length > 0
+                  ? "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-600 dark:text-cyan-300 border-cyan-500/30"
+                  : "bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-700 dark:text-white border-neutral-200 dark:border-white/10"
+              }`}
+              title="Ask coach questions or review discussion on this play"
+              aria-label="Coach Q&A"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+              <span className="hidden sm:inline">Coach Q&A</span>
+              {play.questions && play.questions.length > 0 && (
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    play.questions.some((q) => !q.answered)
+                      ? "bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/50"
+                      : "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300"
+                  }`}
+                >
+                  {play.questions.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {onPrintPlaybook && (
+            <button
+              type="button"
+              onClick={onPrintPlaybook}
+              className="px-2.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-700 dark:text-white font-bold text-xs uppercase tracking-wider transition-all border border-neutral-200 dark:border-white/10 flex items-center gap-1.5 cursor-pointer shrink-0"
+              title="Print wristband playbook sheets"
+              aria-label="Print playbook"
+            >
+              <Printer className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+              <span className="hidden md:inline">Print</span>
+            </button>
+          )}
+
+          {canEdit && onFlushAutoSave && (
+            <button
+              type="button"
+              onClick={onFlushAutoSave}
+              aria-label={autoSaveStatus === "saving" ? "Saving playbook" : "Save playbook"}
+              title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
+              className="px-2.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-xs font-mono flex items-center gap-1.5 transition-all hover:bg-neutral-200 dark:hover:bg-white/10 cursor-pointer shrink-0"
+              data-testid="editor-autosave-status-badge"
+            >
+              {autoSaveStatus === "saving" ? (
+                <>
+                  <RefreshCw className="w-3 h-3 text-cyan-500 dark:text-cyan-400 animate-spin" />
+                  <span className="text-cyan-600 dark:text-cyan-300 hidden sm:inline">Saving...</span>
+                </>
+              ) : autoSaveStatus === "unsaved" ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-amber-600 dark:text-amber-300 hidden sm:inline">Unsaved</span>
+                </>
+              ) : autoSaveStatus === "offline" ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="text-neutral-500 dark:text-neutral-400 hidden sm:inline">Saved locally</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                  <span className="text-neutral-600 dark:text-neutral-400 hidden sm:inline">Saved to Cloud</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* LOWER STUDIO WORKSPACE: FIELD PANE (LEFT) + TACTICAL DOCK (RIGHT) */}
+      {/* ============================================================== */}
+      <div className="flex flex-col xl:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-2 sm:gap-3 flex-1 min-h-0 overflow-visible xl:overflow-hidden">
+        {/* ============================================================== */}
+        {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
+        {/* ============================================================== */}
+        <div data-testid="designer-field-pane" className="flex flex-1 min-w-0 min-h-0 flex-col bg-[#07090E] border border-neutral-200 dark:border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
@@ -2622,28 +2905,121 @@ export default function PlayCanvas({
             {/* Goal Line */}
             <line x1="0" y1="84" x2="1000" y2="84" stroke="#FFFFFF" strokeWidth="4" />
 
-            {/* Yard Lines & Yard Numbers every 10 yards */}
-            {[20, 30, 40, 50, 60, 70, 80, 90].map((pct) => {
-              const yPos = (pct / 100) * 700;
-              const isGoalLine = pct === 12;
+            {/* Proportional 5-Yard Field Grid (1 Yard = 1.75% = YARD_HEIGHT_PCT) */}
+            {(() => {
+              // 5-yard intervals from LOS downfield (+5, +10, +15, +20, +25, +30) and backfield (-5, -10, -15)
+              const yardSteps = [-15, -10, -5, 5, 10, 15, 20, 25, 30];
               return (
-                <g key={pct}>
-                  <line
-                    x1="0"
-                    y1={yPos}
-                    x2="1000"
-                    y2={yPos}
-                    stroke="rgba(255,255,255,0.12)"
-                    strokeWidth="1.5"
-                  />
-                  {/* Left & Right Hash marks */}
-                  <line x1="380" y1={yPos - 5} x2="380" y2={yPos + 5} stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-                  <line x1="620" y1={yPos - 5} x2="620" y2={yPos + 5} stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
-                  <line x1="40" y1={yPos - 4} x2="40" y2={yPos + 4} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-                  <line x1="960" y1={yPos - 4} x2="960" y2={yPos + 4} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                <g id="proportional-yard-grid">
+                  {yardSteps.map((yardsFromLos) => {
+                    const linePct = losY - yardsFromLos * YARD_HEIGHT_PCT;
+                    const yPos = (linePct / 100) * 700;
+                    // Do not render beyond goal line (84px) or field bottom (700px)
+                    if (yPos < 84 || yPos > 696) return null;
+                    const isMajor10 = yardsFromLos % 10 === 0 && yardsFromLos !== 0;
+                    const isIntermediate5 = Math.abs(yardsFromLos) % 10 === 5;
+                    const yardLabel = Math.abs(yardsFromLos);
+
+                    return (
+                      <g key={yardsFromLos}>
+                        {/* Field Line Across Field */}
+                        <line
+                          x1="20"
+                          y1={yPos}
+                          x2="980"
+                          y2={yPos}
+                          stroke={isMajor10 ? "rgba(255,255,255,0.24)" : "rgba(255,255,255,0.11)"}
+                          strokeWidth={isMajor10 ? 2 : 1}
+                          strokeDasharray={isIntermediate5 ? "6 4" : undefined}
+                        />
+
+                        {/* Stencil Yard Numbers on Left & Right Sidelines for 10-Yard Lines */}
+                        {isMajor10 && (
+                          <>
+                            <text
+                              x="70"
+                              y={yPos + 7}
+                              fill="rgba(255,255,255,0.22)"
+                              fontSize="22"
+                              fontWeight="900"
+                              fontStyle="italic"
+                              textAnchor="middle"
+                              fontFamily="monospace"
+                              pointerEvents="none"
+                            >
+                              {yardLabel}
+                            </text>
+                            <text
+                              x="930"
+                              y={yPos + 7}
+                              fill="rgba(255,255,255,0.22)"
+                              fontSize="22"
+                              fontWeight="900"
+                              fontStyle="italic"
+                              textAnchor="middle"
+                              fontFamily="monospace"
+                              pointerEvents="none"
+                            >
+                              {yardLabel}
+                            </text>
+                          </>
+                        )}
+
+                        {/* In-Field Hash Marks (NFL/College 38% and 62% hash coordinates) */}
+                        <line
+                          x1="380"
+                          y1={yPos - (isMajor10 ? 6 : 4)}
+                          x2="380"
+                          y2={yPos + (isMajor10 ? 6 : 4)}
+                          stroke="rgba(255,255,255,0.25)"
+                          strokeWidth={isMajor10 ? 1.5 : 1}
+                        />
+                        <line
+                          x1="620"
+                          y1={yPos - (isMajor10 ? 6 : 4)}
+                          x2="620"
+                          y2={yPos + (isMajor10 ? 6 : 4)}
+                          stroke="rgba(255,255,255,0.25)"
+                          strokeWidth={isMajor10 ? 1.5 : 1}
+                        />
+
+                        {/* Sideline Inset Hash Marks */}
+                        <line
+                          x1="36"
+                          y1={yPos - 4}
+                          x2="36"
+                          y2={yPos + 4}
+                          stroke="rgba(255,255,255,0.20)"
+                          strokeWidth="1.2"
+                        />
+                        <line
+                          x1="964"
+                          y1={yPos - 4}
+                          x2="964"
+                          y2={yPos + 4}
+                          stroke="rgba(255,255,255,0.20)"
+                          strokeWidth="1.2"
+                        />
+                      </g>
+                    );
+                  })}
+
+                  {/* 1-Yard Sideline Tick Marks between LOS and 25-Yard Line */}
+                  {Array.from({ length: 35 }, (_, i) => i - 10).map((yd) => {
+                    if (yd === 0 || yd % 5 === 0) return null;
+                    const tickPct = losY - yd * YARD_HEIGHT_PCT;
+                    const tickY = (tickPct / 100) * 700;
+                    if (tickY < 84 || tickY > 696) return null;
+                    return (
+                      <g key={`tick-${yd}`}>
+                        <line x1="20" y1={tickY} x2="26" y2={tickY} stroke="rgba(255,255,255,0.14)" strokeWidth="1" />
+                        <line x1="974" y1={tickY} x2="980" y2={tickY} stroke="rgba(255,255,255,0.14)" strokeWidth="1" />
+                      </g>
+                    );
+                  })}
                 </g>
               );
-            })}
+            })()}
 
             {/* Sideline Boundaries */}
             <line x1="20" y1="0" x2="20" y2="700" stroke="#FFFFFF" strokeWidth="3" />
@@ -2944,31 +3320,37 @@ export default function PlayCanvas({
                     />
 
                     {/* Midpoint Lock Badge */}
-                    <g transform={`translate(${(x1 + x2) / 2}, ${(y1 + y2) / 2})`}>
-                      <rect
-                        x="-30"
-                        y="-10"
-                        width="60"
-                        height="20"
-                        rx="10"
-                        fill="#0F172A"
-                        stroke="#EC4899"
-                        strokeWidth="1.5"
-                        className="drop-shadow-md"
-                      />
-                      <text
-                        x="0"
-                        y="4"
-                        fill="#F472B6"
-                        fontSize="8.5"
-                        fontWeight="900"
-                        textAnchor="middle"
-                        letterSpacing="0.8"
-                        className="select-none pointer-events-none"
-                      >
-                        MAN
-                      </text>
-                    </g>
+                    {(() => {
+                      const cushion = def.cushionYards ?? Math.max(1, Math.round(((targetOff.y - def.y) / YARD_HEIGHT_PCT) * 10) / 10);
+                      const cushionLabel = cushion <= 1 ? "PRESS" : `${cushion}YD`;
+                      return (
+                        <g transform={`translate(${(x1 + x2) / 2}, ${(y1 + y2) / 2})`}>
+                          <rect
+                            x="-38"
+                            y="-10"
+                            width="76"
+                            height="20"
+                            rx="10"
+                            fill="#0F172A"
+                            stroke="#EC4899"
+                            strokeWidth="1.5"
+                            className="drop-shadow-md"
+                          />
+                          <text
+                            x="0"
+                            y="4"
+                            fill="#F472B6"
+                            fontSize="8"
+                            fontWeight="900"
+                            textAnchor="middle"
+                            letterSpacing="0.6"
+                            className="select-none pointer-events-none font-mono"
+                          >
+                            MAN • {cushionLabel}
+                          </text>
+                        </g>
+                      );
+                    })()}
                   </g>
                 );
               })}
@@ -3334,6 +3716,55 @@ export default function PlayCanvas({
                     />
                   )}
 
+                  {/* Darkened Half of Receiver Circle to indicate DB Alignment Leverage */}
+                  {(() => {
+                    if (!isOffense) return null;
+                    const selectedDefIsTargeting =
+                      selectedPlayer &&
+                      selectedPlayer.side === "defense" &&
+                      selectedPlayer.coverageType === "man" &&
+                      selectedPlayer.manTargetId === player.id;
+
+                    const coveringDefender = selectedDefIsTargeting
+                      ? selectedPlayer
+                      : isSelected
+                      ? play.players.find(
+                          (d) => d.side === "defense" && d.coverageType === "man" && d.manTargetId === player.id
+                        )
+                      : null;
+
+                    if (!coveringDefender) return null;
+                    const shade = coveringDefender.shade || "head_up";
+                    const darkenedSide = getReceiverShadedHalf(player.x, shade);
+                    if (!darkenedSide) return null;
+
+                    return (
+                      <g data-testid={`receiver-shaded-half-${player.id}-${darkenedSide}`}>
+                        <path
+                          d={
+                            darkenedSide === "left"
+                              ? `M ${px} ${py - 18} A 18 18 0 0 0 ${px} ${py + 18} Z`
+                              : `M ${px} ${py - 18} A 18 18 0 0 1 ${px} ${py + 18} Z`
+                          }
+                          fill="#000000"
+                          fillOpacity="0.55"
+                          className="pointer-events-none"
+                        />
+                        <line
+                          x1={px}
+                          y1={py - 18}
+                          x2={px}
+                          y2={py + 18}
+                          stroke="#FFFFFF"
+                          strokeWidth="1.2"
+                          strokeOpacity="0.35"
+                          strokeDasharray="2 2"
+                          className="pointer-events-none"
+                        />
+                      </g>
+                    );
+                  })()}
+
                   {/* Player Label Text (QB, C, X, Y, Z, RUSH, etc.) */}
                   <text
                     x={px}
@@ -3629,7 +4060,7 @@ export default function PlayCanvas({
               return (
                 <div
                   data-testid="route-depth-rail"
-                  className={`absolute z-10 w-11 flex flex-col items-center ${fieldBox ? "" : "invisible"}`}
+                  className={`absolute z-10 w-12 flex flex-col items-center ${fieldBox ? "" : "invisible"}`}
                   style={{
                     [railOnLeft ? "left" : "right"]: sideInset,
                     top: trackTop - capHeight,
@@ -3659,6 +4090,7 @@ export default function PlayCanvas({
                     </button>
                   </div>
                   <div
+                    ref={sliderTrackRef}
                     role="slider"
                     tabIndex={0}
                     aria-label="Route depth in yards"
@@ -3695,26 +4127,35 @@ export default function PlayCanvas({
                       }
                     }}
                   >
-                    <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-1 rounded-full bg-white/25" />
+                    <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-1.5 rounded-full bg-white/25" />
                     <div
-                      className="absolute left-1/2 -translate-x-1/2 bottom-0 w-1 rounded-full bg-cyan-400"
+                      className="absolute left-1/2 -translate-x-1/2 bottom-0 w-1.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/50"
                       style={{ top: thumbOffset }}
                     />
                     {ticks.map((d) => (
                       <div
                         key={d}
-                        className="absolute left-1/2 -translate-x-1/2 w-3 h-px bg-white/50 pointer-events-none"
+                        className="absolute left-1/2 -translate-x-1/2 w-3.5 h-px bg-white/50 pointer-events-none"
                         style={{ top: Math.max(0, fieldYToPx(depthToFieldY(d)) - trackTop) }}
                       />
                     ))}
+
+                    {/* Touch Knob on the track */}
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-cyan-400 border-2 border-white shadow-md pointer-events-none transition-transform"
+                      style={{ top: thumbOffset }}
+                    />
+
+                    {/* High-visibility Callout Badge projected away from thumb so it is NEVER hidden */}
                     <div
                       data-testid="route-depth-value"
-                      className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-cyan-400 text-black text-[11px] font-black font-mono tabular-nums px-1.5 py-0.5 shadow-lg ring-2 ring-black/50 pointer-events-none ${
-                        isDepthDragging ? "scale-110" : ""
-                      }`}
+                      className={`absolute -translate-y-1/2 whitespace-nowrap rounded-xl bg-cyan-400 text-black font-black font-mono tabular-nums px-2.5 py-1 shadow-2xl ring-2 ring-black/70 pointer-events-none transition-all flex items-center gap-1.5 ${
+                        railOnLeft ? "left-full ml-3" : "right-full mr-3"
+                      } ${isDepthDragging ? "scale-110 shadow-cyan-400/50 -translate-y-6 z-20" : "text-xs"}`}
                       style={{ top: thumbOffset }}
                     >
-                      {shownDepth} yd
+                      <span className="text-[10px] uppercase font-sans tracking-wider opacity-75">Depth</span>
+                      <span className="text-sm font-extrabold">{shownDepth} yd</span>
                     </div>
                   </div>
                 </div>
@@ -3723,7 +4164,7 @@ export default function PlayCanvas({
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
-        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1.5 bg-black/75 border-t border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden">
+        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1.5 bg-[#0B0F19]/95 dark:bg-black/80 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden">
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleToggleAnimate}
@@ -3742,14 +4183,14 @@ export default function PlayCanvas({
             <button
               onClick={handleResetAnimate}
               aria-label="Reset animation"
-              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors cursor-pointer"
               title="Reset Timeline"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             <div className="flex items-center gap-1 ml-1">
-              <span className="text-[10px] font-mono text-neutral-400">Speed:</span>
+              <span className="text-[10px] font-mono text-neutral-300">Speed:</span>
               {[0.5, 1, 1.5].map((spd) => (
                 <button
                   key={spd}
@@ -3758,8 +4199,8 @@ export default function PlayCanvas({
                   aria-pressed={animSpeed === spd}
                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
                     animSpeed === spd
-                      ? "bg-white/20 text-white border border-white/20"
-                      : "text-neutral-500 hover:text-white"
+                      ? "bg-white/25 text-white border border-white/30"
+                      : "text-neutral-300 hover:text-white"
                   }`}
                 >
                   {spd}x
@@ -3772,7 +4213,7 @@ export default function PlayCanvas({
           <AnimationProgressView store={progressStore}>
             {(progress) => (
           <div className="flex items-center gap-2 flex-1 min-w-24 max-w-xs ml-auto">
-            <span className="text-[10px] font-mono text-neutral-500 tabular-nums">
+            <span className="text-[10px] font-mono text-neutral-300 tabular-nums">
               {(progress * PLAY_ANIMATION_DURATION_SECONDS).toFixed(1)}s
             </span>
             <input
@@ -3797,7 +4238,7 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
       {/* ============================================================== */}
-      <div data-testid="designer-assignments-pane" className="flex w-full md:w-[340px] xl:w-[380px] [@media(max-height:450px)]:w-full [@media(min-width:600px)_and_(max-height:450px)]:w-[46%] [@media(min-width:600px)_and_(max-height:450px)]:flex-none flex-none max-h-[46%] [@media(max-width:639px)_and_(min-height:451px)]:flex-1 [@media(max-width:639px)_and_(min-height:451px)]:max-h-none [@media(max-width:639px)_and_(min-height:451px)]:min-h-[180px] md:max-h-full md:self-start md:shrink-0 [@media(max-width:599px)_and_(max-height:450px)]:flex-1 [@media(max-height:450px)]:max-h-none flex-col bg-[#0A0E17] border border-white/10 rounded-2xl overflow-hidden shadow-xl min-h-0">
+      <div data-testid="designer-assignments-pane" className="flex w-full xl:w-[380px] flex-none xl:self-start xl:shrink-0 flex-col bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-white/10 rounded-2xl overflow-visible xl:overflow-hidden shadow-xl min-h-0">
         <div className="p-2 sm:p-3.5 [@media(min-width:600px)_and_(max-height:450px)]:p-2 [@media(max-width:639px)]:p-2 flex-1 min-h-0 overflow-y-auto space-y-2.5 [@media(min-width:600px)_and_(max-height:450px)]:space-y-1 [@media(max-width:639px)]:space-y-1.5 scrollbar-thin">
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
           <div className="flex flex-col items-stretch gap-3">
@@ -3821,16 +4262,22 @@ export default function PlayCanvas({
                     className={`min-w-10 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border flex items-center justify-center gap-1.5 ${
                       isSelected
                         ? p.side === "offense"
-                          ? "bg-cyan-500 text-black border-cyan-400 shadow-md shadow-cyan-500/25 ring-2 ring-cyan-400/30"
-                          : "bg-purple-500 text-black border-purple-400 shadow-md shadow-purple-500/25 ring-2 ring-purple-400/30"
-                        : "bg-black/60 text-neutral-300 border-white/10 hover:border-white/30 hover:text-white"
+                          ? "bg-cyan-500/20 dark:bg-cyan-500/25 text-cyan-950 dark:text-cyan-200 border-2 border-cyan-500 dark:border-cyan-400 shadow-md ring-2 ring-cyan-400/20"
+                          : "bg-purple-500/20 dark:bg-purple-500/25 text-purple-950 dark:text-purple-200 border-2 border-purple-500 dark:border-purple-400 shadow-md ring-2 ring-purple-400/20"
+                        : "bg-neutral-100 dark:bg-black/60 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:hover:border-white/30 hover:text-neutral-900 dark:hover:text-white"
                     }`}
                   >
                     <span>{p.label}</span>
                     {hasRoute && (
                       <span
                         className={`w-1.5 h-1.5 rounded-full ${
-                          isSelected ? "bg-black" : p.side === "offense" ? "bg-cyan-400" : "bg-purple-400"
+                          isSelected
+                            ? p.side === "offense"
+                              ? "bg-cyan-600 dark:bg-cyan-400"
+                              : "bg-purple-600 dark:bg-purple-400"
+                            : p.side === "offense"
+                            ? "bg-cyan-500"
+                            : "bg-purple-500"
                         }`}
                         title="Route Waypoints Placed"
                       />
@@ -3893,10 +4340,10 @@ export default function PlayCanvas({
                   onClick={() => setMode(mode === "draw" ? "select" : "draw")}
                   title={mode === "draw" ? "Drawing mode active: Click on field to add points" : "Enable Freehand Click-to-Draw"}
                   aria-label={mode === "draw" ? "Stop drawing route" : "Draw route"}
-                  className={`px-2.5 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                  className={`px-2.5 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
                     mode === "draw"
                       ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/25"
-                      : "bg-white/5 hover:bg-white/10 text-neutral-300 border-white/10"
+                      : "bg-neutral-100 hover:bg-neutral-200 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-white/10"
                   }`}
                 >
                   <Edit2 className="w-3.5 h-3.5" />
@@ -3911,7 +4358,7 @@ export default function PlayCanvas({
                   onClick={handleClearRoute}
                   title="Clear Route / Assignment"
                   aria-label="Clear route or assignment"
-                  className="px-2 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold text-neutral-400 hover:text-red-400 bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 transition-all flex items-center gap-1"
+                  className="px-2 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 bg-neutral-100 hover:bg-red-50 dark:bg-white/5 dark:hover:bg-red-500/10 border border-neutral-200 hover:border-red-300 dark:border-white/10 dark:hover:border-red-500/30 transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline [@media(max-width:639px)]:hidden">Clear</span>
@@ -3922,8 +4369,8 @@ export default function PlayCanvas({
 
           {/* Position Coaching Notes Bar for Currently Selected Player */}
           {selectedPlayer && (
-            <div className="space-y-1.5 border-t border-white/10 pt-3 [@media(max-height:450px)]:hidden max-sm:hidden">
-              <div className="flex items-center gap-1.5 shrink-0 text-cyan-400 font-mono text-[11px] font-bold">
+            <div className="space-y-1.5 border-t border-neutral-200 dark:border-white/10 pt-3 [@media(max-height:450px)]:hidden max-sm:hidden">
+              <div className="flex items-center gap-1.5 shrink-0 text-cyan-600 dark:text-cyan-400 font-mono text-[11px] font-bold">
                 <FileText className="w-3.5 h-3.5" />
                 <span>{selectedPlayer.label} notes:</span>
               </div>
@@ -3934,7 +4381,7 @@ export default function PlayCanvas({
                 value={selectedPlayer.notes || ""}
                 onChange={(e) => handleUpdatePlayerNotes(selectedPlayer.id, e.target.value)}
                 placeholder="Coaching assignment and read notes..."
-                className="w-full min-w-0 resize-y rounded-lg border border-white/10 bg-black/40 px-2.5 py-2 text-xs leading-relaxed text-white placeholder:text-neutral-500 outline-none focus:border-cyan-400"
+                className="w-full min-w-0 resize-y rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-black/40 px-2.5 py-2 text-xs leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
               />
             </div>
           )}
@@ -3945,13 +4392,13 @@ export default function PlayCanvas({
               {/* Header row: Route assignment info & Action Buttons */}
               <div className="flex flex-col items-stretch gap-2">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1 max-sm:hidden">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1 max-sm:hidden">
                     <Zap className="w-3 h-3" />
                     <span>Route Assignment ({selectedPlayer.label}):</span>
                   </span>
                   {playerHasMotion(selectedPlayer) && (
-                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-[10px] flex items-center gap-1 shadow-sm">
-                      <Activity className="w-3 h-3 text-amber-400" />
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/40 text-[10px] flex items-center gap-1 shadow-sm">
+                      <Activity className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                       <span>{selectedPlayer.motionName || "Motion"} ⚡</span>
                     </span>
                   )}
@@ -3959,19 +4406,45 @@ export default function PlayCanvas({
                     <span
                       className={`px-2 py-0.5 rounded-lg font-bold text-[11px] border ${
                         selectedPlayer.routeType === "motion"
-                          ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                          : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                          ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40"
+                          : "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
                       }`}
                     >
                       {selectedPlayer.quickRouteName}
                     </span>
                   )}
                   {!selectedPlayer.quickRouteName && !playerHasMotion(selectedPlayer) && (
-                    <span className="text-[11px] text-neutral-400 font-mono">
+                    <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
                       {selectedPlayer.route && selectedPlayer.route.length > 0
                         ? `${selectedPlayer.route.length} custom point${selectedPlayer.route.length > 1 ? "s" : ""}`
                         : "No route drawn"}
                     </span>
+                  )}
+
+                  {/* Route Depth Stepper */}
+                  {!readOnly && (selectedPlayer.quickRouteName || currentCatalogRoute) && (
+                    <div className="flex items-center gap-1 bg-neutral-100 dark:bg-black/50 border border-neutral-200 dark:border-white/10 rounded-lg px-2 py-0.5 ml-auto">
+                      <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">Depth:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDepthChange(effectiveRouteDepth - 1)}
+                        disabled={effectiveRouteDepth <= MIN_ROUTE_DEPTH_YARDS}
+                        aria-label="Decrease route depth stepper"
+                        className="w-5 h-5 rounded bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 text-xs font-bold disabled:opacity-40 flex items-center justify-center cursor-pointer"
+                      >
+                        −
+                      </button>
+                      <span className="text-xs font-mono font-black text-cyan-600 dark:text-cyan-400 min-w-7 text-center">{effectiveRouteDepth}yd</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDepthChange(effectiveRouteDepth + 1)}
+                        disabled={effectiveRouteDepth >= maxRouteDepthYards}
+                        aria-label="Increase route depth stepper"
+                        className="w-5 h-5 rounded bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 text-xs font-bold disabled:opacity-40 flex items-center justify-center cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -3991,7 +4464,7 @@ export default function PlayCanvas({
                     className={`px-3 py-2 min-h-10 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                       isMotionMenuOpen || playerHasMotion(selectedPlayer)
                         ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30"
-                        : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30 hover:border-amber-500/50"
+                        : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:border-amber-500/50"
                     }`}
                     title="Pre-snap motion options"
                   >
@@ -4018,7 +4491,7 @@ export default function PlayCanvas({
                     className={`px-3 py-2 min-h-10 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                       isPresetMenuOpen
                         ? "bg-cyan-500 text-black border-cyan-400 shadow-cyan-500/30"
-                        : "bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border-cyan-500/40"
+                        : "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border-cyan-500/30 dark:border-cyan-500/40"
                     }`}
                   >
                     <Zap className="w-4 h-4" />
@@ -4039,10 +4512,10 @@ export default function PlayCanvas({
                         setNewPresetName(`${selectedPlayer.label} Custom Route`);
                         setIsSavePresetModalOpen(true);
                       }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      className="px-3 py-2 min-h-10 rounded-xl text-xs font-black bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                       title={isDemo ? "Add temporary custom preset (session only)" : `Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
                     >
-                      <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                      <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>Save Preset</span>
                     </button>
                   )}
@@ -4322,6 +4795,109 @@ export default function PlayCanvas({
                     </div>
                   </div>
 
+                  {/* Defensive Cushion Depth Selection */}
+                  <div className="space-y-1.5 pt-1 border-t border-white/10" data-testid="cushion-depth-controls">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
+                      <span className="flex items-center gap-1 text-pink-300 font-black uppercase tracking-wider text-[10px]">
+                        <Ruler className="w-3 h-3" />
+                        <span>3. Cushion Depth</span>
+                      </span>
+                      {(() => {
+                        const currentCushion = selectedPlayer.cushionYards ?? 5;
+                        const label =
+                          currentCushion <= 1
+                            ? "Press"
+                            : currentCushion <= 3
+                            ? "Tight"
+                            : currentCushion <= 6
+                            ? "Standard Off"
+                            : currentCushion <= 8
+                            ? "Soft"
+                            : "Deep Off";
+                        return (
+                          <span className="text-[10px] font-mono text-pink-300 font-bold bg-pink-500/10 px-1.5 py-0.5 rounded border border-pink-500/20">
+                            {currentCushion} {currentCushion === 1 ? "Yard" : "Yards"} ({label})
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Quick Cushion Presets */}
+                    <div className="grid grid-cols-5 gap-1">
+                      {[
+                        { yards: 1, label: "Press", sub: "1 yd" },
+                        { yards: 3, label: "Tight", sub: "3 yds" },
+                        { yards: 5, label: "Standard", sub: "5 yds" },
+                        { yards: 7, label: "Soft", sub: "7 yds" },
+                        { yards: 10, label: "Deep", sub: "10 yds" },
+                      ].map((preset) => {
+                        const currentCushion = selectedPlayer.cushionYards ?? 5;
+                        const isCurrent = currentCushion === preset.yards;
+                        return (
+                          <button
+                            key={preset.yards}
+                            type="button"
+                            data-testid={`cushion-preset-${preset.yards}`}
+                            disabled={readOnly}
+                            onClick={() => handleSetDefensiveCushion(preset.yards)}
+                            aria-pressed={isCurrent}
+                            className={`px-1 py-1 rounded-md text-[10px] font-bold transition-all border flex flex-col items-center justify-center text-center cursor-pointer ${
+                              isCurrent
+                                ? "bg-pink-400 text-neutral-950 border-pink-300 shadow-sm font-extrabold"
+                                : "bg-black/50 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/15"
+                            }`}
+                          >
+                            <span>{preset.label}</span>
+                            <span className={`text-[8.5px] font-mono ${isCurrent ? "text-neutral-950 font-bold" : "text-neutral-400"}`}>
+                              {preset.sub}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Stepper + Range Slider */}
+                    {(() => {
+                      const currentCushion = selectedPlayer.cushionYards ?? 5;
+                      return (
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <button
+                            type="button"
+                            data-testid="cushion-minus"
+                            disabled={readOnly || currentCushion <= 1}
+                            onClick={() => handleSetDefensiveCushion(Math.max(1, currentCushion - 1))}
+                            aria-label="Decrease cushion depth"
+                            className="w-7 h-7 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:pointer-events-none text-white font-bold flex items-center justify-center border border-white/15 cursor-pointer shrink-0"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <input
+                            type="range"
+                            min={1}
+                            max={12}
+                            step={1}
+                            value={currentCushion}
+                            disabled={readOnly}
+                            onChange={(e) => handleSetDefensiveCushion(Number(e.target.value))}
+                            data-testid="cushion-slider"
+                            aria-label="Defensive cushion depth in yards"
+                            className="flex-1 accent-pink-400 cursor-pointer h-1.5 bg-neutral-800 rounded-lg appearance-none"
+                          />
+                          <button
+                            type="button"
+                            data-testid="cushion-plus"
+                            disabled={readOnly || currentCushion >= 12}
+                            onClick={() => handleSetDefensiveCushion(Math.min(12, currentCushion + 1))}
+                            aria-label="Increase cushion depth"
+                            className="w-7 h-7 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:pointer-events-none text-white font-bold flex items-center justify-center border border-white/15 cursor-pointer shrink-0"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   {/* Man Coverage Status Summary */}
                   <div className="px-2.5 py-1.5 rounded-lg bg-pink-950/40 border border-pink-500/30 text-[11px] text-pink-200 flex items-center justify-between">
                     <div className="flex items-center gap-1.5 truncate">
@@ -4334,7 +4910,8 @@ export default function PlayCanvas({
                             : selectedPlayer.shade === "outside"
                             ? "Outside Shade"
                             : "Head Up"}
-                          )
+                          {" • "}
+                          {selectedPlayer.cushionYards ?? 5} yds cushion)
                         </span>
                       ) : (
                         <span className="text-neutral-400">Choose a receiver above or tap on the field to lock.</span>
@@ -4595,6 +5172,7 @@ export default function PlayCanvas({
             </div>
           )}
         </div>
+      </div>
       </div>
 
       {/* MODAL: Save Route Preset to Team (Up to 20 additional presets) */}
