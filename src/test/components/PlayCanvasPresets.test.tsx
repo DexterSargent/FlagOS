@@ -193,12 +193,12 @@ describe("PlayCanvas Route Presets Suite", () => {
     fireEvent.mouseDown(screen.getByRole("button", { name: "Select Y" }));
     fireEvent.click(screen.getByRole("button", { name: "Select Y" }));
     expect(screen.getByTestId("route-presets-catalog")).toBeInTheDocument();
-    expect(screen.getByText("Route Assignment (Y):")).toBeInTheDocument();
+    expect(screen.getByText("Y route:")).toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByRole("button", { name: "Switch to Z" }));
     fireEvent.click(screen.getByRole("button", { name: "Switch to Z" }));
     expect(screen.getByTestId("route-presets-catalog")).toBeInTheDocument();
-    expect(screen.getByText("Route Assignment (Z):")).toBeInTheDocument();
+    expect(screen.getByText("Z route:")).toBeInTheDocument();
   });
 
   it("adjusts route depth from the vertical rail beside the field", () => {
@@ -226,11 +226,11 @@ describe("PlayCanvas Route Presets Suite", () => {
   it("does not auto-select a receiver after clicking empty field space", () => {
     render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
-    expect(screen.getByText("Route Assignment (X):")).toBeInTheDocument();
+    expect(screen.getByText("X route:")).toBeInTheDocument();
     const svg = screen.getByTestId("designer-field").querySelector("svg") as SVGSVGElement;
     fireEvent.pointerDown(svg, { clientX: 500, clientY: 350 });
 
-    expect(screen.queryByText(/Route Assignment/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ route:$/)).not.toBeInTheDocument();
   });
 
   it("applies a route at a custom depth", async () => {
@@ -262,12 +262,12 @@ describe("PlayCanvas Route Presets Suite", () => {
   it("selects a defender when switching from an offense play to a defense play", () => {
     const { rerender } = render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
 
-    expect(screen.getByText("Route Assignment (X):")).toBeInTheDocument();
+    expect(screen.getByText("X route:")).toBeInTheDocument();
 
     rerender(<PlayCanvas play={mockDefensePlay} onChange={vi.fn()} />);
 
     expect(screen.getByText("Coverage & Assignment (RUSH):")).toBeInTheDocument();
-    expect(screen.queryByText(/Route Assignment/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ route:$/)).not.toBeInTheDocument();
   });
 
   it("applies a route preset when clicking a quick-route button", async () => {

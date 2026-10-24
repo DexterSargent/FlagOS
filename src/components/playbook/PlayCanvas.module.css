@@ -26,8 +26,8 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  width: 100%;
-  min-width: 0;
+  flex: 1 1 22rem;
+  min-width: min(100%, 22rem);
 }
 
 .toolbarActions > :first-child {
@@ -115,8 +115,45 @@
 }
 
 .playerView .metadata {
-  width: auto;
   flex: 1 1 9rem;
+  min-width: 0;
+}
+
+/* Measured layouts (set from PlayCanvas) override the viewport-breakpoint fallback below. */
+.workspace.sideDock {
+  flex-direction: row;
+  gap: 0.75rem;
+}
+
+.sideDock .assignments {
+  flex: 0 0 18rem;
+}
+
+.workspace.bottomDock .fieldPane {
+  flex: none;
+}
+
+.workspace.bottomDock .assignments {
+  flex: 1 1 0;
+  min-height: 10.5rem;
+}
+
+.playerView .workspace.bottomDock .assignments {
+  min-height: 9rem;
+}
+
+.sideDock .picker {
+  position: static;
+  overflow: visible;
+  border-radius: 0.75rem;
+}
+
+.sideDock .pickerBody {
+  overflow: visible;
+}
+
+.sideDock .picker [data-player-switcher] {
+  display: none;
 }
 
 .routeActions {
@@ -141,24 +178,17 @@
   }
 }
 
-@media (min-width: 1100px) {
-  .metadata {
-    width: auto;
-    flex: 1 1 24rem;
-  }
-}
-
 @media (min-width: 900px), (min-width: 600px) and (max-height: 450px) {
-  .workspace {
+  .workspace:not(.bottomDock) {
     flex-direction: row;
     gap: 0.75rem;
   }
 
-  .assignments {
+  .workspace:not(.bottomDock):not(.sideDock) .assignments {
     flex: 0 0 clamp(18rem, 30vw, 23.75rem);
   }
 
-  .playerView .assignments {
+  .playerView .workspace:not(.bottomDock):not(.sideDock) .assignments {
     flex-basis: clamp(15rem, 26vw, 20rem);
   }
 }

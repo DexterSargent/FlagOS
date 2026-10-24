@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import styles from "./PlayCanvas.module.css";
 import { useLeague } from "@/lib/leagueContext";
@@ -74,7 +74,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Check,
-  Move,
   Edit2,
   Eye,
   EyeOff,
@@ -324,13 +323,15 @@ export default function PlayCanvas({
   const opponentMenuRef = useRef<HTMLDivElement>(null);
 
   // Close preset routes & opponent menu on outside click
+  const sideDockRef = useRef(false);
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as Node;
       const isPlayerSwitch =
         target instanceof Element && Boolean(target.closest('[data-tour="player-pills"], [data-player-switcher]'));
       const isOnField = Boolean(containerRef.current?.contains(target));
-      if (presetMenuRef.current && !presetMenuRef.current.contains(target) && !isPlayerSwitch && !isOnField) {
+      // Side-docked pickers sit in-flow beside the field, so they stay open as the dock's resting content.
+      if (!sideDockRef.current && presetMenuRef.current && !presetMenuRef.current.contains(target) && !isPlayerSwitch && !isOnField) {
         setIsPresetMenuOpen(false);
         setIsMotionMenuOpen(false);
       }
@@ -664,6 +665,58 @@ export default function PlayCanvas({
     observer.observe(svg);
     return () => observer.disconnect();
   }, [compactFieldViewBox]);
+
+  // Pick whichever dock placement draws the fixed-aspect field largest, then hand leftover space to the dock
+  // instead of letterboxing the field. `size` is the side dock width or the stacked field pane height.
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const playbackRef = useRef<HTMLDivElement>(null);
+  const [dockLayout, setDockLayout] = useState<{ side: boolean; size: number } | null>(null);
+  useLayoutEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace || typeof ResizeObserver === "undefined") return;
+    const [, , vbW, vbH] = compactFieldViewBox.split(" ").map(Number);
+    const update = () => {
+      const { width, height } = workspace.getBoundingClientRect();
+      if (!width || !height) return;
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const bar = (playbackRef.current?.offsetHeight ?? 46) + 2;
+      const dockMinH = (readOnly ? 9 : 10.5) * rem;
+      const dockMinW = (readOnly ? 15 : 18) * rem;
+      const stackedScale = Math.min(width / vbW, (height - 0.5 * rem - dockMinH - bar) / vbH);
+      const sideScale = Math.min((width - 0.75 * rem - dockMinW) / vbW, (height - bar) / vbH);
+      const stackedHeightLimited = (height - 0.5 * rem - dockMinH - bar) / vbH < width / vbW;
+      // On a near-tie, a height-limited stacked field would be letterboxed sideways; use that width for the dock instead.
+      const preferSide = sideScale > stackedScale * 1.04 || (stackedHeightLimited && sideScale >= stackedScale * 0.95);
+      const next = preferSide
+        ? { side: true, size: Math.floor(Math.min(Math.max(dockMinW, width - 0.75 * rem - sideScale * vbW - 2), 28 * rem)) }
+        : { side: false, size: Math.floor(Math.max(0, stackedScale) * vbH + bar) };
+      setDockLayout((current) => current?.side === next.side && current.size === next.size ? current : next);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(workspace);
+    return () => observer.disconnect();
+  }, [compactFieldViewBox, readOnly]);
+  const isSideDock = dockLayout?.side === true;
+  useEffect(() => {
+    sideDockRef.current = isSideDock;
+  }, [isSideDock]);
+
+  // With a side dock there is room to keep the route catalog open, saving a tap per receiver.
+  const wasSideDockRef = useRef(false);
+  useEffect(() => {
+    if (wasSideDockRef.current && !isSideDock) {
+      // Stacked pickers cover the dock, so don't carry an auto-opened catalog across a rotation.
+      setIsPresetMenuOpen(false);
+      setIsMotionMenuOpen(false);
+    }
+    wasSideDockRef.current = isSideDock;
+  }, [isSideDock]);
+  useEffect(() => {
+    if (isSideDock && !readOnly && selectedPlayer?.side === "offense" && !isMotionMenuOpen) {
+      setIsPresetMenuOpen(true);
+    }
+  }, [isSideDock, readOnly, selectedPlayer?.id, selectedPlayer?.side, isMotionMenuOpen]);
 
   const [isDepthDragging, setIsDepthDragging] = useState(false);
   const sliderTrackRef = useRef<HTMLDivElement>(null);
@@ -2493,7 +2546,7 @@ export default function PlayCanvas({
             }
           >
             {isShowingOpponent ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{isShowingOpponent ? "Opponent On" : "Opponent Off"}</span>
+            <span className="hidden xl:inline">{isShowingOpponent ? "Opponent On" : "Opponent Off"}</span>
           </button>
 
           {/* Opponent Scheme Selector Dropdown (When Opponent is ON) */}
@@ -2677,7 +2730,7 @@ export default function PlayCanvas({
               aria-label="Coach Q&A"
             >
               <HelpCircle className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-              <span className="hidden sm:inline">Coach Q&A</span>
+              <span className="hidden xl:inline">Coach Q&A</span>
               {play.questions && play.questions.length > 0 && (
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
@@ -2704,22 +2757,22 @@ export default function PlayCanvas({
               {autoSaveStatus === "saving" ? (
                 <>
                   <RefreshCw className="w-3 h-3 text-cyan-500 dark:text-cyan-400 animate-spin" />
-                  <span className="text-cyan-600 dark:text-cyan-300 hidden sm:inline">Saving...</span>
+                  <span className="text-cyan-600 dark:text-cyan-300 hidden xl:inline">Saving...</span>
                 </>
               ) : autoSaveStatus === "unsaved" ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="text-amber-600 dark:text-amber-300 hidden sm:inline">Unsaved</span>
+                  <span className="text-amber-600 dark:text-amber-300 hidden xl:inline">Unsaved</span>
                 </>
               ) : autoSaveStatus === "offline" ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span className="text-neutral-500 dark:text-neutral-400 hidden sm:inline">Saved locally</span>
+                  <span className="text-neutral-500 dark:text-neutral-400 hidden xl:inline">Saved locally</span>
                 </>
               ) : (
                 <>
                   <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-                  <span className="text-neutral-600 dark:text-neutral-400 hidden sm:inline">Saved to Cloud</span>
+                  <span className="text-neutral-600 dark:text-neutral-400 hidden xl:inline">Saved to Cloud</span>
                 </>
               )}
             </button>
@@ -2730,11 +2783,19 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* LOWER STUDIO WORKSPACE: FIELD PANE (LEFT) + TACTICAL DOCK (RIGHT) */}
       {/* ============================================================== */}
-      <div className={styles.workspace}>
+      <div
+        ref={workspaceRef}
+        data-dock-layout={dockLayout ? (dockLayout.side ? "side" : "bottom") : undefined}
+        className={`${styles.workspace} ${dockLayout ? (dockLayout.side ? styles.sideDock : styles.bottomDock) : ""}`}
+      >
         {/* ============================================================== */}
         {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
         {/* ============================================================== */}
-        <div data-testid="designer-field-pane" className={`${styles.fieldPane} bg-[#07090E] border border-neutral-200 dark:border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl relative`}>
+        <div
+          data-testid="designer-field-pane"
+          style={dockLayout && !dockLayout.side ? { flex: `0 0 ${dockLayout.size}px` } : undefined}
+          className={`${styles.fieldPane} bg-[#07090E] border border-neutral-200 dark:border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl relative`}
+        >
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
@@ -3965,16 +4026,10 @@ export default function PlayCanvas({
           </svg>
 
           {isCompactLandscape && (
-            <div className="absolute top-1.5 right-1.5 rounded-md border border-white/15 bg-black/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/80 pointer-events-none">
+            <div className="absolute bottom-1.5 left-1.5 rounded-md border border-white/15 bg-black/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/80 pointer-events-none">
               Zoomed to the line of scrimmage
             </div>
           )}
-
-          {/* Quick On-Field Canvas Helper Tooltip */}
-          <div className="absolute bottom-3 left-3 right-3 max-w-fit bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[11px] leading-relaxed text-neutral-400 hidden sm:[@media(min-height:451px)]:flex items-center gap-2 pointer-events-none">
-            <Move className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span>Drag players or route points to adjust.</span>
-          </div>
 
           {/* Vertical route depth rail: sits beside the sideline and lines up with real yard lines */}
           {showDepthRail &&
@@ -4097,7 +4152,7 @@ export default function PlayCanvas({
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
-        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1 bg-[#0B0F19]/95 dark:bg-black/80 border-t border-white/10 flex items-center justify-between gap-1.5 text-xs shrink-0">
+        <div ref={playbackRef} data-tour="play-animation-controls" className="px-2 sm:px-3 py-1 bg-[#0B0F19]/95 dark:bg-black/80 border-t border-white/10 flex items-center justify-between gap-1.5 text-xs shrink-0">
           <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={handleToggleAnimate}
@@ -4161,7 +4216,11 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
       {/* ============================================================== */}
-      <div data-testid="designer-assignments-pane" className={`${styles.assignments} bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-xl`}>
+      <div
+        data-testid="designer-assignments-pane"
+        style={dockLayout?.side ? { flex: `0 0 ${dockLayout.size}px` } : undefined}
+        className={`${styles.assignments} bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-xl`}
+      >
         <div className={`${styles.assignmentContent} p-2 sm:p-3 space-y-2 scrollbar-thin bg-white dark:bg-[#0A0E17]`}>
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
             {/* Player Selection Pills with Coaching Notes Indicator */}
@@ -4243,22 +4302,6 @@ export default function PlayCanvas({
           <>
             {/* Selected Player Status & Action Buttons */}
             <div data-tour="player-actions" className="flex items-center gap-1 flex-wrap">
-              {selectedPlayer && (
-              <div className="hidden min-[900px]:flex [@media(max-height:450px)]:hidden w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
-                  <span className="text-neutral-400">{selectedPlayer.role}:</span>
-                  <span
-                    className={`font-bold ${
-                      selectedPlayer.side === "offense" ? "text-cyan-700 dark:text-cyan-400" : "text-purple-700 dark:text-purple-400"
-                    }`}
-                  >
-                    {selectedPlayer.quickRouteName ||
-                      (selectedPlayer.route && selectedPlayer.route.length > 0
-                        ? "Custom Route"
-                        : selectedPlayer.coverageType?.toUpperCase() || "No Route")}
-                  </span>
-                </div>
-              )}
-
               {selectedPlayer?.side === "offense" && Boolean(selectedPlayer.route?.length) && (
                 <button
                   type="button"
@@ -4342,7 +4385,7 @@ export default function PlayCanvas({
                 <div className="hidden min-[900px]:flex items-center gap-2 flex-wrap min-w-0">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1 max-sm:hidden">
                     <Zap className="w-3 h-3" />
-                    <span>Route Assignment ({selectedPlayer.label}):</span>
+                    <span>{selectedPlayer.label} route:</span>
                   </span>
                   {playerHasMotion(selectedPlayer) && (
                     <span className="px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/40 text-[10px] flex items-center gap-1 shadow-sm">
