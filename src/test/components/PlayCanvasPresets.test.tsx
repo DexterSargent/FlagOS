@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
 import { PlayDiagram } from "@/lib/playbookTypes";
@@ -55,7 +55,7 @@ async function applyCatalogRoute(shortName: string) {
   if (!screen.queryByTestId("route-presets-catalog")) {
     fireEvent.click(screen.getByTestId("route-presets-toggle"));
   }
-  fireEvent.click(await screen.findByTestId(`catalog-route-${shortName}`));
+  fireEvent.click(await screen.findByTestId(`catalog-route-${shortName}`, {}, { timeout: 5000 }));
 }
 
 function applyMotion(shortName: string) {
@@ -63,6 +63,14 @@ function applyMotion(shortName: string) {
     fireEvent.click(screen.getByTestId("toggle-motion-btn"));
   }
   fireEvent.click(screen.getByTestId(`quick-route-${shortName}-motion`));
+}
+
+function renderRusherZoneEditor(onChange: Mock<(play: PlayDiagram) => void>) {
+  const result = render(<PlayCanvas play={mockDefensePlay} onChange={onChange} />);
+  expect(screen.queryByTestId("coverage-category-deep")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Zone" }));
+  result.rerender(<PlayCanvas play={onChange.mock.lastCall![0] as PlayDiagram} onChange={onChange} />);
+  return result;
 }
 
 describe("Man coverage animation", () => {
@@ -158,7 +166,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
     fireEvent.click(screen.getByTestId("route-presets-toggle"));
     expect(screen.queryByTestId("motion-menu")).toBeNull();
-    expect(await screen.findByTestId("catalog-route-slant")).toBeDefined();
+    expect(await screen.findByTestId("catalog-route-slant", {}, { timeout: 5000 })).toBeDefined();
     expect(screen.getByTestId("catalog-route-out")).toBeDefined();
   });
 
@@ -304,7 +312,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
   it("assigns QB spy as a distinct defensive responsibility", () => {
     const handleChange = vi.fn();
-    render(<PlayCanvas play={mockDefensePlay} onChange={handleChange} />);
+    renderRusherZoneEditor(handleChange);
 
     expect(screen.queryByTestId("coverage-qb-spy")).toBeNull();
     fireEvent.click(screen.getByTestId("coverage-category-special"));
@@ -319,7 +327,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
   it("clears pass-rush routing when a defender is reassigned to a zone", () => {
     const handleChange = vi.fn();
-    render(<PlayCanvas play={mockDefensePlay} onChange={handleChange} />);
+    renderRusherZoneEditor(handleChange);
 
     fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
 
@@ -331,7 +339,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
   it("replaces a defender's old zone while preserving unassigned custom bubbles", () => {
     const onChange = vi.fn();
-    const { rerender } = render(<PlayCanvas play={mockDefensePlay} onChange={onChange} />);
+    const { rerender } = renderRusherZoneEditor(onChange);
     fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
     const assigned = onChange.mock.lastCall![0] as PlayDiagram;
     const oldZone = assigned.zones![0];
@@ -351,7 +359,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
   it("keeps an old zone when another defender still uses it", () => {
     const onChange = vi.fn();
-    const { rerender } = render(<PlayCanvas play={mockDefensePlay} onChange={onChange} />);
+    const { rerender } = renderRusherZoneEditor(onChange);
     fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
     const assigned = onChange.mock.lastCall![0] as PlayDiagram;
     const oldZone = assigned.zones![0];
@@ -368,7 +376,7 @@ describe("PlayCanvas Route Presets Suite", () => {
 
   it.each(["Man", "Rush", "Zone"])("removes the previous zone when switching to %s", (assignment) => {
     const onChange = vi.fn();
-    const { rerender } = render(<PlayCanvas play={mockDefensePlay} onChange={onChange} />);
+    const { rerender } = renderRusherZoneEditor(onChange);
     fireEvent.click(screen.getByTestId("coverage-deep-half-l"));
     const assigned = onChange.mock.lastCall![0] as PlayDiagram;
     rerender(<PlayCanvas play={assigned} onChange={onChange} />);

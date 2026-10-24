@@ -156,14 +156,15 @@ export default function MiniPlayDiagram({
       {/* Defensive Zones */}
       {(play.type === "defense" || shouldShowOpposingSide) &&
         play.zones?.map((z) =>
-          z.shape === "rectangle" ? (
+          z.shape === "rectangle" || z.roundness !== undefined ? (
             <rect
               key={z.id}
               x={((z.x - z.rx) / 100) * 1000}
               y={((z.y - z.ry) / 100) * 700}
               width={((z.rx * 2) / 100) * 1000}
               height={((z.ry * 2) / 100) * 700}
-              rx="8"
+              rx={z.roundness === undefined ? 8 : z.rx * 10 * Math.max(0, Math.min(100, z.roundness)) / 100}
+              ry={z.roundness === undefined ? undefined : z.ry * 7 * Math.max(0, Math.min(100, z.roundness)) / 100}
               fill={z.color}
               fillOpacity={isLight ? 0.15 : 0.22}
               stroke={z.color}

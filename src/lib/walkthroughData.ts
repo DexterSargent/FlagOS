@@ -38,14 +38,10 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       details: [
         { label: "Back to Plays", text: "Returns to the play list for this formation. Your work is auto-saved first." },
         { label: "Formation dropdown", text: "Jump straight to another formation in this playbook without leaving the designer." },
-        { label: "Duplicate", text: "Copies the current play so you can build a variation without touching the original." },
-        { label: "Delete", text: "Permanently removes this play after a confirmation." },
-        { label: "New Play", text: "Starts a blank play using the current formation's alignment." },
         { label: "Coach Q&A", text: "Opens the coaching notes / question log your staff and players can read." },
-        { label: "Print", text: "Builds a printable play card or wristband sheet." },
         { label: "Save status", text: "Shows Saving… / Saved so you always know your changes are stored." },
       ],
-      tip: "Use Duplicate to build a whole series (e.g. Mesh, Mesh Wheel, Mesh Post) from one base play.",
+      tip: "Return to the formation's play cards to duplicate, delete or create plays. Print whole playbooks from the playbook menu.",
     },
     {
       id: "play-command-bar",
@@ -93,8 +89,8 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       category: "Defense",
       description: "Add your own coverage areas to the field on defensive plays.",
       details: [
-        { label: "Oval", text: "Drops an oval zone you can drag and resize." },
-        { label: "Box", text: "Drops a rectangular zone — useful for flat or hook areas." },
+        { label: "Custom zone", text: "Adds one coverage area you can drag and resize. Zone tools appear only for zone coverage, not man or rush." },
+        { label: "Roundness", text: "Slide from square corners (0%) to a full oval (100%) without creating a different zone." },
       ],
     },
     {
@@ -106,7 +102,7 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       description: "This is where you build the play. Everything here can be dragged.",
       details: [
         { label: "Player circle", text: "Tap to select, drag to move them pre-snap." },
-        { label: "Route nodes", text: "Drag a route's corner points to reshape it; tap a node to remove it while drawing." },
+        { label: "Route nodes", text: "Drag a route's corner points to reshape it. Undo point removes the last node without clearing the rest of the route or its motion." },
         { label: "Motion nodes", text: "The dashed path before the snap. Drag to change where the motion player ends up." },
         { label: "Zones & handles", text: "Drag a zone to move it; pull the corner handles to resize." },
         { label: "Rusher bend", text: "On a rusher, drag the curve handle to bend the rush path around the line." },
@@ -135,6 +131,7 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       details: [
         { label: "Position Notes", text: "Opens the install sheet: one note per position explaining their job on this play." },
         { label: "Draw Route / Stop Drawing", text: "Enter draw mode to tap out a custom route; tap again to finish." },
+        { label: "Undo", text: "Removes only the last route node. The earlier nodes and pre-snap motion stay intact." },
         { label: "Clear", text: "Removes the selected player's route or assignment." },
       ],
     },
@@ -171,7 +168,7 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       category: "Defense",
       description: "With a defender selected, choose what they're responsible for.",
       details: [
-        { label: "Zone", text: "Assigns a zone. Pick a standard zone (deep third, flat, hook…) or add a custom oval or box." },
+        { label: "Zone", text: "Shows standard zone choices (deep third, flat, hook…) and one Custom zone action. Man and Rush hide these zone tools." },
         { label: "Man", text: "Then tap the receiver this defender should cover; a ring shows the match-up." },
         { label: "Rush", text: "Sends the defender after the QB. Bend the path on the field." },
         { label: "Category tabs", text: "Filter the standard zones by deep, underneath or flat." },
@@ -186,7 +183,7 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       details: [
         { label: "Delete", text: "Removes the zone." },
         { label: "Name", text: "Rename it (e.g. 'Hook L') so players know what it means." },
-        { label: "Oval / Box", text: "Switch the shape." },
+        { label: "Roundness", text: "Adjust continuously from square corners (0%) to an oval (100%)." },
         { label: "Width & depth", text: "Use − / + for small steps or drag the slider." },
         { label: "Colour swatches", text: "Colour-code zones, for example deep in blue and underneath in yellow." },
       ],
@@ -200,7 +197,7 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       details: [
         { label: "Run / Pause / Replay", text: "Starts, pauses or replays the animation." },
         { label: "Reset", text: "Puts every player back at the pre-snap alignment." },
-        { label: "0.5x / 1x / 1.5x", text: "Playback speed. Slow it down to teach timing." },
+        { label: "Speed dropdown", text: "Choose 0.5x, 1x or 1.5x. Slow it down to teach timing." },
         { label: "Timeline slider", text: "Scrub to any moment of the play." },
       ],
       actionHint: "Press Run to watch your play.",

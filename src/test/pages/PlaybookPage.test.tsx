@@ -189,7 +189,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     expect(await screen.findByDisplayValue(play.name)).toBeInTheDocument();
     expect(screen.getByText("Coach Q&A")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save playbook" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Print playbook" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Print|Duplicate Play|Delete Play|New Play/ })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Play category" })).toBeInTheDocument();
     expect(screen.queryByText("Tactical Confidentiality Guard Active")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Open play / })).not.toBeInTheDocument();
@@ -298,7 +298,9 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     expect(screen.queryByRole("combobox", { name: /^Category for / })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: `Open play ${plays[0].name}` }));
     expect(await screen.findByText("Coach Q&A")).toBeInTheDocument();
-    expect(screen.getByText(/Player View Only:/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Player assignment" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Play category" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show route catalog" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Duplicate Play" })).not.toBeInTheDocument();
   });
 
@@ -415,7 +417,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
 
     await waitFor(() => {
       // In embedded mode, the compact studio header appears
-      expect(screen.getAllByText(/Playbook Studio/i).length).toBeGreaterThan(0);
+      expect(screen.getByRole("combobox", { name: "Play" })).toBeInTheDocument();
       expect(screen.getByText(/SCRIMMAGE \(LOS\)/i)).toBeInTheDocument();
     });
   });
@@ -472,9 +474,8 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
 
     await waitFor(() => {
       // Player sees Coach Q&A button
-      expect(screen.getByText(/Coach Q&A/i)).toBeInTheDocument();
-      // Player sees view-only notice
-      expect(screen.getByText(/Player View Only:/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Coach Q&A" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Player assignment" })).toBeInTheDocument();
       // Player does not see edit/save controls
       expect(screen.queryByRole("button", { name: /^Save$/i })).toBeNull();
     });

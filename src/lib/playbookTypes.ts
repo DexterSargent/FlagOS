@@ -22,6 +22,7 @@ export interface ZoneBubble {
   ry: number; // vertical radius in %
   color: string;
   shape?: ZoneShape;
+  roundness?: number; // 0 = square corners, 100 = oval; absent preserves legacy shape.
 }
 
 export interface StandardZoneTemplate {

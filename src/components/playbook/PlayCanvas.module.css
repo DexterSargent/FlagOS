@@ -8,6 +8,32 @@
   overflow: hidden;
 }
 
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+  padding: 0.375rem;
+}
+
+.toolbarMain,
+.toolbarActions {
+  display: contents;
+}
+
+.metadata {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.toolbarActions > :first-child {
+  margin-left: auto;
+}
+
 .workspace {
   display: flex;
   flex: 1;
@@ -37,7 +63,7 @@
 .assignments {
   position: relative;
   display: flex;
-  flex: 0 0 clamp(11.5rem, 42%, 22rem);
+  flex: 0 0 10.5rem;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
@@ -55,7 +81,7 @@
   position: sticky;
   top: -0.5rem;
   z-index: 10;
-  padding-block: 0.5rem;
+  padding-block: 0.25rem;
   background: inherit;
 }
 
@@ -84,6 +110,44 @@
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
+.playerView .assignments {
+  flex-basis: 9rem;
+}
+
+.playerView .metadata {
+  width: auto;
+  flex: 1 1 9rem;
+}
+
+.routeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+@media (max-width: 899px) {
+  .routeActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  .routeActions > button {
+    justify-content: center;
+    padding-inline: 0.375rem;
+  }
+
+  .routeActions > button > svg:last-child {
+    display: none;
+  }
+}
+
+@media (min-width: 1100px) {
+  .metadata {
+    width: auto;
+    flex: 1 1 24rem;
+  }
+}
+
 @media (min-width: 900px), (min-width: 600px) and (max-height: 450px) {
   .workspace {
     flex-direction: row;
@@ -92,6 +156,10 @@
 
   .assignments {
     flex: 0 0 clamp(18rem, 30vw, 23.75rem);
+  }
+
+  .playerView .assignments {
+    flex-basis: clamp(15rem, 26vw, 20rem);
   }
 }
 

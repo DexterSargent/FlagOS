@@ -63,7 +63,6 @@ import {
   RefreshCw,
   Plus,
   Minus,
-  Square,
   Circle,
   Trash2,
   Lock,
@@ -100,8 +99,7 @@ import {
   AlignRight,
   Target,
   ChevronLeft,
-  Copy,
-  Printer,
+  Undo2,
   MoreHorizontal,
 } from "lucide-react";
 import {
@@ -172,10 +170,6 @@ interface PlayCanvasProps {
   allPlaybooks?: Playbook[];
   onOpenQuestions?: () => void;
   onBackToPlays?: () => void;
-  onDuplicatePlay?: () => void;
-  onDeletePlay?: () => void;
-  onCreateNewPlay?: () => void;
-  onPrintPlaybook?: () => void;
   autoSaveStatus?: "saving" | "unsaved" | "offline" | "saved";
   onFlushAutoSave?: () => void;
 }
@@ -189,10 +183,6 @@ export default function PlayCanvas({
   allPlaybooks = [],
   onOpenQuestions,
   onBackToPlays,
-  onDuplicatePlay,
-  onDeletePlay,
-  onCreateNewPlay,
-  onPrintPlaybook,
   autoSaveStatus,
   onFlushAutoSave,
 }: PlayCanvasProps) {
@@ -376,6 +366,11 @@ export default function PlayCanvas({
 
   // Selected player reference
   const selectedPlayer = (play.players || []).find((p) => p.id === selectedPlayerId) || null;
+
+  useEffect(() => {
+    if (selectedPlayerId) setSelectedZoneId(null);
+    setMode((current) => current === "draw" ? current : "select");
+  }, [selectedPlayerId]);
 
   // Active zone reference: either directly selected zone, or zone attached to selected player
   const activeZone =
@@ -749,13 +744,14 @@ export default function PlayCanvas({
 
   // Guarantee squad sizing matching active squad size on both sides of the ball
   useEffect(() => {
+    if (readOnly) return;
     const off = play.players.filter((p) => p.side === "offense");
     const def = play.players.filter((p) => p.side === "defense");
     if (off.length !== activeSquadSize || def.length !== activeSquadSize) {
       const sanitized = ensureSquadMatchup(play.players, losY, activeSquadSize);
       onChange({ ...play, players: sanitized });
     }
-  }, [play.id, losY, activeSquadSize]);
+  }, [play.id, losY, activeSquadSize, readOnly]);
 
   // Squad format switcher on canvas
   const handleSquadFormatChange = (newCount: number) => {
@@ -842,7 +838,10 @@ export default function PlayCanvas({
   // Pointer Down Handlers
   const handlePointerDownPlayer = (e: React.PointerEvent, playerId: string) => {
     e.stopPropagation();
-    if (readOnly) return;
+    if (readOnly) {
+      setSelectedPlayerId(playerId);
+      return;
+    }
 
     const clickedPlayer = play.players.find((p) => p.id === playerId);
     if (!clickedPlayer) return;
@@ -1598,6 +1597,27 @@ export default function PlayCanvas({
     onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
+  const handleUndoRoutePoint = () => {
+    if (readOnly || !selectedPlayer?.route?.length || selectedPlayer.side !== "offense") return;
+    const updatedPlayers = play.players.map((player) => {
+      if (player.id !== selectedPlayer.id) return player;
+      const route = player.route!.slice(0, -1);
+      const updated: PlayerNode = {
+        ...player,
+        route,
+        quickRouteName: route.length ? "Custom Route" : undefined,
+        routeDepthYards: undefined,
+      };
+      updated.notes = generatePlayerAssignmentNote(updated, play.players, play.zones);
+      return updated;
+    });
+    onChange({
+      ...play,
+      players: updatedPlayers,
+      notes: updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type),
+    });
+  };
+
   // Assign Zone to selected defender
   const handleAssignZone = (zoneId: string, targetPlayerId?: string) => {
     const playerToAssign = targetPlayerId
@@ -1943,7 +1963,7 @@ export default function PlayCanvas({
     onChange({ ...play, players: updatedPlayers });
   };
 
-  // Add a new custom zone bubble (with custom shape: ellipse or rectangle)
+  // Legacy shapes remain readable; new zones use continuous corner roundness.
   const handleCreateCustomZone = (shape: ZoneShape = "ellipse", name?: string, color = "#8B5CF6") => {
     if (readOnly) return;
     const defaultY = selectedPlayer
@@ -1960,6 +1980,7 @@ export default function PlayCanvas({
       ry: shape === "rectangle" ? 8 : 10,
       color,
       shape,
+      roundness: shape === "rectangle" ? 0 : 100,
     };
 
     const nextZones = [...(play.zones || []), newZone];
@@ -2039,7 +2060,7 @@ export default function PlayCanvas({
               style={{ backgroundColor: zone.color }}
             />
             <span className="text-[11px] font-mono font-bold text-purple-300 uppercase tracking-wide truncate">
-              Zone Properties ({zone.shape === "rectangle" ? "Box" : "Oval"})
+              Zone Properties
             </span>
           </div>
           <button
@@ -2071,44 +2092,20 @@ export default function PlayCanvas({
           />
         </div>
 
-        {/* Shape Picker: Ellipse vs Rectangle */}
-        <div>
-          <label className="text-[10px] text-neutral-400 uppercase font-bold block mb-1">
-            Shape
-          </label>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              disabled={readOnly}
-              data-testid="zone-shape-ellipse"
-              aria-pressed={(zone.shape || "ellipse") === "ellipse"}
-              onClick={() => handleUpdateZone(zone.id, { shape: "ellipse" })}
-              className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                (zone.shape || "ellipse") === "ellipse"
-                  ? "bg-purple-300 text-black border-purple-200 shadow-sm"
-                  : "bg-black/50 text-neutral-300 border-white/10 hover:text-white hover:bg-neutral-800"
-              }`}
-            >
-              <Circle className="w-3.5 h-3.5" />
-              <span>Oval / Bubble</span>
-            </button>
-            <button
-              type="button"
-              disabled={readOnly}
-              data-testid="zone-shape-rectangle"
-              aria-pressed={zone.shape === "rectangle"}
-              onClick={() => handleUpdateZone(zone.id, { shape: "rectangle" })}
-              className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                zone.shape === "rectangle"
-                  ? "bg-purple-300 text-black border-purple-200 shadow-sm"
-                  : "bg-black/50 text-neutral-300 border-white/10 hover:text-white hover:bg-neutral-800"
-              }`}
-            >
-              <Square className="w-3.5 h-3.5" />
-              <span>Box / Rectangle</span>
-            </button>
-          </div>
-        </div>
+        <label className="flex items-center gap-2 text-[11px] text-purple-200">
+          <span>Roundness</span>
+          <input
+            type="range"
+            aria-label="Zone roundness"
+            disabled={readOnly}
+            min={0}
+            max={100}
+            value={zone.roundness ?? (zone.shape === "rectangle" ? 0 : 100)}
+            onChange={(event) => handleUpdateZone(zone.id, { shape: "rectangle", roundness: Number(event.target.value) })}
+            className="min-w-0 flex-1 accent-purple-400"
+          />
+          <span className="w-8 text-right tabular-nums">{zone.roundness ?? (zone.shape === "rectangle" ? 0 : 100)}%</span>
+        </label>
 
         {/* Width & Depth Steppers and Sliders */}
         <div className="grid grid-cols-2 gap-2">
@@ -2358,17 +2355,18 @@ export default function PlayCanvas({
     animationModel.getPosition(player, progress, animating);
 
   return (
-    <div className={`${styles.designer} font-sans [&_button]:min-h-10 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400`}>
+    <div className={`${styles.designer} ${readOnly ? styles.playerView : ""} font-sans [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400`}>
       {/* ============================================================== */}
       {/* UNIFIED STUDIO TOP COMMAND BAR: ALL CONTROLS IN 1-2 ROWS       */}
       {/* ============================================================== */}
       <div
         data-testid="designer-toolbar"
         data-tour="play-command-bar"
-        className="p-2 sm:p-2.5 bg-white dark:bg-[#0B0F19] border border-neutral-200 dark:border-white/10 rounded-2xl flex flex-wrap items-center justify-between gap-2 shrink-0 shadow-sm"
+        className={`${styles.toolbar} bg-white dark:bg-[#0B0F19] border border-neutral-200 dark:border-white/10 rounded-xl shadow-sm`}
       >
         {/* Left Section: Navigation, Play Name, Formation & Situation */}
-        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1 basis-full xl:basis-0">
+        <div className={styles.toolbarMain}>
+        <div className={styles.metadata}>
           {/* Back button */}
           {onBackToPlays && (
             <button
@@ -2384,7 +2382,14 @@ export default function PlayCanvas({
           )}
 
           {/* Play Name Editable Field */}
-          <div className="flex items-center gap-1.5 min-w-[110px] max-w-[210px] flex-1">
+          {readOnly ? (
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-sm font-bold text-neutral-900 dark:text-white" title={play.name}>{play.name}</h2>
+              <p className="truncate text-[11px] text-neutral-500 dark:text-neutral-400">{play.formation} · {play.situation || "Standard"}</p>
+            </div>
+          ) : (
+          <>
+          <div className="flex items-center gap-1 min-w-0 flex-1">
             <span className="text-[10px] font-black uppercase text-cyan-600 dark:text-cyan-400 font-mono tracking-wider shrink-0 hidden md:inline">Play:</span>
             <input
               type="text"
@@ -2393,12 +2398,12 @@ export default function PlayCanvas({
               value={play.name}
               onChange={(e) => onChange({ ...play, name: e.target.value })}
               placeholder="Play Name..."
-              className="min-w-0 w-full text-xs sm:text-sm font-bold text-neutral-900 dark:text-white bg-neutral-100 dark:bg-black/40 hover:bg-neutral-200 dark:hover:bg-black/60 focus:bg-white dark:focus:bg-black/80 focus:border-cyan-500 rounded-lg px-2.5 py-1.5 border border-neutral-200 dark:border-white/10 outline-none transition-all"
+              className="min-w-0 w-full h-9 text-xs font-bold text-neutral-900 dark:text-white bg-neutral-100 dark:bg-black/40 hover:bg-neutral-200 dark:hover:bg-black/60 focus:bg-white dark:focus:bg-black/80 focus:border-cyan-500 rounded-lg px-2 border border-neutral-200 dark:border-white/10 outline-none transition-all"
             />
           </div>
 
           {/* Formation Dropdown (THE ONLY ONE) */}
-          <div data-tour="formation-selector" className="flex items-center gap-1 min-w-[100px] max-w-[160px]">
+          <div data-tour="formation-selector" className="flex items-center gap-1 min-w-0 w-[30%] max-w-[160px]">
             <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden xl:inline shrink-0">Formation:</span>
             <select
               aria-label={onBackToPlays && canEdit ? "Play category" : "Play formation"}
@@ -2430,7 +2435,7 @@ export default function PlayCanvas({
                   onChange({ ...play, formation: val, players: updated });
                 }
               }}
-              className="w-full bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs font-semibold text-neutral-900 dark:text-cyan-300 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer"
+              className="w-full min-w-0 h-9 bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-lg px-1.5 text-xs font-semibold text-neutral-900 dark:text-cyan-300 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer"
             >
               {playbookFormations.map((fName) => (
                 <option key={fName} value={fName} className="bg-white dark:bg-[#0B0F19] text-neutral-900 dark:text-white">
@@ -2446,14 +2451,14 @@ export default function PlayCanvas({
           </div>
 
           {/* Gameday Situation Dropdown */}
-          <div className="flex items-center gap-1 min-w-[95px] max-w-[130px]">
+          <div className="flex items-center gap-1 min-w-0 w-[25%] max-w-[130px]">
             <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden 2xl:inline shrink-0">Situation:</span>
             <select
               aria-label="Play situation"
               disabled={readOnly}
               value={play.situation || "Standard"}
               onChange={(e) => onChange({ ...play, situation: e.target.value })}
-              className="w-full bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs font-semibold text-neutral-900 dark:text-neutral-200 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer"
+              className="w-full min-w-0 h-9 bg-neutral-100 dark:bg-black/40 border border-neutral-200 dark:border-white/10 rounded-lg px-1.5 text-xs font-semibold text-neutral-900 dark:text-neutral-200 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 cursor-pointer"
             >
               {SITUATION_OPTIONS.map((sit) => (
                 <option key={sit} value={sit} className="bg-white dark:bg-[#0B0F19] text-neutral-900 dark:text-white">
@@ -2462,6 +2467,9 @@ export default function PlayCanvas({
               ))}
             </select>
           </div>
+          </>
+          )}
+        </div>
 
           {/* Opposing Side Toggle */}
           <button
@@ -2470,6 +2478,7 @@ export default function PlayCanvas({
             data-testid="toggle-opponent-btn"
             onClick={() => setShowOpposingSide((prev) => (isOpponentRequired ? true : !prev))}
             aria-pressed={isShowingOpponent}
+            aria-label={isShowingOpponent ? "Hide opponent" : "Show opponent"}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer shrink-0 ${
               isShowingOpponent
                 ? "bg-amber-500/20 border-amber-500/40 text-amber-600 dark:text-amber-300 shadow-sm"
@@ -2488,7 +2497,7 @@ export default function PlayCanvas({
           </button>
 
           {/* Opponent Scheme Selector Dropdown (When Opponent is ON) */}
-          {isShowingOpponent && (
+          {isShowingOpponent && !readOnly && (
             <div ref={opponentMenuRef} className="relative">
               <button
                 type="button"
@@ -2499,8 +2508,8 @@ export default function PlayCanvas({
                 title={`Select opposing ${play.type === "defense" ? "offensive" : "defensive"} play to populate and run simulation against`}
               >
                 <FolderPlus className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                <span className="max-w-[100px] sm:max-w-[140px] truncate">
-                  {selectedOpponentPlayTitle ? `Vs: ${selectedOpponentPlayTitle}` : `Choose Opponent`}
+                <span className="max-w-[70px] min-[900px]:max-w-[140px] truncate">
+                  {selectedOpponentPlayTitle ? `Vs: ${selectedOpponentPlayTitle}` : "Opponent"}
                 </span>
                 <ChevronDown className="w-3 h-3 text-amber-500 dark:text-amber-400" />
               </button>
@@ -2508,7 +2517,7 @@ export default function PlayCanvas({
               {isOpponentMenuOpen && (
                 <div
                   data-testid="opponent-plays-menu"
-                  className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 max-h-96 overflow-y-auto bg-white dark:bg-[#0B0F19] border border-amber-500/30 rounded-2xl shadow-2xl p-2 z-50 space-y-2 scrollbar-thin text-neutral-900 dark:text-white"
+                  className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-5rem)] max-h-96 overflow-y-auto bg-white dark:bg-[#0B0F19] border border-amber-500/30 rounded-2xl shadow-2xl p-2 z-50 space-y-2 scrollbar-thin text-neutral-900 dark:text-white"
                 >
                   <div className="px-2 py-1 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
                     <div>
@@ -2630,38 +2639,10 @@ export default function PlayCanvas({
           </button>
 
           {/* Guided Tour Trigger */}
-          <WalkthroughTrigger
+          {!readOnly && <WalkthroughTrigger
             walkthrough={PLAY_DESIGNER_WALKTHROUGH}
-            variant="toolbar"
-          />
-
-          {/* Custom Zones Buttons (when defensive play) */}
-          {play.type === "defense" && !readOnly && (
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => handleCreateCustomZone("ellipse")}
-                data-testid="add-custom-oval-zone-btn"
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-600 dark:text-purple-300 hover:bg-purple-500/25 hover:text-purple-900 dark:hover:text-white text-xs font-bold cursor-pointer transition-colors"
-                title="Add custom oval zone bubble"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <Circle className="w-3 h-3" />
-                <span className="hidden lg:inline">Oval Zone</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleCreateCustomZone("rectangle")}
-                data-testid="add-custom-box-zone-btn"
-                className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-600 dark:text-purple-300 hover:bg-purple-500/25 hover:text-purple-900 dark:hover:text-white text-xs font-bold cursor-pointer transition-colors"
-                title="Add custom box/rectangle zone"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <Square className="w-3 h-3" />
-                <span className="hidden lg:inline">Box Zone</span>
-              </button>
-            </div>
-          )}
+            variant="icon"
+          />}
 
           {/* Legal Alignment Status Badge */}
           {alignmentIssues.length === 0 ? (
@@ -2680,44 +2661,7 @@ export default function PlayCanvas({
           )}
         </div>
 
-        {/* Right Section: Actions (Duplicate, Delete, New Play, Q&A, Print, Auto-Save) */}
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap sm:flex-nowrap">
-          {canEdit && onDuplicatePlay && (
-            <button
-              type="button"
-              onClick={onDuplicatePlay}
-              className="p-2 rounded-xl text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/10 transition-colors"
-              title="Duplicate Play"
-              aria-label="Duplicate Play"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {canEdit && onDeletePlay && (
-            <button
-              type="button"
-              onClick={onDeletePlay}
-              className="p-2 rounded-xl text-neutral-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 bg-neutral-100 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-500/10 border border-neutral-200 dark:border-white/10 transition-colors"
-              title="Delete Play"
-              aria-label="Delete Play"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {canEdit && onCreateNewPlay && (
-            <button
-              type="button"
-              onClick={onCreateNewPlay}
-              aria-label="New Play"
-              className="px-2.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider flex items-center gap-1 shrink-0 transition-all cursor-pointer shadow-sm"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">New Play</span>
-            </button>
-          )}
-
+        <div className={styles.toolbarActions}>
           {onOpenQuestions && (
             <button
               type="button"
@@ -2745,19 +2689,6 @@ export default function PlayCanvas({
                   {play.questions.length}
                 </span>
               )}
-            </button>
-          )}
-
-          {onPrintPlaybook && (
-            <button
-              type="button"
-              onClick={onPrintPlaybook}
-              className="px-2.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 text-neutral-700 dark:text-white font-bold text-xs uppercase tracking-wider transition-all border border-neutral-200 dark:border-white/10 flex items-center gap-1.5 cursor-pointer shrink-0"
-              title="Print wristband playbook sheets"
-              aria-label="Print playbook"
-            >
-              <Printer className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              <span className="hidden md:inline">Print</span>
             </button>
           )}
 
@@ -3098,7 +3029,7 @@ export default function PlayCanvas({
             {(play.type === "defense" || isShowingOpponent) &&
               play.zones?.map((zone) => {
                 const isSelected = selectedZoneId === zone.id;
-                const isRect = zone.shape === "rectangle";
+                const isRect = zone.shape === "rectangle" || zone.roundness !== undefined;
                 const zoneColor = zone.color || "#8B5CF6";
                 const cx = (zone.x / 100) * 1000;
                 const cy = (zone.y / 100) * 700;
@@ -3122,7 +3053,8 @@ export default function PlayCanvas({
                           y={cy - ry}
                           width={rx * 2}
                           height={ry * 2}
-                          rx="14"
+                          rx={zone.roundness === undefined ? 14 : rx * Math.max(0, Math.min(100, zone.roundness)) / 100}
+                          ry={zone.roundness === undefined ? undefined : ry * Math.max(0, Math.min(100, zone.roundness)) / 100}
                           fill={zoneColor}
                           fillOpacity={isSelected ? 0.32 : 0.18}
                           stroke={zoneColor}
@@ -3643,6 +3575,7 @@ export default function PlayCanvas({
                   onPointerDown={(e) => handlePointerDownPlayer(e, player.id)}
                 >
                   {/* Selection Precision Halo Rings (Static, crisp, no pinwheel) */}
+                  <g transform={`translate(${px} ${py}) scale(${Math.max(1, Math.min(1.8, 0.65 / (fieldBox?.scale || 1)))}) translate(${-px} ${-py})`}>
                   {isSelected && (
                     <g>
                       <circle
@@ -3777,6 +3710,7 @@ export default function PlayCanvas({
                   >
                     {player.label}
                   </text>
+                  </g>
 
                   {/* Pre-Snap Motion Mini Floating Badge */}
                   {isOffense && playerHasMotion(player) && (
@@ -4149,13 +4083,12 @@ export default function PlayCanvas({
                     {/* High-visibility Callout Badge projected away from thumb so it is NEVER hidden */}
                     <div
                       data-testid="route-depth-value"
-                      className={`absolute -translate-y-1/2 whitespace-nowrap rounded-xl bg-cyan-400 text-black font-black font-mono tabular-nums px-2.5 py-1 shadow-2xl ring-2 ring-black/70 pointer-events-none transition-all flex items-center gap-1.5 ${
-                        railOnLeft ? "left-full ml-3" : "right-full mr-3"
+                      className={`absolute -translate-y-1/2 whitespace-nowrap rounded-md bg-black/85 text-cyan-200 font-bold font-mono tabular-nums px-1.5 py-1 shadow-md border border-cyan-400/40 pointer-events-none flex items-center ${
+                        railOnLeft ? "left-full ml-1" : "right-full mr-1"
                       } ${isDepthDragging ? "scale-110 shadow-cyan-400/50 -translate-y-6 z-20" : "text-xs"}`}
                       style={{ top: thumbOffset }}
                     >
-                      <span className="text-[10px] uppercase font-sans tracking-wider opacity-75">Depth</span>
-                      <span className="text-sm font-extrabold">{shownDepth} yd</span>
+                      <span className="text-xs">{shownDepth} yd</span>
                     </div>
                   </div>
                 </div>
@@ -4164,7 +4097,7 @@ export default function PlayCanvas({
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
-        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1.5 bg-[#0B0F19]/95 dark:bg-black/80 border-t border-white/10 flex flex-wrap items-center justify-between gap-1.5 text-xs shrink-0 [@media(max-height:450px)]:hidden">
+        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1 bg-[#0B0F19]/95 dark:bg-black/80 border-t border-white/10 flex items-center justify-between gap-1.5 text-xs shrink-0">
           <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={handleToggleAnimate}
@@ -4189,31 +4122,21 @@ export default function PlayCanvas({
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
-            <div className="flex items-center gap-1 ml-1">
-              <span className="hidden sm:inline text-[10px] font-mono text-neutral-300">Speed:</span>
-              {[0.5, 1, 1.5].map((spd) => (
-                <button
-                  key={spd}
-                  onClick={() => setAnimSpeed(spd)}
-                  aria-label={`Animation speed ${spd}x`}
-                  aria-pressed={animSpeed === spd}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                    animSpeed === spd
-                      ? "bg-white/25 text-white border border-white/30"
-                      : "text-neutral-300 hover:text-white"
-                  }`}
-                >
-                  {spd}x
-                </button>
-              ))}
-            </div>
+            <select
+              aria-label="Animation speed"
+              value={animSpeed}
+              onChange={(event) => setAnimSpeed(Number(event.target.value))}
+              className="h-9 w-14 rounded-lg border border-white/15 bg-[#0B0F19] text-xs font-bold text-white"
+            >
+              {[0.5, 1, 1.5].map((speed) => <option key={speed} value={speed}>{speed}x</option>)}
+            </select>
           </div>
 
           {/* Timeline Scrubber */}
           <AnimationProgressView store={progressStore}>
             {(progress) => (
-          <div className="flex items-center gap-2 flex-1 min-w-24 max-w-xs ml-auto">
-            <span className="text-[10px] font-mono text-neutral-300 tabular-nums">
+          <div className="flex items-center gap-2 flex-1 min-w-0 max-w-xs ml-auto">
+            <span className="hidden sm:inline text-[10px] font-mono text-neutral-300 tabular-nums">
               {(progress * PLAY_ANIMATION_DURATION_SECONDS).toFixed(1)}s
             </span>
             <input
@@ -4298,10 +4221,30 @@ export default function PlayCanvas({
               })}
             </div>
 
+          {readOnly ? (
+            <section aria-label="Player assignment" className="space-y-2 text-sm text-neutral-800 dark:text-neutral-200">
+              {selectedPlayer ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-bold">{selectedPlayer.label} · {selectedPlayer.role}</h3>
+                    <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-300">
+                      {selectedPlayer.quickRouteName || selectedPlayer.coverageType || (selectedPlayer.route?.length ? "Custom route" : "No route assigned")}
+                    </span>
+                  </div>
+                  {playerHasMotion(selectedPlayer) && <p className="text-xs text-amber-700 dark:text-amber-300">Pre-snap: {selectedPlayer.motionName || "Motion"}</p>}
+                  {selectedPlayer.coverageType === "man" && (
+                    <p className="text-xs">Cover {play.players.find((player) => player.id === selectedPlayer.manTargetId)?.label || "unassigned receiver"} · {(selectedPlayer.shade || "head_up").replace("_", " ")} · {selectedPlayer.cushionYards ?? 5} yd cushion</p>
+                  )}
+                  <p className="whitespace-pre-wrap text-xs leading-relaxed">{selectedPlayer.notes || "No position notes yet. Use Coach Q&A to ask about your assignment."}</p>
+                </>
+              ) : <p className="text-xs">Choose a position to review its assignment. Run the play to follow the timing.</p>}
+            </section>
+          ) : (
+          <>
             {/* Selected Player Status & Action Buttons */}
-            <div data-tour="player-actions" className="flex items-center gap-2 flex-wrap">
+            <div data-tour="player-actions" className="flex items-center gap-1 flex-wrap">
               {selectedPlayer && (
-              <div className="hidden sm:flex [@media(max-height:450px)]:hidden w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
+              <div className="hidden min-[900px]:flex [@media(max-height:450px)]:hidden w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
                   <span className="text-neutral-400">{selectedPlayer.role}:</span>
                   <span
                     className={`font-bold ${
@@ -4316,6 +4259,19 @@ export default function PlayCanvas({
                 </div>
               )}
 
+              {selectedPlayer?.side === "offense" && Boolean(selectedPlayer.route?.length) && (
+                <button
+                  type="button"
+                  onClick={handleUndoRoutePoint}
+                  aria-label="Undo last route point"
+                  title="Remove only the last route point"
+                  className="px-2 py-1 rounded-xl text-xs font-bold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 flex items-center gap-1"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  <span>Undo</span>
+                </button>
+              )}
+
               {/* View All Position Notes / Install Sheet */}
               <button
                 type="button"
@@ -4325,7 +4281,7 @@ export default function PlayCanvas({
                 aria-label="View and edit position notes"
               >
                 <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Position Notes</span>
+                <span>Notes</span>
               </button>
 
               {/* Freehand Route Draw Mode Toggle */}
@@ -4356,13 +4312,12 @@ export default function PlayCanvas({
                   className="px-2 py-1 [@media(max-width:639px)]:px-1.5 rounded-xl text-xs font-bold text-neutral-600 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 bg-neutral-100 hover:bg-red-50 dark:bg-white/5 dark:hover:bg-red-500/10 border border-neutral-200 hover:border-red-300 dark:border-white/10 dark:hover:border-red-500/30 transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline [@media(max-width:639px)]:hidden">Clear</span>
                 </button>
               )}
             </div>
           {/* Position Coaching Notes Bar for Currently Selected Player */}
           {selectedPlayer && (
-            <details className="group space-y-1.5 border-t border-neutral-200 dark:border-white/10 pt-2 [@media(max-height:450px)]:hidden max-sm:hidden">
+            <details className="group space-y-1.5 border-t border-neutral-200 dark:border-white/10 pt-2 hidden min-[900px]:block [@media(max-height:450px)]:hidden">
               <summary className="flex items-center gap-1.5 cursor-pointer text-cyan-600 dark:text-cyan-400 font-mono text-[11px] font-bold min-h-10">
                 <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
                 <span>{selectedPlayer.label} notes:</span>
@@ -4384,7 +4339,7 @@ export default function PlayCanvas({
             <div className="space-y-2 [@media(max-width:639px)]:space-y-1" ref={presetMenuRef}>
               {/* Header row: Route assignment info & Action Buttons */}
               <div className="flex flex-col-reverse items-stretch gap-2">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <div className="hidden min-[900px]:flex items-center gap-2 flex-wrap min-w-0">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1 max-sm:hidden">
                     <Zap className="w-3 h-3" />
                     <span>Route Assignment ({selectedPlayer.label}):</span>
@@ -4406,42 +4361,14 @@ export default function PlayCanvas({
                       {selectedPlayer.quickRouteName}
                     </span>
                   )}
-                  {!selectedPlayer.quickRouteName && !playerHasMotion(selectedPlayer) && (
+                  {!selectedPlayer.quickRouteName && !playerHasMotion(selectedPlayer) && !selectedPlayer.route?.length && (
                     <span className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">
-                      {selectedPlayer.route && selectedPlayer.route.length > 0
-                        ? `${selectedPlayer.route.length} custom point${selectedPlayer.route.length > 1 ? "s" : ""}`
-                        : "No route drawn"}
+                      No route drawn
                     </span>
-                  )}
-
-                  {/* Route Depth Stepper */}
-                  {!readOnly && (selectedPlayer.quickRouteName || currentCatalogRoute) && (
-                    <div className="flex items-center gap-1 bg-neutral-100 dark:bg-black/50 border border-neutral-200 dark:border-white/10 rounded-lg px-2 py-0.5 ml-auto">
-                      <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">Depth:</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDepthChange(effectiveRouteDepth - 1)}
-                        disabled={effectiveRouteDepth <= MIN_ROUTE_DEPTH_YARDS}
-                        aria-label="Decrease route depth stepper"
-                        className="w-5 h-5 rounded bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 text-xs font-bold disabled:opacity-40 flex items-center justify-center cursor-pointer"
-                      >
-                        −
-                      </button>
-                      <span className="text-xs font-mono font-black text-cyan-600 dark:text-cyan-400 min-w-7 text-center">{effectiveRouteDepth}yd</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDepthChange(effectiveRouteDepth + 1)}
-                        disabled={effectiveRouteDepth >= maxRouteDepthYards}
-                        aria-label="Increase route depth stepper"
-                        className="w-5 h-5 rounded bg-neutral-200 dark:bg-white/10 hover:bg-neutral-300 dark:hover:bg-white/20 text-xs font-bold disabled:opacity-40 flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className={styles.routeActions}>
                   {/* Pre-Snap Motion Menu Button */}
                   <button
                     type="button"
@@ -4454,7 +4381,7 @@ export default function PlayCanvas({
                     data-testid="toggle-motion-btn"
                     aria-label={isMotionMenuOpen ? "Hide motion menu" : "Show motion menu"}
                     aria-expanded={isMotionMenuOpen}
-                    className={`px-3 py-2 min-h-10 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                    className={`px-2 py-1 min-h-9 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-sm cursor-pointer ${
                       isMotionMenuOpen || playerHasMotion(selectedPlayer)
                         ? "bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-500/30"
                         : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:border-amber-500/50"
@@ -4481,7 +4408,7 @@ export default function PlayCanvas({
                     data-testid="route-presets-toggle"
                     aria-label={isPresetMenuOpen ? "Hide route catalog" : "Show route catalog"}
                     aria-expanded={isPresetMenuOpen}
-                    className={`px-3 py-2 min-h-10 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                    className={`px-2 py-1 min-h-9 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-sm cursor-pointer ${
                       isPresetMenuOpen
                         ? "bg-cyan-500 text-black border-cyan-400 shadow-cyan-500/30"
                         : "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border-cyan-500/30 dark:border-cyan-500/40"
@@ -4505,11 +4432,12 @@ export default function PlayCanvas({
                         setNewPresetName(`${selectedPlayer.label} Custom Route`);
                         setIsSavePresetModalOpen(true);
                       }}
-                      className="px-3 py-2 min-h-10 rounded-xl text-xs font-black bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      className="px-2 py-1 min-h-9 rounded-xl text-xs font-black bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 dark:border-emerald-500/40 transition-all flex items-center gap-1 shadow-sm cursor-pointer"
                       title={isDemo ? "Add temporary custom preset (session only)" : `Save current route as custom preset (${customPresets.length}/${MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM})`}
                     >
                       <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span>Save Preset</span>
+                      <span className="hidden min-[900px]:inline">Save Preset</span>
+                      <span className="min-[900px]:hidden">Save</span>
                     </button>
                   )}
                 </div>
@@ -4921,7 +4849,7 @@ export default function PlayCanvas({
                     )}
                   </div>
                 </div>
-              ) : (
+              ) : selectedPlayer.coverageType !== "rush" ? (
                 <>
                   <div className="grid grid-cols-4 gap-1 [@media(min-width:600px)_and_(max-height:450px)]:col-start-2 [@media(min-width:600px)_and_(max-height:450px)]:row-start-2">
                     {DEFENSIVE_ZONE_CATEGORIES.map((item) => (
@@ -4980,26 +4908,17 @@ export default function PlayCanvas({
                       <span>Custom Zones</span>
                       <span className="text-[10px] text-neutral-400 normal-case font-normal">Shape & size controls</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div>
                       <button
                         type="button"
                         disabled={readOnly}
-                        data-testid="create-custom-oval-zone"
+                        data-testid="create-custom-zone"
+                        data-tour="custom-zones"
                         onClick={() => handleCreateCustomZone("ellipse")}
                         className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
                       >
                         <Circle className="w-3.5 h-3.5" />
-                        <span>+ Custom Oval</span>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={readOnly}
-                        data-testid="create-custom-box-zone"
-                        onClick={() => handleCreateCustomZone("rectangle")}
-                        className="min-h-9 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
-                      >
-                        <Square className="w-3.5 h-3.5" />
-                        <span>+ Custom Box</span>
+                        <span>Custom zone</span>
                       </button>
                     </div>
                   </div>
@@ -5007,6 +4926,8 @@ export default function PlayCanvas({
                   {/* Inspector / Customizer Panel for Active Zone */}
                   {activeZone && renderZoneCustomizer(activeZone)}
                 </>
+              ) : (
+                <p className="text-xs text-red-200">Rush the quarterback. Drag the arrow to adjust the rush path; line up at least {rushLineDistanceYards} yards behind the LOS.</p>
               )}
             </div>
           ) : play.type !== "defense" ? (
@@ -5108,22 +5029,13 @@ export default function PlayCanvas({
                     <button
                       type="button"
                       disabled={readOnly}
-                      data-testid="create-custom-oval-zone"
+                      data-testid="create-custom-zone"
+                      data-tour="custom-zones"
                       onClick={() => handleCreateCustomZone("ellipse")}
                       className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
                     >
                       <Circle className="w-3.5 h-3.5" />
-                      <span>+ Custom Oval Zone</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={readOnly}
-                      data-testid="create-custom-box-zone"
-                      onClick={() => handleCreateCustomZone("rectangle")}
-                      className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 bg-purple-950/40 border-purple-500/40 text-purple-200 hover:bg-purple-900/60 hover:text-white cursor-pointer"
-                    >
-                      <Square className="w-3.5 h-3.5" />
-                      <span>+ Custom Box Zone</span>
+                      <span>Custom zone</span>
                     </button>
                   </div>
                   {play.zones && play.zones.length > 0 && (
@@ -5167,6 +5079,8 @@ export default function PlayCanvas({
                 </div>
               )}
             </div>
+          )}
+          </>
           )}
         </div>
       </div>

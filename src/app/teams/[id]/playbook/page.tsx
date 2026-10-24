@@ -1000,36 +1000,23 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     return (
       <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 bg-black text-white font-sans p-2 sm:p-3 flex flex-col gap-2 selection:bg-cyan-500/30 selection:text-cyan-200 w-full max-w-full overflow-hidden">
         {/* Compact Header for Embedded Showcase */}
-        <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0B0F19] p-2 rounded-xl border border-white/10 shrink-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 bg-[#0B0F19] p-1.5 rounded-xl border border-white/10 shrink-0">
+          <div className="flex items-center gap-2 min-w-0 shrink-0">
             <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5" />
-              <span>{teamName} Playbook Studio</span>
+              <span className="hidden lg:inline">{teamName} Playbook </span><span>Studio</span>
             </span>
-            {activePlaybook && (
-              <span className="text-xs font-bold text-neutral-400 hidden sm:inline">
-                {activePlaybook.title}
-              </span>
-            )}
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 flex-wrap">
-            {/* Quick Play Switcher Buttons */}
-            <div className="flex items-center gap-1 overflow-x-auto max-w-full w-full sm:w-auto scrollbar-thin">
-              {(activePlaybook?.plays || []).slice(0, 5).map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setActivePlayId(p.id)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all whitespace-nowrap border cursor-pointer ${
-                    activePlay?.id === p.id
-                      ? "bg-cyan-500 text-black font-black border-cyan-400 shadow-sm"
-                      : "bg-white/5 text-neutral-400 hover:text-white border-white/5"
-                  }`}
-                >
-                  {p.name.replace(/^\d+v\d+\s+/, "")}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <select
+              aria-label="Play"
+              value={activePlayId || ""}
+              onChange={(event) => setActivePlayId(event.target.value)}
+              className="h-9 min-w-0 flex-1 rounded-lg border border-white/15 bg-black/60 px-1.5 text-xs text-white"
+            >
+              {(activePlaybook?.plays || []).map((play) => <option key={play.id} value={play.id}>{play.name.replace(/^\d+v\d+\s+/, "")}</option>)}
+            </select>
 
             {/* Playbook Switcher (Offense vs Defense) */}
             {playbooks.length > 1 && (
@@ -1043,7 +1030,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     if (book.plays.length > 0) setActivePlayId(book.plays[0].id);
                   }
                 }}
-                className="min-w-0 max-w-full bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 rounded-xl px-2.5 py-2 outline-none cursor-pointer"
+                className="h-9 w-[38%] min-w-0 max-w-56 bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 rounded-lg px-1.5 outline-none cursor-pointer"
               >
                 {playbooks.map((b) => (
                   <option key={b.id} value={b.id} className="bg-neutral-900 text-white">
@@ -1803,24 +1790,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         {/* Full editor for the selected play */}
         {viewLevel === "editor" && activePlaybook && (
           <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
-            {/* Informative Player Notice */}
-            {isPlayer && (
-              <div className="px-3.5 py-1.5 [@media(max-height:450px)]:hidden bg-cyan-950/40 border-b border-cyan-500/20 text-cyan-300 text-xs flex items-center justify-between gap-2 shrink-0">
-                <div className="flex items-center gap-2 truncate">
-                  <Eye className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="truncate">
-                    <strong>Player View Only:</strong> Plays are view-only. Have questions about routes or reads?
-                  </span>
-                </div>
-                <button
-                  onClick={() => setIsQuestionsModalOpen(true)}
-                  className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-200 font-bold text-[11px] uppercase tracking-wider shrink-0 transition-colors cursor-pointer"
-                >
-                  Ask Coach
-                </button>
-              </div>
-            )}
-
             {/* Tactical Playmaker Canvas Workspace */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {activePlay ? (
@@ -1832,11 +1801,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   playbook={activePlaybook}
                   allPlaybooks={playbooks}
                   onBackToPlays={() => setViewLevel("plays")}
-                  onDuplicatePlay={hasEditAccess ? () => handleDuplicatePlay(activePlay) : undefined}
-                  onDeletePlay={hasEditAccess ? () => handleDeletePlay(activePlay.id) : undefined}
-                  onCreateNewPlay={hasEditAccess ? handleCreatePlayInFormationClick : undefined}
                   onOpenQuestions={() => setIsQuestionsModalOpen(true)}
-                  onPrintPlaybook={() => setIsPrintModalOpen(true)}
                   autoSaveStatus={autoSaveStatus}
                   onFlushAutoSave={flushAutoSave}
                 />

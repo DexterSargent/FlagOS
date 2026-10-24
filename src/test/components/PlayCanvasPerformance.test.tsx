@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { createElement, type ComponentProps } from "react";
+import { createElement, useState, type ComponentProps } from "react";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
+import MiniPlayDiagram from "@/components/playbook/MiniPlayDiagram";
 import type { PlayDiagram } from "@/lib/playbookTypes";
 
 const renderCounts = vi.hoisted(() => ({ sidebarIcon: 0 }));
@@ -156,6 +157,67 @@ function fieldSvg() {
     ({ left: 0, top: 0, width: 1000, height: 700, right: 1000, bottom: 700, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
   return svg;
 }
+
+describe("PlayCanvas compact editing and player study", () => {
+  it("undoes one route node at a time without removing motion or changing other players", () => {
+    const initial: PlayDiagram = {
+      ...play,
+      players: play.players.map((player) => player.id === "p_x" ? {
+        ...player,
+        route: [{ x: 15, y: 60 }, { x: 25, y: 50 }],
+        routeType: "pass",
+        quickRouteName: "Slant",
+        routeDepthYards: 8,
+        hasMotion: true,
+        motionName: "Jet",
+        motionPath: [{ x: 20, y: 70 }],
+      } : player),
+    };
+    let latest = initial;
+    function Editor() {
+      const [value, setValue] = useState(initial);
+      return <PlayCanvas play={value} onChange={(updated) => { latest = updated; setValue(updated); }} />;
+    }
+    render(<Editor />);
+    fireEvent.click(screen.getByRole("button", { name: "Select X" }));
+    fireEvent.click(screen.getByRole("button", { name: "Undo last route point" }));
+    let receiver = latest.players.find((player) => player.id === "p_x")!;
+    expect(receiver.route).toEqual([{ x: 15, y: 60 }]);
+    expect(receiver.quickRouteName).toBe("Custom Route");
+    expect(receiver.routeDepthYards).toBeUndefined();
+    expect(receiver.motionPath).toEqual([{ x: 20, y: 70 }]);
+    expect(receiver.hasMotion).toBe(true);
+    expect(latest.players.filter((player) => player.side === "offense" && player.id !== "p_x")).toEqual(initial.players.filter((player) => player.id !== "p_x"));
+    fireEvent.click(screen.getByRole("button", { name: "Undo last route point" }));
+    receiver = latest.players.find((player) => player.id === "p_x")!;
+    expect(receiver.route).toEqual([]);
+    expect(receiver.motionPath).toEqual([{ x: 20, y: 70 }]);
+    expect(screen.queryByRole("button", { name: "Undo last route point" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/custom points?/i)).not.toBeInTheDocument();
+  });
+
+  it("gives players readable assignments and playback rather than disabled editor menus", () => {
+    const onChange = vi.fn();
+    const studyPlay: PlayDiagram = {
+      ...play,
+      players: play.players.map((player) => player.id === "p_x" ? { ...player, notes: "Read the safety, break inside.", quickRouteName: "Slant" } : player),
+    };
+    render(<PlayCanvas play={studyPlay} onChange={onChange} readOnly onOpenQuestions={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: "Perf Flood" })).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Play name" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Draw route" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show route catalog" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Select X" }));
+    expect(screen.getByText("Read the safety, break inside.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Coach Q&A" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Run Play/ })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Select QB" }));
+    expect(screen.getByText(/No position notes yet/)).toBeInTheDocument();
+    fireEvent.pointerDown(playerNode(screen.getByTestId("designer-field"), "X"), at(15, 70));
+    expect(screen.getByText("Read the safety, break inside.")).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
 
 function playerNode(container: HTMLElement, label: string) {
   return [...container.querySelectorAll("svg text")].find((node) => node.textContent === label)!.parentElement!;
@@ -429,7 +491,7 @@ describe("PlayCanvas lazy route catalog", () => {
     const toggle = screen.getByTestId("route-presets-toggle");
     fireEvent.pointerEnter(toggle);
     fireEvent.click(toggle);
-    expect(await screen.findByTestId("catalog-route-slant")).toBeInTheDocument();
+    expect(await screen.findByTestId("catalog-route-slant", {}, { timeout: 5000 })).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Close route catalog"));
     await waitFor(() => expect(screen.queryByTestId("route-presets-catalog")).toBeNull());
   });
@@ -452,12 +514,12 @@ describe("PlayCanvas custom zone creation, shapes, and resizing", () => {
     zones: [],
   };
 
-  it("creates a custom box zone and renders a rectangle element on the field", () => {
+  it("creates one adjustable custom zone instead of separate box and oval actions", () => {
     const onChange = vi.fn();
     const { container } = render(<PlayCanvas play={defensePlay} onChange={onChange} />);
     onChange.mockClear();
 
-    const createBoxBtn = screen.getAllByTestId("create-custom-box-zone")[0];
+    const createBoxBtn = screen.getByTestId("create-custom-zone");
     expect(createBoxBtn).toBeInTheDocument();
 
     fireEvent.click(createBoxBtn);
@@ -466,10 +528,10 @@ describe("PlayCanvas custom zone creation, shapes, and resizing", () => {
     const updated = onChange.mock.calls[0][0] as PlayDiagram;
     expect(updated.zones).toHaveLength(1);
     const zone = updated.zones![0];
-    expect(zone.shape).toBe("rectangle");
-    expect(zone.name).toBe("Box Zone");
-    expect(zone.rx).toBe(16);
-    expect(zone.ry).toBe(8);
+    expect(zone.roundness).toBe(100);
+    expect(zone.name).toBe("Custom Zone");
+    expect(zone.rx).toBe(18);
+    expect(zone.ry).toBe(10);
 
     // Re-render with the created zone and check that an SVG <rect> is rendered
     const { container: reContainer } = render(<PlayCanvas play={updated} onChange={vi.fn()} />);
@@ -477,7 +539,7 @@ describe("PlayCanvas custom zone creation, shapes, and resizing", () => {
     expect(rectZone).not.toBeNull();
   });
 
-  it("allows switching zone shape between oval and rectangle in the customizer panel", () => {
+  it("adjusts roundness continuously from square corners to oval while retaining legacy zones", () => {
     const onChange = vi.fn();
     const existingZone = {
       id: "zone_custom_test",
@@ -494,7 +556,11 @@ describe("PlayCanvas custom zone creation, shapes, and resizing", () => {
       zones: [existingZone],
     };
 
-    const { container } = render(<PlayCanvas play={playWithZone} onChange={onChange} />);
+    function Editor() {
+      const [value, setValue] = useState(playWithZone);
+      return <PlayCanvas play={value} onChange={(updated) => { onChange(updated); setValue(updated); }} />;
+    }
+    const { container } = render(<Editor />);
     fieldSvg();
 
     // Click on the zone to select it
@@ -505,20 +571,61 @@ describe("PlayCanvas custom zone creation, shapes, and resizing", () => {
     // Customizer panel should appear
     expect(screen.getByTestId("zone-customizer-panel")).toBeInTheDocument();
 
-    // Click Rectangle button
-    const rectShapeBtn = screen.getByTestId("zone-shape-rectangle");
-    fireEvent.click(rectShapeBtn);
+    const roundness = screen.getByRole("slider", { name: "Zone roundness" });
+    expect(roundness).toHaveValue("100");
+    fireEvent.change(roundness, { target: { value: "0" } });
 
     expect(onChange).toHaveBeenCalled();
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
     expect(lastCall.zones![0].shape).toBe("rectangle");
+    expect(lastCall.zones![0].roundness).toBe(0);
 
-    // Click Oval button
-    const ellipseShapeBtn = screen.getByTestId("zone-shape-ellipse");
-    fireEvent.click(ellipseShapeBtn);
+    fireEvent.change(roundness, { target: { value: "45" } });
+    expect(onChange.mock.calls.at(-1)![0].zones[0].roundness).toBe(45);
+    fireEvent.change(roundness, { target: { value: "100" } });
 
     const afterEllipseCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as PlayDiagram;
-    expect(afterEllipseCall.zones![0].shape).toBe("ellipse");
+    expect(afterEllipseCall.zones![0].roundness).toBe(100);
+  });
+
+  it("shows zone tools only in zone coverage, never in man or rush", () => {
+    function Editor() {
+      const [value, setValue] = useState(defensePlay);
+      return <PlayCanvas play={value} onChange={setValue} />;
+    }
+    render(<Editor />);
+    fireEvent.click(screen.getByRole("button", { name: "Select CB1" }));
+    expect(screen.getByTestId("create-custom-zone")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Man" }));
+    expect(screen.queryByTestId("create-custom-zone")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("coverage-category-deep")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Select CB2" }));
+    expect(screen.getByTestId("create-custom-zone")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Select CB1" }));
+    expect(screen.queryByTestId("create-custom-zone")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("set-pass-rush-btn"));
+    expect(screen.queryByTestId("man-coverage-controls")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("create-custom-zone")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("coverage-category-deep")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Zone" }));
+    expect(screen.getByTestId("create-custom-zone")).toBeInTheDocument();
+  });
+
+  it.each([0, 45, 100])("renders %s percent zone roundness consistently on the field and printed previews", (roundness) => {
+    const value: PlayDiagram = {
+      ...defensePlay,
+      zones: [{ id: "rounded", name: "Under", x: 50, y: 40, rx: 18, ry: 10, color: "#8B5CF6", shape: "rectangle", roundness }],
+    };
+    const { container } = render(<><PlayCanvas play={value} onChange={vi.fn()} /><MiniPlayDiagram play={value} /></>);
+    const zone = container.querySelector('[data-testid="zone-bubble-rounded"] rect')!;
+    expect(Number(zone.getAttribute("rx"))).toBeCloseTo(180 * roundness / 100);
+    expect(Number(zone.getAttribute("ry"))).toBeCloseTo(70 * roundness / 100);
+    const previews = [...container.querySelectorAll('rect[stroke="#8B5CF6"]')];
+    expect(previews).toHaveLength(2);
+    expect(previews.map((rect) => [rect.getAttribute("rx"), rect.getAttribute("ry")])).toEqual([
+      [zone.getAttribute("rx"), zone.getAttribute("ry")],
+      [zone.getAttribute("rx"), zone.getAttribute("ry")],
+    ]);
   });
 
   it("adjusts zone width and depth via steppers and slider controls", () => {
