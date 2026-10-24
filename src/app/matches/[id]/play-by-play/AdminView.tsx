@@ -37,11 +37,13 @@ import {
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
-import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
 import { sandboxHeartbeatWriter, useLiveGameHeartbeat } from "@/lib/gameLiveState";
 import { STAT_KEEPER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(STAT_KEEPER_WALKTHROUGH);
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const router = useRouter();
@@ -1612,7 +1614,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-            <WalkthroughTrigger walkthrough={STAT_KEEPER_WALKTHROUGH} variant="header" />
             <button onClick={() => setIsScoreboardFullscreen(true)} aria-label="Fullscreen scoreboard" className="bg-white/10 p-1 sm:p-1.5 md:p-2 rounded-md sm:rounded-lg hover:bg-white/20 text-neutral-300" title="Fullscreen Scoreboard">
               <Maximize className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
@@ -1625,10 +1626,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
           </div>
-          {!isEmbedded && (
-            <div className="hidden md:block shrink-0">
-              <SiteControls />
-            </div>
+          {!isEmbedded ? (
+            <>
+              {/* SiteControls (with the Guide) only fit from md up; phones keep the Guide in the same top-right spot. */}
+              <PageGuideButton className="md:hidden" />
+              <div className="hidden md:block shrink-0">
+                <SiteControls />
+              </div>
+            </>
+          ) : (
+            <PageGuideButton />
           )}
         </div>
       </header>

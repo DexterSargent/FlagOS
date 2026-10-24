@@ -46,7 +46,7 @@ import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors"
 import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
-import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { usePageGuide } from "@/lib/pageGuide";
 import { TEAM_ROSTER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 const TeamDepthCharts = dynamic(() => import("@/components/TeamDepthCharts"), {
@@ -64,6 +64,7 @@ function compareByJersey(a: any, b: any): number {
 }
 
 export default function TeamRosterPage({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(TEAM_ROSTER_WALKTHROUGH);
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
@@ -609,7 +610,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
-            <WalkthroughTrigger walkthrough={TEAM_ROSTER_WALKTHROUGH} variant="header" />
             {/* Add Player (Team Admin & League Admin) */}
             {hasEditAccess && (
               <button

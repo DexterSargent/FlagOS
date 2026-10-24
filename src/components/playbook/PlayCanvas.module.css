@@ -359,3 +359,18 @@
     padding-block: 0.25rem;
   }
 }
+
+/* Header Guide fallback: the team nav (which holds the Guide button) is hidden in the
+   editor on phones and short landscape screens, so the toolbar shows it in the same top-right spot. */
+.toolbarGuide {
+  display: none;
+  flex: none;
+}
+.toolbarGuide[data-always] {
+  display: flex;
+}
+@media (max-width: 639px), (max-height: 450px) {
+  .toolbarGuide {
+    display: flex;
+  }
+}

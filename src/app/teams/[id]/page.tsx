@@ -55,7 +55,7 @@ import {
   type TeamComprehensiveStats,
 } from "@/lib/teamStatsCalculator";
 import { loadTeamSeasonSummary, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
-import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import { usePageGuide } from "@/lib/pageGuide";
 import { TEAM_HUB_WALKTHROUGH } from "@/lib/walkthroughData";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
@@ -72,6 +72,7 @@ const COLOR_PRESETS = [
 ];
 
 export default function TeamPortalHome({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(TEAM_HUB_WALKTHROUGH);
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
@@ -556,7 +557,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             <Home className="w-4 h-4" />
             <span className="hidden sm:inline">Home</span>
           </Link>
-          <WalkthroughTrigger walkthrough={TEAM_HUB_WALKTHROUGH} variant="header" />
         </div>
 
         {/* Hero Section */}

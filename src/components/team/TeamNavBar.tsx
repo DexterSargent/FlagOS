@@ -59,10 +59,10 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
       aria-label={`${teamName} sections`}
       className={`sticky top-[var(--role-switcher-height,0px)] z-40 w-full shrink-0 border-b border-white/10 bg-black/85 backdrop-blur-md ${className}`}
     >
-      <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-4 px-2 sm:px-6 h-14 sm:h-12">
+      <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-4 px-2 sm:px-6 h-14 lg:h-12">
         <Link
           href={`/teams/${teamId}`}
-          className="hidden sm:flex items-center gap-2 min-w-0 sm:shrink rounded-lg px-1 py-1 hover:bg-white/5 transition-colors"
+          className="hidden lg:flex items-center gap-2 min-w-0 lg:shrink rounded-lg px-1 py-1 hover:bg-white/5 transition-colors"
           aria-label={`${teamName} overview`}
         >
           <span
@@ -83,29 +83,29 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
           </span>
         </Link>
 
-        <ul className="flex flex-1 items-stretch justify-end gap-0.5 sm:gap-1 min-w-0">
+        <ul className="flex flex-1 items-stretch justify-end gap-0.5 lg:gap-1 min-w-0">
           {sections.map(({ key, label, mobileLabel, path, icon: Icon }) => {
             const isActive = active === key;
             return (
-              <li key={key} className="flex-1 sm:flex-none min-w-0">
+              <li key={key} className="flex-1 lg:flex-none min-w-0">
                 <Link
                   href={`/teams/${teamId}${path}`}
                   aria-label={label}
                   aria-current={isActive ? "page" : undefined}
-                  className={`relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 h-12 sm:h-10 px-0.5 sm:px-3 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${
+                  className={`relative flex flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1.5 h-12 lg:h-10 px-0.5 lg:px-3 rounded-lg text-[9px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${
                     isActive ? "text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
                   }`}
                   style={isActive ? { backgroundColor: `${accent}22`, color: accent } : undefined}
                 >
                   <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span className="sm:hidden">{mobileLabel}</span>
-                  <span className="hidden sm:inline">{label}</span>
+                  <span className="lg:hidden">{mobileLabel}</span>
+                  <span className="hidden lg:inline">{label}</span>
                 </Link>
               </li>
             );
           })}
         </ul>
-        <SiteControls />
+        <SiteControls guideLabelClassName="hidden lg:inline" />
       </div>
     </nav>
   );

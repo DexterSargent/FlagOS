@@ -36,6 +36,7 @@ import { renderFlagOS } from "@/components/FlagOSText";
 import { FlagOSLogo, FLAGOS_LOGO, isDefaultFlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountMenu from "@/components/AccountMenu";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { useTheme } from "@/lib/themeContext";
 
 interface LeagueHeaderProps {
@@ -441,6 +442,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
           {/* Right: Controls & Role Status */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            <PageGuideButton labelClassName="hidden 2xl:inline" />
             <ThemeToggle size="md" />
 
             {/* League Settings Trigger for Commissioners */}

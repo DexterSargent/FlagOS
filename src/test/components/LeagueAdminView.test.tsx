@@ -5,7 +5,7 @@ import { LeagueAdminView, type LeagueAdminViewProps } from "@/components/league/
 vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({ isLeagueArchived: false }),
 }));
-vi.mock("@/components/walkthrough/WalkthroughTrigger", () => ({ default: () => null }));
+vi.mock("@/components/walkthrough/PageGuideButton", () => ({ default: () => null }));
 vi.mock("@/components/league/dashboard/LeagueScheduleWidget", () => ({ LeagueScheduleWidget: () => null }));
 vi.mock("@/components/league/dashboard/LeagueStandingsWidget", () => ({ LeagueStandingsWidget: () => null }));
 vi.mock("@/components/league/dashboard/LeagueLeadersWidget", () => ({ LeagueLeadersWidget: () => null }));

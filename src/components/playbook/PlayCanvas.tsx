@@ -131,7 +131,8 @@ const PositionNotesDialog = dynamic(() =>
 );
 const PlayNotesDialog = dynamic(() => import("./PlayCanvasDialogs").then((mod) => mod.PlayNotesDialog));
 const loadRouteCatalogDrawer = () => import("./RouteCatalogDrawer");
-import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
 import { PLAY_DESIGNER_WALKTHROUGH } from "@/lib/walkthroughData";
 // The route tree drawer (40+ preset cards) is split out and warmed on hover/focus of its toggle.
 const RouteCatalogDrawer = dynamic(loadRouteCatalogDrawer, {
@@ -171,6 +172,8 @@ interface PlayCanvasProps {
   onBackToPlays?: () => void;
   autoSaveStatus?: "saving" | "unsaved" | "offline" | "saved";
   onFlushAutoSave?: () => void;
+  /** "auto" shows the toolbar Guide only when the page header is hidden (phones / short landscape). */
+  guideInToolbar?: "auto" | "always";
 }
 
 export default function PlayCanvas({
@@ -184,8 +187,10 @@ export default function PlayCanvas({
   onBackToPlays,
   autoSaveStatus,
   onFlushAutoSave,
+  guideInToolbar = "auto",
 }: PlayCanvasProps) {
   const canEdit = hasEditAccess ?? !readOnly;
+  usePageGuide(readOnly ? null : PLAY_DESIGNER_WALKTHROUGH, 1);
   // Pointer drags edit a local draft so the parent (and its localStorage persistence) only
   // receives the released result instead of one full playbook write per pointer move.
   const [dragDraft, setDragDraft] = useState<PlayDiagram | null>(null);
@@ -2710,12 +2715,6 @@ export default function PlayCanvas({
             <span className="hidden lg:inline">Notes</span>
           </button>
 
-          {/* Guided Tour Trigger */}
-          {!readOnly && <WalkthroughTrigger
-            walkthrough={PLAY_DESIGNER_WALKTHROUGH}
-            variant="icon"
-          />}
-
           {onOpenQuestions && (
             <button
               type="button"
@@ -2771,7 +2770,7 @@ export default function PlayCanvas({
               aria-expanded={isToolbarMoreOpen}
               aria-controls="designer-toolbar-extras"
               aria-label="More play tools"
-              title="Opponent, play notes, Q&A and tour"
+              title="Opponent, play notes and Q&A"
               className={`${styles.toolbarMore} relative items-center justify-center w-9 shrink-0 rounded-xl border text-neutral-700 dark:text-neutral-200 cursor-pointer ${isToolbarMoreOpen ? "bg-neutral-200 dark:bg-white/15 border-neutral-300 dark:border-white/20" : "bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10"}`}
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -2813,6 +2812,11 @@ export default function PlayCanvas({
                 </>
               )}
             </button>
+          )}
+          {!readOnly && (
+            <span className={styles.toolbarGuide} data-always={guideInToolbar === "always" ? "" : undefined}>
+              <PageGuideButton />
+            </span>
           )}
         </div>
       </div>

@@ -42,8 +42,8 @@ import CreateFormationModal from "@/components/playbook/CreateFormationModal";
 import PrintArmbandModal from "@/components/playbook/PrintArmbandModal";
 import PlayQuestionsModal from "@/components/playbook/PlayQuestionsModal";
 import MiniPlayDiagram from "@/components/playbook/MiniPlayDiagram";
-import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
-import { PLAYBOOK_STUDIO_WALKTHROUGH, PLAY_DESIGNER_WALKTHROUGH } from "@/lib/walkthroughData";
+import { usePageGuide } from "@/lib/pageGuide";
+import { PLAYBOOK_STUDIO_WALKTHROUGH } from "@/lib/walkthroughData";
 import {
   Playbook,
   PlayDiagram,
@@ -69,6 +69,7 @@ import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 type PlaybookViewLevel = "playbooks" | "formations" | "plays" | "editor";
 
 export default function TeamPlaybookPage({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(PLAYBOOK_STUDIO_WALKTHROUGH);
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
@@ -1051,6 +1052,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               onChange={handleUpdateActivePlay}
               readOnly={false}
               playbook={activePlaybook}
+              guideInToolbar="always"
             />
           ) : (
             <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-12 text-center text-neutral-400">
@@ -1200,12 +1202,6 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 flex-wrap self-start md:self-auto">
-            {/* Walkthrough & Guide Trigger */}
-            <WalkthroughTrigger
-              walkthrough={PLAYBOOK_STUDIO_WALKTHROUGH}
-              variant="header"
-            />
-
             {viewLevel === "plays" && hasEditAccess && (
               <button
                 type="button"

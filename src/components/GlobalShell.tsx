@@ -14,6 +14,7 @@ const PoweredByFooter = dynamic(() => import("./PoweredByFooter"));
 
 import { useAuth } from "@/lib/authContext";
 import { ShellChromeContext } from "@/lib/shellChrome";
+import { PageGuideProvider } from "@/lib/pageGuide";
 
 function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -115,5 +116,9 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
 }
 
 export default function GlobalShell({ children }: { children: React.ReactNode }) {
-  return <GlobalShellInner>{children}</GlobalShellInner>;
+  return (
+    <PageGuideProvider>
+      <GlobalShellInner>{children}</GlobalShellInner>
+    </PageGuideProvider>
+  );
 }

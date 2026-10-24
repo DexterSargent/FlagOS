@@ -16,7 +16,9 @@ import { LeagueScheduleWidget } from "./LeagueScheduleWidget";
 import { LeagueStandingsWidget } from "./LeagueStandingsWidget";
 import { LeagueLeadersWidget } from "./LeagueLeadersWidget";
 import { LeagueTeamsGrid } from "./LeagueTeamsGrid";
-import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { useEmbedState } from "@/lib/embedState";
 import { LEAGUE_DIRECTORY_WALKTHROUGH } from "@/lib/walkthroughData";
 import { useLeague } from "@/lib/leagueContext";
 
@@ -61,6 +63,8 @@ export function LeagueAdminView({
 }: LeagueAdminViewProps) {
   const [copiedLeagueLink, setCopiedLeagueLink] = useState(false);
   const { isLeagueArchived } = useLeague();
+  const { embedQuery } = useEmbedState();
+  usePageGuide(LEAGUE_DIRECTORY_WALKTHROUGH);
 
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 flex-1 w-full max-w-full space-y-5 sm:space-y-8">
@@ -111,7 +115,8 @@ export function LeagueAdminView({
 
           {/* Fast Operations Toolbar */}
           <div data-tour="league-admin-actions" className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 shrink-0 lg:max-w-[48%] [&_button]:min-h-11 [&_a]:min-h-11 [&_button]:justify-center [&_a]:justify-center">
-            <WalkthroughTrigger walkthrough={LEAGUE_DIRECTORY_WALKTHROUGH} variant="header" />
+            {/* Embedded previews have no header, so the Guide falls back into the page. */}
+            {embedQuery && <PageGuideButton className="h-auto! py-2.5" />}
             <button
               onClick={openCustomizer}
               className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-black dark:text-amber-300 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border border-amber-500/40 shadow-sm flex items-center gap-2 cursor-pointer"

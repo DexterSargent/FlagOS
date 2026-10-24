@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import WalkthroughModal, { getAvailableSteps } from "@/components/walkthrough/WalkthroughModal";
-import WalkthroughTrigger from "@/components/walkthrough/WalkthroughTrigger";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { PageGuideProvider, usePageGuide } from "@/lib/pageGuide";
+import type { ToolWalkthrough } from "@/lib/walkthroughData";
 import {
   PLAY_DESIGNER_WALKTHROUGH,
   PLAYBOOK_STUDIO_WALKTHROUGH,
@@ -70,12 +72,37 @@ describe("Walkthrough System", () => {
     visible.remove();
   });
 
-  it("WalkthroughTrigger opens the guided tour on click", () => {
-    render(<WalkthroughTrigger walkthrough={PLAY_DESIGNER_WALKTHROUGH} variant="header" />);
+  it("the header Guide opens the tour registered by the current page, letting a nested tool override it", () => {
+    function Register({ walkthrough, priority }: { walkthrough: ToolWalkthrough; priority?: number }) {
+      usePageGuide(walkthrough, priority);
+      return null;
+    }
+    const { rerender } = render(
+      <PageGuideProvider>
+        <PageGuideButton />
+        <Register walkthrough={PLAYBOOK_STUDIO_WALKTHROUGH} />
+      </PageGuideProvider>
+    );
+    expect(screen.getByRole("button", { name: /Playbook Studio guided tour/i })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /guided tour/i }));
-
+    rerender(
+      <PageGuideProvider>
+        <PageGuideButton />
+        <Register walkthrough={PLAYBOOK_STUDIO_WALKTHROUGH} />
+        <Register walkthrough={PLAY_DESIGNER_WALKTHROUGH} priority={1} />
+      </PageGuideProvider>
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Play Designer guided tour/i }));
     expect(screen.getByRole("dialog", { name: /Play Designer walkthrough/i })).toBeInTheDocument();
     expect(screen.getByText("Studio Toolbar")).toBeInTheDocument();
+  });
+
+  it("hides the Guide on pages without a tour", () => {
+    render(
+      <PageGuideProvider>
+        <PageGuideButton />
+      </PageGuideProvider>
+    );
+    expect(screen.queryByTestId("page-guide-button")).not.toBeInTheDocument();
   });
 });
