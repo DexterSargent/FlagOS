@@ -649,7 +649,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           <div className="bg-neutral-900 px-4 sm:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <User className="w-5 h-5 text-neutral-400" />
-              <h3 className="font-bold text-base sm:text-lg text-white whitespace-nowrap">
+              <h3 className="font-bold text-base sm:text-lg text-white">
                 {activeTab === "roster"
                   ? `Roster (${players.length}/${maxRosterSize})`
                   : `${teamName} Official Depth Chart`}
@@ -657,7 +657,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* View Switcher: Roster Table vs Depth Chart */}
-            <div data-tour="roster-tabs" className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto whitespace-nowrap max-w-full">
+            <div data-tour="roster-tabs" className="flex flex-wrap items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto max-w-full [&_button]:min-h-10">
               <button
                 onClick={() => setActiveTab("roster")}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
@@ -711,14 +711,15 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           </div>
 
           {activeTab === "roster" ? (
-            <div data-tour="roster-list-table" className="overflow-x-auto hide-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[700px]">
+            <div data-tour="roster-list-table" className="overflow-x-auto">
+            {showStats && <p className="sm:hidden px-3 py-2 text-xs text-neutral-400">Swipe across to see all player statistics.</p>}
+            <table className={`w-full text-left border-collapse ${showStats ? "min-w-[700px]" : ""}`}>
               <thead>
                 <tr className="bg-black/50 text-neutral-500 text-xs font-semibold uppercase tracking-wider">
                   <th className="py-3 px-3 sm:py-4 sm:px-6 w-16">#</th>
                   <th className="py-3 px-3 sm:py-4 sm:px-6">Player Name</th>
-                  <th className="py-3 px-3 sm:py-4 sm:px-6">Position</th>
-                  <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">Status</th>
+                  <th className="hidden sm:table-cell py-3 px-3 sm:py-4 sm:px-6">Position</th>
+                  <th className="hidden sm:table-cell py-3 px-3 sm:py-4 sm:px-6 text-center">Status</th>
                   {showStats && (
                     <>
                       <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">GP</th>
@@ -728,7 +729,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">INT</th>
                     </>
                   )}
-                  <th className="py-3 px-3 sm:py-4 sm:px-6 text-right">Actions</th>
+                  <th className={`${hasEditAccess ? "" : "hidden sm:table-cell"} py-3 px-3 sm:py-4 sm:px-6 text-right`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -754,16 +755,19 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                           className="font-bold text-base text-white hover:text-cyan-400 transition-colors flex items-center gap-2 text-left cursor-pointer group/player"
                           title={`Click to view stats for ${p.playerName}`}
                         >
-                          <span className="group-hover/player:underline underline-offset-4 decoration-cyan-400/60 whitespace-nowrap">{p.playerName}</span>
-                          <span className="text-[10px] text-cyan-400/80 group-hover/player:text-cyan-300 flex items-center gap-1 font-mono font-normal">
+                          <span className="group-hover/player:underline underline-offset-4 decoration-cyan-400/60 break-words">{p.playerName}</span>
+                          <span className="hidden sm:flex text-[10px] text-cyan-400/80 group-hover/player:text-cyan-300 items-center gap-1 font-mono font-normal">
                             <Activity className="w-3 h-3" />
                             <span>Stats</span>
                           </span>
                         </button>
+                        <div className="sm:hidden flex flex-wrap gap-1 mt-1 text-[10px] font-mono text-neutral-400">
+                          {positions.map((pos: string) => <span key={pos}>{pos}</span>)}
+                        </div>
                         {isTeamOrLeagueAdmin && ((p.emails && p.emails.length > 0) || p.email) && (
                           <div className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 mt-0.5">
                             <Mail className="w-3 h-3 text-cyan-400 shrink-0" />
-                            <span className="truncate max-w-[240px]">
+                            <span className="truncate max-w-[120px] sm:max-w-[240px]">
                               {p.emails ? p.emails.join(", ") : p.email}
                             </span>
                           </div>
@@ -771,7 +775,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       </td>
 
                       {/* Position */}
-                      <td className="py-3 px-3 sm:py-4 sm:px-6">
+                      <td className="hidden sm:table-cell py-3 px-3 sm:py-4 sm:px-6">
                         <div className="flex flex-wrap gap-1 min-w-[72px]">
                           {positions.map((pos: string) => (
                             <span
@@ -785,7 +789,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-3 sm:py-4 sm:px-6 text-center">
+                      <td className="hidden sm:table-cell py-3 px-3 sm:py-4 sm:px-6 text-center">
                         <span
                           className="px-2.5 py-1 rounded-full font-mono text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap"
                         >
@@ -815,13 +819,14 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       )}
 
                       {/* Actions */}
-                      <td className="py-3 px-3 sm:py-4 sm:px-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className={`${hasEditAccess ? "" : "hidden sm:table-cell"} py-3 px-3 sm:py-4 sm:px-6 text-right`}>
+                        <div className="flex items-center justify-end gap-1 [&_button]:min-h-10 [&_button]:min-w-10">
                           {/* View Stats Button */}
                           <button
                             onClick={() => setSelectedPlayerForStats(p)}
-                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+                            className="hidden sm:block p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
                             title="View Player Stats"
+                            aria-label={`View stats for ${p.playerName}`}
                           >
                             <Activity className="w-4 h-4" />
                           </button>
@@ -833,6 +838,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                                 onClick={() => handleOpenEditPlayer(p)}
                                 className="p-1.5 rounded-lg bg-white/5 hover:bg-blue-500/20 text-neutral-400 hover:text-blue-400 transition-colors"
                                 title="Edit Player Details"
+                                aria-label={`Edit ${p.playerName}`}
                                 disabled={!privateRosterReady}
                               >
                                 <Edit2 className="w-4 h-4" />
@@ -842,6 +848,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                                   onClick={() => handleDeletePlayer(p.id, p.playerName)}
                                   className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors"
                                   title="Remove Player from Team"
+                                  aria-label={`Remove ${p.playerName} from team`}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>

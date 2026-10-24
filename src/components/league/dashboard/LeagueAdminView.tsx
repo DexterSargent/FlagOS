@@ -63,22 +63,22 @@ export function LeagueAdminView({
   const { isLeagueArchived } = useLeague();
 
   return (
-    <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
+    <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 flex-1 w-full max-w-full space-y-5 sm:space-y-8">
       {/* League Command Center Hero Banner */}
-      <div className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-line">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
+      <div className="bg-surface-raised border border-line rounded-3xl p-4 sm:p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-line">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-[10px] font-bold text-amber-300 uppercase tracking-widest">
                 <Crown className="w-3.5 h-3.5 text-amber-400" />
                 League Commissioner Hub
               </span>
-              <span className="text-neutral-500 text-xs">•</span>
-              <span className="text-[11px] font-mono text-neutral-400 uppercase">
+              <span className="hidden sm:inline text-neutral-500 text-xs">•</span>
+              <span className="hidden sm:inline text-[11px] font-mono text-neutral-400 uppercase">
                 Full Administrative Access
               </span>
             </div>
-            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
               League Command Center
             </h1>
             <p className="text-neutral-400 text-xs md:text-sm mt-1 max-w-2xl">
@@ -110,7 +110,7 @@ export function LeagueAdminView({
           </div>
 
           {/* Fast Operations Toolbar */}
-          <div data-tour="league-admin-actions" className="flex flex-wrap items-center gap-3">
+          <div data-tour="league-admin-actions" className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 shrink-0 lg:max-w-[48%] [&_button]:min-h-11 [&_a]:min-h-11 [&_button]:justify-center [&_a]:justify-center">
             <WalkthroughTrigger walkthrough={LEAGUE_DIRECTORY_WALKTHROUGH} variant="header" />
             <button
               onClick={openCustomizer}
@@ -141,30 +141,30 @@ export function LeagueAdminView({
         </div>
 
         {/* League Executive KPI Strip */}
-        <div data-tour="league-kpis" className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <div className="flex items-center justify-between">
+        <div data-tour="league-kpis" className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 pt-4 sm:pt-6 [&>div]:min-w-0 [&>div]:p-3 sm:[&>div]:p-4">
+          <div className="bg-black/50 border border-line-subtle rounded-2xl">
+            <div className="flex flex-wrap items-center justify-between gap-1">
               <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Teams &amp; Slots</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
-                {isLeagueArchived ? "Archived" : `$${subscription?.totalMonthlyFee || 160}/mo`}
+                {isEffectiveDemo ? "Sandbox" : isLeagueArchived ? "Archived" : `$${subscription?.totalMonthlyFee || 160}/mo`}
               </span>
             </div>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
-              {teams.length} <span className="text-sm font-normal text-neutral-400">/ {subscription?.teamCount || 8} Paid</span>
+              {teams.length} <span className="text-sm font-normal text-neutral-400">{isEffectiveDemo ? "Demo Teams" : `/ ${subscription?.teamCount || 8} Paid`}</span>
             </div>
             <button
               type="button"
               onClick={openCustomizer}
               className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors mt-1 flex items-center gap-1 cursor-pointer"
             >
-              <span>Manage Teams &amp; Slots</span>
+              <span>{isEffectiveDemo ? "Demo Settings" : "Manage Teams & Slots"}</span>
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>
 
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
+          <div className="bg-black/50 border border-line-subtle rounded-2xl">
             <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Season Schedule Progress</span>
-            <div className="text-3xl font-black text-white mt-1 tabular-nums">
+            <div className="text-xl sm:text-3xl font-black text-white mt-1 tabular-nums whitespace-nowrap">
               {completedMatches.length} / {matches.length}
             </div>
             <div className="w-full bg-white/10 h-1.5 rounded-full mt-2 overflow-hidden">
@@ -177,15 +177,15 @@ export function LeagueAdminView({
             </div>
           </div>
 
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
+          <div className="bg-black/50 border border-line-subtle rounded-2xl">
             <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Total Roster Athletes</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">{players.length}</div>
             <span className="text-[11px] text-emerald-400 mt-1 block">Active Competitors</span>
           </div>
 
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
+          <div className="bg-black/50 border border-line-subtle rounded-2xl">
             <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">League Scoring Leader</span>
-            <div className="text-xl sm:text-2xl font-black text-white mt-1 truncate">
+            <div className="text-base sm:text-2xl font-black text-white mt-1 break-words">
               {topScorer?.name !== "-" ? topScorer?.name : "No stats recorded"}
             </div>
             <span className="text-[11px] text-cyan-400 mt-1 block font-mono">

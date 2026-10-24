@@ -8,12 +8,12 @@ const renderCounts = vi.hoisted(() => ({ sidebarIcon: 0 }));
 
 vi.mock("lucide-react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("lucide-react")>();
-  // `Users` is only drawn by the assignments sidebar, so it counts sidebar renders.
-  const Users = (props: ComponentProps<typeof actual.Users>) => {
+  // The position-notes icon is drawn by the assignments dock.
+  const Layers = (props: ComponentProps<typeof actual.Layers>) => {
     renderCounts.sidebarIcon++;
-    return createElement(actual.Users, props);
+    return createElement(actual.Layers, props);
   };
-  return { ...actual, Users };
+  return { ...actual, Layers };
 });
 
 vi.mock("@/lib/leagueContext", () => ({
@@ -684,4 +684,3 @@ describe("PlayCanvas custom zone creation, shapes, and resizing", () => {
     expect(updated.zones![0].ry).toBe(12);
   });
 });
-

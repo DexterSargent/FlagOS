@@ -27,6 +27,8 @@ it("waits for lazy sandbox reset before reloading the page", async () => {
     value: { hostname: "flagos.app", search: "", reload: mocks.reload },
   });
   render(<RoleSwitcherContent />);
+  expect(screen.getByRole("button", { name: "League Admin" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Spectator" })).toHaveAttribute("aria-pressed", "false");
   fireEvent.click(screen.getByRole("button", { name: "Reset session" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirm reset session" }));
   expect(mocks.reset).toHaveBeenCalledOnce();

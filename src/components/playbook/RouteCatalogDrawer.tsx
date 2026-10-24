@@ -3,6 +3,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import { Check, Plus, Star, X, Zap } from "lucide-react";
 import { ROUTE_PRESETS_CATALOG, type CustomRoutePreset, type PlayerNode } from "@/lib/playbookTypes";
+import styles from "./PlayCanvas.module.css";
 
 export interface RouteCatalogDrawerProps {
   selectedPlayer: PlayerNode;
@@ -32,9 +33,10 @@ export default function RouteCatalogDrawer({
   return (
       <div
         data-testid="route-presets-catalog"
-        className="mt-2.5 bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-cyan-500/40 rounded-2xl p-3 sm:p-4 shadow-2xl space-y-3 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[72dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] [@media(max-height:450px)]:fixed [@media(max-height:450px)]:inset-y-0 [@media(max-height:450px)]:right-0 [@media(max-height:450px)]:left-auto [@media(max-height:450px)]:bottom-0 [@media(max-height:450px)]:z-[70] [@media(max-height:450px)]:mt-0 [@media(max-height:450px)]:w-[45%] [@media(max-height:450px)]:max-h-none [@media(max-height:450px)]:overflow-y-auto [@media(max-height:450px)]:rounded-none [@media(max-height:450px)]:border-y-0 [@media(max-height:450px)]:border-r-0"
+        className={`${styles.picker} bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-cyan-500/40 shadow-2xl`}
       >
-        <div className="flex items-center justify-between pb-2.5 border-b border-neutral-200 dark:border-white/10">
+        <div className={`${styles.pickerHeader} border-b border-neutral-200 dark:border-white/10`}>
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
             <span className="text-xs font-black uppercase tracking-wider text-neutral-900 dark:text-white">Route Tree & Presets</span>
@@ -51,7 +53,9 @@ export default function RouteCatalogDrawer({
         </div>
 
         {playerSwitcher}
+        </div>
 
+        <div className={`${styles.pickerBody} space-y-3`}>
         <p className="text-[11px] text-neutral-600 dark:text-neutral-400 font-mono">
           Tap a route to apply it to <strong className="text-neutral-900 dark:text-white">{selectedPlayer.label}</strong>. Adjust route depth with the rail beside the field.
         </p>
@@ -72,7 +76,7 @@ export default function RouteCatalogDrawer({
                       type="button"
                       disabled={readOnly}
                       onClick={() => onApplyCustomPreset(cp)}
-                      className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
+                      className={`w-full pl-2.5 pr-12 py-2 rounded-xl text-xs font-bold text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
                         isCurrent
                           ? "bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-950 dark:text-emerald-200 border-2 border-emerald-500 dark:border-emerald-400 shadow-md font-extrabold"
                           : "bg-neutral-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 border-neutral-200 dark:border-emerald-500/30"
@@ -85,8 +89,9 @@ export default function RouteCatalogDrawer({
                       <button
                         type="button"
                         onClick={(e) => onDeleteCustomPreset(cp.id, cp.name, e)}
-                        className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow"
+                        className="absolute top-1 right-1 w-10 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer shadow"
                         title={`Delete preset ${cp.name}`}
+                        aria-label={`Delete preset ${cp.name}`}
                       >
                         ×
                       </button>
@@ -167,6 +172,7 @@ export default function RouteCatalogDrawer({
             <Plus className="w-3.5 h-3.5" />
             <span>Save Current Route as Preset</span>
           </button>
+        </div>
         </div>
       </div>
   );

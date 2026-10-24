@@ -147,6 +147,8 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       details: [
         { label: "Route list", text: "Slant, Out, Post, Corner, Go and more. They're auto-mirrored to the player's side of the field." },
         { label: "Saved routes", text: "Routes you've saved from your own drawings appear here too." },
+        { label: "Switch players", text: "Use the position pills at the top of the library to assign another receiver without closing it. Only the route list scrolls; the field stays visible." },
+        { label: "Route depth", text: "Use the vertical rail beside the field, its plus/minus buttons, or the arrow keys while the rail is focused to adjust depth in yards." },
       ],
       tip: "Draw a route once, save it as a preset, then reuse it in any play.",
     },
@@ -159,6 +161,7 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
       details: [
         { label: "Motion types", text: "Jet, orbit, shift and return motions. The ⚡ marker shows who's in motion." },
         { label: "Remove motion", text: "Clears the motion so the player starts from their set spot." },
+        { label: "Switch players", text: "The motion menu has its own position pills. Route choices stay in the separate Routes library." },
       ],
     },
     {

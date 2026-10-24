@@ -46,12 +46,12 @@ export function LeagueScheduleWidget({
   const isLive = (m: any) => isStartedGameStatus(m.status) && !isFinalGameStatus(m.status);
 
   return (
-    <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
+    <section className="bg-surface-raised border border-line rounded-3xl p-4 sm:p-6 md:p-8 backdrop-blur-md shadow-xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-line-subtle">
         <div>
-          <div className="flex items-center gap-2.5">
-            <Radio className="w-5 h-5 text-red-500 animate-pulse" />
-            <h2 className="text-lg md:text-xl font-black uppercase tracking-tight text-white">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Radio className="w-5 h-5 shrink-0 text-red-500 animate-pulse" />
+            <h2 className="text-base sm:text-lg md:text-xl font-black uppercase tracking-tight text-white">
               Live & Upcoming Games
             </h2>
             {liveCount > 0 && (

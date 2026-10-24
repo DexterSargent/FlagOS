@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
 import { PlayDiagram } from "@/lib/playbookTypes";
 import { createDefaultPlaybooks } from "@/lib/playbookTypes";
@@ -387,10 +387,14 @@ describe("PlayCanvas Route Presets Suite", () => {
     const toggleBtn = screen.getByTestId("route-presets-toggle");
     fireEvent.click(toggleBtn);
 
-    // Catalog should now be visible inline
+    // The catalog replaces the dock contents without replacing the field.
     const catalog = await screen.findByTestId("route-presets-catalog");
     expect(catalog).toBeDefined();
-    expect(screen.getByText("Route Tree & Team Presets Catalog")).toBeDefined();
+    expect(screen.getByText("Route Tree & Presets")).toBeInTheDocument();
+    expect(screen.getByTestId("designer-assignments-pane")).toContainElement(catalog);
+    expect(screen.getByTestId("designer-field")).toBeInTheDocument();
+    fireEvent.click(within(catalog).getByRole("button", { name: "Switch to Z" }));
+    expect(within(catalog).getByRole("button", { name: "Switch to Z" })).toHaveAttribute("aria-pressed", "true");
 
     // Clicking a route inside catalog applies it
     const catalogPostBtn = screen.getByTestId("catalog-route-post");
@@ -400,6 +404,7 @@ describe("PlayCanvas Route Presets Suite", () => {
     const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
     const postPlayer = updatedPlay.players.find((p) => p.quickRouteName === "Post");
     expect(postPlayer).toBeDefined();
+    expect(postPlayer?.id).toBe("p_z");
   });
 
   it("preserves pre-snap motion when applying a route preset and runs route from motion endpoint", async () => {

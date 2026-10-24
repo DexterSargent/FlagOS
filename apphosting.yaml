@@ -9,6 +9,12 @@ runConfig:
 
 # Environment variables and secrets.
 env:
+  # Override the checked-in local emulator setting for production builds and runtime.
+  - variable: NEXT_PUBLIC_USE_FIREBASE_EMULATORS
+    value: "false"
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: "AIzaSyBHTnWJpyjhbLpGQKJ2BqNWkN43EGP88pw"
     availability:

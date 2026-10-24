@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import dynamic from "next/dynamic";
+import styles from "./PlayCanvas.module.css";
 import { useLeague } from "@/lib/leagueContext";
 import {
   PlayerNode,
@@ -89,7 +90,6 @@ import {
   Hash,
   Ruler,
   Compass,
-  FileText,
   X,
   Layers,
   MessageSquare,
@@ -695,13 +695,13 @@ export default function PlayCanvas({
     handleDepthChange(target);
   };
 
-  // Phone/landscape sheets cover the main player pills, so they carry their own switcher.
+  // Pickers replace the dock contents, keeping selection visible while their options scroll.
   const sheetPlayerSwitcher = (
     <div
       data-player-switcher
       role="group"
       aria-label="Switch player"
-      className="flex sm:hidden [@media(max-height:450px)]:flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin"
+      className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-thin"
     >
       {offensePlayers.map((p) => {
         const isSelected = selectedPlayer?.id === p.id;
@@ -2358,7 +2358,7 @@ export default function PlayCanvas({
     animationModel.getPosition(player, progress, animating);
 
   return (
-    <div className="flex flex-col gap-2 w-full max-w-full overflow-y-auto xl:overflow-hidden font-sans xl:h-full min-h-0 [&_button]:min-h-9 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400">
+    <div className={`${styles.designer} font-sans [&_button]:min-h-10 [&_button]:leading-snug [&_button>svg]:shrink-0 [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-2 [&_button:focus-visible]:outline-cyan-400`}>
       {/* ============================================================== */}
       {/* UNIFIED STUDIO TOP COMMAND BAR: ALL CONTROLS IN 1-2 ROWS       */}
       {/* ============================================================== */}
@@ -2368,7 +2368,7 @@ export default function PlayCanvas({
         className="p-2 sm:p-2.5 bg-white dark:bg-[#0B0F19] border border-neutral-200 dark:border-white/10 rounded-2xl flex flex-wrap items-center justify-between gap-2 shrink-0 shadow-sm"
       >
         {/* Left Section: Navigation, Play Name, Formation & Situation */}
-        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1 basis-full xl:basis-0">
           {/* Back button */}
           {onBackToPlays && (
             <button
@@ -2384,7 +2384,7 @@ export default function PlayCanvas({
           )}
 
           {/* Play Name Editable Field */}
-          <div className="flex items-center gap-1.5 min-w-[130px] max-w-[210px] flex-1">
+          <div className="flex items-center gap-1.5 min-w-[110px] max-w-[210px] flex-1">
             <span className="text-[10px] font-black uppercase text-cyan-600 dark:text-cyan-400 font-mono tracking-wider shrink-0 hidden md:inline">Play:</span>
             <input
               type="text"
@@ -2398,7 +2398,7 @@ export default function PlayCanvas({
           </div>
 
           {/* Formation Dropdown (THE ONLY ONE) */}
-          <div data-tour="formation-selector" className="flex items-center gap-1 min-w-[120px] max-w-[160px]">
+          <div data-tour="formation-selector" className="flex items-center gap-1 min-w-[100px] max-w-[160px]">
             <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden xl:inline shrink-0">Formation:</span>
             <select
               aria-label={onBackToPlays && canEdit ? "Play category" : "Play formation"}
@@ -2799,16 +2799,16 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* LOWER STUDIO WORKSPACE: FIELD PANE (LEFT) + TACTICAL DOCK (RIGHT) */}
       {/* ============================================================== */}
-      <div className="flex flex-col xl:flex-row [@media(max-height:450px)]:flex-col [@media(min-width:600px)_and_(max-height:450px)]:flex-row gap-2 sm:gap-3 flex-1 min-h-0 overflow-visible xl:overflow-hidden">
+      <div className={styles.workspace}>
         {/* ============================================================== */}
         {/* LEFT: MAIN PLAYMAKER CANVAS & FIELD SURFACE + ANIMATION BAR    */}
         {/* ============================================================== */}
-        <div data-testid="designer-field-pane" className="flex flex-1 min-w-0 min-h-0 flex-col bg-[#07090E] border border-neutral-200 dark:border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl relative">
+        <div data-testid="designer-field-pane" className={`${styles.fieldPane} bg-[#07090E] border border-neutral-200 dark:border-white/10 rounded-2xl sm:rounded-3xl shadow-2xl relative`}>
         {/* Interactive Field Viewport */}
         <div
           ref={containerRef}
           data-tour="play-field"
-          className="relative flex-1 [@media(max-width:639px)_and_(min-height:451px)]:flex-none w-full aspect-[16/10] md:aspect-auto [@media(max-width:639px)_and_(max-height:450px)]:aspect-auto [@media(max-width:639px)_and_(min-height:451px)]:aspect-[10/7] bg-[#12231A] overflow-hidden select-none touch-none cursor-crosshair min-h-[250px] md:min-h-0 [@media(max-width:639px)]:min-h-0 [@media(max-height:450px)]:min-h-[120px]"
+          className={`${styles.field} bg-[#12231A] select-none touch-none cursor-crosshair`}
           data-testid="designer-field"
         >
           <svg
@@ -4049,7 +4049,7 @@ export default function PlayCanvas({
               const box = fieldBox ?? { scale: 1, offX: 0, offY: 0, vbY: 0 };
               const railOnLeft = depthRailSide === "left";
               const sideInset = Math.max(2, box.offX + 20 * box.scale + 4);
-              const capHeight = 64;
+              const capHeight = 90;
               const deepestPx = fieldYToPx(depthToFieldY(maxRouteDepthYards));
               const shallowestPx = fieldYToPx(depthToFieldY(MIN_ROUTE_DEPTH_YARDS));
               const trackTop = Math.max(deepestPx, capHeight + 6);
@@ -4074,7 +4074,7 @@ export default function PlayCanvas({
                       disabled={effectiveRouteDepth >= maxRouteDepthYards}
                       aria-label="Increase route depth"
                       title="Deeper"
-                      className="w-7 h-7 rounded-full bg-black/80 border border-cyan-400/60 text-cyan-200 text-base font-black leading-none flex items-center justify-center shadow-md hover:bg-cyan-500 hover:text-black disabled:opacity-40 cursor-pointer"
+                      className="w-10 h-10 rounded-full bg-black/80 border border-cyan-400/60 text-cyan-200 text-base font-black leading-none flex items-center justify-center shadow-md hover:bg-cyan-500 hover:text-black disabled:opacity-40 cursor-pointer"
                     >
                       +
                     </button>
@@ -4084,7 +4084,7 @@ export default function PlayCanvas({
                       disabled={effectiveRouteDepth <= MIN_ROUTE_DEPTH_YARDS}
                       aria-label="Decrease route depth"
                       title="Shallower"
-                      className="w-7 h-7 rounded-full bg-black/80 border border-cyan-400/60 text-cyan-200 text-base font-black leading-none flex items-center justify-center shadow-md hover:bg-cyan-500 hover:text-black disabled:opacity-40 cursor-pointer"
+                      className="w-10 h-10 rounded-full bg-black/80 border border-cyan-400/60 text-cyan-200 text-base font-black leading-none flex items-center justify-center shadow-md hover:bg-cyan-500 hover:text-black disabled:opacity-40 cursor-pointer"
                     >
                       −
                     </button>
@@ -4164,8 +4164,8 @@ export default function PlayCanvas({
         </div>
 
         {/* Animation Simulator Controller Bar (Attached directly beneath field) */}
-        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1.5 bg-[#0B0F19]/95 dark:bg-black/80 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0 [@media(max-height:450px)]:hidden">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div data-tour="play-animation-controls" className="px-2 sm:px-3 py-1.5 bg-[#0B0F19]/95 dark:bg-black/80 border-t border-white/10 flex flex-wrap items-center justify-between gap-1.5 text-xs shrink-0 [@media(max-height:450px)]:hidden">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={handleToggleAnimate}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-bold uppercase tracking-wider text-xs transition-all cursor-pointer ${
@@ -4190,7 +4190,7 @@ export default function PlayCanvas({
             </button>
 
             <div className="flex items-center gap-1 ml-1">
-              <span className="text-[10px] font-mono text-neutral-300">Speed:</span>
+              <span className="hidden sm:inline text-[10px] font-mono text-neutral-300">Speed:</span>
               {[0.5, 1, 1.5].map((spd) => (
                 <button
                   key={spd}
@@ -4238,16 +4238,11 @@ export default function PlayCanvas({
       {/* ============================================================== */}
       {/* RIGHT: TACTICAL CONTROL DOCK (PLAYER ROSTER, ROUTES & SCHEMES) */}
       {/* ============================================================== */}
-      <div data-testid="designer-assignments-pane" className="flex w-full xl:w-[380px] flex-none xl:self-start xl:shrink-0 flex-col bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-white/10 rounded-2xl overflow-visible xl:overflow-hidden shadow-xl min-h-0">
-        <div className="p-2 sm:p-3.5 [@media(min-width:600px)_and_(max-height:450px)]:p-2 [@media(max-width:639px)]:p-2 flex-1 min-h-0 overflow-y-auto space-y-2.5 [@media(min-width:600px)_and_(max-height:450px)]:space-y-1 [@media(max-width:639px)]:space-y-1.5 scrollbar-thin">
+      <div data-testid="designer-assignments-pane" className={`${styles.assignments} bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-white/10 rounded-2xl shadow-xl`}>
+        <div className={`${styles.assignmentContent} p-2 sm:p-3 space-y-2 scrollbar-thin bg-white dark:bg-[#0A0E17]`}>
           {/* Top Control Bar: Active Player Quick Selector & Tool Buttons */}
-          <div className="flex flex-col items-stretch gap-3">
             {/* Player Selection Pills with Coaching Notes Indicator */}
-            <div data-tour="player-pills" className="flex items-center gap-1.5 flex-wrap max-w-full">
-              <span className="hidden sm:flex [@media(min-width:600px)_and_(max-height:450px)]:hidden text-[10px] font-black uppercase tracking-wider text-neutral-400 mr-1 items-center gap-1">
-                <Users className="w-3 h-3 text-cyan-400" />
-                <span>Player:</span>
-              </span>
+            <div data-tour="player-pills" className={`${styles.playerPills} flex items-center gap-1.5 overflow-x-auto max-w-full`}>
               {(play.type === "defense" ? defensePlayers : offensePlayers).map((p) => {
                 const isSelected = selectedPlayer?.id === p.id;
                 const hasRoute = p.route && p.route.length > 0;
@@ -4259,7 +4254,7 @@ export default function PlayCanvas({
                     aria-pressed={isSelected}
                     aria-label={`Select ${p.label}`}
                     onClick={() => setSelectedPlayerId(p.id)}
-                    className={`min-w-10 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border flex items-center justify-center gap-1.5 ${
+                    className={`min-w-10 shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border flex items-center justify-center gap-1.5 ${
                       isSelected
                         ? p.side === "offense"
                           ? "bg-cyan-500/20 dark:bg-cyan-500/25 text-cyan-950 dark:text-cyan-200 border-2 border-cyan-500 dark:border-cyan-400 shadow-md ring-2 ring-cyan-400/20"
@@ -4306,11 +4301,11 @@ export default function PlayCanvas({
             {/* Selected Player Status & Action Buttons */}
             <div data-tour="player-actions" className="flex items-center gap-2 flex-wrap">
               {selectedPlayer && (
-              <div className="w-full flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
+              <div className="hidden sm:flex [@media(max-height:450px)]:hidden w-full flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
                   <span className="text-neutral-400">{selectedPlayer.role}:</span>
                   <span
                     className={`font-bold ${
-                      selectedPlayer.side === "offense" ? "text-cyan-400" : "text-purple-400"
+                      selectedPlayer.side === "offense" ? "text-cyan-700 dark:text-cyan-400" : "text-purple-700 dark:text-purple-400"
                     }`}
                   >
                     {selectedPlayer.quickRouteName ||
@@ -4325,7 +4320,7 @@ export default function PlayCanvas({
               <button
                 type="button"
                 onClick={() => setIsPositionNotesModalOpen(true)}
-                className="px-2.5 py-1 rounded-xl text-xs font-bold text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center gap-1.5 [@media(min-width:600px)_and_(max-height:450px)]:hidden [@media(max-width:639px)]:px-1.5"
+                className="px-2.5 py-1 rounded-xl text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 border border-neutral-200 dark:border-white/10 transition-all flex items-center gap-1.5 [@media(min-width:600px)_and_(max-height:450px)]:hidden [@media(max-width:639px)]:px-1.5"
                 title="View & Edit Coaching Notes for all positions"
                 aria-label="View and edit position notes"
               >
@@ -4365,15 +4360,13 @@ export default function PlayCanvas({
                 </button>
               )}
             </div>
-          </div>
-
           {/* Position Coaching Notes Bar for Currently Selected Player */}
           {selectedPlayer && (
-            <div className="space-y-1.5 border-t border-neutral-200 dark:border-white/10 pt-3 [@media(max-height:450px)]:hidden max-sm:hidden">
-              <div className="flex items-center gap-1.5 shrink-0 text-cyan-600 dark:text-cyan-400 font-mono text-[11px] font-bold">
-                <FileText className="w-3.5 h-3.5" />
+            <details className="group space-y-1.5 border-t border-neutral-200 dark:border-white/10 pt-2 [@media(max-height:450px)]:hidden max-sm:hidden">
+              <summary className="flex items-center gap-1.5 cursor-pointer text-cyan-600 dark:text-cyan-400 font-mono text-[11px] font-bold min-h-10">
+                <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
                 <span>{selectedPlayer.label} notes:</span>
-              </div>
+              </summary>
               <textarea
                 rows={2}
                 aria-label={`${selectedPlayer.label} coaching notes`}
@@ -4383,14 +4376,14 @@ export default function PlayCanvas({
                 placeholder="Coaching assignment and read notes..."
                 className="w-full min-w-0 resize-y rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-black/40 px-2.5 py-2 text-xs leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
               />
-            </div>
+            </details>
           )}
 
           {/* Offense Route Presets Controls */}
           {selectedPlayer?.side === "offense" ? (
-            <div className="space-y-2 [@media(max-width:639px)]:space-y-1 relative" ref={presetMenuRef}>
+            <div className="space-y-2 [@media(max-width:639px)]:space-y-1" ref={presetMenuRef}>
               {/* Header row: Route assignment info & Action Buttons */}
-              <div className="flex flex-col items-stretch gap-2">
+              <div className="flex flex-col-reverse items-stretch gap-2">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <span className="text-[10px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400 flex items-center gap-1 max-sm:hidden">
                     <Zap className="w-3 h-3" />
@@ -4526,12 +4519,13 @@ export default function PlayCanvas({
               {isMotionMenuOpen && (
                 <div
                   data-testid="motion-menu"
-                  className="mt-2 bg-[#0A0E17] border border-amber-500/40 rounded-2xl p-3 shadow-2xl space-y-2.5 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-[70] max-sm:mt-0 max-sm:max-h-[42dvh] max-sm:overflow-y-auto max-sm:rounded-b-none max-sm:border-x-0 max-sm:border-b-0 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] [@media(max-height:450px)]:fixed [@media(max-height:450px)]:inset-y-0 [@media(max-height:450px)]:right-0 [@media(max-height:450px)]:left-auto [@media(max-height:450px)]:z-[70] [@media(max-height:450px)]:mt-0 [@media(max-height:450px)]:w-[42%] [@media(max-height:450px)]:overflow-y-auto [@media(max-height:450px)]:rounded-none [@media(max-height:450px)]:border-y-0 [@media(max-height:450px)]:border-r-0"
+                  className={`${styles.picker} bg-white dark:bg-[#0A0E17] border border-amber-500/40 shadow-2xl`}
                 >
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                  <div className={`${styles.pickerHeader} border-b border-neutral-200 dark:border-white/10`}>
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Activity className="w-4 h-4 text-amber-400" />
-                      <span className="text-xs font-black uppercase tracking-wider text-white">
+                      <span className="text-xs font-black uppercase tracking-wider text-neutral-900 dark:text-white">
                         Pre-Snap Motion ({selectedPlayer.label})
                       </span>
                     </div>
@@ -4545,6 +4539,8 @@ export default function PlayCanvas({
                     </button>
                   </div>
                   {sheetPlayerSwitcher}
+                  </div>
+                  <div className={`${styles.pickerBody} space-y-2.5`}>
                   <div className="grid grid-cols-2 gap-2">
                     {PRE_SNAP_MOTION_PRESETS.map((motion) => {
                       const isCurrent =
@@ -4563,7 +4559,7 @@ export default function PlayCanvas({
                           className={`min-h-12 p-3 rounded-xl text-left transition-all border cursor-pointer ${
                             isCurrent
                               ? "bg-amber-500 text-black border-amber-400 shadow-md"
-                              : "bg-black/60 text-amber-300 hover:bg-amber-500/15 border-amber-500/30"
+                              : "bg-amber-50 dark:bg-black/60 text-amber-900 dark:text-amber-300 hover:bg-amber-500/15 border-amber-500/30"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2 text-sm font-black">
@@ -4592,6 +4588,7 @@ export default function PlayCanvas({
                       <span>Remove Motion</span>
                     </button>
                   )}
+                  </div>
                 </div>
               )}
 
@@ -4622,7 +4619,7 @@ export default function PlayCanvas({
             /* Defense Coverage Presets Ribbon */
             <div data-tour="defense-coverage" className="space-y-1.5 [@media(min-width:600px)_and_(max-height:450px)]:grid [@media(min-width:600px)_and_(max-height:450px)]:grid-cols-[auto_1fr] [@media(min-width:600px)_and_(max-height:450px)]:gap-x-2">
               <div className="flex items-center justify-between [@media(min-width:600px)_and_(max-height:450px)]:col-span-2">
-                <span className="text-xs font-black uppercase tracking-wider text-purple-200 flex items-center gap-1">
+                <span className="text-xs font-black uppercase tracking-wider text-purple-800 dark:text-purple-200 flex items-center gap-1">
                   <Shield className="w-3 h-3" />
                   <span>Coverage & Assignment ({selectedPlayer.label}):</span>
                 </span>

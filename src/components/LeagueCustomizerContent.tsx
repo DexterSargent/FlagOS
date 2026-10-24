@@ -336,12 +336,12 @@ export default function LeagueCustomizerContent() {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto overscroll-contain"
+      className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto overscroll-contain"
       onClick={(e) => {
         if (e.target === e.currentTarget) closeCustomizer();
       }}
     >
-      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-3xl w-full shadow-2xl relative flex flex-col h-[90vh] max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+      <div role="dialog" aria-modal="true" aria-labelledby="league-settings-title" className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-3xl w-full shadow-2xl relative flex flex-col h-[90dvh] max-h-[90dvh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
         {/* Pinned Header & Tab Navigation */}
         <div className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10 space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between gap-2">
@@ -350,7 +350,7 @@ export default function LeagueCustomizerContent() {
                 <SettingsIcon className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl font-black uppercase text-white tracking-wide flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h2 id="league-settings-title" className="text-xl font-black uppercase text-white tracking-wide flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>Settings</span>
                   {isLeagueAdmin ? (
                     <span className="text-[10px] font-mono uppercase whitespace-nowrap px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">

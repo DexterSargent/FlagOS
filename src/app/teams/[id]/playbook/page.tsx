@@ -998,10 +998,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Dedicated Embedded Layout for Showcase (Directly renders PlayCanvas with compact controls)
   if (isEmbedded) {
     return (
-      <div className="h-dvh min-h-0 bg-black text-white font-sans p-2 sm:p-3 flex flex-col gap-2 selection:bg-cyan-500/30 selection:text-cyan-200 w-full max-w-full overflow-hidden">
+      <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 bg-black text-white font-sans p-2 sm:p-3 flex flex-col gap-2 selection:bg-cyan-500/30 selection:text-cyan-200 w-full max-w-full overflow-hidden">
         {/* Compact Header for Embedded Showcase */}
         <div className="flex flex-wrap items-center justify-between gap-2 bg-[#0B0F19] p-2 rounded-xl border border-white/10 shrink-0">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full w-full sm:w-auto">
             <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5" />
               <span>{teamName} Playbook Studio</span>
@@ -1013,9 +1013,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="hidden sm:flex items-center gap-2 flex-wrap">
             {/* Quick Play Switcher Buttons */}
-            <div className="flex items-center gap-1 overflow-x-auto max-w-full scrollbar-thin">
+            <div className="flex items-center gap-1 overflow-x-auto max-w-full w-full sm:w-auto scrollbar-thin">
               {(activePlaybook?.plays || []).slice(0, 5).map((p) => (
                 <button
                   key={p.id}
@@ -1034,6 +1034,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             {/* Playbook Switcher (Offense vs Defense) */}
             {playbooks.length > 1 && (
               <select
+                aria-label="Playbook"
                 value={activePlaybook?.id || ""}
                 onChange={(e) => {
                   const book = playbooks.find((b) => b.id === e.target.value);
@@ -1042,7 +1043,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     if (book.plays.length > 0) setActivePlayId(book.plays[0].id);
                   }
                 }}
-                className="bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 rounded-xl px-2.5 py-1 outline-none cursor-pointer"
+                className="min-w-0 max-w-full bg-black/60 border border-white/15 text-xs font-bold text-neutral-200 rounded-xl px-2.5 py-2 outline-none cursor-pointer"
               >
                 {playbooks.map((b) => (
                   <option key={b.id} value={b.id} className="bg-neutral-900 text-white">
@@ -1056,7 +1057,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         </div>
 
         {/* Tactical Playmaker Canvas Workspace */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {activePlay ? (
             <PlayCanvas
               play={activePlay}
@@ -1076,7 +1077,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className={`${viewLevel === "editor" ? "min-h-screen xl:h-dvh overflow-y-auto xl:overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
+    <div className={`${viewLevel === "editor" ? "h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -1086,12 +1087,12 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
       <TeamNavBar
         teamId={teamId}
-        className={viewLevel === "editor" ? "max-sm:hidden [@media(max-height:450px)]:hidden" : ""}
+        className={viewLevel === "editor" ? "top-0! max-sm:hidden [@media(max-height:450px)]:hidden" : ""}
       />
 
       <div className={`mx-auto ${
         viewLevel === "editor"
-          ? "max-w-[1600px] p-1.5 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 min-h-0 flex-1 overflow-y-auto xl:overflow-hidden"
+          ? "max-w-[1600px] p-1.5 sm:p-3 [@media(max-height:450px)]:p-1 flex flex-col gap-2 [@media(max-height:450px)]:gap-1 min-h-0 flex-1 overflow-hidden"
           : isEmbedded
           ? "max-w-7xl space-y-3 p-2 sm:p-3 flex-1"
           : "max-w-7xl space-y-6 p-4 sm:p-6 md:p-8 flex-1"
@@ -1801,7 +1802,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
         {/* Full editor for the selected play */}
         {viewLevel === "editor" && activePlaybook && (
-          <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto xl:overflow-hidden">
+          <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
             {/* Informative Player Notice */}
             {isPlayer && (
               <div className="px-3.5 py-1.5 [@media(max-height:450px)]:hidden bg-cyan-950/40 border-b border-cyan-500/20 text-cyan-300 text-xs flex items-center justify-between gap-2 shrink-0">
@@ -1821,7 +1822,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             )}
 
             {/* Tactical Playmaker Canvas Workspace */}
-            <div className="flex-1 min-h-0 overflow-visible xl:overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden">
               {activePlay ? (
                 <PlayCanvas
                   play={activePlay}

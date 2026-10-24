@@ -193,7 +193,7 @@ describe("PlayCanvas - Opponent Schemes & Rush Toggle", () => {
 
     // The offensive play from the team's offensive playbook is listed
     expect(screen.getByText("5v5 Spread Offense")).toBeInTheDocument();
-    const playOption = screen.getByTestId("select-opp-play-play-off-verts");
+    const playOption = screen.getByRole("button", { name: /Spread 2x1 - Verticals/ });
     expect(playOption).toHaveTextContent("Spread 2x1 - Verticals");
 
     // Select the play
@@ -254,7 +254,7 @@ describe("PlayCanvas - Opponent Schemes & Rush Toggle", () => {
 
     // The defensive play from Apex Lockdown Defense is listed
     expect(screen.getByText("Apex Lockdown Defense")).toBeInTheDocument();
-    const defPlayOption = screen.getByTestId("select-opp-play-play-def-c2");
+    const defPlayOption = screen.getByRole("button", { name: /^Cover 2 Zone\s*Cover 2$/ });
     expect(defPlayOption).toHaveTextContent("Cover 2 Zone");
 
     // Select the defensive scheme

@@ -13,12 +13,12 @@ import SiteControls from "@/components/SiteControls";
 
 type TeamSection = "overview" | "schedule" | "roster" | "stats" | "playbook";
 
-const SECTIONS: { key: TeamSection; label: string; path: string; icon: LucideIcon }[] = [
-  { key: "overview", label: "Overview", path: "", icon: LayoutGrid },
-  { key: "schedule", label: "Schedule", path: "/schedule", icon: CalendarDays },
-  { key: "roster", label: "Roster", path: "/roster", icon: Users },
-  { key: "stats", label: "Stats", path: "/stats", icon: Activity },
-  { key: "playbook", label: "Playbook", path: "/playbook", icon: BookOpen },
+const SECTIONS: { key: TeamSection; label: string; mobileLabel: string; path: string; icon: LucideIcon }[] = [
+  { key: "overview", label: "Overview", mobileLabel: "Home", path: "", icon: LayoutGrid },
+  { key: "schedule", label: "Schedule", mobileLabel: "Games", path: "/schedule", icon: CalendarDays },
+  { key: "roster", label: "Roster", mobileLabel: "Roster", path: "/roster", icon: Users },
+  { key: "stats", label: "Stats", mobileLabel: "Stats", path: "/stats", icon: Activity },
+  { key: "playbook", label: "Playbook", mobileLabel: "Plays", path: "/playbook", icon: BookOpen },
 ];
 
 export function getActiveTeamSection(pathname: string | null, teamId: string): TeamSection | null {
@@ -57,7 +57,7 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
   return (
     <nav
       aria-label={`${teamName} sections`}
-      className={`sticky top-0 z-40 w-full shrink-0 border-b border-white/10 bg-black/85 backdrop-blur-md ${className}`}
+      className={`sticky top-[var(--role-switcher-height,0px)] z-40 w-full shrink-0 border-b border-white/10 bg-black/85 backdrop-blur-md ${className}`}
     >
       <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-4 px-2 sm:px-6 h-14 sm:h-12">
         <Link
@@ -84,20 +84,22 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
         </Link>
 
         <ul className="flex flex-1 items-stretch justify-end gap-0.5 sm:gap-1 min-w-0">
-          {sections.map(({ key, label, path, icon: Icon }) => {
+          {sections.map(({ key, label, mobileLabel, path, icon: Icon }) => {
             const isActive = active === key;
             return (
               <li key={key} className="flex-1 sm:flex-none min-w-0">
                 <Link
                   href={`/teams/${teamId}${path}`}
+                  aria-label={label}
                   aria-current={isActive ? "page" : undefined}
-                  className={`relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 h-12 sm:h-9 px-1 sm:px-3 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${
+                  className={`relative flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 h-12 sm:h-10 px-0.5 sm:px-3 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${
                     isActive ? "text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
                   }`}
                   style={isActive ? { backgroundColor: `${accent}22`, color: accent } : undefined}
                 >
                   <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span className="truncate max-w-full">{label}</span>
+                  <span className="sm:hidden">{mobileLabel}</span>
+                  <span className="hidden sm:inline">{label}</span>
                 </Link>
               </li>
             );
