@@ -729,7 +729,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       <th className="py-3 px-3 sm:py-4 sm:px-6 text-center">INT</th>
                     </>
                   )}
-                  <th className={`${hasEditAccess ? "" : "hidden sm:table-cell"} py-3 px-3 sm:py-4 sm:px-6 text-right`}>Actions</th>
+                  <th className="py-3 px-3 sm:py-4 sm:px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -819,7 +819,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       )}
 
                       {/* Actions */}
-                      <td className={`${hasEditAccess ? "" : "hidden sm:table-cell"} py-3 px-3 sm:py-4 sm:px-6 text-right`}>
+                      <td className="py-3 px-3 sm:py-4 sm:px-6 text-right">
                         <div className="flex items-center justify-end gap-1 [&_button]:min-h-10 [&_button]:min-w-10">
                           {/* View Stats Button */}
                           <button

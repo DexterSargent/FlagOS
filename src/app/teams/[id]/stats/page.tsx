@@ -310,22 +310,6 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
   const teamName = team?.name || "Team";
   const hasAnyLeader = sections.some((section) => section.categories.some((cat) => getTop3(cat.key).length > 0));
-  const snapshot = teamStats && teamStats.gp > 0
-    ? [
-        { label: teamStats.playoffRecordFormatted ? "Record (incl. playoffs)" : "Record", value: teamStats.recordFormatted },
-        ...(teamStats.playoffRecordFormatted
-          ? [
-              { label: "Regular Season", value: teamStats.regularRecordFormatted },
-              { label: "Playoffs", value: teamStats.playoffRecordFormatted },
-            ]
-          : []),
-        { label: "Points For", value: teamStats.pf },
-        { label: "Points Against", value: teamStats.pa },
-        { label: "Point Diff", value: teamStats.diffFormatted },
-        { label: "Touchdowns", value: teamStats.totalTDs },
-        { label: "Takeaways", value: teamStats.takeaways },
-      ]
-    : [];
 
   return (
     <div className="min-h-screen bg-black text-white font-sans relative flex flex-col">
@@ -356,19 +340,6 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             </p>
           )}
         </header>
-
-        {/* Season snapshot */}
-        {!statsLoading && snapshot.length > 0 && (
-          <section aria-label="Season snapshot" className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
-            {snapshot.map((tile) => (
-              <div key={tile.label} className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-white/10 bg-neutral-900/80 px-2 py-2.5 sm:px-3 sm:py-3.5 text-center">
-                <div className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: accent }} aria-hidden="true" />
-                <div className="font-mono text-lg sm:text-2xl font-black tabular-nums whitespace-nowrap">{tile.value}</div>
-                <div className="mt-0.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-500 whitespace-nowrap">{tile.label}</div>
-              </div>
-            ))}
-          </section>
-        )}
 
         {statsLoading ? (
           <div role="status" aria-label="Loading stat leaders" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">

@@ -915,9 +915,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               onMouseEnter={(e) => (e.currentTarget.style.color = palette.primary)}
               onMouseLeave={(e) => (e.currentTarget.style.color = "")}
             />
-            <h3 className="text-xl font-black mb-1.5 uppercase tracking-wide">Team</h3>
+            <h3 className="text-xl font-black mb-1.5 uppercase tracking-wide">Roster</h3>
             <p className="text-neutral-400 text-xs leading-relaxed">
-              Official roster and team stats.
+              Official roster and depth charts.
             </p>
           </Link>
 
