@@ -8,6 +8,7 @@ import { TeamAdminView } from "@/components/league/dashboard/TeamAdminView";
 import { PlayerView } from "@/components/league/dashboard/PlayerView";
 import { SpectatorView } from "@/components/league/dashboard/SpectatorView";
 import { QuickAddPlayerModal } from "@/components/league/dashboard/QuickAddPlayerModal";
+import DemoRosterNotice from "@/components/league/DemoRosterNotice";
 
 export default function FlagOSDashboard({ params }: { params?: Promise<{ id: string }> }) {
   const unwrappedParams = params ? use(params) : null;
@@ -42,6 +43,8 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         <div className="absolute top-10 left-10 w-[40rem] h-[40rem] bg-cyan-900/15 rounded-full blur-[160px]"></div>
         <div className="absolute bottom-20 right-10 w-[35rem] h-[35rem] bg-blue-900/15 rounded-full blur-[170px]"></div>
       </div>
+
+      {data.isEffectiveDemo && <DemoRosterNotice />}
 
       {/* VIEW 1: LEAGUE COMMISSIONER / ADMIN */}
       {data.isLeagueAdminView && (

@@ -1,4 +1,4 @@
-import { DemoMatch, DemoPlay, SEED_DEMO_MATCHES, SEED_DEMO_PLAYERS, SEED_DEMO_TEAMS } from "./demoSeedData";
+import { DemoMatch, DemoPlay, DemoPlayer, SEED_DEMO_MATCHES, SEED_DEMO_PLAYERS, SEED_DEMO_TEAMS } from "./demoSeedData";
 
 // Pre-computed roster map for all 32 teams
 interface TeamRosterInfo {
@@ -11,24 +11,39 @@ interface TeamRosterInfo {
 }
 
 let cachedRosters: Record<string, TeamRosterInfo> | null = null;
+let cachedRosterKey = "";
+let lastPlayers: DemoPlayer[] | null = null;
+let lastPlayerKey = "";
 
-function getTeamRosters(): Record<string, TeamRosterInfo> {
-  if (cachedRosters) return cachedRosters;
+function rosterKey(players: DemoPlayer[]): string {
+  if (players !== lastPlayers) {
+    lastPlayers = players;
+    lastPlayerKey = JSON.stringify(players.map((p) => [p.teamId, p.playerName, p.position, p.positions]));
+  }
+  return lastPlayerKey;
+}
+
+function getTeamRosters(allPlayers: DemoPlayer[]): Record<string, TeamRosterInfo> {
+  const key = rosterKey(allPlayers);
+  if (cachedRosters && cachedRosterKey === key) return cachedRosters;
   const rosters: Record<string, TeamRosterInfo> = {};
 
   SEED_DEMO_TEAMS.forEach((team) => {
-    const players = SEED_DEMO_PLAYERS.filter((p) => p.teamId === team.id);
-    const qb = players[0]?.playerName || `${team.name} QB`;
-    const rb = players[1]?.playerName || `${team.name} RB`;
-    const wrs = players.slice(2, 5).map((p) => p.playerName);
+    const players = allPlayers.filter((p) => p.teamId === team.id);
+    const hasPosition = (player: DemoPlayer, position: string) =>
+      player.position === position || player.positions?.includes(position);
+    const qb = players.find((p) => hasPosition(p, "QB"))?.playerName || `${team.name} QB`;
+    const rb = players.find((p) => hasPosition(p, "RB"))?.playerName || `${team.name} RB`;
+    const wrs = players.filter((p) => hasPosition(p, "WR") || hasPosition(p, "TE")).map((p) => p.playerName);
     if (wrs.length === 0) wrs.push(`${team.name} WR`);
-    const db = players[5]?.playerName || `${team.name} DB`;
-    const rusher = players[6]?.playerName || `${team.name} Rusher`;
+    const db = players.find((p) => hasPosition(p, "DB"))?.playerName || `${team.name} DB`;
+    const rusher = players.find((p) => hasPosition(p, "RUSH"))?.playerName || `${team.name} Rusher`;
 
     rosters[team.id] = { teamName: team.name, qb, rb, wrs, db, rusher };
   });
 
   cachedRosters = rosters;
+  cachedRosterKey = key;
   return rosters;
 }
 
@@ -118,9 +133,9 @@ export function decomposeScore(score: number): ScoringDrive[] {
 /**
  * Generates an authentic full-game play-by-play log for a completed match.
  */
-export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
+export function generatePlaysForMatch(match: DemoMatch, players: DemoPlayer[] = SEED_DEMO_PLAYERS): DemoPlay[] {
   if (match.status !== "completed") return [];
-  const rosters = getTeamRosters();
+  const rosters = getTeamRosters(players);
   const homeRoster = rosters[match.homeTeamId];
   const awayRoster = rosters[match.awayTeamId];
   if (!homeRoster || !awayRoster) return [];
@@ -387,22 +402,25 @@ export function generatePlaysForMatch(match: DemoMatch): DemoPlay[] {
 
 // Memoized season plays cache
 let cachedSeasonPlays: DemoPlay[] | null = null;
+let cachedSeasonRosterKey = "";
 
 /**
  * Returns all generated play logs across all completed games in the demo league.
  * Computed deterministically once in memory.
  */
-export function getGeneratedSeasonPlays(): DemoPlay[] {
-  if (cachedSeasonPlays) return cachedSeasonPlays;
+export function getGeneratedSeasonPlays(players: DemoPlayer[] = SEED_DEMO_PLAYERS): DemoPlay[] {
+  const key = rosterKey(players);
+  if (cachedSeasonPlays && cachedSeasonRosterKey === key) return cachedSeasonPlays;
 
   const plays: DemoPlay[] = [];
   const completedMatches = SEED_DEMO_MATCHES.filter((m) => m.status === "completed");
 
   completedMatches.forEach((match) => {
-    const matchPlays = generatePlaysForMatch(match);
+    const matchPlays = generatePlaysForMatch(match, players);
     plays.push(...matchPlays);
   });
 
   cachedSeasonPlays = plays;
+  cachedSeasonRosterKey = key;
   return plays;
 }

@@ -10,6 +10,8 @@ import {
   SEED_DEMO_PLAYERS,
   SEED_DEMO_MATCHES,
   SEED_DEMO_PLAYS,
+  DEMO_ROSTER_SOURCE,
+  getSeedDemoPlays,
 } from "./demoSeedData";
 import { getGeneratedSeasonPlays } from "./demoPlayGenerator";
 import { DEMO_EVENT, isDemoLeague, isDemoMatchId, notifySandboxChange } from "./demoSandboxRuntime";
@@ -27,6 +29,7 @@ const KEY_TEAM_BRANDING_VERSION = "flagos_demo_team_branding_v2";
 const KEY_SETTINGS = "flagos_demo_settings";
 const KEY_TEAMS = "flagos_demo_teams";
 const KEY_PLAYERS = "flagos_demo_players";
+const KEY_ROSTER_SOURCE = "flagos_demo_roster_source";
 const KEY_MATCHES = "flagos_demo_matches";
 const KEY_PLAYS = "flagos_demo_plays";
 const KEY_ROLE = "demo_dev_role";
@@ -78,6 +81,7 @@ export const initDemoSandbox = (): void => {
     sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(DEFAULT_LEAGUE_SETTINGS));
     sessionStorage.setItem(KEY_TEAMS, JSON.stringify(SEED_DEMO_TEAMS));
     sessionStorage.setItem(KEY_PLAYERS, JSON.stringify(SEED_DEMO_PLAYERS));
+    sessionStorage.setItem(KEY_ROSTER_SOURCE, JSON.stringify(DEMO_ROSTER_SOURCE));
     sessionStorage.setItem(KEY_MATCHES, JSON.stringify(SEED_DEMO_MATCHES));
     sessionStorage.setItem(KEY_PLAYS, JSON.stringify(SEED_DEMO_PLAYS));
     return;
@@ -92,6 +96,7 @@ export const initDemoSandbox = (): void => {
   }
   if (sessionStorage.getItem(KEY_PLAYERS) === null) {
     sessionStorage.setItem(KEY_PLAYERS, JSON.stringify(SEED_DEMO_PLAYERS));
+    sessionStorage.setItem(KEY_ROSTER_SOURCE, JSON.stringify(DEMO_ROSTER_SOURCE));
   }
   if (sessionStorage.getItem(KEY_MATCHES) === null) {
     sessionStorage.setItem(KEY_MATCHES, JSON.stringify(SEED_DEMO_MATCHES));
@@ -139,6 +144,7 @@ export const resetDemoSession = (): void => {
   sessionStorage.removeItem(KEY_SETTINGS);
   sessionStorage.removeItem(KEY_TEAMS);
   sessionStorage.removeItem(KEY_PLAYERS);
+  sessionStorage.removeItem(KEY_ROSTER_SOURCE);
   sessionStorage.removeItem(KEY_MATCHES);
   sessionStorage.removeItem(KEY_PLAYS);
   sessionStorage.removeItem(KEY_ROLE);
@@ -278,6 +284,27 @@ export const deleteSandboxTeam = (id: string): void => {
 // ---------------------------------------------------------------------------
 // Players CRUD
 // ---------------------------------------------------------------------------
+
+export const getSandboxRosterSource = (): typeof DEMO_ROSTER_SOURCE | null => {
+  initDemoSandbox();
+  if (typeof window === "undefined") return DEMO_ROSTER_SOURCE;
+  const raw = sessionStorage.getItem(KEY_ROSTER_SOURCE);
+  if (!raw) return null;
+  try {
+    const source: unknown = JSON.parse(raw);
+    if (source && typeof source === "object" && "season" in source && typeof source.season === "number"
+      && "source" in source && source.source === "nflverse"
+      && "sourceUrl" in source && source.sourceUrl === DEMO_ROSTER_SOURCE.sourceUrl
+      && "sourceUpdatedAt" in source && typeof source.sourceUpdatedAt === "string"
+      && Number.isFinite(Date.parse(source.sourceUpdatedAt))) {
+      return { season: source.season, source: source.source, sourceUrl: source.sourceUrl, sourceUpdatedAt: source.sourceUpdatedAt };
+    }
+    throw new Error("Invalid demo roster source metadata.");
+  } catch (error) {
+    console.error("Could not read demo roster source:", error);
+    return null;
+  }
+};
 
 export const getSandboxPlayers = (): DemoPlayer[] => {
   initDemoSandbox();
@@ -474,8 +501,9 @@ export const clearSandboxMatches = (): void => {
 
 export const getSandboxPlays = (matchId?: string): DemoPlay[] => {
   initDemoSandbox();
-  const baselineSeasonPlays = getGeneratedSeasonPlays();
-  const combinedBaseline = [...baselineSeasonPlays, ...SEED_DEMO_PLAYS];
+  const players = getSandboxPlayers();
+  const baselineSeasonPlays = getGeneratedSeasonPlays(players);
+  const combinedBaseline = [...baselineSeasonPlays, ...getSeedDemoPlays(players)];
 
   if (typeof window === "undefined") {
     if (matchId) {

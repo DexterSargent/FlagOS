@@ -1,3 +1,12 @@
+import rosterSnapshot from "./demoRosterSnapshot.json";
+
+export const DEMO_ROSTER_SOURCE = {
+  season: rosterSnapshot.season,
+  source: rosterSnapshot.source,
+  sourceUrl: rosterSnapshot.sourceUrl,
+  sourceUpdatedAt: rosterSnapshot.sourceUpdatedAt,
+};
+
 export interface DemoTeam {
   id: string;
   name: string;
@@ -24,6 +33,9 @@ export interface DemoPlayer {
   email?: string;
   emails?: string[];
   joinedAt?: string;
+  nflId?: string;
+  nflPosition?: string;
+  sourceStatus?: string;
 }
 
 export interface DemoMatch {
@@ -137,10 +149,10 @@ export const SEED_DEMO_TEAMS: DemoTeam[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 32 Rosters: Current NFL Skill Position Stars
+// Legacy identities keep the scripted live games and existing sessions compatible.
 // ---------------------------------------------------------------------------
 
-export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
+const LEGACY_DEMO_PLAYERS: DemoPlayer[] = [
   // 1. Buffalo (Bills)
   { id: "p_buf_1", teamId: "team_buf", playerName: "Josh Allen", number: "17", position: "QB", positions: ["QB"], status: "Active" },
   { id: "p_buf_2", teamId: "team_buf", playerName: "James Cook", number: "4", position: "RB", positions: ["RB", "ATH"], status: "Active" },
@@ -469,6 +481,11 @@ export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
 ];
 
 // ---------------------------------------------------------------------------
+export const SEED_DEMO_PLAYERS: DemoPlayer[] = [
+  ...rosterSnapshot.players,
+  ...LEGACY_DEMO_PLAYERS.filter((player) => !player.teamId),
+];
+
 // 272 NFL-Style Matches Across 17 Weeks (16 Games per Week, 32 Teams)
 // ---------------------------------------------------------------------------
 
@@ -5129,7 +5146,7 @@ export const SEED_DEMO_MATCHES: DemoMatch[] = [
 // Seed Plays for Live and Completed Games (Powers Stat Leaderboards & Box Scores)
 // ---------------------------------------------------------------------------
 
-export const SEED_DEMO_PLAYS: DemoPlay[] = [
+const SCRIPTED_DEMO_PLAYS: DemoPlay[] = [
   {
     "id": "play_w16_11_1",
     "matchId": "match_w16_11",
@@ -5455,3 +5472,74 @@ export const SEED_DEMO_PLAYS: DemoPlay[] = [
     "result": "Go-Ahead 1-PT Conversion GOOD! (DET 28, GB 27)"
   }
 ];
+
+function demoRole(player: DemoPlayer): string {
+  const positions = player.positions || [player.position || "ATH"];
+  return ["QB", "RB", "WR", "TE", "DB", "RUSH"].find((position) => positions.includes(position)) || "ATH";
+}
+
+export function getSeedDemoPlays(players: DemoPlayer[] = SEED_DEMO_PLAYERS): DemoPlay[] {
+  const replacements = new Map<string, Map<string, string>>();
+  for (const team of SEED_DEMO_TEAMS) {
+    const roster = players.filter((player) => player.teamId === team.id);
+    const byName = new Map<string, string>();
+    const roleIndexes = new Map<string, number>();
+    for (const oldPlayer of LEGACY_DEMO_PLAYERS.filter((player) => player.teamId === team.id)) {
+      const role = demoRole(oldPlayer);
+      const candidates = roster.filter((player) => demoRole(player) === role);
+      const index = roleIndexes.get(role) || 0;
+      const replacement = roster.find((player) => player.playerName === oldPlayer.playerName)
+        || candidates[index % candidates.length];
+      if (replacement) byName.set(oldPlayer.playerName, replacement.playerName);
+      roleIndexes.set(role, index + 1);
+    }
+    const mapActor = (name: string | null | undefined, role: string) => {
+      if (!name || byName.has(name)) return;
+      const replacement = roster.find((player) => player.playerName === name)
+        || roster.find((player) => demoRole(player) === role);
+      if (replacement) byName.set(name, replacement.playerName);
+    };
+    for (const play of SCRIPTED_DEMO_PLAYS) {
+      if (play.possessionTeamId === team.id) {
+        mapActor(play.qbPlayerId, "QB");
+        mapActor(play.conversionPasser, "QB");
+        mapActor(play.receiverPlayerId, "WR");
+        mapActor(play.conversionReceiver, "WR");
+        mapActor(play.runnerPlayerId, "RB");
+      } else {
+        const match = SEED_DEMO_MATCHES.find((match) => match.id === play.matchId);
+        if (match?.homeTeamId !== team.id && match?.awayTeamId !== team.id) continue;
+        for (const name of [...(play.defenders || []), ...(play.flaggers || [])]) mapActor(name, "DB");
+      }
+    }
+    replacements.set(team.id, byName);
+  }
+  return SCRIPTED_DEMO_PLAYS.map((play) => {
+    const match = SEED_DEMO_MATCHES.find((match) => match.id === play.matchId);
+    const defenseId = match?.homeTeamId === play.possessionTeamId ? match.awayTeamId : match?.homeTeamId;
+    const offense = replacements.get(play.possessionTeamId);
+    const defense = defenseId ? replacements.get(defenseId) : undefined;
+    const replace = (name: string | null | undefined, names: Map<string, string> | undefined) =>
+      name ? names?.get(name) || name : name;
+    let result = play.result;
+    const names = new Map([...(offense || []), ...(defense || [])]);
+    if (result && names.size) {
+      const pattern = [...names.keys()].sort((a, b) => b.length - a.length)
+        .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+      result = result.replace(new RegExp(pattern, "g"), (name) => names.get(name) || name);
+    }
+    return {
+      ...play,
+      qbPlayerId: replace(play.qbPlayerId, offense),
+      receiverPlayerId: replace(play.receiverPlayerId, offense),
+      runnerPlayerId: replace(play.runnerPlayerId, offense),
+      conversionPasser: replace(play.conversionPasser, offense),
+      conversionReceiver: replace(play.conversionReceiver, offense),
+      defenders: play.defenders?.map((name) => defense?.get(name) || name),
+      flaggers: play.flaggers?.map((name) => defense?.get(name) || name),
+      result,
+    };
+  });
+}
+
+export const SEED_DEMO_PLAYS: DemoPlay[] = getSeedDemoPlays();
