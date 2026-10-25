@@ -156,6 +156,15 @@ service cloud.firestore {
       return isLeagueMember(leagueId) || isPublicLeague(leagueId);
     }
 
+    // A temporary scorer can read the league, its teams and rosters while their grant lasts,
+    // so private-league games can be scored by someone who isn't a member.
+    function hasScorerLeagueAccess(leagueId) {
+      let accessPath = /databases/$(database)/documents/scorer_league_access/$(leagueId + '__' + request.auth.uid);
+      return signedIn() && leagueId is string && leagueId != '' && exists(accessPath) &&
+        get(accessPath).data.uid == request.auth.uid &&
+        get(accessPath).data.expiresAt > request.time;
+    }
+
     function isPlayerOwner(playerId) {
       let privatePlayerPath = /databases/$(database)/documents/player_private/$(playerId);
       return signedIn() &&
@@ -337,10 +346,12 @@ service cloud.firestore {
     // Members and admins can read private league documents.
     match /leagues/{leagueId} {
       allow get: if signedIn() && hasNoLeaguePii(resource.data) &&
-        (resource.data.visibility == 'public' || isLeagueMember(leagueId) || isLeagueAdmin(leagueId));
+        (resource.data.visibility == 'public' || isLeagueMember(leagueId) || isLeagueAdmin(leagueId) ||
+          hasScorerLeagueAccess(leagueId));
       allow list: if hasBoundedListLimit(100) &&
         signedIn() && hasNoLeaguePii(resource.data) &&
-        (resource.data.visibility == 'public' || isLeagueMember(leagueId) || isLeagueAdmin(leagueId));
+        (resource.data.visibility == 'public' || isLeagueMember(leagueId) || isLeagueAdmin(leagueId) ||
+          hasScorerLeagueAccess(leagueId));
       allow create: if false;
       allow update: if isLeagueAdmin(leagueId) &&
         isValidLeague(request.resource.data) &&
@@ -353,12 +364,14 @@ service cloud.firestore {
         (signedIn() && hasNoTeamPii(resource.data) &&
         (isPlatformAdmin() || isTeamAdmin(teamId) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
-          (resource.data.leagueId is string && canViewLeague(resource.data.leagueId))));
+          (resource.data.leagueId is string && canViewLeague(resource.data.leagueId)) ||
+          (resource.data.leagueId is string && hasScorerLeagueAccess(resource.data.leagueId))));
       allow list: if hasBoundedListLimit(300) &&
         signedIn() && hasNoTeamPii(resource.data) &&
         (isPlatformAdmin() || isTeamAdmin(teamId) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
-          (resource.data.leagueId is string && canViewLeague(resource.data.leagueId)));
+          (resource.data.leagueId is string && canViewLeague(resource.data.leagueId)) ||
+          (resource.data.leagueId is string && hasScorerLeagueAccess(resource.data.leagueId)));
       allow create: if false;
       allow update: if isLeagueWritable(resource.data.get('leagueId', '')) &&
         canManageTeam(resource.data.id == teamId ? resource.data.id : teamId, resource.data.leagueId) &&
@@ -378,6 +391,7 @@ service cloud.firestore {
       allow get: if isPublicTeamPlayer(resource.data) ||
         (signedIn() && hasNoPlayerPii(resource.data) &&
         (isPlatformAdmin() ||
+          hasScorerLeagueAccess(resource.data.leagueId) ||
           isPlayerOwner(playerId) ||
           isLeagueAdmin(resource.data.leagueId) ||
           (resource.data.teamId is string && resource.data.teamId != '' && isTeamAdmin(resource.data.teamId)) ||
@@ -386,6 +400,7 @@ service cloud.firestore {
         (isPublicTeamPlayer(resource.data) ||
         (signedIn() && hasNoPlayerPii(resource.data) &&
         (isPlatformAdmin() ||
+          hasScorerLeagueAccess(resource.data.leagueId) ||
           isPlayerOwner(playerId) ||
           isLeagueAdmin(resource.data.leagueId) ||
           (resource.data.teamId is string && resource.data.teamId != '' && isTeamAdmin(resource.data.teamId)) ||
@@ -528,6 +543,10 @@ service cloud.firestore {
     match /scorer_grants/{grantId} {
       allow get: if signedIn() && resource.data.uid == request.auth.uid;
       allow list, write: if false;
+    }
+
+    match /scorer_league_access/{accessId} {
+      allow read, write: if false;
     }
 
     match /scorer_invites/{inviteId} {

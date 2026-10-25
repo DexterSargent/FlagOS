@@ -32,15 +32,22 @@ export function useScorerGrant(matchId: string | undefined, enabled = true) {
   useEffect(() => {
     if (!enabled || !matchId || authLoading || !user || !pendingToken) return;
     let cancelled = false;
+    const cleanUrl = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("scorer");
+      return url.toString();
+    };
     scorerAccessRequest<{ expiresAt: number }>("redeem", { matchId, token: pendingToken })
-      .then(() => { if (!cancelled) setRedeemError(""); })
-      .catch((error: Error) => { if (!cancelled) setRedeemError(error.message); })
-      .finally(() => {
+      .then(() => {
+        // The game, its teams and (for private leagues) the league itself were read before access
+        // existed, so start over with the grant in place.
+        if (!cancelled) window.location.replace(cleanUrl());
+      })
+      .catch((error: Error) => {
         if (cancelled) return;
+        setRedeemError(error.message);
         setPendingToken("");
-        const url = new URL(window.location.href);
-        url.searchParams.delete("scorer");
-        window.history.replaceState(null, "", url.toString());
+        window.history.replaceState(null, "", cleanUrl());
       });
     return () => { cancelled = true; };
   }, [enabled, matchId, authLoading, user, pendingToken]);

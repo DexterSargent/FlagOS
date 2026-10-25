@@ -299,4 +299,30 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
     await write(grantPath, { uid: "rules-test-user", matchId, expiresAt: new Date(Date.now() - 60_000) });
     expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth(scorer))).status).toBe(403);
   });
+
+  it("lets a temporary scorer read a private league's teams and rosters only while their access lasts", async () => {
+    const scorer = "volunteer@example.com";
+    const leagueId = "rules-private-scorer-league";
+    const accessPath = `scorer_league_access/${leagueId}__rules-test-user`;
+    await write(`leagues/${leagueId}`, { visibility: "private", isArchived: false, seasonStatus: "active" });
+    await write("teams/rules-private-team", { name: "Private Team", leagueId });
+    await write("players/rules-private-player", { name: "Private Player", teamId: "rules-private-team", leagueId });
+    await write("leagues/rules-other-private-league", { visibility: "private", isArchived: false, seasonStatus: "active" });
+
+    expect((await read(`leagues/${leagueId}`, auth(scorer))).status).toBe(403);
+    expect((await read("teams/rules-private-team", auth(scorer))).status).toBe(403);
+    expect((await read("players/rules-private-player", auth(scorer))).status).toBe(403);
+
+    await write(accessPath, { uid: "rules-test-user", leagueId, expiresAt: new Date(Date.now() + 3_600_000) });
+    expect((await read(`leagues/${leagueId}`, auth(scorer))).status).toBe(200);
+    expect((await read("teams/rules-private-team", auth(scorer))).status).toBe(200);
+    expect((await read("players/rules-private-player", auth(scorer))).status).toBe(200);
+    expect((await read("leagues/rules-other-private-league", auth(scorer))).status).toBe(403);
+    expect((await read(accessPath, auth(scorer))).status).toBe(403);
+    expect((await write(accessPath, { uid: "rules-test-user", leagueId, expiresAt: new Date(Date.now() + 9e9) }, auth(scorer))).status).toBe(403);
+
+    await write(accessPath, { uid: "rules-test-user", leagueId, expiresAt: new Date(Date.now() - 60_000) });
+    expect((await read(`leagues/${leagueId}`, auth(scorer))).status).toBe(403);
+    expect((await read("players/rules-private-player", auth(scorer))).status).toBe(403);
+  });
 });

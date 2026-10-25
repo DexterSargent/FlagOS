@@ -2,12 +2,17 @@
 
 export const SCORER_GRANTS_COLLECTION = "scorer_grants";
 export const SCORER_INVITES_COLLECTION = "scorer_invites";
+export const SCORER_LEAGUE_ACCESS_COLLECTION = "scorer_league_access";
 export const SCORER_LINK_HOURS = [2, 6, 12, 24, 48] as const;
 export const DEFAULT_SCORER_LINK_HOURS = 6;
 export const MAX_SCORER_LINK_HOURS = 72;
 
 export function scorerGrantDocId(matchId: string, uid: string): string {
   return `${matchId}__${uid}`;
+}
+
+export function scorerLeagueAccessDocId(leagueId: string, uid: string): string {
+  return `${leagueId}__${uid}`;
 }
 
 export function scorerLinkPath(matchId: string, token: string): string {

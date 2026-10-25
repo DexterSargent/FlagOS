@@ -7,7 +7,7 @@ import { isPlatformAdminEmail } from "@/lib/platformAdmin";
 import { listHasAccountEmail, loadAccountEmails } from "@/lib/accountEmailsServer";
 import {
   DEFAULT_SCORER_LINK_HOURS, MAX_SCORER_LINK_HOURS, SCORER_GRANTS_COLLECTION, SCORER_INVITES_COLLECTION,
-  scorerGrantDocId, scorerLinkPath, timestampMillis,
+  SCORER_LEAGUE_ACCESS_COLLECTION, scorerGrantDocId, scorerLeagueAccessDocId, scorerLinkPath, timestampMillis,
 } from "@/lib/scorerAccess";
 
 export const runtime = "nodejs";
@@ -93,6 +93,8 @@ async function redeemLink(token: DecodedIdToken, body: Record<string, unknown>) 
     const invite = await transaction.get(inviteRef);
     const data = invite.data();
     if (!data) fail("This scorer link is not valid.", 404);
+    const leagueAccessRef = adminDb.doc(`${SCORER_LEAGUE_ACCESS_COLLECTION}/${scorerLeagueAccessDocId(data.leagueId, token.uid)}`);
+    const leagueAccess = await transaction.get(leagueAccessRef);
     if (data.matchId !== body.matchId) fail("This scorer link is for a different game.");
     if (data.revoked === true) fail("This scorer link was revoked by the league admin.", 410);
     if (timestampMillis(data.expiresAt) <= Date.now()) fail("This scorer link has expired. Ask the league admin for a new one.", 410);
@@ -113,8 +115,26 @@ async function redeemLink(token: DecodedIdToken, body: Record<string, unknown>) 
       expiresAt: data.expiresAt,
       grantedAt: FieldValue.serverTimestamp(),
     });
+    // Lets the scorer read the league's teams and rosters (private leagues included) for as long as
+    // their longest grant in that league lasts.
+    if (timestampMillis(leagueAccess.get("expiresAt")) < timestampMillis(data.expiresAt)) {
+      transaction.set(leagueAccessRef, { leagueId: data.leagueId, uid: token.uid, expiresAt: data.expiresAt });
+    }
     return { matchId: data.matchId, expiresAt: timestampMillis(data.expiresAt) };
   });
+}
+
+/** Shrinks (or removes) a scorer's league read access to match the grants they still hold there. */
+async function refreshScorerLeagueAccess(leagueId: string, uid: string) {
+  const remaining = await adminDb.collection(SCORER_GRANTS_COLLECTION)
+    .where("uid", "==", uid).where("leagueId", "==", leagueId).limit(100).get();
+  const latest = remaining.docs.reduce((max, doc) => Math.max(max, timestampMillis(doc.get("expiresAt"))), 0);
+  const ref = adminDb.doc(`${SCORER_LEAGUE_ACCESS_COLLECTION}/${scorerLeagueAccessDocId(leagueId, uid)}`);
+  if (latest > Date.now()) {
+    await ref.set({ leagueId, uid, expiresAt: Timestamp.fromMillis(latest) });
+  } else {
+    await ref.delete();
+  }
 }
 
 async function listLinks(token: DecodedIdToken, body: Record<string, unknown>) {
@@ -153,6 +173,11 @@ async function revokeLinks(token: DecodedIdToken, body: Record<string, unknown>)
     .filter((doc) => !linkId || targetIds.has(doc.get("inviteId")))
     .forEach((doc) => batch.delete(doc.ref));
   await batch.commit();
+  const revokedGrantIds = new Set(grants.docs
+    .filter((doc) => !linkId || targetIds.has(doc.get("inviteId")))
+    .map((doc) => doc.id));
+  const affectedUids = new Set(grants.docs.filter((doc) => revokedGrantIds.has(doc.id)).map((doc) => String(doc.get("uid") || "")));
+  await Promise.all([...affectedUids].filter(Boolean).map((uid) => refreshScorerLeagueAccess(leagueId, uid)));
   return { revoked: targets.length };
 }
 

@@ -40,16 +40,16 @@ describe("League Starter Teams & Subscription Adjustment", () => {
     vi.clearAllMocks();
   });
 
-  it("calculates monthly subscription fees as $40 base + $15 per team", () => {
+  it("calculates monthly subscription fees as $40 base + $20 per team", () => {
     const baseFee = 40;
-    const perTeamFee = 15;
+    const perTeamFee = 20;
     const calculateFee = (teams: number) => baseFee + teams * perTeamFee;
 
-    expect(calculateFee(4)).toBe(100);
-    expect(calculateFee(8)).toBe(160);
-    expect(calculateFee(12)).toBe(220);
-    expect(calculateFee(16)).toBe(280);
-    expect(calculateFee(2)).toBe(70);
+    expect(calculateFee(4)).toBe(120);
+    expect(calculateFee(8)).toBe(200);
+    expect(calculateFee(12)).toBe(280);
+    expect(calculateFee(16)).toBe(360);
+    expect(calculateFee(2)).toBe(80);
   });
 
   it("provisions teams Team 1 through Team N when creating a league with N teams", async () => {
