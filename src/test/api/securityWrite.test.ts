@@ -37,6 +37,7 @@ vi.mock("@/lib/firebaseAdmin", () => ({
       get: vi.fn(async () => queryResults.get(name) || emptyQuery),
       limit: vi.fn(() => ({ collection: name })),
       doc: vi.fn(() => ({ id: "created-record-id" })),
+      add: vi.fn(async () => ({ id: "audit-id" })),
     })),
     batch: vi.fn(() => batchMock),
     runTransaction: runTransactionMock,

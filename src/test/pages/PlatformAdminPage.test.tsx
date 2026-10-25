@@ -11,6 +11,7 @@ const {
   mockReplace,
   mockUseAuth,
   mockRequestPrivateData,
+  mockAdminBusinessRequest,
 } = vi.hoisted(() => ({
   mockGetDocs: vi.fn(),
   mockUpdateDoc: vi.fn(),
@@ -19,6 +20,11 @@ const {
   mockReplace: vi.fn(),
   mockUseAuth: vi.fn(),
   mockRequestPrivateData: vi.fn(),
+  mockAdminBusinessRequest: vi.fn(),
+}));
+
+vi.mock("@/lib/adminBusiness", () => ({
+  adminBusinessRequest: mockAdminBusinessRequest,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -48,9 +54,21 @@ vi.mock("firebase/firestore", () => ({
   deleteDoc: mockDeleteDoc,
 }));
 
+const emptyBusiness = {
+  ledger: [],
+  audit: [],
+  users: [],
+  counts: { leagues: 1, teams: 1, players: 0, matches: 0, plays: 0 },
+  warnings: [],
+  generatedAt: 0,
+};
+
 describe("Platform management page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The record-management tests below target the Customers tab of the business console.
+    window.history.replaceState(null, "", "#customers");
+    mockAdminBusinessRequest.mockResolvedValue(emptyBusiness);
     mockRequestPrivateData.mockResolvedValue({
       leagues: { league_customer_1: { adminEmails: ["existing@league.com"] } },
       teams: {},
@@ -315,5 +333,89 @@ describe("Platform management page", () => {
     render(<PlatformAdminPage />);
     await waitFor(() => expect(mockRequestPrivateData).toHaveBeenCalled());
     expect(screen.queryByRole("link", { name: /Manage team/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("Business console", () => {
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const records = {
+    leagues: [{
+      id: "league_paid",
+      leagueName: "Paid League",
+      subscription: { status: "active", paymentMethod: "paid", baseMonthlyFee: 40, perTeamMonthlyFee: 20, teamCount: 6, totalMonthlyFee: 160 },
+    }],
+    teams: [
+      { id: "team_comp", name: "Comp Team", leagueId: "", subscription: { status: "active", paymentMethod: "complimentary", monthlyFee: 40 } },
+      { id: "team_member", name: "Member Team", leagueId: "league_paid" },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.history.replaceState(null, "", "/admin");
+    mockUseAuth.mockReturnValue({ user: { uid: "owner-id", email: "owner@example.com" }, isPlatformAdmin: true, loading: false });
+    mockRequestPrivateData.mockResolvedValue({ leagues: { league_paid: { adminEmails: ["boss@league.com"] } }, teams: {}, records });
+    mockAdminBusinessRequest.mockImplementation(async (action: string) => action === "load"
+      ? {
+          ...emptyBusiness,
+          ledger: [
+            { id: "l1", type: "income", amount: 160, date: `${thisMonth}-02`, category: "Subscription", description: "League dues", customerName: "Paid League" },
+            { id: "l2", type: "expense", amount: 25.5, date: `${thisMonth}-03`, category: "Hosting & infrastructure", description: "Firebase" },
+          ],
+          users: [{ uid: "u1", email: "boss@league.com", displayName: "", emailVerified: true, disabled: false, createdAt: Date.now(), lastSignInAt: Date.now(), providers: ["password"] }],
+          audit: [{ id: "a1", action: "league", summary: "Created league Paid League", actorEmail: "owner@example.com", createdAt: Date.now() }],
+        }
+      : { id: "ok" });
+  });
+
+  it("opens on the overview with MRR from paid subscriptions only and ledger profit", async () => {
+    render(<PlatformAdminPage />);
+    expect(await screen.findByText("MRR (billed)")).toBeInTheDocument();
+    // League ($160) is paid; the $40 complimentary team is excluded from billed MRR.
+    expect(screen.getByText("$1,920")).toBeInTheDocument();
+    expect(screen.getByText(/1 complimentary subscription is worth/)).toBeInTheDocument();
+    expect(screen.getAllByText("$135").length).toBeGreaterThan(0);
+  });
+
+  it("records a payment against a customer from the finance tab", async () => {
+    render(<PlatformAdminPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: /Finance/ }));
+    expect(await screen.findByText("Subscriptions & billing")).toBeInTheDocument();
+    expect(screen.queryByText("Member Team")).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /Payment/ })[0]);
+    expect(screen.getByRole("dialog", { name: "Record income" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Save entry/ }));
+    await waitFor(() => expect(mockAdminBusinessRequest).toHaveBeenCalledWith("ledger_add", expect.objectContaining({
+      type: "income",
+      amount: 160,
+      category: "Subscription",
+      customerId: "league_paid",
+      customerKind: "league",
+      advanceRenewal: true,
+    })));
+  });
+
+  it("edits billing for an independent team", async () => {
+    render(<PlatformAdminPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: /Finance/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit billing for Comp Team" }));
+    fireEvent.change(screen.getByLabelText("Billing"), { target: { value: "paid" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save billing/ }));
+    await waitFor(() => expect(mockAdminBusinessRequest).toHaveBeenCalledWith("subscription_update", expect.objectContaining({
+      kind: "team",
+      id: "team_comp",
+      paymentMethod: "paid",
+      monthlyFee: 40,
+    })));
+  });
+
+  it("lists accounts with the leagues they manage and shows the activity log", async () => {
+    render(<PlatformAdminPage />);
+    fireEvent.click(await screen.findByRole("tab", { name: /Users/ }));
+    expect(await screen.findByText("boss@league.com")).toBeInTheDocument();
+    expect(screen.getByText("Paid League")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: /Activity/ }));
+    expect(await screen.findByText("Created league Paid League")).toBeInTheDocument();
   });
 });

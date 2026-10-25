@@ -237,6 +237,7 @@ export interface LeagueSubscriptionInfo {
   totalMonthlyFee: number;
   billingCycle: "monthly";
   renewsAt?: string;
+  paymentMethod?: "paid" | "complimentary";
   adminEmails?: string[];
 }
 
@@ -776,7 +777,7 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
     const logo = data.logoUrl?.trim() || FLAGOS_LOGO;
     const teams = data.teamCount || 8;
     const baseFee = 40;
-    const perTeamFee = 15;
+    const perTeamFee = 20;
 
     const newSub: LeagueSubscriptionInfo = {
       plan: "league",
@@ -786,6 +787,8 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
       teamCount: teams,
       totalMonthlyFee: baseFee + teams * perTeamFee,
       billingCycle: "monthly",
+      // No payment processor yet: owner-provisioned leagues start complimentary until marked paid in the admin console.
+      paymentMethod: "complimentary",
       renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
@@ -1012,7 +1015,7 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   const updateSubscriptionTeamCount = async (newTeamCount: number): Promise<LeagueSubscriptionInfo> => {
     const clampedCount = Math.max(2, Math.round(newTeamCount));
     const baseFee = subscription?.baseMonthlyFee ?? 40;
-    const perTeamFee = subscription?.perTeamMonthlyFee ?? 15;
+    const perTeamFee = subscription?.perTeamMonthlyFee ?? 20;
     const totalMonthlyFee = baseFee + clampedCount * perTeamFee;
 
     const nextSub: LeagueSubscriptionInfo = {

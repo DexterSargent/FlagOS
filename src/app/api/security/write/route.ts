@@ -706,6 +706,38 @@ function buildRecord(entity: Entity, data: Record<string, unknown>): Record<stri
   return record;
 }
 
+const AUDITED_ENTITIES = new Set<Entity>(["league", "team", "league_update", "delete_team", "delete_league"]);
+
+/** Best-effort record of platform-owner changes for the admin console activity log. */
+async function recordPlatformAudit(
+  token: DecodedIdToken,
+  entity: Entity,
+  data: Record<string, unknown>,
+  targetId: string,
+): Promise<void> {
+  const name = String(data.leagueName || data.name || data.teamName || targetId).slice(0, 120);
+  const summaries: Partial<Record<Entity, string>> = {
+    league: `Created league ${name}`,
+    team: `Created ${data.leagueId ? "league" : "independent"} team ${name}`,
+    league_update: `Updated league ${name}${data.subscription ? " (incl. subscription)" : ""}`,
+    delete_team: `Deleted team ${targetId}${data.purge === true ? " and purged its data" : ""}`,
+    delete_league: `Deleted league ${targetId}`,
+  };
+  try {
+    await adminDb.collection("platform_audit").add({
+      action: entity,
+      summary: summaries[entity] || entity,
+      actorEmail: String(token.email || "").toLowerCase(),
+      actorUid: token.uid,
+      targetId,
+      targetKind: entity.includes("team") ? "team" : "league",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  } catch (error) {
+    console.warn("Platform audit write skipped:", error);
+  }
+}
+
 /**
  * Removes everything owned by a deleted team: roster, private contact data, depth charts,
  * playbooks, and the team's own (standalone) games with their plays. League games are kept.
@@ -1259,6 +1291,10 @@ export async function POST(request: Request) {
 
     if (requestedEntity === "delete_team" && data.purge === true) {
       await purgeTeamData(String(data.teamId));
+    }
+
+    if (isPlatformAdmin(token) && AUDITED_ENTITIES.has(requestedEntity)) {
+      await recordPlatformAudit(token, requestedEntity, data, createdId);
     }
 
     return Response.json({ id: createdId }, { status: 201 });

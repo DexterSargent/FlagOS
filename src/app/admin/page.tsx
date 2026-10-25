@@ -32,6 +32,20 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { db } from "@/lib/firebase";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
+import { adminBusinessRequest, type BusinessSnapshot, type LedgerDraft, type SubscriptionDraft } from "@/lib/adminBusiness";
+import { computeKpis, formatMoney, toBillingRecords, type BillingRecord, type LedgerEntry, type PlatformUser } from "@/lib/adminMetrics";
+import AdminOverview, { type ConsoleTab } from "@/components/admin/AdminOverview";
+import AdminFinance, { BillingModal, LedgerEntryModal } from "@/components/admin/AdminFinance";
+import AdminUsers, { type Membership } from "@/components/admin/AdminUsers";
+import AdminActivity from "@/components/admin/AdminActivity";
+
+const CONSOLE_TABS: Array<{ id: ConsoleTab; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "customers", label: "Customers" },
+  { id: "finance", label: "Finance" },
+  { id: "users", label: "Users" },
+  { id: "activity", label: "Activity" },
+];
 
 export interface ManagedRecord {
   id: string;
@@ -98,6 +112,40 @@ export default function PlatformAdminPage() {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [adminActionError, setAdminActionError] = useState("");
   const [actionInProgress, setActionInProgress] = useState(false);
+
+  const [tab, setTabState] = useState<ConsoleTab>("overview");
+  const [business, setBusiness] = useState<BusinessSnapshot | null>(null);
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const [businessError, setBusinessError] = useState("");
+  const businessRequestPending = useRef(false);
+  const [ledgerPrefill, setLedgerPrefill] = useState<Partial<LedgerDraft> | null>(null);
+  const [billingRecord, setBillingRecord] = useState<BillingRecord | null>(null);
+
+  useEffect(() => {
+    const fromHash = window.location.hash.replace("#", "") as ConsoleTab;
+    if (CONSOLE_TABS.some((entry) => entry.id === fromHash)) setTabState(fromHash);
+  }, []);
+
+  const setTab = useCallback((next: ConsoleTab) => {
+    setTabState(next);
+    window.history.replaceState(null, "", `#${next}`);
+  }, []);
+
+  const loadBusiness = useCallback(async () => {
+    if (businessRequestPending.current) return;
+    businessRequestPending.current = true;
+    setBusinessLoading(true);
+    setBusinessError("");
+    try {
+      setBusiness(await adminBusinessRequest<BusinessSnapshot>("load"));
+    } catch (loadError) {
+      console.error("Failed to load business data:", loadError);
+      setBusinessError(loadError instanceof Error ? loadError.message : "Could not load business data.");
+    } finally {
+      businessRequestPending.current = false;
+      setBusinessLoading(false);
+    }
+  }, []);
 
   const loadRecords = useCallback(async () => {
     // Effect replay must not spend the overview's read budget twice.
@@ -207,8 +255,72 @@ export default function PlatformAdminPage() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (!authLoading && isPlatformAdmin) void loadRecords();
-  }, [authLoading, isPlatformAdmin, loadRecords]);
+    if (!authLoading && isPlatformAdmin) {
+      void loadRecords();
+      void loadBusiness();
+    }
+  }, [authLoading, isPlatformAdmin, loadRecords, loadBusiness]);
+
+  const billingRecords = useMemo(() => toBillingRecords(leagues, teams), [leagues, teams]);
+  const kpis = useMemo(() => computeKpis(billingRecords), [billingRecords]);
+  const memberships = useMemo(() => {
+    const map = new Map<string, Membership[]>();
+    const add = (email: string, membership: Membership) => map.set(email, [...(map.get(email) || []), membership]);
+    for (const league of leagues) for (const email of league.adminEmails) add(email, { id: league.id, name: league.name, kind: "league" });
+    for (const team of teams) for (const email of team.adminEmails) add(email, { id: team.id, name: team.name, kind: "team" });
+    return map;
+  }, [leagues, teams]);
+
+  const saveLedgerEntry = async (draft: LedgerDraft) => {
+    await adminBusinessRequest("ledger_add", { ...draft });
+    setLedgerPrefill(null);
+    setSuccessMessage(`${draft.type === "income" ? "Income" : "Expense"} of ${formatMoney(draft.amount, { cents: true })} recorded.`);
+    if (draft.advanceRenewal) void loadRecords();
+    void loadBusiness();
+  };
+
+  const deleteLedgerEntry = async (entry: LedgerEntry) => {
+    try {
+      await adminBusinessRequest("ledger_delete", { id: entry.id });
+      setBusiness((current) => current ? { ...current, ledger: current.ledger.filter((item) => item.id !== entry.id) } : current);
+      setSuccessMessage("Ledger entry deleted.");
+      void loadBusiness();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Could not delete the entry.");
+    }
+  };
+
+  const saveBilling = async (draft: SubscriptionDraft) => {
+    await adminBusinessRequest("subscription_update", { ...draft });
+    setBillingRecord(null);
+    setSuccessMessage("Billing updated.");
+    void loadRecords();
+    void loadBusiness();
+  };
+
+  const setUserDisabled = async (account: PlatformUser, disabled: boolean) => {
+    try {
+      await adminBusinessRequest("user_set_disabled", { uid: account.uid, disabled });
+      setBusiness((current) => current
+        ? { ...current, users: current.users.map((item) => item.uid === account.uid ? { ...item, disabled } : item) }
+        : current);
+      setSuccessMessage(`${account.email || account.uid} ${disabled ? "disabled" : "re-enabled"}.`);
+      void loadBusiness();
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : "Could not update the account.");
+    }
+  };
+
+  const recordPaymentFor = (record: BillingRecord) => setLedgerPrefill({
+    type: "income",
+    category: "Subscription",
+    amount: record.monthlyFee,
+    customerId: record.id,
+    customerKind: record.kind,
+    customerName: record.name,
+    description: "Monthly subscription",
+    advanceRenewal: true,
+  });
 
   // Flash message timeout
   useEffect(() => {
@@ -591,38 +703,118 @@ export default function PlatformAdminPage() {
   return (
     <div className="min-h-screen bg-neutral-950 px-4 py-8 text-white sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
             <Link href="/" className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-neutral-400 hover:text-white">
               <ArrowLeft className="h-4 w-4" /> FlagOS home
             </Link>
-            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Platform management</h1>
-            <p className="mt-2 text-sm text-neutral-400">View, edit, and configure customer leagues, team portals, admins, and cascading subscriptions.</p>
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Business console</h1>
+            <p className="mt-2 text-sm text-neutral-400">
+              Revenue, customers, billing, accounts, and activity across FlagOS.
+              {!loadingRecords && billingRecords.length > 0 && (
+                <span className="ml-1 text-neutral-300">
+                  {formatMoney(kpis.billedMrr)} MRR · {kpis.activeCustomers} active customers.
+                </span>
+              )}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void loadRecords()}
-            disabled={loadingRecords}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold hover:bg-white/10 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${loadingRecords ? "animate-spin" : ""}`} /> Refresh
-          </button>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200 hover:bg-emerald-500/20"
-          >
-            <Plus className="h-4 w-4" /> New team / league
-          </Link>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-neutral-300 hover:bg-red-500/10 hover:text-red-300 cursor-pointer"
-          >
-            <LogOut className="h-4 w-4" /> Sign out
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                void loadRecords();
+                void loadBusiness();
+              }}
+              disabled={loadingRecords || businessLoading}
+              aria-label="Refresh"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold hover:bg-white/10 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${loadingRecords || businessLoading ? "animate-spin" : ""}`} /> <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm font-bold text-emerald-200 hover:bg-emerald-500/20"
+            >
+              <Plus className="h-4 w-4" /> New team / league
+            </Link>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              aria-label="Sign out"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-bold text-neutral-300 hover:bg-red-500/10 hover:text-red-300 cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <nav className="sticky top-0 z-30 -mx-4 mt-6 border-b border-white/10 bg-neutral-950/90 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10" aria-label="Console sections">
+          <div className="flex gap-1 overflow-x-auto" role="tablist">
+            {CONSOLE_TABS.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === entry.id}
+                onClick={() => setTab(entry.id)}
+                className={`relative shrink-0 px-3 py-3 text-sm font-bold transition-colors sm:px-4 ${tab === entry.id ? "text-white" : "text-neutral-500 hover:text-neutral-200"}`}
+              >
+                {entry.label}
+                {entry.id === "users" && business && <span className="ml-1.5 text-xs font-normal text-neutral-500">{business.users.length}</span>}
+                {entry.id === "customers" && <span className="ml-1.5 text-xs font-normal text-neutral-500">{leagues.length + teams.length}</span>}
+                {tab === entry.id && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-cyan-400" />}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {successMessage && (
+          <div role="status" className="mt-5 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+            <Check className="h-4 w-4 shrink-0 text-emerald-400" /> {successMessage}
+          </div>
+        )}
+
+        {error && (
+          <div role="alert" className="mt-5 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+          </div>
+        )}
+
+        {tab !== "customers" && (businessError || (business?.warnings.length ?? 0) > 0) && (
+          <div role="alert" className="mt-5 flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <AlertCircle className="h-4 w-4 shrink-0" /> {businessError || business?.warnings.join(" ")}
+          </div>
+        )}
+
+        {tab !== "customers" && (loadingRecords || (businessLoading && !business)) ? (
+          <div className="flex items-center justify-center gap-3 py-20 text-sm text-neutral-400">
+            <LoaderCircle className="h-5 w-5 animate-spin text-cyan-400" /> Loading business data…
+          </div>
+        ) : tab === "overview" ? (
+          <div className="mt-6">
+            <AdminOverview records={billingRecords} snapshot={business} onNavigate={setTab} onRecordPayment={recordPaymentFor} />
+          </div>
+        ) : tab === "finance" ? (
+          <div className="mt-6">
+            <AdminFinance
+              records={billingRecords}
+              ledger={business?.ledger ?? []}
+              onAddEntry={(prefill) => setLedgerPrefill(prefill ?? {})}
+              onEditBilling={setBillingRecord}
+              onDeleteEntry={deleteLedgerEntry}
+            />
+          </div>
+        ) : tab === "users" ? (
+          <div className="mt-6">
+            <AdminUsers users={business?.users ?? []} memberships={memberships} onSetDisabled={setUserDisabled} />
+          </div>
+        ) : tab === "activity" ? (
+          <div className="mt-6">
+            <AdminActivity entries={business?.audit ?? []} />
+          </div>
+        ) : (
+        <>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div className="flex items-center gap-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
             <Building2 className="h-8 w-8 text-cyan-300" />
             <div>
@@ -648,18 +840,6 @@ export default function PlatformAdminPage() {
             className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-600"
           />
         </label>
-
-        {successMessage && (
-          <div role="status" className="mt-5 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            <Check className="h-4 w-4 shrink-0 text-emerald-400" /> {successMessage}
-          </div>
-        )}
-
-        {error && (
-          <div role="alert" className="mt-5 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            <AlertCircle className="h-4 w-4 shrink-0" /> {error}
-          </div>
-        )}
 
         {loadingRecords ? (
           <div className="flex items-center justify-center gap-3 py-20 text-sm text-neutral-400">
@@ -1034,7 +1214,22 @@ export default function PlatformAdminPage() {
             </section>
           </div>
         )}
+        </>
+        )}
       </div>
+
+      {ledgerPrefill && (
+        <LedgerEntryModal
+          prefill={ledgerPrefill}
+          records={billingRecords}
+          onClose={() => setLedgerPrefill(null)}
+          onSave={saveLedgerEntry}
+        />
+      )}
+
+      {billingRecord && (
+        <BillingModal record={billingRecord} onClose={() => setBillingRecord(null)} onSave={saveBilling} />
+      )}
 
       {/* EDIT LEAGUE MODAL */}
       {editingLeague && (
