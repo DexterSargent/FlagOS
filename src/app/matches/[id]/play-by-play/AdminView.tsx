@@ -1,5 +1,6 @@
 "use client";
 
+import { resolvePeriodFormat, type PeriodFormat } from "@/lib/periodFormat";
 import { useState, useEffect, use, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -83,8 +84,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     }
   }, []);
 
-  const periodType = settings?.rules?.periodType || "halves";
-  const periodsCount = settings?.rules?.periodsCount || 2;
+  // A live game keeps the period format it started with, even if league rules change mid-game.
+  const [lockedPeriodFormat, setLockedPeriodFormat] = useState<PeriodFormat | null>(null);
+  const periodType = lockedPeriodFormat?.periodType || settings?.rules?.periodType || "halves";
+  const periodsCount = lockedPeriodFormat?.periodsCount || settings?.rules?.periodsCount || 2;
   const periodDurationMinutes = settings?.rules?.periodDurationMinutes || 20;
   const timeoutsPerTeam = settings?.rules?.timeoutsPerTeam ?? 2;
   const timeoutDurationSeconds = settings?.rules?.timeoutDurationSeconds || 60;
@@ -398,6 +401,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           if (s.awayScore !== undefined) setAwayScore(s.awayScore);
           else if (typeof mData.awayScore === "number") setAwayScore(mData.awayScore);
           if (s.half !== undefined) setHalf(s.half);
+          setLockedPeriodFormat(resolvePeriodFormat(settings?.rules, s));
           if (s.gameClock !== undefined) {
             // A reload mid-play picks the running clock back up where viewers see it.
             const resumeRunning = !!s.gameClockRunning && typeof s.gameClockSavedAt === "number" && Date.now() - s.gameClockSavedAt < 60_000;
@@ -516,7 +520,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       const liveMatchState = {
         currentDown, possession, homeScore, awayScore, half, gameClock: gameClockRef.current,
         gameClockRunning: isGameClockRunning && gameClockRef.current > 0, gameClockSavedAt: Date.now(),
-        homeTimeouts, awayTimeouts, firstHalfStartPossession
+        homeTimeouts, awayTimeouts, firstHalfStartPossession, periodType, periodsCount
       };
       if (isDemo) {
         updateSandboxMatch(matchId, {
@@ -537,7 +541,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       }).catch(console.error);
     }, 1000);
     return () => clearTimeout(saveState);
-  }, [currentDown, possession, homeScore, awayScore, half, gameClockSyncKey, isGameClockRunning, homeTimeouts, awayTimeouts, firstHalfStartPossession, loadingData, isResetting, matchStatus, isDemo, matchId]);
+  }, [currentDown, possession, homeScore, awayScore, half, gameClockSyncKey, isGameClockRunning, homeTimeouts, awayTimeouts, firstHalfStartPossession, periodType, periodsCount, loadingData, isResetting, matchStatus, isDemo, matchId]);
 
   // Reset Game to Pre-Game State handler
   const handleResetGameToPreGame = async () => {
@@ -563,6 +567,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         setHomeScore(0);
         setAwayScore(0);
         setHalf(1);
+        setLockedPeriodFormat(null);
         setGameClock(defaultDuration);
         setHomeTimeouts(defaultTimeouts);
         setAwayTimeouts(defaultTimeouts);
@@ -611,6 +616,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       setHomeScore(0);
       setAwayScore(0);
       setHalf(1);
+      setLockedPeriodFormat(null);
       setGameClock(defaultDuration);
       setHomeTimeouts(defaultTimeouts);
       setAwayTimeouts(defaultTimeouts);
@@ -1206,7 +1212,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] w-full min-h-0 max-w-full bg-black text-white font-sans overflow-hidden flex flex-col relative pb-[env(safe-area-inset-bottom)]">
+    <div className="h-[calc(100dvh-var(--role-switcher-height,0px)-var(--pbp-banner-height,0px))] w-full min-h-0 max-w-full bg-black text-white font-sans overflow-hidden flex flex-col relative pb-[env(safe-area-inset-bottom)]">
 
       {/* RESET GAME TO PRE-GAME MODAL */}
       {isResetModalOpen && (
@@ -2013,7 +2019,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                         #{pNum}
                                       </span>
                                     )}
-                                    <span className="truncate">{p}</span>
+                                    <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                                     {statCount !== undefined && statCount > 0 && (
                                       <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
                                         ({statCount} {playType === 'Run' ? 'rush' : 'att'})
@@ -2105,7 +2111,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                           #{pNum}
                                         </span>
                                       )}
-                                      <span className="truncate">{p}</span>
+                                      <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                                       {recCount !== undefined && recCount > 0 && (
                                         <span className={`hidden sm:inline text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
                                           ({recCount} rec)
@@ -2217,7 +2223,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                           #{pNum}
                                         </span>
                                       )}
-                                      <span className="truncate">{p}</span>
+                                      <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                                       {pbuCount !== undefined && pbuCount > 0 && (
                                         <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-blue-400/80'}`}>
                                           ({pbuCount} PBU)
@@ -2303,7 +2309,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                           #{pNum}
                                         </span>
                                       )}
-                                      <span className="truncate">{p}</span>
+                                      <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                                       {intCount !== undefined && intCount > 0 && (
                                         <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-black/80' : 'text-amber-400/80'}`}>
                                           ({intCount} INT)
@@ -2430,7 +2436,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                             #{pNum}
                                           </span>
                                         )}
-                                        <span className="truncate">{p}</span>
+                                        <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                                         {countVal !== undefined && countVal > 0 && (
                                           <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-black/80' : 'text-amber-400/80'}`}>
                                             ({countVal} {isSack ? 'sack' : 'flags'})
@@ -2563,7 +2569,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               #{playerNumberMap[convPasser]}
                             </span>
                           )}
-                          <span className="truncate">{convPasser}</span>
+                          <span className="min-w-0 break-words leading-tight text-left">{convPasser}</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
@@ -2616,7 +2622,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                     #{pNum}
                                   </span>
                                 )}
-                                <span className="truncate">{p}</span>
+                                <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                                 {passCount !== undefined && passCount > 0 && (
                                   <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
                                     ({passCount} att)
@@ -2647,7 +2653,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                               #{playerNumberMap[convReceiver]}
                             </span>
                           )}
-                          <span className="truncate">{convReceiver || "Optional - tap to add"}</span>
+                          <span className="min-w-0 break-words leading-tight text-left">{convReceiver || "Optional - tap to add"}</span>
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 group-hover:text-cyan-400 shrink-0">
@@ -2701,7 +2707,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                                     #{pNum}
                                   </span>
                                 )}
-                                <span className="truncate">{p}</span>
+                                <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                                 {recCount !== undefined && recCount > 0 && (
                                   <span className={`hidden sm:inline text-[10px] font-mono font-bold shrink-0 ${isSelected ? 'text-white/80' : 'text-cyan-400/80'}`}>
                                     ({recCount} rec)

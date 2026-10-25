@@ -25,7 +25,7 @@ export type SecureEntity =
   | "playbook"
   | "depth_chart";
 
-async function authenticatedPost<T>(
+export async function authenticatedPost<T>(
   path: string,
   body: Record<string, unknown>,
   errorFallback: string,

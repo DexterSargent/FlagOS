@@ -176,9 +176,30 @@ export const resetDemoSession = (): void => {
 // Settings Get / Set
 // ---------------------------------------------------------------------------
 
+const DEMO_VENUE_ADDRESS = "70 Canuck Ave, Toronto, ON";
+/** Sample public-profile details so the demo shows directions and player info. */
+const DEMO_PUBLIC_PROFILE: Partial<LeagueSettings> = {
+  venues: [
+    { name: "Field 1 - Championship Turf", address: DEMO_VENUE_ADDRESS, notes: "Main entrance off Canuck Ave; free parking in Lot B." },
+    { name: "Field 2 - Prime Turf", address: DEMO_VENUE_ADDRESS, notes: "East side of the complex, next to Field 1." },
+    { name: "Field 3 - North Turf", address: DEMO_VENUE_ADDRESS, notes: "North end; follow the signs past the pavilion." },
+    { name: "Field 4 - South Turf", address: DEMO_VENUE_ADDRESS, notes: "South end, closest to the washrooms." },
+  ],
+  playerInfo: {
+    city: "Toronto, ON",
+    venueName: "Downsview Park",
+    address: DEMO_VENUE_ADDRESS,
+    gameDay: "Sundays",
+    gameTime: "9 AM \u2013 4 PM",
+    skillLevel: "Recreational & Competitive",
+    division: "Co-Ed",
+    acceptsFreeAgents: true,
+  },
+};
+
 export const getSandboxSettings = (): LeagueSettings => {
   initDemoSandbox();
-  if (typeof window === "undefined") return DEFAULT_LEAGUE_SETTINGS;
+  if (typeof window === "undefined") return { ...DEFAULT_LEAGUE_SETTINGS, ...DEMO_PUBLIC_PROFILE };
   const raw = sessionStorage.getItem(KEY_SETTINGS);
   if (raw) {
     try {
@@ -198,10 +219,10 @@ export const getSandboxSettings = (): LeagueSettings => {
         parsed.themePreset = DEFAULT_LEAGUE_SETTINGS.themePreset;
         sessionStorage.setItem(KEY_SETTINGS, JSON.stringify(parsed));
       }
-      return parsed;
+      return { ...DEMO_PUBLIC_PROFILE, ...parsed };
     } catch {}
   }
-  return DEFAULT_LEAGUE_SETTINGS;
+  return { ...DEFAULT_LEAGUE_SETTINGS, ...DEMO_PUBLIC_PROFILE };
 };
 
 export const updateSandboxSettings = (newSettings: Partial<LeagueSettings>): LeagueSettings => {

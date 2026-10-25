@@ -164,58 +164,22 @@ export const LANDING_WALKTHROUGH: ToolWalkthrough = {
       ]
     },
     {
-      "id": "public-home-landing-directory-search",
-      "targetSelector": "[data-tour=\"landing-directory-search\"]",
-      "title": "Search public leagues",
-      "description": "Private leagues do not appear in these results.",
+      "id": "public-home-landing-find",
+      "targetSelector": "[data-tour=\"landing-find\"]",
+      "title": "Play or watch",
+      "description": "Shortcuts for players and fans. Private leagues are never listed; ask your organizer for their link.",
       "details": [
         {
-          "label": "Launch Full Near-Me League Locator Tool",
-          "text": "Opens the full directory with location and distance tools."
+          "label": "Find a League",
+          "text": "Opens the directory of leagues that chose to be listed publicly."
         },
         {
-          "label": "Search by league name, shortcode (e.g. FLAG), or city...",
-          "text": "Narrows the list as you type."
+          "label": "Find a Team",
+          "text": "Shows leagues accepting free agents and a form to leave your details."
         },
         {
-          "label": "Clear",
-          "text": "Clears the search text."
-        },
-        {
-          "label": "All",
-          "text": "Shows every game format."
-        },
-        {
-          "label": "5v5",
-          "text": "Shows five-a-side leagues."
-        },
-        {
-          "label": "7v7",
-          "text": "Shows seven-a-side leagues."
-        }
-      ]
-    },
-    {
-      "id": "public-home-landing-directory-results",
-      "targetSelector": "[data-tour=\"landing-directory-results\"]",
-      "title": "Explore a league",
-      "description": "Each result summarizes a league and its registration status.",
-      "details": [
-        {
-          "label": "View Portal",
-          "text": "Opens this league’s public home."
-        },
-        {
-          "label": "Register",
-          "text": "Opens player registration in the current league context."
-        },
-        {
-          "label": "Copy Direct Access Link",
-          "text": "Copies this league’s portal address to share."
-        },
-        {
-          "label": "Reset Filters",
-          "text": "Restores the unfiltered list when no leagues match."
+          "label": "Watch a Game",
+          "text": "Opens a sample game from the demo league as a fan would see it."
         }
       ]
     },
@@ -883,7 +847,7 @@ export const LEAGUE_INQUIRY_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Send Inquiry",
-          "text": "Submits the form and displays its confirmation. This screen does not register you as a player."
+          "text": "Opens your email app with the message addressed to the league organizer, or to FlagOS support if the league has not published a contact. Press send in your email app to deliver it. This does not register you as a player."
         },
         {
           "label": "Cancel",
@@ -1747,7 +1711,7 @@ export const SIGNED_IN_HOME_WALKTHROUGH: ToolWalkthrough = {
       "description": "Open the league or team you want to work with.",
       "details": [
         {
-          "label": "Run league dashboard / League home",
+          "label": "Open League / League Home",
           "text": "Opens the league management dashboard for commissioners, or its public home for other members."
         },
         {
@@ -1814,6 +1778,51 @@ export const SIGNED_IN_HOME_WALKTHROUGH: ToolWalkthrough = {
           "label": "Explore the demo league",
           "text": "Opens the example league for a hands-on look."
         }
+      ]
+    }
+  ]
+};
+
+export const FREE_AGENTS_WALKTHROUGH: ToolWalkthrough = {
+  "id": "free-agents",
+  "toolName": "Find a Team",
+  "subtitle": "For players without a team: join a public league that accepts free agents, or leave your details so organizers can reach you.",
+  "steps": [
+    {
+      "id": "free-agents-overview",
+      "targetSelector": "",
+      "title": "Welcome to Find a Team",
+      "description": "A free agent is a player who registers without a team. The league organizer places free agents on teams that need players."
+    },
+    {
+      "id": "free-agents-leagues",
+      "targetSelector": "[data-tour=\"free-agent-leagues\"]",
+      "title": "Leagues accepting free agents",
+      "description": "Only public leagues whose organizers chose to be listed and to accept free agents appear here.",
+      "details": [
+        { "label": "Register as Free Agent", "text": "Opens that league's player registration form. The organizer reviews it and assigns you to a team." },
+        { "label": "League Page", "text": "Opens the league's public page with standings, schedule and contact details." }
+      ]
+    },
+    {
+      "id": "free-agents-interest",
+      "targetSelector": "[data-tour=\"free-agent-interest\"]",
+      "title": "Leave your details",
+      "description": "If no league near you is listed, send your name, email and area. FlagOS shares it with organizers in your area; it is never shown publicly.",
+      "details": [
+        { "label": "Name, Email, City / Area", "text": "Required so an organizer can contact you." },
+        { "label": "Experience and Notes", "text": "Optional. Positions you like, availability, or anything else organizers should know." },
+        { "label": "Age confirmation", "text": "Players under 18 need a parent or guardian's permission to submit." },
+        { "label": "Send My Details", "text": "Saves your details and shows a confirmation." }
+      ]
+    },
+    {
+      "id": "free-agents-next",
+      "targetSelector": "",
+      "title": "What happens next",
+      "description": "After you register with a league, its organizer adds you to a team. Sign in with the email you registered with to see your team, schedule and stats. If you left your details instead, an organizer near you may reach out by email.",
+      "details": [
+        { "label": "Browse leagues", "text": "The League Directory lists every public league, including ones not taking free agents right now." }
       ]
     }
   ]

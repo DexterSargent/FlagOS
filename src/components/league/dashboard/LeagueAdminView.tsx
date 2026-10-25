@@ -68,7 +68,7 @@ export function LeagueAdminView({
 
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 flex-1 w-full max-w-full space-y-5 sm:space-y-8">
-      {/* League Command Center Hero Banner */}
+      {/* League Dashboard Hero Banner */}
       <div className="bg-surface-raised border border-line rounded-3xl p-4 sm:p-6 md:p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6 pb-4 sm:pb-6 border-b border-line">
           <div className="min-w-0">
@@ -83,10 +83,10 @@ export function LeagueAdminView({
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase tracking-tight text-white">
-              League Command Center
+              League Dashboard
             </h1>
             <p className="text-neutral-400 text-xs md:text-sm mt-1 max-w-2xl">
-              Centralized command console for match games, live scorekeeping, team registry, rule enforcement, and league branding.
+              Run your league from here: games, live scoring, teams, rules and branding.
             </p>
             {settings?.visibility === "private" && (
               <div className="mt-3 inline-flex flex-wrap items-center gap-2.5 p-2 px-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs">

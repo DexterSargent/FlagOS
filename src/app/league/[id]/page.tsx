@@ -163,7 +163,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
         activeLeagueId={data.activeLeagueId}
         isEffectiveDemo={data.isEffectiveDemo}
         onPlayerAdded={(newPlayer) => {
-          data.setPlayers((prev) => [...prev, newPlayer]);
+          data.setPlayers((prev) => [...prev.filter((p) => p.id !== newPlayer.id), newPlayer]);
         }}
       />
     </div>

@@ -85,12 +85,14 @@ import { sandboxHeartbeatWriter, useLiveGameHeartbeat } from "@/lib/gameLiveStat
 interface AsyncPlayByPlayManagerProps {
   matchId: string;
   backUrl?: string;
+  /** Temporary scorer access granted by a league admin for this game. */
+  hasScorerGrant?: boolean;
 }
 
 type PlayOutcome = "Complete" | "Incomplete" | "PBU" | "Interception" | "Sack" | "Gain" | "Loss" | "FFL";
 type PlayResult = "Touchdown" | "First Down" | "Short" | "Safety" | "Turnover" | "Next Down" | "Pick 6" | "Repeat Down";
 
-export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayByPlayManagerProps) {
+export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGrant = false }: AsyncPlayByPlayManagerProps) {
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
   const { canManageTeam, isLeagueAdmin, loading: authLoading } = useAuth();
@@ -113,7 +115,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [matchData, setMatchData] = useState<any>(null);
   const managingTeamId = matchData?.managingTeamId || matchData?.homeTeamId;
   const canEdit = !authLoading && (
-    !!canManageTeam?.(managingTeamId) || ((isDemo || !!matchData?.leagueId) && isLeagueAdmin)
+    hasScorerGrant || !!canManageTeam?.(managingTeamId) || ((isDemo || !!matchData?.leagueId) && isLeagueAdmin)
   );
   const canTrackPlays = canEdit && matchStatus !== "completed";
   useLiveGameHeartbeat(
@@ -1159,7 +1161,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   }
 
   return (
-    <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 min-w-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden pb-[env(safe-area-inset-bottom)]">
+    <div className="h-[calc(100dvh-var(--role-switcher-height,0px)-var(--pbp-banner-height,0px))] min-h-0 min-w-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden pb-[env(safe-area-inset-bottom)]">
       {/* Top Banner & Navigation */}
       <header data-tour="async-navigation" className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-2 md:px-5 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30">
         <div className="flex min-w-0 items-center gap-2">
@@ -1176,7 +1178,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           <div className="hidden lg:flex min-w-0 items-center gap-2">
             <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Clockless Async Stat Keeper</span>
+              <span>Stat Keeper · No Clock</span>
             </span>
             <span className="text-[10px] text-neutral-500 font-mono">
               • {homeTeamName} vs {awayTeamName}
@@ -1364,7 +1366,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                       onClick={() => setCurrentDown(d)}
                       aria-label={`${getOrdinal(d)} Down`}
                       title={`Set to ${getOrdinal(d)} Down`}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      className={`min-w-[44px] min-h-[40px] px-3 py-2 rounded-lg text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
                         currentDown === d
                           ? "bg-white text-black shadow-md font-black"
                           : "text-neutral-400 hover:text-white hover:bg-white/10"
@@ -1635,7 +1637,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                                 #{pNum}
                               </span>
                             )}
-                            <span className="truncate">{label}</span>
+                            <span className="min-w-0 break-words leading-tight text-left">{label}</span>
                             {statCount !== undefined && statCount > 0 && (
                               <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? "text-black/80" : "text-cyan-400/80"}`}>
                                 ({statCount} {playType === "Run" ? "rush" : "att"})
@@ -1704,7 +1706,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                                   #{pNum}
                                 </span>
                               )}
-                              <span className="truncate">{p}</span>
+                              <span className="min-w-0 break-words leading-tight text-left">{p}</span>
                               {recCount !== undefined && recCount > 0 && (
                                 <span className={`text-[10px] font-mono font-bold shrink-0 ${isSelected ? "text-black/80" : "text-emerald-400/80"}`}>
                                   ({recCount} rec)
@@ -1878,7 +1880,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-base sm:text-xl font-black uppercase text-white">Game Play Log</h3>
               <span className="text-xs text-neutral-400 font-mono">
-                {plays.length} Total Plays (Asynchronous)
+                {plays.length} Total Plays
               </span>
             </div>
 
@@ -2123,7 +2125,7 @@ function SectionSummary({
     >
       <span className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
         <span className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">{label}:</span>
-        <span className={`text-xs font-black truncate ${filled ? "text-white" : "text-neutral-400 font-semibold"}`}>{value}</span>
+        <span className={`text-xs font-black text-right break-words min-w-0 ${filled ? "text-white" : "text-neutral-400 font-semibold"}`}>{value}</span>
       </span>
       <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 shrink-0">
         <span className="hidden sm:inline">Change</span>

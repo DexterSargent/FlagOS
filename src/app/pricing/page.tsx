@@ -394,7 +394,7 @@ export default function PricingPage() {
     },
     {
       q: "Are there any limits on roster sizes or headcount fees?",
-      a: "None. You can add as many active players, practice squad members, and substitutes to your roster as you need. FlagOS never charges per-player fees, per-athlete roster cuts, or registration penalties.",
+      a: "Rosters hold up to five players per spot on the field: 25 players for 5v5, 35 for 7v7 and 40 for 8v8. There are never per-player fees, per-athlete roster charges or registration penalties.",
     },
     {
       q: "Can an independent team join a league later without losing playbooks or stats?",
@@ -655,7 +655,7 @@ export default function PricingPage() {
                 <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 pt-1 flex-wrap gap-2">
                   <span className="font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Roster Capacity: <span className="font-mono font-bold">Unlimited Players</span>
+                    Roster Capacity: <span className="font-mono font-bold">Up to 25 players (5v5) · 40 (8v8)</span>
                   </span>
                   <span className="font-mono">($40 flat • Zero per-player fees)</span>
                 </div>

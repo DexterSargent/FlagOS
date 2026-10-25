@@ -191,7 +191,7 @@ function LeagueCard({ league }: { league: LeagueMembership }) {
       >
         <span className="inline-flex items-center gap-2">
           <LayoutDashboard className="h-4 w-4" aria-hidden />
-          {league.isCommissioner ? "Run league dashboard" : "League home"}
+          {league.isCommissioner ? "Open League" : "League Home"}
         </span>
         <ChevronRight className="h-4 w-4" aria-hidden />
       </Link>

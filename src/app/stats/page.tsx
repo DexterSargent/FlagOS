@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { shortPlayerName } from "@/lib/shortPlayerName";
 import {
   ChevronLeft,
   Activity,
@@ -71,6 +72,7 @@ export default function StatsAndStandings() {
     : null;
   const viewingSeason = seasons.find((season) => season.id === viewingSeasonId);
   const displayStandings: any[] = archivedSnapshot ? archivedSnapshot.standings : standings;
+  const teamCodeById = new Map<string, string>(displayStandings.filter((r: any) => r?.id && r?.shortcode).map((r: any) => [r.id, r.shortcode]));
   const displayPlayerStats: any[] = archivedSnapshot ? archivedSnapshot.playerStats : individualStats;
 
 
@@ -226,7 +228,7 @@ export default function StatsAndStandings() {
   };
 
   const ThTeam = ({ label, sortKey, className = "" }: { label: string; sortKey: string; className?: string }) => (
-    <th className={`py-4 px-6 cursor-pointer hover:bg-white/5 transition-colors ${className}`} onClick={() => handleSortTeam(sortKey)}>
+    <th className={`py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5 transition-colors ${className}`} onClick={() => handleSortTeam(sortKey)}>
       <div className="flex items-center justify-center gap-1">
         {label}
         {sortTeam.key === sortKey && (sortTeam.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
@@ -243,7 +245,7 @@ export default function StatsAndStandings() {
           (individualTab === "defense" && sortKey === "flagPulls")));
 
     return (
-      <th className={`py-4 px-6 cursor-pointer hover:bg-white/5 transition-colors ${className}`} onClick={() => handleSortIndiv(sortKey)}>
+      <th className={`py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5 transition-colors ${className}`} onClick={() => handleSortIndiv(sortKey)}>
         <div className="flex items-center justify-center gap-1">
           {label}
           {isCurrent && (sortIndiv.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
@@ -381,11 +383,11 @@ export default function StatsAndStandings() {
 
               <p className="px-4 py-2 text-xs text-[var(--text-muted)] sm:hidden">Swipe the table to see more stats.</p>
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[700px]">
+                <table className="w-full text-left border-collapse min-w-[520px] sm:min-w-[700px]">
                   <thead>
                     <tr className="bg-black/50 text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider">
-                      <th className="py-4 px-6">Rank</th>
-                      <th className="py-4 px-6 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => handleSortTeam("name")}>
+                      <th className="py-3 px-2 sm:py-4 sm:px-6">Rank</th>
+                      <th className="sticky left-0 z-10 bg-neutral-900 py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => handleSortTeam("name")}>
                         <div className="flex items-center gap-1">
                           Team {sortTeam.key === "name" && (sortTeam.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                         </div>
@@ -403,7 +405,7 @@ export default function StatsAndStandings() {
                   <tbody className="divide-y divide-white/5">
                     {sortedStandings.map((row, index) => (
                       <tr key={row.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-2 sm:py-4 sm:px-6">
                           <span
                             className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
                               (row as any).rank === 1
@@ -414,19 +416,19 @@ export default function StatsAndStandings() {
                             {(row as any).rank || index + 1}
                           </span>
                         </td>
-                        <td className="py-4 px-6 font-bold text-lg">
+                        <td className="sticky left-0 z-10 bg-neutral-900 py-3 px-2 sm:py-4 sm:px-6 font-bold text-base sm:text-lg" title={row.name}>
                           <Link href={`/teams/${row.id}`} className="hover:text-cyan-400 transition-colors flex items-center gap-2">
-                            <span className="whitespace-nowrap">{row.name}</span>
+                            <span className={`whitespace-nowrap ${row.shortcode ? "hidden sm:inline" : "max-w-[7rem] truncate sm:max-w-none"}`}>{row.name}</span>
                             <span className="text-xs text-[var(--text-muted)] font-mono px-1.5 py-0.5 bg-white/5 rounded border border-white/5">{row.shortcode}</span>
                           </Link>
                         </td>
-                        <td className="py-4 px-6 text-center text-neutral-400">{row.played}</td>
-                        <td className="py-4 px-6 text-center font-bold text-emerald-400">{row.won}</td>
-                        <td className="py-4 px-6 text-center font-bold text-red-400">{row.lost}</td>
-                        <td className="py-4 px-6 text-center text-[var(--text-muted)]">{row.tied}</td>
-                        <td className="py-4 px-6 text-center text-neutral-300">{row.pf}</td>
-                        <td className="py-4 px-6 text-center text-neutral-300">{row.pa}</td>
-                        <td className="py-4 px-6 text-center">
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center text-neutral-400">{row.played}</td>
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-bold text-emerald-400">{row.won}</td>
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-bold text-red-400">{row.lost}</td>
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center text-[var(--text-muted)]">{row.tied}</td>
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center text-neutral-300">{row.pf}</td>
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center text-neutral-300">{row.pa}</td>
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center">
                           <span
                             className={`px-2 py-1 rounded-md text-xs font-bold ${
                               row.diff > 0 ? "bg-emerald-500/10 text-emerald-400" : row.diff < 0 ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300" : "text-[var(--text-muted)]"
@@ -436,7 +438,7 @@ export default function StatsAndStandings() {
                             {row.diff}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-center font-black text-xl text-white">{row.pts}</td>
+                        <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-black text-xl text-white">{row.pts}</td>
                       </tr>
                     ))}
                     {displayStandings.length === 0 && (
@@ -628,19 +630,19 @@ export default function StatsAndStandings() {
                   {/* Table */}
                   <p className="px-4 py-2 text-xs text-[var(--text-muted)] sm:hidden">Swipe the table to see more stats.</p>
               <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[850px]">
+                    <table className="w-full text-left border-collapse min-w-[600px] sm:min-w-[850px]">
                       <thead>
                         {individualTab === "passing" && (
                           <tr className="bg-black/50 text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider">
-                            <th className="py-4 px-6">Rank</th>
-                            <th className="py-4 px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("name")}>
+                            <th className="py-3 px-2 sm:py-4 sm:px-6">Rank</th>
+                            <th className="sticky left-0 z-10 bg-neutral-900 py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("name")}>
                               <div className="flex items-center gap-1">
                                 Player{" "}
                                 {sortIndiv.key === "name" &&
                                   (sortIndiv.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                               </div>
                             </th>
-                            <th className="py-4 px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("teamName")}>
+                            <th className="py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("teamName")}>
                               <div className="flex items-center gap-1">
                                 Team{" "}
                                 {sortIndiv.key === "teamName" &&
@@ -657,15 +659,15 @@ export default function StatsAndStandings() {
                         )}
                         {individualTab === "receiving" && (
                           <tr className="bg-black/50 text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider">
-                            <th className="py-4 px-6">Rank</th>
-                            <th className="py-4 px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("name")}>
+                            <th className="py-3 px-2 sm:py-4 sm:px-6">Rank</th>
+                            <th className="sticky left-0 z-10 bg-neutral-900 py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("name")}>
                               <div className="flex items-center gap-1">
                                 Player{" "}
                                 {sortIndiv.key === "name" &&
                                   (sortIndiv.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                               </div>
                             </th>
-                            <th className="py-4 px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("teamName")}>
+                            <th className="py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("teamName")}>
                               <div className="flex items-center gap-1">
                                 Team{" "}
                                 {sortIndiv.key === "teamName" &&
@@ -682,15 +684,15 @@ export default function StatsAndStandings() {
                         )}
                         {individualTab === "defense" && (
                           <tr className="bg-black/50 text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider">
-                            <th className="py-4 px-6">Rank</th>
-                            <th className="py-4 px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("name")}>
+                            <th className="py-3 px-2 sm:py-4 sm:px-6">Rank</th>
+                            <th className="sticky left-0 z-10 bg-neutral-900 py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("name")}>
                               <div className="flex items-center gap-1">
                                 Player{" "}
                                 {sortIndiv.key === "name" &&
                                   (sortIndiv.direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                               </div>
                             </th>
-                            <th className="py-4 px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("teamName")}>
+                            <th className="py-3 px-2 sm:py-4 sm:px-6 cursor-pointer hover:bg-white/5" onClick={() => handleSortIndiv("teamName")}>
                               <div className="flex items-center gap-1">
                                 Team{" "}
                                 {sortIndiv.key === "teamName" &&
@@ -711,7 +713,7 @@ export default function StatsAndStandings() {
                       <tbody className="divide-y divide-white/5">
                         {sortedIndividualStats.map((row, index) => (
                           <tr key={row.name} className="hover:bg-white/5 transition-colors group">
-                            <td className="py-4 px-6">
+                            <td className="py-3 px-2 sm:py-4 sm:px-6">
                               <span
                                 className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
                                   index === 0
@@ -722,50 +724,56 @@ export default function StatsAndStandings() {
                                 {index + 1}
                               </span>
                             </td>
-                            <td className="py-4 px-6 font-bold text-base">
-                              {row.name}
+                            <td className="sticky left-0 z-10 bg-neutral-900 py-3 px-2 sm:py-4 sm:px-6 font-bold text-sm sm:text-base whitespace-nowrap" title={row.name}>
+                              <span className="sm:hidden">{shortPlayerName(row.name)}</span>
+                              <span className="hidden sm:inline">{row.name}</span>
                               {row.number && <span className="text-[var(--text-muted)] text-xs font-normal ml-2">#{row.number}</span>}
                             </td>
-                            <td className="py-4 px-6 text-neutral-300 text-sm">
+                            <td className="py-3 px-2 sm:py-4 sm:px-6 text-neutral-300 text-sm whitespace-nowrap" title={row.teamName}>
                               <Link href={`/teams/${row.teamId}`} className="hover:text-cyan-400 transition-colors">
-                                {row.teamName}
+                                {teamCodeById.get(row.teamId) ? (
+                                  <>
+                                    <span className="sm:hidden font-mono">{teamCodeById.get(row.teamId)}</span>
+                                    <span className="hidden sm:inline">{row.teamName}</span>
+                                  </>
+                                ) : row.teamName}
                               </Link>
                             </td>
-                            <td className="py-4 px-6 text-center text-neutral-300 font-medium">{row.gamesPlayed}</td>
+                            <td className="py-3 px-2 sm:py-4 sm:px-6 text-center text-neutral-300 font-medium">{row.gamesPlayed}</td>
 
                             {individualTab === "passing" && (
                               <>
-                                <td className="py-4 px-6 text-center font-medium text-blue-200">
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-blue-200">
                                   {row.passComp} / {row.passAtt}
                                 </td>
-                                <td className="py-4 px-6 text-center font-medium text-neutral-300">
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-neutral-300">
                                   {row.passAtt > 0 ? Math.round((row.passComp / row.passAtt) * 100) : 0}%
                                 </td>
-                                <td className="py-4 px-6 text-center font-black text-emerald-400 text-lg">{row.passTD}</td>
-                                <td className="py-4 px-6 text-center font-medium text-red-400">{row.passInt}</td>
-                                <td className="py-4 px-6 text-center font-medium text-purple-400">{row.convPass}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-black text-emerald-400 text-lg">{row.passTD}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-red-400">{row.passInt}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-purple-400">{row.convPass}</td>
                               </>
                             )}
 
                             {individualTab === "receiving" && (
                               <>
-                                <td className="py-4 px-6 text-center font-black text-blue-400 text-lg">{row.receptions}</td>
-                                <td className="py-4 px-6 text-center font-bold text-emerald-400">{row.recTD}</td>
-                                <td className="py-4 px-6 text-center font-medium text-amber-400">{row.rushAtt}</td>
-                                <td className="py-4 px-6 text-center font-medium text-emerald-400">{row.rushTD}</td>
-                                <td className="py-4 px-6 text-center font-medium text-purple-400">{row.convRec}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-black text-blue-400 text-lg">{row.receptions}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-bold text-emerald-400">{row.recTD}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-amber-400">{row.rushAtt}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-emerald-400">{row.rushTD}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-purple-400">{row.convRec}</td>
                               </>
                             )}
 
                             {individualTab === "defense" && (
                               <>
-                                <td className="py-4 px-6 text-center font-black text-amber-400 text-lg">{row.flagPulls}</td>
-                                <td className="py-4 px-6 text-center font-bold text-blue-400">{row.int}</td>
-                                <td className="py-4 px-6 text-center font-bold text-emerald-400">{row.defTD}</td>
-                                <td className="py-4 px-6 text-center font-medium text-red-400">{row.sacks}</td>
-                                <td className="py-4 px-6 text-center font-medium text-orange-400">{row.ffl}</td>
-                                <td className="py-4 px-6 text-center font-medium text-neutral-400">{row.pbu}</td>
-                                <td className="py-4 px-6 text-center font-medium text-red-600">{row.safeties}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-black text-amber-400 text-lg">{row.flagPulls}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-bold text-blue-400">{row.int}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-bold text-emerald-400">{row.defTD}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-red-400">{row.sacks}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-orange-400">{row.ffl}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-neutral-400">{row.pbu}</td>
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-red-600">{row.safeties}</td>
                               </>
                             )}
                           </tr>

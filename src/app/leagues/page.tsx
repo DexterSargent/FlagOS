@@ -23,6 +23,14 @@ import {
   CompetitionTier,
   RegistrationStatus,
 } from "@/lib/leagueDirectoryData";
+import { mapsSearchUrl } from "@/lib/leaguePublicProfile";
+import { FLAGOS_SUPPORT_EMAIL } from "@/lib/platformAdmin";
+
+function formatVenueAddress(venue: DirectoryLeague["venue"]): string {
+  return [venue.address, venue.city, [venue.stateOrProvince, venue.postalCode].filter(Boolean).join(" ")]
+    .filter(Boolean)
+    .join(", ");
+}
 import {
   Search,
   MapPin,
@@ -177,7 +185,7 @@ export default function LeagueDirectoryPage() {
     return catalog
       .map((league) => {
         let distanceMiles: number | null = null;
-        if (userCoords) {
+        if (userCoords && league.venue.latitude !== undefined && league.venue.longitude !== undefined) {
           distanceMiles = calculateDistanceInMiles(
             userCoords.lat,
             userCoords.lon,
@@ -326,12 +334,28 @@ export default function LeagueDirectoryPage() {
     setSelectedDay("all");
     setSelectedStatus("all");
     setSelectedSurface("all");
-    setMaxDistanceMiles(50);
+    setMaxDistanceMiles(0);
   };
+
+  const hasActiveFilters =
+    Boolean(searchQuery.trim()) ||
+    selectedFormats.length > 0 ||
+    selectedDivision !== "all" ||
+    selectedTier !== "all" ||
+    selectedDay !== "all" ||
+    selectedStatus !== "all" ||
+    selectedSurface !== "all" ||
+    maxDistanceMiles > 0;
 
   const handleSendCommissionerMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contactMessage.trim()) return;
+    if (!contactMessage.trim() || !contactingLeague) return;
+    const to = contactingLeague.contactEmail || FLAGOS_SUPPORT_EMAIL;
+    const subject = `${contactSubject} — ${contactingLeague.name}`;
+    const body = contactingLeague.contactEmail
+      ? contactMessage
+      : `League: ${contactingLeague.name} (${contactingLeague.id})\n\n${contactMessage}`;
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setContactSubmitted(true);
     setTimeout(() => {
       setContactSubmitted(false);
@@ -789,18 +813,39 @@ export default function LeagueDirectoryPage() {
               <Search className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-black uppercase text-slate-900 dark:text-white">
-              No Leagues Match Your Search
+              {hasActiveFilters ? "No Leagues Match Your Search" : selectedCategory === "my" ? "You Haven\u2019t Joined a League Yet" : "No Public Leagues Listed Yet"}
             </h3>
             <p className="text-xs text-slate-600 dark:text-neutral-400 max-w-md mx-auto">
-              Try expanding your distance radius, clearing your filters, or searching for a nearby city.
+              {hasActiveFilters
+                ? maxDistanceMiles > 0
+                  ? "Try expanding your distance radius, clearing your filters, or searching for a nearby city."
+                  : "Try clearing your filters or searching for a different city or league name."
+                : "Leagues only appear here when their organizers choose to list them publicly. Private and unlisted leagues are reached through a direct link or invite from the league organizer."}
             </p>
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
-            >
-              Reset Filters &amp; Expand Radius
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-cyan-500/20 cursor-pointer"
+                >
+                  {maxDistanceMiles > 0 ? "Reset Filters & Expand Radius" : "Reset Filters"}
+                </button>
+              )}
+              <Link
+                href="/free-agents"
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-white/10 font-black text-xs uppercase tracking-wider transition-colors"
+              >
+                Join as a Free Agent
+              </Link>
+              <Link
+                href="/pricing"
+                className="px-5 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-wider transition-all hover:opacity-90"
+                style={{ backgroundColor: "#2b7d04", color: "#ffffff" }}
+              >
+                Start a League
+              </Link>
+            </div>
           </div>
         ) : viewMode === "cards" ? (
           /* ========================================================= */
@@ -831,9 +876,21 @@ export default function LeagueDirectoryPage() {
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-white/10 text-slate-800 dark:text-slate-200">
                         {league.rulesFormat}
                       </span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-800 dark:text-purple-300">
-                        {league.division}
-                      </span>
+                      {league.division && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-800 dark:text-purple-300">
+                          {league.division}
+                        </span>
+                      )}
+                      {league.competitionTier && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300">
+                          {league.competitionTier}
+                        </span>
+                      )}
+                      {league.acceptsFreeAgents && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+                          Accepting free agents
+                        </span>
+                      )}
                       {league.isActive && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-black uppercase shadow-sm">
                           <Sparkles className="w-3 h-3 text-emerald-500" />
@@ -891,14 +948,27 @@ export default function LeagueDirectoryPage() {
                   <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-black/40 border border-slate-200/80 dark:border-white/5 space-y-2 text-xs">
                     <div className="flex items-start gap-2">
                       <MapPin className="w-3.5 h-3.5 text-cyan-500 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="font-bold text-slate-900 dark:text-white truncate block">
-                          {league.venue.name}
+                          {league.venue.name || league.venue.city || "Venue not listed yet"}
                         </span>
-                        <span className="text-[11px] text-slate-500 dark:text-neutral-400 block truncate">
-                          {league.venue.address}, {league.venue.city}, {league.venue.stateOrProvince}
-                        </span>
+                        {formatVenueAddress(league.venue) && (
+                          <span className="text-[11px] text-slate-500 dark:text-neutral-400 block truncate">
+                            {formatVenueAddress(league.venue)}
+                          </span>
+                        )}
                       </div>
+                      {league.venue.address && (
+                        <a
+                          href={league.venue.mapsUrl || mapsSearchUrl(formatVenueAddress(league.venue))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-700 dark:text-cyan-400 hover:underline"
+                        >
+                          Directions
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200 dark:border-white/5 text-slate-600 dark:text-neutral-400">
@@ -906,22 +976,40 @@ export default function LeagueDirectoryPage() {
                         <Users className="w-3.5 h-3.5 text-cyan-500" />
                         <span>{league.teamCount} Teams</span>
                       </span>
-                      <span className="flex items-center gap-1 font-medium">
-                        <Calendar className="w-3 h-3 text-amber-500" />
-                        <span>{league.gameDay}</span>
-                      </span>
-                      <span className="flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3 text-cyan-500" />
-                        <span>{league.gameTimeWindow}</span>
-                      </span>
+                      {league.gameDay && (
+                        <span className="flex items-center gap-1 font-medium">
+                          <Calendar className="w-3 h-3 text-amber-500" />
+                          <span>{league.gameDay}</span>
+                        </span>
+                      )}
+                      {league.gameTimeWindow && (
+                        <span className="flex items-center gap-1 font-mono">
+                          <Clock className="w-3 h-3 text-cyan-500" />
+                          <span>{league.gameTimeWindow}</span>
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-neutral-400">
-                      <span>Field Surface:</span>
-                      <span className="font-bold text-slate-800 dark:text-neutral-200">
-                        {league.venue.surface}
-                      </span>
-                    </div>
+                    {league.registrationDeadline && (
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-neutral-400">
+                        <span>Register by:</span>
+                        <span className="font-bold text-slate-800 dark:text-neutral-200">{league.registrationDeadline}</span>
+                      </div>
+                    )}
+                    {league.seasonDates && (
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-neutral-400">
+                        <span>Season:</span>
+                        <span className="font-bold text-slate-800 dark:text-neutral-200">{league.seasonDates}</span>
+                      </div>
+                    )}
+                    {league.venue.surface && (
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-neutral-400">
+                        <span>Field Surface:</span>
+                        <span className="font-bold text-slate-800 dark:text-neutral-200">
+                          {league.venue.surface}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Amenities Checklist Chips */}
@@ -1057,22 +1145,24 @@ export default function LeagueDirectoryPage() {
                     </div>
                     <p className="text-xs text-slate-500 dark:text-neutral-400 flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{venue.address}, {venue.city}, {venue.stateOrProvince} {venue.postalCode}</span>
+                      <span>{formatVenueAddress(venue) || "Address not listed yet"}</span>
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-neutral-300">
-                      {venue.surface}
-                    </span>
+                    {venue.surface && (
+                      <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-700 dark:text-neutral-300">
+                        {venue.surface}
+                      </span>
+                    )}
                     {venue.hasLights && (
                       <span className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 text-xs font-bold">
                         Lights Equipped
                       </span>
                     )}
-                    {venue.mapsUrl && (
+                    {(venue.mapsUrl || venue.address) && (
                       <a
-                        href={venue.mapsUrl}
+                        href={venue.mapsUrl || mapsSearchUrl(formatVenueAddress(venue))}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs uppercase flex items-center gap-1 transition-colors"
@@ -1121,7 +1211,7 @@ export default function LeagueDirectoryPage() {
                             )}
                           </div>
                           <span className="text-[11px] text-slate-500 dark:text-neutral-400 block truncate">
-                            {l.teamCount} teams • {l.gameDay}
+                            {l.teamCount} teams{l.gameDay ? ` • ${l.gameDay}` : ""}
                             {l.registrationFeePerTeam !== undefined ? ` • $${l.registrationFeePerTeam}/team` : ""}
                           </span>
                         </div>
@@ -1190,16 +1280,16 @@ export default function LeagueDirectoryPage() {
                       {l.teamCount} Teams
                     </td>
                     <td className="py-4 px-4">
-                      <div className="text-slate-800 dark:text-neutral-200 font-medium">{l.venue.city}, {l.venue.stateOrProvince}</div>
+                      <div className="text-slate-800 dark:text-neutral-200 font-medium">{[l.venue.city, l.venue.stateOrProvince].filter(Boolean).join(", ") || "—"}</div>
                       <div className="text-[11px] text-slate-500 dark:text-neutral-400">
                         {l.distanceMiles !== null ? `${l.distanceMiles} mi away` : l.venue.name}
                       </div>
                     </td>
                     <td className="py-4 px-4 font-medium text-slate-700 dark:text-neutral-300">
-                      {l.division}
+                      {l.division || "—"}
                     </td>
                     <td className="py-4 px-4">
-                      <div className="text-slate-800 dark:text-neutral-200 font-medium">{l.gameDay}</div>
+                      <div className="text-slate-800 dark:text-neutral-200 font-medium">{l.gameDay || "—"}</div>
                       <div className="text-[11px] text-slate-500 dark:text-neutral-400">{l.gameTimeWindow}</div>
                     </td>
                     <td className="py-4 px-4 font-bold text-slate-900 dark:text-white">
@@ -1305,10 +1395,10 @@ export default function LeagueDirectoryPage() {
               <div className="py-8 text-center space-y-2">
                 <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-500" />
                 <h4 className="text-base font-bold text-slate-900 dark:text-white">
-                  Message Dispatched to Commissioner
+                  Opening Your Email App
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-neutral-400 max-w-sm mx-auto">
-                  Your message has been sent to the {contactingLeague.name} commissioner. They will get back to you at your registered email address.
+                  Your message is ready to send to {contactingLeague.contactEmail ? `the ${contactingLeague.name} organizer` : "FlagOS support, who will pass it to the organizer"}. Press send in your email app to deliver it.
                 </p>
               </div>
             ) : (

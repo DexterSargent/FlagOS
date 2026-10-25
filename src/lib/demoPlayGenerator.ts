@@ -10,6 +10,8 @@ interface TeamRosterInfo {
   rusher: string;
 }
 
+const SEEDED_PLAYER_IDS = new Set(SEED_DEMO_PLAYERS.map((player) => player.id));
+
 let cachedRosters: Record<string, TeamRosterInfo> | null = null;
 let cachedRosterKey = "";
 let lastPlayers: DemoPlayer[] | null = null;
@@ -29,7 +31,8 @@ function getTeamRosters(allPlayers: DemoPlayer[]): Record<string, TeamRosterInfo
   const rosters: Record<string, TeamRosterInfo> = {};
 
   SEED_DEMO_TEAMS.forEach((team) => {
-    const players = allPlayers.filter((p) => p.teamId === team.id);
+    // Only seeded players appear in past games; players added during a demo session start with no stats.
+    const players = allPlayers.filter((p) => p.teamId === team.id && SEEDED_PLAYER_IDS.has(p.id));
     const hasPosition = (player: DemoPlayer, position: string) =>
       player.position === position || player.positions?.includes(position);
     const qb = players.find((p) => hasPosition(p, "QB"))?.playerName || `${team.name} QB`;
@@ -48,73 +51,51 @@ function getTeamRosters(allPlayers: DemoPlayer[]): Record<string, TeamRosterInfo
 }
 
 interface ScoringDrive {
-  type: "pass_td" | "rush_td" | "fg" | "safety";
+  type: "pass_td" | "rush_td" | "safety";
   points: number;
   conversion?: 1 | 2;
   totalPoints: number;
 }
 
 /**
- * Exactly partitions any score >= 0 into valid flag football scoring drives.
+ * Partitions a score into flag football scoring drives: touchdowns (6) with optional
+ * 1- or 2-point conversions, plus safeties (2). Flag football has no field goals, so
+ * 1, 3 and 5 cannot be reached; those leftover points are dropped.
  */
 export function decomposeScore(score: number): ScoringDrive[] {
   if (score <= 0) return [];
-  const drives: ScoringDrive[] = [];
-  let remaining = score;
-
-  while (remaining > 0) {
-    if (remaining === 8) {
-      drives.push({ type: "pass_td", points: 6, conversion: 2, totalPoints: 8 });
-      remaining -= 8;
-    } else if (remaining === 7) {
-      drives.push({ type: "pass_td", points: 6, conversion: 1, totalPoints: 7 });
-      remaining -= 7;
-    } else if (remaining === 6) {
-      drives.push({ type: "pass_td", points: 6, totalPoints: 6 });
-      remaining -= 6;
-    } else if (remaining >= 14) {
-      drives.push({ type: "pass_td", points: 6, conversion: 1, totalPoints: 7 });
-      remaining -= 7;
-    } else if (remaining === 13) {
-      drives.push({ type: "pass_td", points: 6, conversion: 1, totalPoints: 7 });
-      remaining -= 7;
-    } else if (remaining === 12) {
-      drives.push({ type: "pass_td", points: 6, totalPoints: 6 });
-      remaining -= 6;
-    } else if (remaining === 11) {
-      drives.push({ type: "pass_td", points: 6, conversion: 2, totalPoints: 8 });
-      remaining -= 8;
-    } else if (remaining === 10) {
-      drives.push({ type: "pass_td", points: 6, conversion: 1, totalPoints: 7 });
-      remaining -= 7;
-    } else if (remaining === 9) {
-      drives.push({ type: "pass_td", points: 6, totalPoints: 6 });
-      remaining -= 6;
-    } else if (remaining === 3) {
-      drives.push({ type: "fg", points: 3, totalPoints: 3 });
-      remaining -= 3;
-    } else if (remaining === 2) {
-      drives.push({ type: "safety", points: 2, totalPoints: 2 });
-      remaining -= 2;
-    } else if (remaining === 5) {
-      drives.push({ type: "fg", points: 3, totalPoints: 3 });
-      drives.push({ type: "safety", points: 2, totalPoints: 2 });
-      remaining = 0;
-    } else if (remaining === 4) {
-      drives.push({ type: "safety", points: 2, totalPoints: 2 });
-      drives.push({ type: "safety", points: 2, totalPoints: 2 });
-      remaining = 0;
-    } else if (remaining === 1) {
-      if (drives.length > 0 && !drives[0].conversion) {
-        drives[0].conversion = 1;
-        drives[0].totalPoints += 1;
+  let touchdowns = 0;
+  let safeties = 0;
+  let conversionPoints = 0;
+  let found = false;
+  // Fewest safeties first, then fewest touchdowns (so most drives carry a conversion).
+  for (let s = 0; s * 2 <= score && !found; s++) {
+    const remaining = score - s * 2;
+    for (let k = Math.ceil(remaining / 8); k * 6 <= remaining; k++) {
+      if (remaining - k * 6 <= k * 2) {
+        touchdowns = k;
+        safeties = s;
+        conversionPoints = remaining - k * 6;
+        found = true;
+        break;
       }
-      remaining = 0;
-    } else {
-      drives.push({ type: "pass_td", points: 6, conversion: 1, totalPoints: 7 });
-      remaining -= 7;
     }
   }
+  if (!found) return score > 1 ? decomposeScore(score - 1) : [];
+
+  const drives: ScoringDrive[] = [];
+  // Spread conversion points: 1-pointers first, then upgrade to 2-pointers.
+  const conversions = new Array<number>(touchdowns).fill(0);
+  for (let i = 0; i < conversionPoints; i++) conversions[i % touchdowns] += 1;
+  for (const conversion of conversions) {
+    drives.push({
+      type: "pass_td",
+      points: 6,
+      ...(conversion ? { conversion: conversion as 1 | 2 } : {}),
+      totalPoints: 6 + conversion,
+    });
+  }
+  for (let i = 0; i < safeties; i++) drives.push({ type: "safety", points: 2, totalPoints: 2 });
 
   // Turn 1 in 3 pass TDs into a rush TD if team has multiple TDs
   let passCount = 0;
@@ -166,7 +147,7 @@ export function generatePlaysForMatch(match: DemoMatch, players: DemoPlayer[] = 
     const wr = offensiveTargets[(playIndex - 1) % offensiveTargets.length];
 
     // 1. Setup Chunk Play (1st Down)
-    if (drive.type === "pass_td" || drive.type === "rush_td" || drive.type === "fg") {
+    if (drive.type === "pass_td" || drive.type === "rush_td") {
       clock -= 45;
       const setupYards = 16 + ((playIndex * 7) % 15);
       plays.push({
@@ -189,7 +170,7 @@ export function generatePlaysForMatch(match: DemoMatch, players: DemoPlayer[] = 
     }
 
     // 2. Interspersed Incomplete Pass or PBU (Realistic drive tempo)
-    if (playIndex % 4 === 0 && (drive.type === "pass_td" || drive.type === "fg")) {
+    if (playIndex % 4 === 0 && drive.type === "pass_td") {
       clock -= 30;
       plays.push({
         id: `play_${match.id}_${playIndex++}`,
@@ -301,21 +282,6 @@ export function generatePlaysForMatch(match: DemoMatch, players: DemoPlayer[] = 
           result: `${drive.conversion}-PT Conversion GOOD! ${offRoster.qb} to ${convReceiver} (${homeRoster.teamName} ${homeCurrentScore}, ${awayRoster.teamName} ${awayCurrentScore})`,
         });
       }
-    } else if (drive.type === "fg") {
-      if (isHome) homeCurrentScore += 3;
-      else awayCurrentScore += 3;
-
-      plays.push({
-        id: `play_${match.id}_${playIndex++}`,
-        matchId: match.id,
-        possessionTeamId: offTeamId,
-        playType: "Run",
-        down: 4,
-        half,
-        gameClock: Math.max(5, clock),
-        points: 3,
-        result: `32-yd Field Goal GOOD (${homeRoster.teamName} ${homeCurrentScore}, ${awayRoster.teamName} ${awayCurrentScore})`,
-      });
     } else if (drive.type === "safety") {
       if (isHome) homeCurrentScore += 2;
       else awayCurrentScore += 2;

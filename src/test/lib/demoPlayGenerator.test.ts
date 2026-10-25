@@ -23,15 +23,16 @@ describe("demoPlayGenerator", () => {
       }
     });
 
-    it("handles odd edge-case scores with safeties or field goals", () => {
-      const drives2 = decomposeScore(2);
-      expect(drives2.reduce((acc, d) => acc + d.points, 0)).toBe(2);
-
-      const drives5 = decomposeScore(5);
-      expect(drives5.reduce((acc, d) => acc + d.points, 0)).toBe(5);
-
-      const drives9 = decomposeScore(9);
-      expect(drives9.reduce((acc, d) => acc + d.points, 0)).toBe(9);
+    it("never uses field goals and only produces valid flag football drives", () => {
+      for (let score = 2; score <= 60; score++) {
+        if (score === 3 || score === 5) continue;
+        const drives = decomposeScore(score);
+        expect(drives.reduce((acc, d) => acc + d.totalPoints, 0)).toBe(score);
+        for (const drive of drives) {
+          expect(["pass_td", "rush_td", "safety"]).toContain(drive.type);
+          expect([2, 6, 7, 8]).toContain(drive.totalPoints);
+        }
+      }
     });
   });
 
@@ -55,11 +56,12 @@ describe("demoPlayGenerator", () => {
 
       for (const p of plays) {
         const pts = p.points || 0;
-        if (p.possessionTeamId === completedMatch.homeTeamId) {
-          homePoints += pts;
-        } else if (p.possessionTeamId === completedMatch.awayTeamId) {
-          awayPoints += pts;
-        }
+        // Safeties are scored by the defense, not the team in possession.
+        const scoringTeam = p.isSafety
+          ? (p.possessionTeamId === completedMatch.homeTeamId ? completedMatch.awayTeamId : completedMatch.homeTeamId)
+          : p.possessionTeamId;
+        if (scoringTeam === completedMatch.homeTeamId) homePoints += pts;
+        else if (scoringTeam === completedMatch.awayTeamId) awayPoints += pts;
       }
 
       expect(homePoints).toBe(completedMatch.homeScore);
@@ -86,6 +88,27 @@ describe("demoPlayGenerator", () => {
         }
       });
     });
+  });
+
+  it("keeps players added during a demo session out of past games", () => {
+    const match = SEED_DEMO_MATCHES.find((m) => m.status === "completed" && (m.homeScore ?? 0) > 0)!;
+    const newcomer = { ...SEED_DEMO_PLAYERS.find((p) => p.teamId === match.homeTeamId)!, id: "player_demo_new", playerName: "Brand New Player" };
+    const plays = generatePlaysForMatch(match, [newcomer, ...SEED_DEMO_PLAYERS]);
+    expect(JSON.stringify(plays)).not.toContain("Brand New Player");
+  });
+
+  it("produces exact final scores for every completed seed game", () => {
+    for (const match of SEED_DEMO_MATCHES.filter((m) => m.status === "completed")) {
+      let home = 0;
+      let away = 0;
+      for (const p of generatePlaysForMatch(match)) {
+        expect(p.result ?? "").not.toMatch(/field goal/i);
+        const scorer = p.isSafety ? (p.possessionTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId) : p.possessionTeamId;
+        if (scorer === match.homeTeamId) home += p.points || 0;
+        else away += p.points || 0;
+      }
+      expect([home, away]).toEqual([match.homeScore ?? 0, match.awayScore ?? 0]);
+    }
   });
 
   describe("getGeneratedSeasonPlays", () => {

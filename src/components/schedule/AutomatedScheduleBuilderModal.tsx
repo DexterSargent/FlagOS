@@ -20,6 +20,7 @@ import {
 import { isRealTeam } from "@/components/TeamAssets";
 import { PlayoffFormat, getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
+import { assignScheduleSlots, scheduleDayOffsets } from "@/lib/scheduleSlots";
 import { buildPlayoffFixtureTemplates } from "@/lib/standingsEngine";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
@@ -86,6 +87,7 @@ export default function AutomatedScheduleBuilderModal({
   usePageGuide(isOpen ? SCHEDULE_BUILDER_WALKTHROUGH : null, 1);
   // Phase: "form" | "building" | "completed"
   const [phase, setPhase] = useState<"form" | "building" | "completed">("form");
+  const [unplacedGames, setUnplacedGames] = useState<string[]>([]);
 
   // Form State
   const eligibleTeams = teams.filter(isRealTeam);
@@ -208,6 +210,8 @@ export default function AutomatedScheduleBuilderModal({
     const createdMatches: any[] = [];
     const fieldsToUse = venues.length > 0 ? venues : ["Field 1"];
     const slotsToUse = timeSlots.length > 0 ? timeSlots : ["10:00 AM"];
+    const dayOffsets = scheduleDayOffsets(gameDays);
+    const unplaced: string[] = [];
 
     // Compute calendar dates for each week
     const baseDate = new Date(startDate);
@@ -242,17 +246,25 @@ export default function AutomatedScheduleBuilderModal({
       ];
 
       const matchesPerRound = Math.floor(roundTeams.length / 2);
+      const pairings: Array<{ home: { id: string; name: string }; away: { id: string; name: string } }> = [];
       for (let i = 0; i < matchesPerRound; i++) {
         const t1 = roundTeams[i];
         const t2 = roundTeams[roundTeams.length - 1 - i];
-
         if (t1.id === "BYE" || t2.id === "BYE") continue; // Bye week
+        pairings.push(w % 2 === 0 ? { home: t2, away: t1 } : { home: t1, away: t2 });
+      }
+      const { slots: weekSlots } = assignScheduleSlots(pairings.length, fieldsToUse, slotsToUse, dayOffsets);
 
-        const home = w % 2 === 0 ? t2 : t1;
-        const away = w % 2 === 0 ? t1 : t2;
-
-        const timeSlot = slotsToUse[i % slotsToUse.length];
-        const fieldLoc = fieldsToUse[i % fieldsToUse.length];
+      for (let i = 0; i < pairings.length; i++) {
+        const { home, away } = pairings[i];
+        const slot = weekSlots[i];
+        let gameDate = dateString;
+        if (slot && slot.dayOffset > 0) {
+          const d = new Date(weekDate);
+          d.setDate(d.getDate() + slot.dayOffset);
+          gameDate = d.toISOString().split("T")[0];
+        }
+        if (!slot) unplaced.push(`Week ${w}: ${away.name} at ${home.name}`);
 
         const matchObj = {
           id: `match_auto_w${w}_${i + 1}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -262,9 +274,9 @@ export default function AutomatedScheduleBuilderModal({
           homeTeamName: home.name,
           awayTeamId: away.id,
           awayTeamName: away.name,
-          date: dateString,
-          time: timeSlot,
-          location: fieldLoc,
+          date: gameDate,
+          time: slot ? slot.time : "TBD",
+          location: slot ? slot.location : "TBD",
           status: "scheduled",
           isPreseason: false,
           isPlayoff: false,
@@ -308,7 +320,10 @@ export default function AutomatedScheduleBuilderModal({
       const playoffFixtures = templates.map((fixture, i) => {
         const roundDate = new Date(playoffBaseDate);
         roundDate.setDate(roundDate.getDate() + fixture.roundIndex * 7);
-        const roundSlot = templates.filter((t) => t.roundIndex === fixture.roundIndex).indexOf(fixture);
+        const roundFixtures = templates.filter((t) => t.roundIndex === fixture.roundIndex);
+        const roundSlot = assignScheduleSlots(roundFixtures.length, fieldsToUse, slotsToUse, dayOffsets).slots[roundFixtures.indexOf(fixture)];
+        if (roundSlot && roundSlot.dayOffset > 0) roundDate.setDate(roundDate.getDate() + roundSlot.dayOffset);
+        if (!roundSlot) unplaced.push(`Playoffs: ${fixture.awayTeamName} at ${fixture.homeTeamName}`);
         return {
           week: "Playoffs",
           matchdayIndex: totalRounds + 1 + fixture.roundIndex,
@@ -319,8 +334,8 @@ export default function AutomatedScheduleBuilderModal({
           awayTeamId: "",
           awayTeamName: fixture.awayTeamName,
           date: roundDate.toISOString().split("T")[0],
-          time: slotsToUse[roundSlot % slotsToUse.length] || "10:00 AM",
-          location: fieldsToUse[roundSlot % fieldsToUse.length] || "Field 1",
+          time: roundSlot ? roundSlot.time : "TBD",
+          location: roundSlot ? roundSlot.location : "TBD",
           status: "scheduled",
           isPreseason: false,
           isPlayoff: true,
@@ -338,6 +353,7 @@ export default function AutomatedScheduleBuilderModal({
     setCurrentStepText("Schedule generated and verified!");
     await new Promise((r) => setTimeout(r, 500));
 
+    setUnplacedGames(unplaced);
     // Save
     await onApplySchedule(createdMatches, finalFormat, clearExisting);
     setPhase("completed");
@@ -833,6 +849,22 @@ export default function AutomatedScheduleBuilderModal({
                   with a Top {playoffTeamsCount} elimination bracket initialized.
                 </p>
               </div>
+
+              {unplacedGames.length > 0 && (
+                <div role="alert" className="max-w-lg mx-auto text-left p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+                  <p className="text-sm font-bold text-amber-300">
+                    {unplacedGames.length} {unplacedGames.length === 1 ? "game needs" : "games need"} a time and field
+                  </p>
+                  <p className="text-xs text-neutral-300 mt-1">
+                    There weren&apos;t enough field and kickoff combinations to fit every game without double-booking. These games were saved with time and field set to TBD. Add more fields or kickoff times, or edit them on the schedule.
+                  </p>
+                  <ul className="mt-2 max-h-32 overflow-y-auto text-xs text-neutral-200 space-y-0.5 list-disc pl-4">
+                    {unplacedGames.map((g) => (
+                      <li key={g}>{g}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Statistics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-lg mx-auto pt-2">

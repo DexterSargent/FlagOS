@@ -1,4 +1,6 @@
 "use client";
+
+import { effectiveMaxRoster } from "@/lib/rosterLimits";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import { use, useEffect, useState, useRef } from "react";
@@ -312,7 +314,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   }, [teamId, isDemoLeague, isTeamOrLeagueAdmin, sandbox]);
 
   const minRosterSize = settings.rules?.minRosterSize || 5;
-  const maxRosterSize = 30; // Hard cap of 30 players for all teams
+  const maxRosterSize = effectiveMaxRoster(settings.rules);
   const isRosterFull = players.length >= maxRosterSize;
   const isRosterUnderMin = players.length < minRosterSize;
 
@@ -322,7 +324,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
     if (!newPlayerName.trim()) return;
 
     if (players.length >= maxRosterSize) {
-      alert(`Cannot add player: Team is at the hard cap limit of ${maxRosterSize} players permitted across all teams.`);
+      alert(`Cannot add player: this team is at the league's roster limit of ${maxRosterSize} players.`);
       return;
     }
 
@@ -344,7 +346,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
           experience: newPlayerExperience.trim(),
           email: parsedEmails[0] || "",
         });
-        setPlayers((prev) => [...prev, newPlayerObj].sort(compareByJersey));
+        setPlayers((prev) => [...prev.filter((p) => p.id !== newPlayerObj.id), newPlayerObj].sort(compareByJersey));
         setNewPlayerName("");
         setNewPlayerNumber("");
         setNewPlayerEmails("");
@@ -379,7 +381,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         email: parsedEmails[0] || "",
       };
 
-      setPlayers((prev) => [...prev, newPlayerObj].sort(compareByJersey));
+      setPlayers((prev) => [...prev.filter((p) => p.id !== newPlayerObj.id), newPlayerObj].sort(compareByJersey));
       setNewPlayerName("");
       setNewPlayerNumber("");
       setNewPlayerEmails("");
@@ -460,7 +462,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   };
 
   const isDexter = isDexterUser(user?.email);
-  const canDeletePlayer = isPrimaryTeamAdmin(user?.email, team, isDexter);
+  // Mirrors the server: the head coach, a league admin, or anyone managing the demo sandbox.
+  const canDeletePlayer = isPrimaryTeamAdmin(user?.email, team, isDexter) || isLeagueAdmin || (isDemoLeague && isTeamOrLeagueAdmin);
 
   // Handler: Delete Player
   const handleDeletePlayer = async (playerId: string, playerName: string) => {
@@ -475,6 +478,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         if (!sandbox) throw new Error("The demo is not loaded.");
         sandbox.deleteSandboxPlayer(playerId);
         setPlayers((prev) => prev.filter((p) => p.id !== playerId));
+        if (editingPlayer?.id === playerId) setEditingPlayer(null);
         if (selectedPlayerForStats?.id === playerId) {
           setSelectedPlayerForStats(null);
         }
@@ -482,6 +486,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       }
       await createSecureRecord("delete_player", { playerId });
       setPlayers((prev) => prev.filter((p) => p.id !== playerId));
+      if (editingPlayer?.id === playerId) setEditingPlayer(null);
       if (selectedPlayerForStats?.id === playerId) {
         setSelectedPlayerForStats(null);
       }
@@ -1075,6 +1080,23 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div data-tour="team-edit-player-remove" className="rounded-xl border border-white/10 bg-black/40 p-3 text-[11px] text-neutral-400 space-y-2">
+                {canDeletePlayer ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePlayer(editingPlayer.id, editingPlayer.playerName)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/10"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Remove from roster
+                  </button>
+                ) : null}
+                <p>
+                  {canDeletePlayer
+                    ? "Removing a player deletes them from this team. Games they already played keep their recorded stats."
+                    : "Only the head coach or a league admin can remove players. Ask them if this player has left the team."}
+                </p>
               </div>
 
               <div data-tour="team-edit-player-save" className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">

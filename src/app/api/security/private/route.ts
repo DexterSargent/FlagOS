@@ -1,4 +1,5 @@
 import { DecodedIdToken } from "firebase-admin/auth";
+import { MAX_ROSTER_HARD_CAP } from "@/lib/rosterLimits";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
@@ -440,18 +441,18 @@ async function getTeamPrivate(teamId: string, token: DecodedIdToken) {
   const [players, legacyPlayers] = await Promise.all([
     adminDb.collection("player_private")
     .where("teamId", "==", teamId)
-    .limit(31)
+    .limit(MAX_ROSTER_HARD_CAP + 1)
     .get(),
     adminDb.collection("players")
       .where("teamId", "==", teamId)
-      .limit(31)
+      .limit(MAX_ROSTER_HARD_CAP + 1)
       .get(),
   ]);
   const playerPrivate = new Map(
     [...players.docs, ...legacyPlayers.docs]
       .map((snapshot) => [snapshot.id, snapshot.data()] as const),
   );
-  if (playerPrivate.size > 30) fail("The team roster exceeds the supported limit.", 409);
+  if (playerPrivate.size > MAX_ROSTER_HARD_CAP) fail("The team roster exceeds the supported limit.", 409);
   const storedAdminEmails = privateData.adminEmails || publicData.adminEmails || [];
   const adminEmails: string[] = [...new Set<string>(Array.isArray(storedAdminEmails) ? storedAdminEmails : [])];
   const adminAccountIds: Record<string, string> = {};

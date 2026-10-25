@@ -9,6 +9,10 @@ import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
 import { DEMO_TEAM_IDS, isDemoLeaguePagePath, isDemoMatchId, isDemoTeamId } from "@/lib/demoSandboxRuntime";
 import ThemeToggle from "@/components/ThemeToggle";
+import { DEMO_NOTICE_TEXT } from "@/components/DemoNoticeStrip";
+
+// Kansas City has sample plays, so demo coaches and players start there.
+const DEMO_DEFAULT_TEAM_ID = "team_kc";
 
 export default function RoleSwitcherContent() {
   const pathname = usePathname();
@@ -107,8 +111,9 @@ export default function RoleSwitcherContent() {
 
   const handleSelectRole = (newRole: UserRole, teamId?: string, targetPlayerId?: string) => {
     const fallbackTeams = teams.length > 0 ? teams : getSandboxTeams().map((t) => ({ id: t.id, name: t.name }));
+    const defaultFallbackTeam = fallbackTeams.find((t) => t.id === DEMO_DEFAULT_TEAM_ID)?.id || fallbackTeams[0]?.id;
     if (newRole === "team_admin") {
-      const selectedTeam = teamId || managedTeamId || fallbackTeams[0]?.id || "team_bears";
+      const selectedTeam = teamId || managedTeamId || defaultFallbackTeam || "team_bears";
       setDevRole("team_admin", selectedTeam);
     } else if (newRole === "player") {
       const fallbackPlayers =
@@ -120,7 +125,7 @@ export default function RoleSwitcherContent() {
               playerName: p.playerName || "Unnamed Athlete",
               number: p.number || "00",
             }));
-      let selectedTeam = teamId || managedTeamId || fallbackTeams[0]?.id || "team_bears";
+      let selectedTeam = teamId || managedTeamId || defaultFallbackTeam || "team_bears";
       let teamPlayers = fallbackPlayers.filter((p) => p.teamId === selectedTeam);
       let chosenPlayer = targetPlayerId || (teamPlayers[0] ? teamPlayers[0].id : fallbackPlayers[0]?.id);
       if (!teamPlayers[0] && fallbackPlayers[0]) {
@@ -163,9 +168,12 @@ export default function RoleSwitcherContent() {
     }
   };
 
-  const currentTeamName = teams.find((t) => t.id === managedTeamId)?.name || (teams[0]?.name ?? "Assigned Team");
+  const defaultTeamId = teams.find((t) => t.id === DEMO_DEFAULT_TEAM_ID)?.id || teams[0]?.id;
+  const activeTeamId = managedTeamId || defaultTeamId;
+  const currentTeamName = teams.find((t) => t.id === activeTeamId)?.name || "Assigned Team";
   const currentPlayer = players.find((p) => p.id === playerId);
-  const playersForActiveTeam = players.filter((p) => p.teamId === (managedTeamId || teams[0]?.id));
+  const playersForActiveTeam = players.filter((p) => p.teamId === activeTeamId);
+  const activeRole: UserRole = role === "player" || role === "team_admin" || role === "league_admin" ? role : "user";
 
   if (isCollapsed) {
     return (
@@ -186,7 +194,8 @@ export default function RoleSwitcherContent() {
           className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-neutral-900/95 border border-cyan-500/40 text-white shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.35)] backdrop-blur-md hover:border-cyan-400 transition-all text-xs font-bold"
         >
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-          <span className="text-[10px] uppercase font-mono tracking-widest text-cyan-300">Active Role:</span>
+          <span className="text-[10px] uppercase font-mono tracking-widest text-amber-300">Demo</span>
+          <span className="hidden sm:inline text-[10px] uppercase font-mono tracking-widest text-cyan-300">Viewing as:</span>
           <span>
             {role === "player" || isPlayer
               ? `Player (${currentPlayer?.playerName || "Athlete"})`
@@ -197,6 +206,7 @@ export default function RoleSwitcherContent() {
               : "Spectator"}
           </span>
           <span className="text-neutral-400 text-[10px] uppercase font-mono">(Switch)</span>
+          <span className="sr-only">{DEMO_NOTICE_TEXT}</span>
         </button>
       </aside>
     );
@@ -215,6 +225,7 @@ export default function RoleSwitcherContent() {
             <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400 animate-pulse" />
             <span className="hidden sm:inline tracking-wide">ROLE SWITCHER</span>
           </div>
+          <span data-testid="demo-bar-notice" className="hidden md:inline text-[10px] font-bold text-amber-300 whitespace-nowrap">{DEMO_NOTICE_TEXT}</span>
           {isDemoLeague && (
             <Link
               href="/"
@@ -222,16 +233,27 @@ export default function RoleSwitcherContent() {
               className="flex items-center gap-1 px-2 min-h-10 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-[10px] sm:text-[11px] transition-colors shrink-0"
             >
               <ArrowLeft className="w-3 h-3" />
-              <span>Exit Demo</span>
+              <span className="sm:hidden">Exit</span>
+              <span className="hidden sm:inline">Exit Demo</span>
             </Link>
           )}
-          <span className="hidden 2xl:inline text-[11px] text-neutral-400 font-medium truncate">
-            Switch League Context • Session Isolated
-          </span>
         </div>
 
+        {/* Phone: role dropdown keeps the bar to one row */}
+        <select
+          aria-label="Demo role"
+          value={activeRole}
+          onChange={(e) => handleSelectRole(e.target.value as UserRole)}
+          className="sm:hidden order-2 min-w-0 flex-1 rounded-lg border border-cyan-500/30 bg-cyan-950/40 px-1.5 text-[11px] font-bold text-white outline-none"
+        >
+          <option value="league_admin" className="bg-neutral-900 text-white">League Admin</option>
+          <option value="team_admin" className="bg-neutral-900 text-white">Coach (Team Admin)</option>
+          <option value="player" className="bg-neutral-900 text-white">Player</option>
+          <option value="user" className="bg-neutral-900 text-white">Spectator</option>
+        </select>
+
         {/* Center: Toggle Buttons */}
-        <div className="order-3 sm:order-2 basis-full sm:basis-auto grid grid-cols-4 flex-1 items-center gap-0 bg-slate-100 dark:bg-black/70 p-0.5 rounded-lg sm:rounded-xl border border-slate-200 dark:border-white/10 shadow-inner min-w-0 max-sm:[&_button]:flex-col max-sm:[&_button]:gap-0.5 max-sm:[&_button]:min-h-11">
+        <div className="hidden sm:grid sm:order-2 grid-cols-4 flex-1 items-center gap-0 bg-slate-100 dark:bg-black/70 p-0.5 rounded-xl border border-slate-200 dark:border-white/10 shadow-inner min-w-0">
           {/* League Admin Toggle */}
           <button
             onClick={() => handleSelectRole("league_admin")}
@@ -251,7 +273,7 @@ export default function RoleSwitcherContent() {
           {/* Team Admin Toggle */}
           <button
             onClick={() => handleSelectRole("team_admin")}
-            title="Team manager view: franchise portal, exhibition games & async stat tracking"
+            title="Team manager view: franchise portal, exhibition games & stat keeping"
             aria-label="Team Admin"
             aria-pressed={role === "team_admin"}
             className={`flex min-w-0 items-center justify-center gap-0.5 sm:gap-1 px-0.5 sm:px-2 lg:px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-[10px] sm:text-xs ${
@@ -298,14 +320,14 @@ export default function RoleSwitcherContent() {
         </div>
 
         {/* Right: Team / Player Pickers, Settings, Reset Demo & Collapse */}
-        <div className="order-2 sm:order-3 flex items-center gap-1 sm:gap-1.5 shrink min-w-0 [&>button]:min-w-9">
+        <div className="order-3 flex items-center gap-1 sm:gap-1.5 shrink min-w-0 [&>button]:min-w-9">
           {/* Team Admin Team Selector */}
           {role === "team_admin" && teams.length > 0 && (
             <div className="flex items-center gap-0.5 sm:gap-1 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-500/30 px-0.5 sm:px-2 py-0.5 rounded-lg shrink min-w-0 overflow-hidden">
               <span className="hidden lg:inline text-[10px] uppercase font-bold text-cyan-800 dark:text-cyan-300">Franchise:</span>
               <select
                 aria-label="Demo team"
-                value={managedTeamId || teams[0]?.id || ""}
+                value={activeTeamId || ""}
                 onChange={(e) => handleTeamChange(e.target.value)}
                 className="bg-transparent text-slate-900 dark:text-white font-bold outline-none text-[10px] sm:text-xs cursor-pointer w-20 sm:w-24 lg:w-auto max-w-[100px] lg:max-w-[150px] min-w-0 truncate"
               >
@@ -321,12 +343,32 @@ export default function RoleSwitcherContent() {
           {/* Player Selectors (Team + Player) */}
           {role === "player" && (
             <div className="flex items-center gap-0.5 sm:gap-1.5 shrink min-w-0">
+              {players.length > 0 && (
+                <select
+                  aria-label="Demo athlete (all teams)"
+                  value={playerId || playersForActiveTeam[0]?.id || ""}
+                  onChange={(e) => handlePlayerChange(e.target.value)}
+                  className="sm:hidden w-36 min-w-0 rounded-lg border border-emerald-500/30 bg-emerald-950/40 px-1.5 text-[11px] font-bold text-white outline-none"
+                >
+                  {teams.map((t) => {
+                    const teamPlayers = players.filter((p) => p.teamId === t.id);
+                    if (teamPlayers.length === 0) return null;
+                    return (
+                      <optgroup key={t.id} label={t.name} className="bg-neutral-900 text-white">
+                        {teamPlayers.map((p) => (
+                          <option key={p.id} value={p.id} className="bg-neutral-900 text-white">#{p.number} {p.playerName}</option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+              )}
               {teams.length > 0 && (
-                  <div className="flex items-center gap-0.5 sm:gap-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-0.5 sm:px-2 py-0.5 rounded-lg shrink min-w-0 overflow-hidden">
+                  <div className="hidden sm:flex items-center gap-0.5 sm:gap-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-0.5 sm:px-2 py-0.5 rounded-lg shrink min-w-0 overflow-hidden">
                     <span className="hidden lg:inline text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300">Team:</span>
                   <select
                     aria-label="Demo player team"
-                    value={managedTeamId || teams[0]?.id || ""}
+                    value={activeTeamId || ""}
                     onChange={(e) => handleTeamChange(e.target.value)}
                     className="bg-transparent text-slate-900 dark:text-white font-bold outline-none text-[10px] sm:text-xs cursor-pointer w-20 sm:w-24 lg:w-auto max-w-[90px] lg:max-w-[130px] min-w-0 truncate"
                   >
@@ -340,7 +382,7 @@ export default function RoleSwitcherContent() {
               )}
 
               {playersForActiveTeam.length > 0 ? (
-                <div className="flex items-center gap-0.5 sm:gap-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-0.5 sm:px-2 py-0.5 rounded-lg shrink min-w-0 overflow-hidden">
+                <div className="hidden sm:flex items-center gap-0.5 sm:gap-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 px-0.5 sm:px-2 py-0.5 rounded-lg shrink min-w-0 overflow-hidden">
                   <span className="hidden lg:inline text-[10px] uppercase font-bold text-emerald-800 dark:text-emerald-300">Athlete:</span>
                   <select
                     aria-label="Demo athlete"
@@ -379,11 +421,12 @@ export default function RoleSwitcherContent() {
           {/* Minimize Button */}
           <button
             onClick={() => setIsCollapsed(true)}
-            title="Minimize role switcher"
+            title="Hide the demo bar (a small button stays in the corner)"
             aria-label="Minimize role switcher"
-            className="p-1 rounded-md text-neutral-500 hover:text-white hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+            className="flex items-center gap-1 px-1.5 rounded-md border border-white/20 text-[10px] sm:text-[11px] font-bold text-neutral-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-3.5 h-3.5" />
+            <span>Hide</span>
           </button>
         </div>
       </div>

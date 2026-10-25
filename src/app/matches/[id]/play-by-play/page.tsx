@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/authContext";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 
 const AdminView = dynamic(() => import("./AdminView"));
@@ -12,6 +12,29 @@ import { doc, getDoc } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxMatches, getSandboxMatch, subscribeDemoSandbox, isDemoMatch } from "@/lib/demoSandbox";
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
+import { canRecordMatch } from "@/lib/scorerAccess";
+import { useScorerGrant } from "@/lib/scorerAccessClient";
+import Link from "next/link";
+import DemoNoticeStrip from "@/components/DemoNoticeStrip";
+
+/** Banners above the full-height stat keeper/viewer; their height is subtracted from the screen via --pbp-banner-height. */
+function TopBanners({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    const el = ref.current;
+    if (!el) return;
+    const update = () => root.style.setProperty("--pbp-banner-height", `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    update();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    observer?.observe(el);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty("--pbp-banner-height");
+    };
+  }, []);
+  return <div ref={ref}>{children}</div>;
+}
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
   const { isLeagueAdmin, canManageTeam, loading } = useAuth();
@@ -31,6 +54,9 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   });
 
   const isDemo = isDemoMatchId(matchId) && (isDemoLeague || isEmbedded || isDemoMatch(matchId, activeLeagueId));
+  const [isEmbedFrame] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("embed") === "true");
+  const showDemoNotice = isDemo && !isEmbedFrame;
+  const scorer = useScorerGrant(matchId, !isDemo);
 
   useEffect(() => {
     const loadMatch = async () => {
@@ -83,7 +109,24 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
     }
   }, [matchData, leagueStatKeepingMode]);
 
-  if (loading || isFetching) {
+  if (scorer.needsSignIn) {
+    const here = typeof window !== "undefined" ? window.location.pathname + window.location.search : `/matches/${matchId}/play-by-play`;
+    return (
+      <div className="min-h-screen bg-[var(--background)] text-[var(--text-primary)] flex items-center justify-center p-6">
+        <div className="max-w-md w-full rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center space-y-3">
+          <h1 className="text-xl font-black">You&apos;ve been invited to keep score</h1>
+          <p className="text-sm text-[var(--text-muted)]">
+            Sign in or create a free account to record this game. The link only works for one person and expires automatically.
+          </p>
+          <Link href={`/login?redirect=${encodeURIComponent(here)}`} className="inline-block rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-cyan-700">
+            Sign in to keep score
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading || isFetching || scorer.loading) {
     return (
       <div className="h-screen bg-black text-white flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
@@ -93,17 +136,24 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
 
   // Embedded demos change presentation/data sources, not the role required to manage a game.
   // Games managed by a league-free team are administered by that team's coaches.
-  const isTeamManagedGame = !isDemo && !!matchData?.managingTeamId &&
-    (!matchData?.leagueId || matchData?.isStandalone === true || matchData?.isIndependent === true);
-  const canAdministerMatch = isTeamManagedGame
-    ? !!canManageTeam?.(matchData.managingTeamId)
-    : isLeagueAdmin || (!!matchData?.isIndependent && !!canManageTeam?.(matchData.managingTeamId));
+  // Temporary scorers invited by a league admin record only the game their link was for.
+  const canAdministerMatch = canRecordMatch(matchData, { isDemo, isLeagueAdmin, canManageTeam, hasScorerGrant: scorer.hasGrant });
 
   if (canAdministerMatch && modeInitialized && matchData?.status !== "completed") {
     return (
       <div className="relative">
+        {(showDemoNotice || (scorer.hasGrant && !isLeagueAdmin)) && (
+          <TopBanners>
+            {showDemoNotice && <DemoNoticeStrip />}
+            {scorer.hasGrant && !isLeagueAdmin && (
+              <div data-tour="scorer-access-banner" className="bg-emerald-600 px-3 py-1.5 text-center text-[11px] font-bold text-white">
+                Temporary scorer access for this game · ends {new Date(scorer.expiresAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}
+              </div>
+            )}
+          </TopBanners>
+        )}
         {activeMode === "async" ? (
-          <AsyncPlayByPlayManager matchId={matchId} backUrl={`/matches/${matchId}`} />
+          <AsyncPlayByPlayManager matchId={matchId} backUrl={`/matches/${matchId}`} hasScorerGrant={scorer.hasGrant} />
         ) : (
           <AdminView params={params} />
         )}
@@ -111,5 +161,19 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
     );
   }
 
-  return <ViewerView params={params} />;
+  return (
+    <>
+      {(showDemoNotice || scorer.redeemError) && (
+        <TopBanners>
+          {showDemoNotice && <DemoNoticeStrip />}
+          {scorer.redeemError && (
+            <div role="alert" className="bg-amber-500 px-3 py-2 text-center text-xs font-bold text-black">
+              {scorer.redeemError}
+            </div>
+          )}
+        </TopBanners>
+      )}
+      <ViewerView params={params} />
+    </>
+  );
 }

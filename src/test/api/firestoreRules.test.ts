@@ -262,4 +262,41 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
     expect((await write(`teams/${teamId}`, { ...teamDoc, isArchived: false, seasonStatus: "active" }, auth(head))).status).toBe(200);
     expect((await write(`matches/${matchId}`, { ...fixture, homeScore: 21 }, auth(head))).status).toBe(200);
   });
+
+  it("keeps free-agent interest submissions readable only by the platform admin", async () => {
+    await write("free_agent_interest/fa1", { name: "Sam", email: "sam@example.com", area: "Toronto" });
+    const listAs = (bearer?: string, max = 50) => fetch(`${base}:runQuery`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(bearer ? { authorization: "Bearer " + bearer } : {}) },
+      body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "free_agent_interest" }], limit: max } }),
+    });
+    expect((await read("free_agent_interest/fa1")).status).toBe(403);
+    expect((await read("free_agent_interest/fa1", auth(coach))).status).toBe(403);
+    expect((await listAs(auth(coach))).status).toBe(403);
+    expect((await write("free_agent_interest/fa2", { name: "Spam", email: "x@example.com", area: "X" }, auth(coach))).status).toBe(403);
+    expect((await read("free_agent_interest/fa1", auth("dextersargent@gmail.com"))).status).toBe(200);
+    expect((await listAs(auth("dextersargent@gmail.com"))).status).toBe(200);
+    expect((await listAs(auth("dextersargent@gmail.com"), 500)).status).toBe(403);
+  });
+
+  it("lets a temporary scorer record only their game, only until the grant expires", async () => {
+    const scorer = "volunteer@example.com";
+    const leagueMatch = { ...fixture, leagueId: "rules-scorer-league" };
+    await write("leagues/rules-scorer-league", { visibility: "public", adminEmails: [head], isArchived: false, seasonStatus: "active" });
+    await write(`matches/${matchId}`, leagueMatch);
+    await write("matches/other-match", { ...leagueMatch });
+    const grantPath = `scorer_grants/${matchId}__rules-test-user`;
+
+    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 7 }, auth(scorer))).status).toBe(403);
+
+    await write(grantPath, { uid: "rules-test-user", matchId, expiresAt: new Date(Date.now() + 3_600_000) });
+    expect((await read(grantPath, auth(scorer))).status).toBe(200);
+    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 7 }, auth(scorer))).status).toBe(200);
+    expect((await write("matches/other-match", { ...leagueMatch, homeScore: 7 }, auth(scorer))).status).toBe(403);
+    expect((await write(grantPath, { uid: "rules-test-user", matchId, expiresAt: new Date(Date.now() + 9e9) }, auth(scorer))).status).toBe(403);
+    expect((await read("scorer_invites/anything", auth(scorer))).status).toBe(403);
+
+    await write(grantPath, { uid: "rules-test-user", matchId, expiresAt: new Date(Date.now() - 60_000) });
+    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth(scorer))).status).toBe(403);
+  });
 });

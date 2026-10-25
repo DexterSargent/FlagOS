@@ -31,9 +31,6 @@ import {
   UserPlus,
   Lock,
   Globe,
-  Copy,
-  Check,
-  MapPin,
   Menu,
   X,
   RotateCcw,
@@ -44,7 +41,7 @@ import {
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
-import { FlagOSLogo, FLAGOS_LOGO } from "@/components/FlagOSLogo";
+import { FlagOSLogo } from "@/components/FlagOSLogo";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountMenu from "@/components/AccountMenu";
 import SignedInHome from "@/components/home/SignedInHome";
@@ -52,7 +49,7 @@ import { useTheme } from "@/lib/themeContext";
 
 export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
-  const { activeLeagueId, userLeagues, settings } = useLeague();
+  const { activeLeagueId, settings } = useLeague();
   const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin, loading: authLoading } = useAuth();
   usePageGuide(user ? null : LANDING_WALKTHROUGH);
   const isMe =
@@ -150,72 +147,6 @@ export default function FlagOSPlatformLandingPage() {
         };
     }
   };
-
-  // League Finder search & filtering
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFormat, setSelectedFormat] = useState<"all" | "5v5" | "7v7">("all");
-  const [copiedLeagueId, setCopiedLeagueId] = useState<string | null>(null);
-
-  // Interactive slider on landing page
-  const [teamSlider, setTeamSlider] = useState(8);
-  const baseFee = 40;
-  const perTeamFee = 15;
-  const calculatedTotal = baseFee + teamSlider * perTeamFee;
-
-  // Directory catalog of leagues
-  // STRICT REQUIREMENT: Only leagues with visibility !== "private" appear in the public league directory!
-  const directoryCatalog = [
-    {
-      id: activeLeagueId || "default",
-      name: settings?.leagueName || "FlagOS Demo League",
-      shortcode: settings?.shortcode || "FLAG",
-      seasonTitle: settings?.seasonTitle || "2026 Season",
-      location: settings?.defaultLocation || "Turf Field 1",
-      rulesFormat: "IFAF 5v5 Non-Contact",
-      teamCount: 8,
-      primaryColor: settings?.primaryColor || "#3ca505",
-      accentColor: settings?.accentColor || "#3b82f6",
-      tagline: settings?.tagline || "The Flag Football Operating System",
-      logoUrl: settings?.logoUrl || FLAGOS_LOGO,
-      visibility: settings?.visibility || "public",
-    },
-    ...userLeagues
-      .filter((l) => l.id !== (activeLeagueId || "default") && l.id !== "league_private_live")
-      .map((l) => ({
-        id: l.id,
-        name: l.name,
-        shortcode: l.shortcode || "MFL",
-        seasonTitle: l.seasonTitle || "2026 Championship",
-        location: "Metropolitan Sports Complex",
-        rulesFormat: "IFAF 5v5 Non-Contact",
-        teamCount: 8,
-        primaryColor: l.primaryColor || "#3ca505",
-        accentColor: l.accentColor || "#3b82f6",
-        tagline: "Official FlagOS Circuit",
-        logoUrl: l.logoUrl || FLAGOS_LOGO,
-        visibility: l.visibility || "public",
-      })),
-  ];
-
-  // STRICT FILTER: Private leagues are excluded from public directory
-  const publicDirectoryLeagues = directoryCatalog.filter(
-    (l) => l.visibility !== "private"
-  );
-
-  const filteredDirectoryLeagues = publicDirectoryLeagues.filter((l) => {
-    const matchesSearch =
-      l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.shortcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.rulesFormat.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesFormat =
-      selectedFormat === "all" ||
-      (selectedFormat === "5v5" && l.rulesFormat.includes("5v5")) ||
-      (selectedFormat === "7v7" && l.rulesFormat.includes("7v7"));
-
-    return matchesSearch && matchesFormat;
-  });
 
   if (user || (authLoading && expectSignedIn)) {
     return <SignedInHome />;
@@ -868,264 +799,39 @@ export default function FlagOSPlatformLandingPage() {
           </div>
         </section>
 
-        {/* FIND A LEAGUE / DIRECTORY SECTION (Requires User Authentication) */}
-        {user && (
-          <section id="league-directory" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 border-t border-white/10 space-y-8 sm:space-y-10 scroll-mt-24">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="space-y-3 max-w-2xl">
-                <div data-tour="landing-directory-search" className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
-                    <Globe className="w-3.5 h-3.5" />
-                    Public League Directory
-                  </span>
-                  <span className="text-[11px] font-mono text-neutral-500">
-                    ({filteredDirectoryLeagues.length} Public Leagues Listed)
-                  </span>
-                </div>
-                <h2 className="text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
-                  Find &amp; Join a Flag Football League
-                </h2>
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  Search publicly listed leagues across FlagOS. Prospective athletes and coaches can explore schedules, live standings, and open registration.
-                </p>
-                <div className="pt-2">
-                  <Link
-                    href="/leagues"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-md shadow-cyan-500/20"
-                  >
-                    <span>Launch Full Near-Me League Locator Tool</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Private League Notice */}
-              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 max-w-md text-xs space-y-1.5 shrink-0">
-                <div className="flex items-center gap-2 font-bold text-amber-300">
-                  <Lock className="w-4 h-4 shrink-0 text-amber-400" />
-                  <span>Looking for a Private League?</span>
-                </div>
-                <p className="text-neutral-400 text-[11px] leading-relaxed">
-                  Private leagues are hidden from this public directory. They can only be accessed with a direct URL link provided by your commissioner.
-                </p>
-              </div>
-            </div>
-
-            {/* Search & Filter Toolbar */}
-            <div className="p-4 rounded-2xl bg-[#090D16] border border-white/10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-              {/* Search Input */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by league name, shortcode (e.g. FLAG), or city..."
-                  className="w-full bg-black/60 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-400 transition-colors"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs px-1.5 py-0.5 rounded cursor-pointer"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs shrink-0 font-bold">
-                <button
-                  onClick={() => setSelectedFormat("all")}
-                  className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${selectedFormat === "all"
-                    ? "bg-white/15 text-white shadow-sm"
-                    : "text-neutral-400 hover:text-white"
-                    }`}
-                >
-                  All Rulesets
-                </button>
-                <button
-                  onClick={() => setSelectedFormat("5v5")}
-                  className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${selectedFormat === "5v5"
-                    ? "bg-cyan-500 text-black font-black shadow-sm"
-                    : "text-neutral-400 hover:text-white"
-                    }`}
-                >
-                  5v5
-                </button>
-                <button
-                  onClick={() => setSelectedFormat("7v7")}
-                  className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${selectedFormat === "7v7"
-                    ? "bg-amber-400 text-black font-black shadow-sm"
-                    : "text-neutral-400 hover:text-white"
-                    }`}
-                >
-                  7v7
-                </button>
-              </div>
-            </div>
-
-            {/* Directory Grid */}
-            {filteredDirectoryLeagues.length === 0 ? (
-              <div data-tour="landing-directory-results" className="p-12 rounded-3xl bg-[#090D16] border border-white/10 text-center space-y-4">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-neutral-400">
-                  <Search className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-white">No Public Leagues Found</h3>
-                  <p className="text-xs text-neutral-400 max-w-md mx-auto">
-                    No public leagues match &ldquo;{searchQuery}&rdquo;. Note that private leagues do not appear in this directory and require a direct URL link from the commissioner.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedFormat("all");
-                  }}
-                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-bold text-white transition-all cursor-pointer"
-                >
-                  Reset Search Filters
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredDirectoryLeagues.map((league) => (
-                  <div
-                    key={league.id}
-                    className="bg-[#0B0F19] border border-white/10 hover:border-emerald-500/40 rounded-3xl p-6 flex flex-col justify-between transition-all duration-300 hover:shadow-[0_10px_40px_rgba(16,185,129,0.12)] group relative overflow-hidden"
-                  >
-                    {/* Card Header & Status */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black uppercase text-black"
-                            style={{ backgroundColor: league.primaryColor }}
-                          >
-                            {league.shortcode}
-                          </span>
-                          <span className="text-[10px] font-mono font-bold text-neutral-400">
-                            {league.rulesFormat}
-                          </span>
-                        </div>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-bold text-emerald-400">
-                          <Globe className="w-3 h-3" />
-                          <span>Public Directory</span>
-                        </span>
-                      </div>
-
-                      {/* League Branding & Title */}
-                      <div className="flex items-start gap-3.5">
-                        <div
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center p-1 shrink-0 bg-transparent overflow-hidden"
-                        >
-                          {league.logoUrl ? (
-                            <img
-                              src={league.logoUrl}
-                              alt={league.name}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                          ) : (
-                            <Shield className="w-6 h-6 text-white" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-base font-black uppercase tracking-wide text-white group-hover:text-emerald-300 transition-colors leading-snug break-words">
-                            {league.name}
-                          </h3>
-                          <p className="text-[11px] text-neutral-400 mt-0.5">
-                            {league.tagline}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Metadata Specs */}
-                      <div className="p-3 rounded-2xl bg-black/50 border border-white/5 space-y-2 text-[11px]">
-                        <div className="flex items-start justify-between gap-3 text-neutral-300">
-                          <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
-                            <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                            <span>Season</span>
-                          </span>
-                          <span className="font-bold text-white max-w-[60%] whitespace-normal text-right break-words">
-                            {league.seasonTitle}
-                          </span>
-                        </div>
-                        <div className="flex items-start justify-between gap-3 text-neutral-300">
-                          <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
-                            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span>Venue</span>
-                          </span>
-                          <span className="font-mono text-[10px] text-neutral-300 max-w-[60%] whitespace-normal text-right break-words">
-                            {league.location}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-neutral-300">
-                          <span className="text-neutral-500 flex items-center gap-1.5 font-medium">
-                            <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                            <span>Division Capacity</span>
-                          </span>
-                          <span className="font-mono text-[10px] text-amber-300 font-bold">
-                            {league.teamCount} Teams
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions Bar */}
-                    <div className="pt-4 border-t border-white/10 mt-4 space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <Link
-                          href={`/league/${league.id}`}
-                          className="py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 text-center shadow-md shadow-emerald-500/20 active:scale-[0.98]"
-                        >
-                          <span>View Portal</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-
-                        <Link
-                          href="/join"
-                          className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-200 hover:text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center justify-center gap-1.5 text-center active:scale-[0.98]"
-                        >
-                          <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Register</span>
-                        </Link>
-                      </div>
-
-                      {/* Copy Direct URL */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (typeof window !== "undefined") {
-                            const url = `${window.location.origin}/league/${league.id}`;
-                            navigator.clipboard?.writeText(url);
-                            setCopiedLeagueId(league.id);
-                            setTimeout(() => setCopiedLeagueId(null), 2000);
-                          }
-                        }}
-                        className="w-full py-1.5 px-2.5 rounded-lg text-[10px] font-mono text-neutral-400 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        {copiedLeagueId === league.id ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span className="text-emerald-400 font-bold">Direct URL Copied to Clipboard!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span>Copy Direct Access Link</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+        {/* FIND A LEAGUE / WATCH A GAME */}
+        <section id="find-a-league" data-tour="landing-find" className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 border-t border-white/10 space-y-6 scroll-mt-24">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl md:text-4xl font-black uppercase text-white tracking-tight">Here to Play or Watch?</h2>
+            <p className="text-neutral-400 text-sm max-w-2xl mx-auto">
+              Leagues choose whether to appear publicly. If your league is private, ask your coach or organizer for the link.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Link href="/leagues" className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-cyan-500/40 transition-colors">
+              <Search className="w-5 h-5 text-cyan-400" />
+              <div className="mt-3 font-black uppercase text-white">Find a League</div>
+              <p className="mt-1 text-xs text-neutral-400">Browse leagues that list themselves publicly, with fields, game days and organizer contact.</p>
+            </Link>
+            <Link href="/free-agents" className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-emerald-500/40 transition-colors">
+              <UserPlus className="w-5 h-5 text-emerald-400" />
+              <div className="mt-3 font-black uppercase text-white">Find a Team</div>
+              <p className="mt-1 text-xs text-neutral-400">No team yet? See leagues accepting free agents, or leave your details so an organizer can reach you.</p>
+            </Link>
+            <Link
+              href="/matches/match_w16_11?demo=true"
+              onClick={() => {
+                sessionStorage.setItem("flagos_demo_active", "true");
+                localStorage.setItem("flagos_demo_active", "true");
+              }}
+              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-amber-500/40 transition-colors"
+            >
+              <PlayCircle className="w-5 h-5 text-amber-400" />
+              <div className="mt-3 font-black uppercase text-white">Watch a Game</div>
+              <p className="mt-1 text-xs text-neutral-400">See what fans see during a live game, using a sample game from the demo league.</p>
+            </Link>
+          </div>
+        </section>
       </div>
 
       <footer data-tour="public-footer" className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400">
@@ -1155,6 +861,7 @@ export default function FlagOSPlatformLandingPage() {
                 </Link>
               </li>
               <li><Link href="/leagues" className="hover:text-cyan-400 transition-colors">League Directory</Link></li>
+              <li><Link href="/free-agents" className="hover:text-cyan-400 transition-colors">Find a Team</Link></li>
             </ul>
           </div>
           <div className="space-y-3">

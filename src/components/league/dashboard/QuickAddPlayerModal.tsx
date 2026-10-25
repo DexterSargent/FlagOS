@@ -78,7 +78,7 @@ export function QuickAddPlayerModal({
 
       const playerId = await createSecureRecord("player", {
         playerName: newPlayerName.trim(),
-        playerNumber: num.toString(),
+        number: num.toString(),
         teamId: managedTeam.id,
         leagueId: activeLeagueId,
         positions: newPlayerPositions.length > 0 ? newPlayerPositions : ["ATH"],
@@ -90,7 +90,7 @@ export function QuickAddPlayerModal({
       onPlayerAdded({
         id: playerId,
         playerName: newPlayerName.trim(),
-        playerNumber: num.toString(),
+        number: num.toString(),
         teamId: managedTeam.id,
         positions: newPlayerPositions.length > 0 ? newPlayerPositions : ["ATH"],
         isQB: newPlayerPositions.includes("QB"),

@@ -1,5 +1,6 @@
 "use client";
 
+import VenueDirections from "@/components/VenueDirections";
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
@@ -703,7 +704,11 @@ export default function Calendar() {
               <button
                 onClick={() => {
                   setEditingMatch({
-                    week: `Week ${matches.length + 1}`,
+                    week:
+                      selectedWeekFilter ||
+                      (regularSeasonWeeks.length > 0
+                        ? `Week ${parseInt(regularSeasonWeeks[regularSeasonWeeks.length - 1].replace(/\D/g, "") || "0", 10) + 1}`
+                        : "Week 1"),
                     date: new Date().toISOString().split("T")[0],
                     time: "10:00 AM",
                     location: settings.defaultLocation || "Turf Field 1",
@@ -1035,6 +1040,7 @@ export default function Calendar() {
                             <div className="flex items-center gap-2">
                               <MapPin className="w-4 h-4 text-[var(--text-muted)]" />
                               {match.location}
+                              <VenueDirections location={match.location} inLink />
                             </div>
                           </div>
                         </Link>
@@ -1068,6 +1074,7 @@ export default function Calendar() {
                                     setIsModalOpen(true);
                                   }}
                                   title="Edit Event"
+                                  data-guide="manage-event"
                                   className="p-2 bg-neutral-900/90 border border-white/10 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
                                 >
                                   <Edit2 className="w-4 h-4" />
@@ -1080,6 +1087,7 @@ export default function Calendar() {
                                     handleDeleteSingleMatch(match.id);
                                   }}
                                   title="Delete Event"
+                                  data-guide="manage-event"
                                   className="p-2 bg-neutral-900/90 border border-rose-500/20 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4" />

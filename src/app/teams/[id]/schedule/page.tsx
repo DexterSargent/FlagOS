@@ -1,4 +1,6 @@
 "use client";
+import { canRecordMatch } from "@/lib/scorerAccess";
+import VenueDirections from "@/components/VenueDirections";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
 
@@ -443,6 +445,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                   const statKeeperUrl = isAsyncMatch
                     ? `/teams/${teamId}/matches/${m.id}/stat-keeper`
                     : `/matches/${m.id}/play-by-play`;
+                  // League games are scored by the league admin or a scorer they invite, not the teams playing.
+                  const canRecordThis = !isTeamLeagueArchived && (isIndependentTeam ||
+                    canRecordMatch(m, { isDemo: isDemoLeague, isLeagueAdmin, canManageTeam }));
 
                   return (
                     <div
@@ -515,6 +520,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             <div className="flex items-center gap-2">
                               <MapPin className="w-3.5 h-3.5 text-neutral-500" />
                               <span className="truncate">{m.location}</span>
+                              <VenueDirections location={m.location} />
                             </div>
                           )}
                         </div>
@@ -522,15 +528,16 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
                       <div className="mt-5 pt-4 border-t border-white/5">
                         <Link
-                          href={canScheduleMatches || isIndependentTeam ? statKeeperUrl : `/matches/${m.id}/play-by-play${isDemoLeague ? "?demo=true" : ""}`}
+                          href={canRecordThis ? statKeeperUrl : `/matches/${m.id}/play-by-play${isDemoLeague ? "?demo=true" : ""}`}
+                          title={canRecordThis ? undefined : "Only the league admin or a scorer they invite can record this game."}
                           className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm border ${
-                            canScheduleMatches && isAsyncMatch
+                            canRecordThis && isAsyncMatch
                               ? "bg-emerald-500/10 hover:bg-emerald-500 text-emerald-300 hover:text-black border-emerald-500/30 hover:border-emerald-500"
                               : "bg-white/5 hover:bg-white/10 text-slate-700 dark:text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
                           }`}
                         >
                           <PlayCircle className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap">{!canScheduleMatches ? "Watch Game" : isAsyncMatch ? <>Record Stats</> : "Track Game"}</span>
+                          <span className="whitespace-nowrap">{!canRecordThis ? "Watch Game" : isAsyncMatch ? <>Record Stats</> : "Track Game"}</span>
                         </Link>
                       </div>
                     </div>

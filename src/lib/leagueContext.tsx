@@ -28,6 +28,8 @@ import {
   type TeamRecord,
 } from "./teamRecord";
 
+import type { LeaguePlayerInfo, LeagueVenueInfo } from "./leaguePublicProfile";
+
 export interface LeagueRules {
   playersOnField: number;          // e.g. 4, 5, 6, 7, 8 (default: 5)
   periodType: "halves" | "quarters"; // default: "halves"
@@ -37,7 +39,7 @@ export interface LeagueRules {
   timeoutDurationSeconds: number;  // default: 60
   timeoutsResetPerPeriod: boolean; // default: true
   minRosterSize: number;           // default: 5
-  maxRosterSize: number;           // hard cap: 30
+  maxRosterSize: number;           // hard cap: 5 × playersOnField
   downsPerSeries: number;          // default: 4
   rushLineDistance: number;        // default: 7 (yards)
   playClockSeconds: number;        // default: 25 (seconds)
@@ -55,7 +57,7 @@ export const DEFAULT_LEAGUE_RULES: LeagueRules = {
   timeoutDurationSeconds: 60,
   timeoutsResetPerPeriod: true,
   minRosterSize: 5,
-  maxRosterSize: 30,
+  maxRosterSize: 25,
   downsPerSeries: 4,
   rushLineDistance: 7,
   playClockSeconds: 25,
@@ -73,7 +75,7 @@ export const IFAF_5V5_RULES: LeagueRules = {
   timeoutDurationSeconds: 60,
   timeoutsResetPerPeriod: true,
   minRosterSize: 5,
-  maxRosterSize: 30,
+  maxRosterSize: 25,
   downsPerSeries: 4,
   rushLineDistance: 7,
   playClockSeconds: 25,
@@ -114,6 +116,12 @@ export interface LeagueSettings {
   registrationFeePerTeam?: number;
   individualFee?: number;
   amenities?: string[];
+  /** Opt-in: only listed leagues appear in the public directory and free-agent search. */
+  directoryListed?: boolean;
+  /** Organizer contact shown publicly; separate from the private admin contact email. */
+  publicContactEmail?: string;
+  playerInfo?: LeaguePlayerInfo;
+  venues?: LeagueVenueInfo[];
 }
 
 export interface PlayoffFormat {
@@ -205,6 +213,7 @@ const LEAGUE_UPDATE_KEYS: (keyof LeagueSettings)[] = [
   "secondaryColor", "tertiaryColor", "themePreset", "defaultLocation", "rulebookTitle", "rulebookUrl",
   "announcement", "seasonStatus", "isArchived", "archivedAt", "visibility", "playoffFormat",
   "subscription", "contactEmail", "adminEmails", "registrationFeePerTeam", "individualFee", "amenities",
+  "directoryListed", "publicContactEmail", "playerInfo", "venues",
 ];
 
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
@@ -270,10 +279,10 @@ export interface UserLeagueSummary {
 export const DEFAULT_LEAGUE_SUBSCRIPTION: LeagueSubscriptionInfo = {
   plan: "league",
   status: "active",
-  baseMonthlyFee: 49,
-  perTeamMonthlyFee: 5,
-  teamCount: 8,
-  totalMonthlyFee: 89,
+  baseMonthlyFee: 40,
+  perTeamMonthlyFee: 20,
+  teamCount: 32,
+  totalMonthlyFee: 680,
   billingCycle: "monthly",
 };
 
@@ -300,10 +309,10 @@ export const PRIVATE_LIVE_LEAGUE_SETTINGS: LeagueSettings = {
 export const PRIVATE_LIVE_LEAGUE_SUBSCRIPTION: LeagueSubscriptionInfo = {
   plan: "league",
   status: "active",
-  baseMonthlyFee: 49,
-  perTeamMonthlyFee: 5,
+  baseMonthlyFee: 40,
+  perTeamMonthlyFee: 20,
   teamCount: 4,
-  totalMonthlyFee: 69,
+  totalMonthlyFee: 120,
   billingCycle: "monthly",
   adminEmails: ["dextersargent@gmail.com"],
 };
@@ -599,7 +608,7 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
       });
 
       const path = window.location.pathname;
-      const isNonLeaguePage = ["/", "/login", "/pricing", "/my-story", "/profile"].includes(path) || path.startsWith("/admin");
+      const isNonLeaguePage = ["/", "/login", "/pricing", "/my-story", "/profile", "/free-agents"].includes(path) || path.startsWith("/admin");
       if (leagueName && !isNonLeaguePage) {
         document.title = `${leagueName} | ${seasonTitle || "Active Season"}`;
       }

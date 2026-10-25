@@ -4,7 +4,6 @@ import { usePageGuide } from "@/lib/pageGuide";
 import { JOIN_LEAGUE_WALKTHROUGH } from "@/lib/walkthroughs/public";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
@@ -25,12 +24,12 @@ interface Player {
 
 export default function JoinLeague() {
   usePageGuide(JOIN_LEAGUE_WALKTHROUGH);
-  const router = useRouter();
   const { settings, isDemoLeague, activeLeagueId, switchLeague } = useLeague();
   const { isPlayer, playerData, isLeagueAdmin, role, canRegisterAsPlayer, managedTeamId } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
   // Form State
   const [name, setName] = useState("");
@@ -116,7 +115,8 @@ export default function JoinLeague() {
         preferredTeammateNames: selectedFriends.map(f => f.playerName),
         status: "Free Agent",
       });
-      router.push("/teams");
+      setSubmitting(false);
+      setRegistered(true);
       return;
     }
 
@@ -139,7 +139,8 @@ export default function JoinLeague() {
         joinedAt: new Date().toISOString()
       });
 
-      router.push("/teams");
+      setSubmitting(false);
+      setRegistered(true);
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -148,6 +149,41 @@ export default function JoinLeague() {
   };
 
   const filteredPlayers = players.filter(p => p.playerName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  if (registered) {
+    return (
+      <div data-tour="join-success" className="min-h-screen bg-[#07090E] text-white font-sans flex flex-col justify-center items-center px-4">
+        <div role="status" className="max-w-md w-full mx-auto p-8 text-center bg-[#0B0F19] border border-emerald-500/30 rounded-3xl shadow-2xl space-y-5 my-20">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <Check className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black uppercase text-white">You&apos;re Registered</h2>
+            <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
+              {name.trim() || "You"} {name.trim() ? "is" : "are"} now in the {settings.leagueName || "league"} free-agent pool.
+              {isDemoLeague ? " (Demo: this is only saved in this browser session.)" : ""}
+            </p>
+          </div>
+          <div className="text-left rounded-2xl bg-white/5 border border-white/10 p-4 text-xs text-neutral-300 space-y-2">
+            <div className="font-bold uppercase tracking-wider text-[11px] text-neutral-400">What happens next</div>
+            <ol className="list-decimal pl-4 space-y-1">
+              <li>The league organizer reviews free agents and places you on a team.</li>
+              <li>{email.trim() ? <>You&apos;ll be contacted at <strong>{email.trim()}</strong>.</> : "Your organizer will reach out once you're placed. Adding an email helps them contact you."}</li>
+              <li>Once you&apos;re on a roster, sign in with that same email to see your team, schedule and stats.</li>
+            </ol>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/schedule" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider">
+              View Schedule <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <Link href="/teams" className="inline-flex items-center justify-center px-5 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-neutral-300 font-bold text-xs uppercase tracking-wider border border-white/10">
+              Browse Teams
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // NOT ELIGIBLE FOR FREE AGENT JOIN (ALREADY AN ADMIN, TEAM ADMIN, OR ROSTERED PLAYER)
   if (!canRegisterAsPlayer) {

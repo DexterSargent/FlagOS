@@ -674,6 +674,8 @@ export default function PlayCanvas({
 
   // Where the 1000x700 field drawing actually lands inside the (letterboxed) SVG, in CSS pixels.
   const [fieldBox, setFieldBox] = useState<{ scale: number; offX: number; offY: number; vbY: number } | null>(null);
+  // Phone-width fields render the 1000-unit SVG small, so enlarge yard and end-zone labels to stay legible.
+  const fieldLabelScale = Math.max(1, Math.min(1.6, 0.55 / (fieldBox?.scale || 1)));
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg || typeof ResizeObserver === "undefined") return;
@@ -2819,7 +2821,7 @@ export default function PlayCanvas({
               type="button"
               onClick={onFlushAutoSave}
               aria-label={autoSaveStatus === "saving" ? "Saving playbook" : "Save playbook"}
-              title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
+              title={isDemo ? "Demo changes stay in this browser session and are never saved to an account" : autoSaveStatus === "unsaved" ? "Unsaved changes: click to save immediately" : "Auto-saving to cloud is active"}
               className="px-2.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-xs font-mono flex items-center gap-1.5 transition-all hover:bg-neutral-200 dark:hover:bg-white/10 cursor-pointer shrink-0"
               data-testid="editor-autosave-status-badge"
             >
@@ -2832,6 +2834,11 @@ export default function PlayCanvas({
                 <>
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                   <span className="text-amber-600 dark:text-amber-300 hidden xl:inline">Unsaved</span>
+                </>
+              ) : isDemo ? (
+                <>
+                  <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                  <span className="text-neutral-600 dark:text-neutral-400 hidden xl:inline">Saved in this demo session</span>
                 </>
               ) : autoSaveStatus === "offline" ? (
                 <>
@@ -2957,8 +2964,8 @@ export default function PlayCanvas({
             <text
               x="500"
               y="52"
-              fill="rgba(255,255,255,0.15)"
-              fontSize="34"
+              fill="rgba(255,255,255,0.32)"
+              fontSize={Math.round(34 * fieldLabelScale)}
               fontWeight="900"
               textAnchor="middle"
               letterSpacing="12"
@@ -3003,8 +3010,8 @@ export default function PlayCanvas({
                             <text
                               x="70"
                               y={yPos + 7}
-                              fill="rgba(255,255,255,0.22)"
-                              fontSize="22"
+                              fill="rgba(255,255,255,0.45)"
+                              fontSize={Math.round(22 * fieldLabelScale)}
                               fontWeight="900"
                               fontStyle="italic"
                               textAnchor="middle"
@@ -3016,8 +3023,8 @@ export default function PlayCanvas({
                             <text
                               x="930"
                               y={yPos + 7}
-                              fill="rgba(255,255,255,0.22)"
-                              fontSize="22"
+                              fill="rgba(255,255,255,0.45)"
+                              fontSize={Math.round(22 * fieldLabelScale)}
                               fontWeight="900"
                               fontStyle="italic"
                               textAnchor="middle"
@@ -3708,7 +3715,7 @@ export default function PlayCanvas({
                   onPointerDown={(e) => handlePointerDownPlayer(e, player.id)}
                 >
                   {/* Selection Precision Halo Rings (Static, crisp, no pinwheel) */}
-                  <g transform={`translate(${px} ${py}) scale(${Math.max(1, Math.min(1.8, 0.65 / (fieldBox?.scale || 1)))}) translate(${-px} ${-py})`}>
+                  <g transform={`translate(${px} ${py}) scale(${Math.max(1, Math.min(2.2, 0.8 / (fieldBox?.scale || 1)))}) translate(${-px} ${-py})`}>
                   {isSelected && (
                     <g>
                       <circle

@@ -74,12 +74,13 @@ export default function LoginPage() {
     const tList = getSandboxTeams().filter(isRealTeam);
     tList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     setTeams(tList);
-    if (tList.length > 0) setSelectedTeamId(tList[0].id);
+    // Kansas City has sample plays, so it makes the best first impression for coaches and players.
+    if (tList.length > 0) setSelectedTeamId((tList.find((t) => t.id === "team_kc") || tList[0]).id);
 
     const pList = getSandboxPlayers();
     pList.sort((a, b) => (a.playerName || "").localeCompare(b.playerName || ""));
     setPlayers(pList);
-    if (pList.length > 0) setSelectedPlayerId(pList[0].id);
+    if (pList.length > 0) setSelectedPlayerId((pList.find((p) => p.teamId === "team_kc") || pList[0]).id);
   }, []);
 
   if (loading) {
@@ -171,7 +172,7 @@ export default function LoginPage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15 pointer-events-none"></div>
 
       {/* Back Button */}
-      <div data-tour="login-back" className="absolute top-8 left-8">
+      <div data-tour="login-back" className="relative z-20 w-full max-w-xl mb-4 md:mb-0 md:w-auto md:absolute md:top-8 md:left-8">
         <button
           onClick={() => router.push("/")}
           className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md cursor-pointer text-xs"
@@ -223,10 +224,12 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-3xl md:text-4xl font-black mb-2 uppercase tracking-tight text-center">
-          Sign In
+          {isCreatingAccount && !user ? "Create Account" : "Sign In"}
         </h1>
         <p className="text-neutral-400 text-xs text-center mb-6">
-          Sign in with your email or Google account to access your teams and leagues.
+          {isCreatingAccount && !user
+            ? "Create a free account with your email or Google. Use the email your coach or league has on file so you're connected to your team."
+            : "Sign in with your email or Google account to access your teams and leagues."}
         </p>
 
         {/* Email-only roster role simulation is intentionally limited to local development. */}

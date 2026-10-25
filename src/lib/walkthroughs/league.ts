@@ -2,10 +2,10 @@ import type { ToolWalkthrough } from "@/lib/walkthroughData";
 
 export const COMMISSIONER_DASHBOARD_WALKTHROUGH: ToolWalkthrough = {
   id: "commissioner-dashboard",
-  toolName: "League Command Center",
+  toolName: "League Dashboard",
   subtitle: "Run your league: teams, games, standings, leaders and settings",
   steps: [
-    { id: "overview", targetSelector: "", title: "Your League Command Center", category: "Overview", description: "This is the commissioner home base. Review the season, manage the league, and jump into games, teams, standings, and player leaders." },
+    { id: "overview", targetSelector: "", title: "Your League Dashboard", category: "Overview", description: "This is the commissioner home base. Review the season, manage the league, and jump into games, teams, standings, and player leaders." },
     { id: "actions", targetSelector: '[data-tour="league-admin-actions"]', title: "Commissioner Actions", category: "League Setup", description: "Use these shortcuts to update your league or open the main management pages.", details: [
       { label: "League Settings", text: "Open league setup to manage branding, rules, teams, visibility, and other league options." },
       { label: "Schedule Game", text: "Open the calendar to add and manage games." },
@@ -128,8 +128,8 @@ export const SCHEDULE_WALKTHROUGH: ToolWalkthrough = {
     { id: "games", targetSelector: '[data-tour="schedule-games"]', title: "Game Calendar", category: "Games", description: "Browse matchups, results, and game locations. Open a matchup for its box score or live play-by-play.", details: [
       { label: "Game matchup", text: "Open the game details page." },
       { label: "Watch Live / See Stats", text: "Open the play-by-play viewer, which also shows box score and team stats." },
-      { label: "Edit Event", text: "Managers can change the selected game's details." },
-      { label: "Delete Event", text: "Managers can remove a game from the schedule after confirmation." },
+      { label: "Edit Event", text: "Change the selected game's details.", requiresSelector: '[data-guide="manage-event"]' },
+      { label: "Delete Event", text: "Remove a game from the schedule after confirmation.", requiresSelector: '[data-guide="manage-event"]' },
     ] },
   ],
 };
@@ -175,7 +175,7 @@ export const TEAMS_DIRECTORY_WALKTHROUGH: ToolWalkthrough = {
     { id: "overview", targetSelector: "", title: "League Teams", category: "Overview", description: "Browse teams and their rosters. League managers can also add teams and players, assign free agents, and update team details." },
     { id: "team-controls", targetSelector: '[data-tour="teams-controls"]', title: "Team Management", category: "Management", description: "Administrators can create teams, edit names, and review their team cards.", details: [
       { label: "Create Team", text: "Open the form to create a team." },
-      { label: "Add Team to Subscription (+ $15/mo)", text: "Add a team slot to the league subscription." },
+      { label: "Add Team to Subscription (+ $20/mo)", text: "Add a team slot to the league subscription." },
       { label: "Manage Subscription", text: "Open league settings to review subscription options." },
       { label: "Edit Name", text: "Change the selected team's name." },
       { label: "Delete Team", text: "Remove the selected team after confirming." },
@@ -209,12 +209,20 @@ export const MATCH_BOX_SCORE_WALKTHROUGH: ToolWalkthrough = {
     { id: "overview", targetSelector: "", title: "Game Details & Box Score", category: "Overview", description: "This page brings together the matchup, current or final score, game administration, and the full play-by-play." },
     { id: "match-header", targetSelector: '[data-tour="match-header"]', title: "Matchup & Score", category: "Game", description: "Check the teams, season week, game time, venue, and current score." },
     { id: "match-admin", targetSelector: '[data-tour="match-admin"]', title: "Game Administration", category: "Management", description: "Authorized managers can edit the event or open the stat keeper.", details: [
-      { label: "Edit Event", text: "Update this game's schedule details." },
-      { label: "Delete Event", text: "Remove this event after confirming." },
-      { label: "Simulate Game", text: "Platform administrators can generate sample game plays and a score." },
-      { label: "Stat Keeper", text: "Open the live scorekeeping controls for an unfinished game." },
-      { label: "Reopen Play-by-Play", text: "Reopen a completed demo game in its stat keeper." },
-      { label: "Reset Game", text: "Reset a demo game to its pre-game state after confirmation." },
+      { label: "Edit Event", text: "Update this game's schedule details.", requiresSelector: '[data-guide="manage-event"]' },
+      { label: "Delete Event", text: "Remove this event after confirming.", requiresSelector: '[data-guide="manage-event"]' },
+      { label: "Simulate Game", text: "Generate sample game plays and a score.", requiresSelector: '[data-guide="simulate-game"]' },
+      { label: "Stat Keeper", text: "Open the scorekeeping controls for an unfinished game. League games are scored by the league admin or a scorer they invite.", requiresSelector: '[data-guide="stat-keeper"]' },
+      { label: "Watch live", text: "Follow the game here. Only the league admin, or a scorer they send a link to, can record a league game.", requiresSelector: '[data-tour="match-scorer-note"]' },
+      { label: "Reopen Play-by-Play", text: "Reopen a completed demo game in its stat keeper.", requiresSelector: '[data-guide="demo-game-reset"]' },
+      { label: "Reset Game", text: "Reset a demo game to its pre-game state after confirmation.", requiresSelector: '[data-guide="demo-game-reset"]' },
+    ] },
+    { id: "match-scorer-links", targetSelector: '[data-tour="match-scorer-links"]', title: "Scorer Access", category: "Management", description: "League admins can let one trusted person keep score for this game only.", details: [
+      { label: "Who is it for?", text: "Optional name so you can tell links apart." },
+      { label: "Works for", text: "How long the link stays valid, from 2 to 48 hours. Access ends automatically afterwards." },
+      { label: "Create link", text: "Makes a new one-person link. Copy it right away; it is shown only once." },
+      { label: "Active links", text: "Shows who opened each link and when it ends. Revoke removes that person's access immediately." },
+      { label: "Revoke all links", text: "Ends every scorer link for this game at once." },
     ] },
     { id: "match-feed", targetSelector: '[data-tour="match-play-by-play"]', title: "Box Score & Play-by-Play", category: "Game", description: "Open the game viewer for the play timeline, player box score, and team stats.", details: [
       { label: "See Stats", text: "Open the game viewer for a completed game." },
@@ -230,15 +238,29 @@ export const LIVE_VIEWER_WALKTHROUGH: ToolWalkthrough = {
     { id: "overview", targetSelector: "", title: "Live Game Viewer", category: "Overview", description: "Follow the game without changing it. The scoreboard and game information update as plays are recorded." },
     { id: "viewer-header", targetSelector: '[data-tour="viewer-header"]', title: "Game Header", category: "Game", description: "Check the league, game status, season, location, and available navigation.", details: [
       { label: "Back to game", text: "Return to the game details page." },
-      { label: "Open Live Manager", text: "For a demo league manager, open the live stat keeper." },
-      { label: "Reset Match", text: "Reset a demo match after confirmation." },
+      { label: "LIVE / PAUSED / FINAL", text: "Shows whether the game is being scored right now. On phones this badge sits under the scoreboard." },
+      { label: "Open Live Manager", text: "Open the live stat keeper for this demo game.", requiresSelector: '[data-guide="viewer-demo-controls"]' },
+      { label: "Reset Match", text: "Reset this demo game to 0-0 after confirmation.", requiresSelector: '[data-guide="viewer-demo-controls"]' },
     ] },
-    { id: "viewer-scoreboard", targetSelector: '[data-tour="viewer-scoreboard"]', title: "Live Scoreboard", category: "Score", description: "See each team's score, possession, game period, and remaining timeouts. These controls are display-only." },
+    { id: "viewer-demo-frozen", targetSelector: '[data-tour="viewer-demo-frozen"]', title: "Sample Game", category: "Game", description: "This demo game is frozen at one moment so you can explore it. In a real league the score, clock and play log update on their own as the scorekeeper records each play." },
+    { id: "viewer-scoreboard", targetSelector: '[data-tour="viewer-scoreboard"]', title: "Live Scoreboard", category: "Score", description: "See each team's score, the period and game clock, the current down and how many timeouts each team has left. Nothing here can be changed from this page.", details: [
+      { label: "Football icon", text: "Marks the team that has the ball." },
+      { label: "Timeout dots", text: "Filled dots are timeouts still available; the text underneath says how many are left." },
+      { label: "Down", text: "Tap the down to learn what downs are." },
+      { label: "X has the ball", text: "Names the team on offense right now." },
+    ] },
     { id: "viewer-tabs", targetSelector: '[data-tour="viewer-tabs"]', title: "Game View Tabs", category: "Game", description: "Choose the game information you want to follow.", details: [
-      { label: "Play-by-Play", text: "Show the chronological play log." },
-      { label: "Box Score", text: "Compare player statistics for each team." },
+      { label: "Play-by-Play", text: "Every play, newest first. The latest play is highlighted at the top." },
+      { label: "Live Box Score", text: "Player stats for each team, split into Offense and Defense. Tap a column name to see what it means; on phones, More stats shows every column." },
       { label: "Team Stats", text: "Compare the two teams' game totals." },
-      { label: "Home / Away", text: "In the box score, switch between the home and away player lists." },
+      { label: "Home / Away", text: "In the box score, switch between the two teams' players." },
+      { label: "Terms (book icon)", text: "Opens the flag football glossary." },
+    ] },
+    { id: "viewer-latest-play", targetSelector: '[data-tour="viewer-latest-play"]', title: "Latest Play", category: "Game", description: "The newest play is outlined and labelled Latest play. If you scroll down through older plays, a Jump to latest button takes you back to the top." },
+    { id: "viewer-terms", targetSelector: '[data-tour="viewer-terms"]', title: "New to Flag Football?", category: "Learn", description: "Flag football is football without tackling or kicking: defenders pull a flag from the ball carrier's belt to end the play. Tap the book icon for plain-language explanations of downs, touchdowns, 1- and 2-point tries (PAT), safeties and every box score column.", details: [
+      { label: "Touchdown", text: "6 points." },
+      { label: "PAT (1 or 2 points)", text: "One extra play after a touchdown. The shorter try is worth 1 point, the longer one 2. There are no field goals." },
+      { label: "Safety", text: "2 points for the defense when the ball carrier's flag is pulled in their own end zone." },
     ] },
   ],
 };

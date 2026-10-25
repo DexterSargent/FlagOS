@@ -1,6 +1,8 @@
 export interface WalkthroughDetail {
   label: string;
   text: string;
+  /** Only shown when this selector exists on the page, so people never read about controls they don't have. */
+  requiresSelector?: string;
 }
 
 export interface WalkthroughStep {
@@ -57,7 +59,7 @@ export const PLAY_DESIGNER_WALKTHROUGH: ToolWalkthrough = {
         { label: "Situation", text: "Tags the play for a game situation (e.g. Red Zone, 3rd & Short) to explain when to call it." },
         { label: "Notes icon", text: "Adds a free-form coaching note to the play." },
         { label: "Q&A icon", text: "Opens questions and answers attached to this specific play." },
-        { label: "Save playbook", text: "Shows save progress; click when changes are unsaved to sync them immediately." },
+        { label: "Save playbook", text: "Shows save progress; click when changes are unsaved to save them immediately." },
       ],
     },
     {
@@ -430,11 +432,11 @@ export const PLAYBOOK_STUDIO_WALKTHROUGH: ToolWalkthrough = {
       "details": [
         {
           "label": "Saved / Saving...",
-          "text": "Your book has synced or is syncing."
+          "text": "Your book has saved or is saving."
         },
         {
           "label": "Unsaved changes / Unsaved",
-          "text": "Click the status to try syncing now."
+          "text": "Click the status to try saving now."
         },
         {
           "label": "Offline",
@@ -1399,6 +1401,22 @@ export const TEAM_EDIT_PLAYER_WALKTHROUGH: ToolWalkthrough = {
         {
           "label": "Positions (select all that apply)",
           "text": "Toggle position buttons, keeping at least one and no more than ten selected."
+        }
+      ]
+    },
+    {
+      "id": "team-edit-player-remove",
+      "targetSelector": "[data-tour=\"team-edit-player-remove\"]",
+      "title": "Removing a player",
+      "description": "Only the head coach or a league admin can remove someone from the roster.",
+      "details": [
+        {
+          "label": "Remove from roster",
+          "text": "Shown to the head coach and league admins. Deletes the player from this team; stats from games already played stay recorded."
+        },
+        {
+          "label": "Assistant coaches",
+          "text": "Assistants see a note instead of the button — ask the head coach or league admin to remove a player who has left."
         }
       ]
     },

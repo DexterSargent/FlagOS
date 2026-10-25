@@ -41,6 +41,7 @@ import AdminOverview, { type ConsoleTab } from "@/components/admin/AdminOverview
 import AdminFinance, { BillingModal, LedgerEntryModal } from "@/components/admin/AdminFinance";
 import AdminUsers, { type Membership } from "@/components/admin/AdminUsers";
 import AdminActivity from "@/components/admin/AdminActivity";
+import AdminFreeAgents from "@/components/admin/AdminFreeAgents";
 
 const CONSOLE_TABS: Array<{ id: ConsoleTab; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -48,6 +49,7 @@ const CONSOLE_TABS: Array<{ id: ConsoleTab; label: string }> = [
   { id: "finance", label: "Finance" },
   { id: "users", label: "Users" },
   { id: "activity", label: "Activity" },
+  { id: "free-agents", label: "Free Agents" },
 ];
 
 export interface ManagedRecord {
@@ -817,6 +819,10 @@ export default function PlatformAdminPage() {
         ) : tab === "activity" ? (
           <div className="mt-6">
             <AdminActivity entries={business?.audit ?? []} />
+          </div>
+        ) : tab === "free-agents" ? (
+          <div className="mt-6">
+            <AdminFreeAgents />
           </div>
         ) : (
         <>

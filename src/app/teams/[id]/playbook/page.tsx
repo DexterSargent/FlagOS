@@ -1273,7 +1273,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 data-tour="autosave-status"
                 onClick={flushAutoSave}
                 aria-label="Auto-save status"
-                title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
+                title={isDemoLeague ? "Demo changes stay in this browser session and are never saved to an account" : autoSaveStatus === "unsaved" ? "Unsaved changes: click to save immediately" : "Auto-saving to cloud is active"}
                 className="px-3.5 py-2 max-sm:px-2 max-sm:py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono flex items-center gap-2 transition-all hover:bg-white/10 cursor-pointer"
                 data-testid="autosave-status-badge"
               >
@@ -1288,6 +1288,12 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                     <span className="text-amber-300 max-sm:hidden">Unsaved changes</span>
                     <span className="text-amber-300 sm:hidden">Unsaved</span>
+                  </>
+                ) : isDemoLeague ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-neutral-300 max-sm:hidden">Saved in this demo session</span>
+                    <span className="text-neutral-300 sm:hidden">Saved (demo)</span>
                   </>
                 ) : autoSaveStatus === "offline" ? (
                   <>

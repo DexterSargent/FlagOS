@@ -46,7 +46,20 @@ function findVisibleTarget(selector: string): HTMLElement | null {
 /** Steps whose target is not on the current screen (e.g. defense-only controls on an offense play) are skipped. */
 export function getAvailableSteps(steps: WalkthroughStep[]): WalkthroughStep[] {
   const available = steps.filter((step) => !step.targetSelector || findVisibleTarget(step.targetSelector));
-  return available.length > 0 ? available : steps;
+  return (available.length > 0 ? available : steps).map((step) =>
+    step.details?.some((d) => d.requiresSelector)
+      ? { ...step, details: step.details.filter((d) => !d.requiresSelector || hasElement(d.requiresSelector)) }
+      : step,
+  );
+}
+
+function hasElement(selector: string): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    return document.querySelector(selector) !== null;
+  } catch {
+    return false;
+  }
 }
 
 export default function WalkthroughModal({

@@ -134,8 +134,8 @@ describe("SignedInHome", () => {
 
   it("shows roles per league: commissioner dashboard for one, player access for another", () => {
     render(<SignedInHome />);
-    expect(screen.getByRole("link", { name: /Run league dashboard/ })).toHaveAttribute("href", "/league/league_run");
-    expect(screen.getByRole("link", { name: /League home/ })).toHaveAttribute("href", "/league/league_play");
+    expect(screen.getByRole("link", { name: /Open League/ })).toHaveAttribute("href", "/league/league_run");
+    expect(screen.getByRole("link", { name: /League Home/ })).toHaveAttribute("href", "/league/league_play");
 
     const sundayCard = screen.getByRole("heading", { name: "Sunday Social" }).closest("article")!;
     expect(within(sundayCard).getByText("Player · #12")).toBeInTheDocument();

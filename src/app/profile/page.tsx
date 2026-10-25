@@ -36,9 +36,12 @@ import {
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { useLeagueSeasonHistory } from "@/lib/useLeagueSeasonHistory";
+import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import PlayerCareerCard from "@/components/league/PlayerCareerCard";
 import { getTeamShortcode } from "@/components/TeamAssets";
 import ThemeToggle from "@/components/ThemeToggle";
+import DemoNoticeStrip from "@/components/DemoNoticeStrip";
+import { effectiveMaxRoster } from "@/lib/rosterLimits";
 
 interface PlayerStats {
   gamesPlayed: number;
@@ -79,6 +82,7 @@ export default function PlayerProfilePage() {
     seasons,
     currentSeasonId,
   } = useLeague();
+  const { sandbox } = useDemoSandbox(isDemoLeague);
   const hasArchivedSeasons = !isDemoLeague && seasons.some((season) => season.status === "archived");
   const seasonHistory = useLeagueSeasonHistory(activeLeagueId, hasArchivedSeasons);
 
@@ -122,13 +126,17 @@ export default function PlayerProfilePage() {
   // Load all players, team, and stats
   useEffect(() => {
     const fetchProfileAndStats = async () => {
+      // The demo league lives in the session sandbox, the same source the dashboard and roster use.
+      if (isDemoLeague && !sandbox) return;
       setLoading(true);
       try {
-        const [playersList, rawMatches, rawPlays] = await Promise.all([
-          getCachedLeaguePlayers(activeLeagueId),
-          getCachedLeagueMatches(activeLeagueId),
-          getCachedLeaguePlays(activeLeagueId),
-        ]);
+        const [playersList, rawMatches, rawPlays] = isDemoLeague && sandbox
+          ? [sandbox.getSandboxPlayers() as any[], sandbox.getSandboxMatches() as any[], sandbox.getSandboxPlays() as any[]]
+          : await Promise.all([
+            getCachedLeaguePlayers(activeLeagueId),
+            getCachedLeagueMatches(activeLeagueId),
+            getCachedLeaguePlays(activeLeagueId),
+          ]);
 
         setAllRosteredPlayers(playersList);
 
@@ -142,13 +150,15 @@ export default function PlayerProfilePage() {
         }
         // Fallback: if user is not a player yet, default to first rostered player for preview
         if (!targetPlayer && playersList.length > 0) {
-          targetPlayer = playersList[0];
-          setSelectedPlayerId(playersList[0].id);
+          targetPlayer = playersList.find((p) => p.teamId === "team_kc") || playersList[0];
+          setSelectedPlayerId(targetPlayer.id);
         }
 
         setSelectedPlayer(targetPlayer);
 
-        if (targetPlayer?.teamId) {
+        if (targetPlayer?.teamId && isDemoLeague && sandbox) {
+          setPlayerTeam(sandbox.getSandboxTeams().find((t: any) => t.id === targetPlayer.teamId) ?? null);
+        } else if (targetPlayer?.teamId) {
           const teamSnap = await getDoc(doc(db, "teams", targetPlayer.teamId));
           if (teamSnap.exists()) {
             setPlayerTeam({ id: teamSnap.id, ...(teamSnap.data() as any) });
@@ -276,7 +286,7 @@ export default function PlayerProfilePage() {
     };
 
     fetchProfileAndStats();
-  }, [selectedPlayerId, authPlayerId, activeLeagueId]);
+  }, [selectedPlayerId, authPlayerId, activeLeagueId, isDemoLeague, sandbox]);
 
   // Handle switching player (for admins / preview)
   const handleSelectAnotherPlayer = (pId: string) => {
@@ -315,6 +325,7 @@ export default function PlayerProfilePage() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
+      {isDemoLeague && <div className="relative z-10"><DemoNoticeStrip /></div>}
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -460,8 +471,8 @@ export default function PlayerProfilePage() {
                 onClick={openCustomizer}
                 className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2"
               >
-                <Settings className="w-4 h-4 text-cyan-400" />
-                <span>Settings</span>
+                {isLeagueAdmin ? <Settings className="w-4 h-4 text-cyan-400" /> : <BookOpen className="w-4 h-4 text-cyan-400" />}
+                <span>{isLeagueAdmin ? "League Settings" : "League Rules"}</span>
               </button>
             </div>
           </div>
@@ -470,7 +481,8 @@ export default function PlayerProfilePage() {
         {/* ============================================================== */}
         {/* 2. NAVIGATION TABS                                             */}
         {/* ============================================================== */}
-        <div data-tour="profile-tabs" className="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto">
+        <div className="relative">
+        <div data-tour="profile-tabs" className="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto pr-10 sm:pr-0">
           {[
             { id: "stats", label: "Player Statistics", icon: Activity },
             { id: "settings", label: "Appearance", icon: Palette },
@@ -495,6 +507,11 @@ export default function PlayerProfilePage() {
             );
           })}
         </div>
+        <div aria-hidden="true" className="pointer-events-none absolute right-0 top-0 bottom-4 flex w-12 items-center justify-end bg-gradient-to-l from-black to-transparent sm:hidden">
+          <ChevronRight className="w-4 h-4 text-neutral-400" />
+        </div>
+        </div>
+        <p className="-mt-6 text-[10px] text-neutral-500 sm:hidden">Swipe the tabs to see more, including Account &amp; Linked Emails.</p>
 
         {/* ============================================================== */}
         {/* TAB 1: PLAYER STATISTICS                                       */}
@@ -502,11 +519,11 @@ export default function PlayerProfilePage() {
         {activeTab === "stats" && (
           <div className="space-y-8">
             <div className="space-y-2">
-            {hasArchivedSeasons && (
-              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
-                {seasons.find((season) => season.id === currentSeasonId)?.title || "Current season"} stats
-              </p>
-            )}
+            <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+              {hasArchivedSeasons
+                ? `${seasons.find((season) => season.id === currentSeasonId)?.title || "Current season"} stats`
+                : "This season's stats"}
+            </p>
             {/* Top Quick Stats Grid */}
             <div data-tour="profile-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-4 space-y-1">
@@ -781,7 +798,7 @@ export default function PlayerProfilePage() {
                 },
                 {
                   label: "Roster Limits",
-                  value: `Min ${settings?.rules?.minRosterSize || 5} • Max ${settings?.rules?.maxRosterSize || 30} Players`,
+                  value: `Min ${settings?.rules?.minRosterSize || 5} • Max ${effectiveMaxRoster(settings?.rules)} Players`,
                   desc: "Team roster capacity requirements for active eligibility.",
                 },
                 {

@@ -12,7 +12,10 @@ import {
   SEASON_SNAPSHOT_COLLECTION, seasonSnapshotDocId,
 } from "@/lib/leagueSeasons";
 import { isRealTeam } from "@/components/TeamAssets";
+import { SCORER_GRANTS_COLLECTION, scorerGrantDocId, timestampMillis } from "@/lib/scorerAccess";
+import { MAX_ROSTER_HARD_CAP, rosterHardCap } from "@/lib/rosterLimits";
 
+import { isValidPublicEmail, validatePlayerInfo, validateVenues } from "@/lib/leaguePublicProfile";
 export const runtime = "nodejs";
 
 const MAX_REQUEST_BYTES = 300_000;
@@ -28,6 +31,7 @@ const LEAGUE_UPDATE_FIELDS = new Set([
   "announcement", "seasonStatus", "isArchived", "archivedAt", "visibility", "rules", "playoffFormat",
   "subscription", "teamCount", "contactEmail", "adminEmails",
   "registrationFeePerTeam", "individualFee", "amenities",
+  "directoryListed", "publicContactEmail", "playerInfo", "venues",
 ]);
 
 type Entity =
@@ -57,7 +61,7 @@ const ENTITY_LIMITS = {
   league: { collection: "leagues", field: "ownerUid", limit: 10 },
   team: { collection: "teams", field: "leagueId", limit: 64 },
   allTeams: { collection: "teams", field: "*", limit: 256 },
-  rosterPlayer: { collection: "players", field: "teamId", limit: 30 },
+  rosterPlayer: { collection: "players", field: "teamId", limit: MAX_ROSTER_HARD_CAP },
   freeAgent: { collection: "players", field: "teamId", limit: 500 },
   match: { collection: "matches", field: "leagueId", limit: 512 },
   play: { collection: "plays", field: "matchId", limit: 500 },
@@ -544,6 +548,9 @@ async function authorizeWrite(
     data.seasonId = await assertCurrentSeason(transaction, matchData.leagueId, matchData);
     if (typeof matchData.leagueId === "string" && matchData.leagueId &&
       await isLeagueAdmin(transaction, matchData.leagueId, token)) return;
+    // A temporary scorer invited by the league admin may record this one game until the link expires.
+    const grant = await transaction.get(adminDb.doc(`${SCORER_GRANTS_COLLECTION}/${scorerGrantDocId(matchId, token.uid)}`));
+    if (grant.exists && grant.get("uid") === token.uid && timestampMillis(grant.get("expiresAt")) > Date.now()) return;
     const teamIds = [matchData.homeTeamId, matchData.awayTeamId, matchData.managingTeamId]
       .filter((value): value is string => typeof value === "string" && value.length > 0);
     for (const teamId of new Set(teamIds)) {
@@ -556,7 +563,7 @@ async function authorizeWrite(
     if (!isDocumentId(data.teamId)) fail("A valid team ID is required.");
     const team = await isTeamAdmin(transaction, data.teamId, token);
     if (!team.allowed) fail("Only this team's coaches can manage depth charts.", 403);
-    const roster = await transaction.get(adminDb.collection("players").where("teamId", "==", data.teamId).limit(31));
+    const roster = await transaction.get(adminDb.collection("players").where("teamId", "==", data.teamId).limit(MAX_ROSTER_HARD_CAP + 1));
     const playerIds = new Set(roster.docs.map((player) => player.id));
     for (const chart of (data.charts as import("@/lib/depthChart").DepthChart[])) {
       for (const assigned of Object.values(chart.assignments)) {
@@ -702,6 +709,19 @@ function getRecordCollection(entity: Entity): string {
     case "red_play":
       return ENTITY_LIMITS[entity].collection;
   }
+}
+
+/** Roster cap follows the format: five players per on-field spot. */
+async function rosterCapForTeam(transaction: Transaction, teamId: string): Promise<number> {
+  const team = await transaction.get(adminDb.doc(`teams/${teamId}`));
+  const teamRules = team.get("rules") as { playersOnField?: number } | undefined;
+  if (teamRules?.playersOnField) return rosterHardCap(teamRules.playersOnField);
+  const leagueId = team.get("leagueId");
+  if (typeof leagueId === "string" && isDocumentId(leagueId)) {
+    const league = await transaction.get(adminDb.doc(`leagues/${leagueId}`));
+    return rosterHardCap((league.get("rules") as { playersOnField?: number } | undefined)?.playersOnField);
+  }
+  return rosterHardCap();
 }
 
 function getCounterId(scope: Scope): string {
@@ -1023,6 +1043,12 @@ export async function POST(request: Request) {
         }
       }
       if (data.leagueName !== undefined && !(data.leagueName as string).trim()) fail("A league name is required.");
+      if (data.directoryListed !== undefined && typeof data.directoryListed !== "boolean") fail("Directory listing setting is invalid.");
+      if (data.publicContactEmail !== undefined && data.publicContactEmail !== "" && !isValidPublicEmail(data.publicContactEmail)) {
+        fail("Public contact email is invalid.");
+      }
+      const profileError = validatePlayerInfo(data.playerInfo) || validateVenues(data.venues);
+      if (profileError) fail(profileError);
     }
     if (requestedEntity === "match_update" &&
       (Object.keys(data).some((key) =>
@@ -1193,6 +1219,11 @@ export async function POST(request: Request) {
         }
       }
       const scopes = resolveScopes(requestedEntity, data, token);
+      for (const scope of scopes) {
+        if ((scope.kind === "rosterPlayer" || scope.kind === "player") && isDocumentId(scope.id)) {
+          scope.limit = await rosterCapForTeam(transaction, scope.id);
+        }
+      }
       const now = Date.now();
       const rateRef = adminDb.doc(`user_write_limits/${token.uid}`);
       const scopeRefs = scopes.map((scope) =>

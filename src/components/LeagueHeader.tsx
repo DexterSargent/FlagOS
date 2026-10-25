@@ -84,11 +84,13 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
   }, []);
 
   // Dynamically resolve active tab if not passed explicitly as prop
+  const myTeamId = playerTeamId || managedTeamId || null;
   const resolvedActivePage = activePage || (
     pathname?.startsWith("/leagues") ? "leagues" :
     pathname?.startsWith("/schedule") || pathname?.startsWith("/matches") ? "schedule" :
     pathname?.startsWith("/stats") ? "stats" :
     pathname?.includes("/playbook") ? "playbook" :
+    myTeamId && pathname?.startsWith(`/teams/${myTeamId}`) ? "my-team" :
     pathname?.startsWith("/teams") ? "teams" :
     pathname?.startsWith("/join") ? "join" :
     pathname?.startsWith("/pricing") ? "pricing" :
@@ -414,6 +416,21 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <span>Find a League</span>
             </Link>
 
+            {myTeamId && (
+              <Link
+                href={`/teams/${myTeamId}`}
+                data-tour="nav-my-team"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                  resolvedActivePage === "my-team"
+                    ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-white/10"
+                    : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>My Team</span>
+              </Link>
+            )}
+
             {/* Strict RBAC: League Admin NEVER sees Playbook */}
             {!isLeagueAdmin && (playerTeamId || managedTeamId) && (
               <Link
@@ -615,6 +632,19 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               <span>Find a League</span>
             </Link>
+
+            {myTeamId && (
+              <Link
+                href={`/teams/${myTeamId}`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
+                  resolvedActivePage === "my-team" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30" : "text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-white/5"
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                <span>My Team</span>
+              </Link>
+            )}
 
             {!isLeagueAdmin && (playerTeamId || managedTeamId) && (
               <Link

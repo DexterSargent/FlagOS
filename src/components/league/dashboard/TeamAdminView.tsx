@@ -335,7 +335,7 @@ export function TeamAdminView({
                     {managedTeamPlayers.slice(0, 8).map((p) => (
                       <tr key={p.id} className="hover:bg-surface-muted transition-colors">
                         <td className="py-2.5 font-mono font-bold text-cyan-400">
-                          #{p.playerNumber || "0"}
+                          #{p.number || p.playerNumber || "?"}
                         </td>
                         <td className="py-2.5 font-bold text-white">
                           {p.playerName}
@@ -357,6 +357,12 @@ export function TeamAdminView({
                     ))}
                   </tbody>
                 </table>
+                {managedTeamPlayers.length > 8 && managedTeam && (
+                  <p className="pt-2 text-[11px] text-[var(--text-muted)]">
+                    Showing 8 of {managedTeamPlayers.length} ?{" "}
+                    <Link href={`/teams/${managedTeam.id}/roster`} className="font-bold text-cyan-400 hover:underline">View all</Link>
+                  </p>
+                )}
               </div>
             )}
           </div>

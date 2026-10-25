@@ -1,5 +1,6 @@
 "use client";
 
+import VenueDirections from "@/components/VenueDirections";
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,6 +23,9 @@ import { GAME_STATE_LABEL, getGameDisplayState, useNow } from "@/lib/gameLiveSta
 import { usePageGuide } from "@/lib/pageGuide";
 import { MATCH_BOX_SCORE_WALKTHROUGH, MATCH_EDIT_MODAL_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import ScorerLinksPanel from "@/components/match/ScorerLinksPanel";
+import { canRecordMatch } from "@/lib/scorerAccess";
+import { useScorerGrant } from "@/lib/scorerAccessClient";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
   usePageGuide(MATCH_BOX_SCORE_WALKTHROUGH);
@@ -42,6 +46,10 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   const isLeagueOfMatchArchived = useLeagueArchived(isDemo ? null : matchData?.leagueId);
   const isTeamOfMatchArchived = useTeamSeasonArchived(isDemo || matchData?.leagueId ? null : matchData?.managingTeamId);
   const isMatchLeagueArchived = isLeagueOfMatchArchived || isTeamOfMatchArchived;
+  const scorer = useScorerGrant(matchId, !isDemo);
+  const canRecordGame = canRecordMatch(matchData, { isDemo, isLeagueAdmin, canManageTeam, hasScorerGrant: scorer.hasGrant });
+  const canInviteScorer = !isDemo && isLeagueAdmin && !!matchData?.leagueId && !matchData?.isStandalone &&
+    !matchData?.isIndependent && matchData?.status !== "completed";
   // Independent team games aren't part of a league, so drop the league header/footer.
   useSuppressLeagueNav(Boolean(matchData?.isStandalone || matchData?.isIndependent));
   const now = useNow();
@@ -247,6 +255,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
                   <MapPin className="w-4 h-4" />
                   <span>{matchData.location || settings.defaultLocation}</span>
+                  <VenueDirections location={matchData.location || settings.defaultLocation} showNotes />
                 </div>
               </div>
             </div>
@@ -266,7 +275,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
         </div>
 
         {/* Admin Controls (archived leagues are read-only) */}
-        {!isMatchLeagueArchived && (isLeagueAdmin || isPlatformAdmin || (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) || (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) || (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId))) && (
+        {!isMatchLeagueArchived && (isLeagueAdmin || isPlatformAdmin || scorer.hasGrant || (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) || (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) || (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId))) && (
           <div data-tour="match-admin" className="bg-cyan-950/20 border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <ShieldAlert className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />
@@ -283,6 +292,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
               {isLeagueAdmin && (
                 <>
                   <button
+                    data-guide="manage-event"
                     onClick={openEditModal}
                     className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-xl border border-white/10 transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm"
                   >
@@ -291,6 +301,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   </button>
 
                   <button
+                    data-guide="manage-event"
                     onClick={handleDeleteMatch}
                     disabled={isDeleting}
                     className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 font-semibold rounded-xl border border-rose-500/20 transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm"
@@ -302,6 +313,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
               )}
               {isPlatformAdmin && matchData.status !== 'completed' && matchData.homeTeamId && matchData.awayTeamId && (
                 <button
+                  data-guide="simulate-game"
                   onClick={handleSimulateGame}
                   disabled={isSimulating}
                   className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm disabled:opacity-50"
@@ -315,15 +327,28 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 <span className="px-4 py-2.5 rounded-xl border border-white/10 text-neutral-400 text-xs font-semibold">
                   Teams to be decided
                 </span>
-              ) : matchData.status !== 'completed' ? (
+              ) : matchData.status !== 'completed' && canRecordGame ? (
                 <Link
+                  data-guide="stat-keeper"
                   href={`/matches/${matchId}/play-by-play`}
                   className="px-6 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                 >
                   Stat Keeper
                 </Link>
+              ) : matchData.status !== 'completed' ? (
+                <div className="flex flex-col items-start sm:items-end gap-1">
+                  <Link
+                    href={`/matches/${matchId}/play-by-play`}
+                    className="px-6 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-xl border border-white/10 transition-all whitespace-nowrap text-xs"
+                  >
+                    Watch live
+                  </Link>
+                  <span data-tour="match-scorer-note" className="text-[11px] text-neutral-400 max-w-[16rem] sm:text-right">
+                    Only the league admin or a scorer they invite can record this game.
+                  </span>
+                </div>
               ) : isDemoLeague && isLeagueAdmin ? (
-                <div className="flex items-center gap-2">
+                <div data-guide="demo-game-reset" className="flex items-center gap-2">
                   <button
                     onClick={() => {
                       updateSandboxMatch(matchId, { status: "in_progress" });
@@ -355,6 +380,8 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
             </div>
           </div>
         )}
+
+        {canInviteScorer && !isMatchLeagueArchived && <div className="mt-4"><ScorerLinksPanel matchId={matchId} /></div>}
 
         <div data-tour="match-play-by-play" className="bg-neutral-900 border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
           <div>

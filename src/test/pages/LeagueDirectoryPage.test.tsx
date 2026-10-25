@@ -129,6 +129,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
                 tagline: "Live Competitive Gridiron",
                 seasonTitle: "2026 Live Season",
                 visibility: "public",
+                directoryListed: true,
                 primaryColor: "#e11d48",
                 accentColor: "#fb7185",
                 rulesFormat: "7v7 Screen",
@@ -337,7 +338,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     fireEvent.click(sendBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Message Dispatched to Commissioner/i)).toBeInTheDocument();
+      expect(screen.getByText(/Opening Your Email App/i)).toBeInTheDocument();
     });
   });
 

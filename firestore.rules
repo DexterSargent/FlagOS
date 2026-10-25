@@ -293,9 +293,17 @@ service cloud.firestore {
         (!('timestamp' in data) || data.timestamp is timestamp);
     }
 
+    // Temporary scorer access to one game, issued by a league admin through /api/scorer-access.
+    function hasScorerGrant(matchId) {
+      let grantPath = /databases/$(database)/documents/scorer_grants/$(matchId + '__' + request.auth.uid);
+      return signedIn() && matchId is string && exists(grantPath) &&
+        get(grantPath).data.uid == request.auth.uid &&
+        get(grantPath).data.expiresAt > request.time;
+    }
+
     function canManageMatch(matchId) {
       let matchPath = /databases/$(database)/documents/matches/$(matchId);
-      return isPlatformAdmin() ||
+      return isPlatformAdmin() || hasScorerGrant(matchId) ||
         (matchId is string && exists(matchPath) &&
           (
             canManageTeam(
@@ -398,7 +406,7 @@ service cloud.firestore {
 
     match /matches/{matchId} {
       allow get: if isPublicTeamMatch(resource.data) || (signedIn() &&
-        (isPlatformAdmin() ||
+        (isPlatformAdmin() || hasScorerGrant(matchId) ||
           (resource.data.managingTeamId is string && isTeamAdmin(resource.data.managingTeamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
           (resource.data.isHidden != true && canViewLeague(resource.data.leagueId))));
@@ -516,12 +524,29 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // A scorer can confirm their own grant; links and grants are only written by the server.
+    match /scorer_grants/{grantId} {
+      allow get: if signedIn() && resource.data.uid == request.auth.uid;
+      allow list, write: if false;
+    }
+
+    match /scorer_invites/{inviteId} {
+      allow read, write: if false;
+    }
+
     match /league_access/{userId} {
       allow read, write: if false;
     }
 
     match /league_private/{leagueId} {
       allow read, write: if false;
+    }
+
+    // Public free-agent interest is written only by the rate-limited server route.
+    match /free_agent_interest/{entryId} {
+      allow get, delete: if isPlatformAdmin();
+      allow list: if isPlatformAdmin() && hasBoundedListLimit(200);
+      allow create, update: if false;
     }
 
     match /team_private/{teamId} {

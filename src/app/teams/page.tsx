@@ -15,6 +15,7 @@ import {
 import { createSecureRecord } from "@/lib/secureWrites";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
+import { effectiveMaxRoster } from "@/lib/rosterLimits";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam, TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
 import { getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors";
@@ -184,10 +185,10 @@ export default function TeamsPage() {
 
   const handleAddPlayer = async () => {
     if (!newPlayerName.trim() || !activeTeamId) return;
-    const maxRoster = 30; // Hard cap of 30 players for all teams
+    const maxRoster = effectiveMaxRoster(settings?.rules);
     const currentCount = players.filter(p => p.teamId === activeTeamId).length;
     if (currentCount >= maxRoster) {
-      alert(`Cannot add player: Team has reached the hard cap roster limit of ${maxRoster} players.`);
+      alert(`Cannot add player: this team has reached the league's roster limit of ${maxRoster} players.`);
       return;
     }
     if (isDemoLeague) {
@@ -262,10 +263,10 @@ export default function TeamsPage() {
     const targetTeam = teams.find((t) => t.id === targetTeamId);
     if (!targetTeam) return;
 
-    const maxRoster = 30; // Hard cap of 30 players for all teams
+    const maxRoster = effectiveMaxRoster(settings?.rules);
     const teamCount = players.filter((p) => p.teamId === targetTeamId).length;
     if (teamCount >= maxRoster) {
-      alert(`Cannot assign: ${targetTeam.name} has already reached the hard cap roster size of ${maxRoster} players.`);
+      alert(`Cannot assign: ${targetTeam.name} has already reached the league's roster limit of ${maxRoster} players.`);
       return;
     }
 
@@ -337,7 +338,7 @@ export default function TeamsPage() {
 
     if (isExpandingSubscription) {
       const confirmExpand = window.confirm(
-        `All ${currentPaid} paid team slots are currently in use.\n\nAdding "${newTeamName.trim()}" will add a team slot and adjust your monthly subscription by +$15/mo (new cost: $${40 + (currentPaid + 1) * 15}/mo starting at your next monthly payment). Proceed?`
+        `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}All ${currentPaid} paid team slots are currently in use.\n\nAdding "${newTeamName.trim()}" will add a team slot and adjust your monthly subscription by +$20/mo (new cost: $${40 + (currentPaid + 1) * 20}/mo starting at your next monthly payment). Proceed?`
       );
       if (!confirmExpand) return;
       try {
@@ -401,7 +402,7 @@ export default function TeamsPage() {
     const nextCount = Math.max(2, currentPaid - 1);
 
     const reduceSubscription = window.confirm(
-      `Delete "${activeTeam?.name || "this team"}"?\n\nClick OK to also remove this team slot and reduce your subscription by $15/month (new rate: $${40 + nextCount * 15}/mo at next monthly payment).\n\nClick Cancel to choose if you want to keep the open slot.`
+      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}Delete "${activeTeam?.name || "this team"}"?\n\nClick OK to also remove this team slot and reduce your subscription by $20/month (new rate: $${40 + nextCount * 20}/mo at next monthly payment).\n\nClick Cancel to choose if you want to keep the open slot.`
     );
 
     if (reduceSubscription) {
@@ -779,7 +780,7 @@ export default function TeamsPage() {
                 className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Team to Subscription (+ $15/mo)</span>
+                <span>Add Team to Subscription (+ $20/mo)</span>
               </button>
 
               <button

@@ -28,7 +28,7 @@ import {
 import type { BusinessSnapshot } from "@/lib/adminBusiness";
 import { EmptyState, MonthlyBars, Panel, SplitBar, StatCard, StatusBadge, TrendLine, ghostButtonClass } from "./AdminUi";
 
-export type ConsoleTab = "overview" | "customers" | "finance" | "users" | "activity";
+export type ConsoleTab = "overview" | "customers" | "finance" | "users" | "activity" | "free-agents";
 
 export default function AdminOverview({
   records,

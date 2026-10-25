@@ -48,10 +48,10 @@ export interface LeagueVenue {
   city: string;
   stateOrProvince: string;
   postalCode: string;
-  surface: "Indoor Turf" | "Outdoor Field Turf" | "Natural Grass";
-  hasLights: boolean;
-  latitude: number;
-  longitude: number;
+  surface?: "Indoor Turf" | "Outdoor Field Turf" | "Natural Grass";
+  hasLights?: boolean;
+  latitude?: number;
+  longitude?: number;
   mapsUrl?: string;
 }
 
@@ -62,8 +62,9 @@ export interface DirectoryLeague {
   tagline: string;
   seasonTitle: string;
   rulesFormat: RulesetFormat;
-  division: LeagueDivision;
-  competitionTier: CompetitionTier;
+  /** Empty when the organizer has not published it. */
+  division: LeagueDivision | string;
+  competitionTier: CompetitionTier | string;
   gameDay: string;
   gameTimeWindow: string;
   venue: LeagueVenue;
@@ -80,6 +81,9 @@ export interface DirectoryLeague {
   visibility: "public" | "private";
   amenities: string[];
   contactEmail?: string;
+  acceptsFreeAgents?: boolean;
+  /** True only when the league admin opted in to the public directory. */
+  isListed?: boolean;
   isFeatured?: boolean;
   isLive?: boolean;
   isUserLeague?: boolean;
@@ -202,56 +206,38 @@ export function normalizeToDirectoryLeague(
     else rulesFormat = "5v5 Non-Contact";
   }
 
-  // Division resolution
-  let division: LeagueDivision = "Co-Ed";
-  if (raw.division && typeof raw.division === "string") {
-    division = raw.division as LeagueDivision;
-  } else {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes("women")) {
-      division = "Women's Flag";
-    } else if (lowerName.includes("men")) {
-      division = "Men's Open";
-    } else if (lowerName.includes("youth") || lowerName.includes("high school")) {
-      division = "Youth / High School";
-    } else if (lowerName.includes("varsity") || lowerName.includes("college")) {
-      division = "Collegiate Varsity";
+  const info: Record<string, unknown> =
+    raw.playerInfo && typeof raw.playerInfo === "object" ? raw.playerInfo : {};
+  const text = (...values: unknown[]): string => {
+    for (const value of values) {
+      if (typeof value === "string" && value.trim()) return value.trim();
     }
-  }
+    return "";
+  };
+  const num = (value: unknown): number | undefined =>
+    typeof value === "number" && Number.isFinite(value) ? value : undefined;
 
-  // Venue resolution
-  let venue: LeagueVenue;
-  if (raw.venue && typeof raw.venue === "object" && raw.venue.name) {
-    venue = {
-      name: raw.venue.name,
-      address: raw.venue.address || "Metropolitan Sports Complex",
-      city: raw.venue.city || "Toronto",
-      stateOrProvince: raw.venue.stateOrProvince || "ON",
-      postalCode: raw.venue.postalCode || "M3J 1P3",
-      surface: raw.venue.surface || "Outdoor Field Turf",
-      hasLights: raw.venue.hasLights ?? true,
-      latitude: Number(raw.venue.latitude ?? 43.7735),
-      longitude: Number(raw.venue.longitude ?? -79.5019),
-      mapsUrl: raw.venue.mapsUrl,
-    };
-  } else {
-    const locName = raw.defaultLocation || raw.location || "Metropolitan Sports Complex";
-    venue = {
-      name: locName,
-      address: raw.address || "4700 Keele St",
-      city: raw.city || "Toronto",
-      stateOrProvince: raw.stateOrProvince || "ON",
-      postalCode: raw.postalCode || "M3J 1P3",
-      surface: "Outdoor Field Turf",
-      hasLights: true,
-      latitude: Number(raw.latitude ?? 43.7735),
-      longitude: Number(raw.longitude ?? -79.5019),
-    };
-  }
+  const division = text(info.division, raw.division);
+
+  // Venue: only what the organizer actually published; nothing is invented.
+  const rawVenue = raw.venue && typeof raw.venue === "object" ? raw.venue : {};
+  const firstVenue = Array.isArray(raw.venues) && raw.venues[0] && typeof raw.venues[0] === "object" ? raw.venues[0] : {};
+  const venue: LeagueVenue = {
+    name: text(info.venueName, rawVenue.name, firstVenue.name, raw.defaultLocation, raw.location),
+    address: text(info.address, rawVenue.address, firstVenue.address, raw.address),
+    city: text(info.city, rawVenue.city, raw.city),
+    stateOrProvince: text(rawVenue.stateOrProvince, raw.stateOrProvince),
+    postalCode: text(rawVenue.postalCode, raw.postalCode),
+    surface: rawVenue.surface,
+    hasLights: typeof rawVenue.hasLights === "boolean" ? rawVenue.hasLights : undefined,
+    latitude: num(rawVenue.latitude) ?? num(raw.latitude),
+    longitude: num(rawVenue.longitude) ?? num(raw.longitude),
+    mapsUrl: rawVenue.mapsUrl,
+  };
 
   // Team counts
   const teamCount = Number(
-    raw.teamCount ?? raw.teamsCount ?? (Array.isArray(raw.teams) ? raw.teams.length : undefined) ?? raw.subscription?.teamCount ?? 8
+    raw.teamCount ?? raw.teamsCount ?? (Array.isArray(raw.teams) ? raw.teams.length : undefined) ?? raw.subscription?.teamCount ?? 0
   );
   const maxTeams = Number(raw.maxTeams ?? Math.max(teamCount + 4, 12));
 
@@ -285,17 +271,17 @@ export function normalizeToDirectoryLeague(
     seasonTitle,
     rulesFormat,
     division,
-    competitionTier: raw.competitionTier || "Competitive",
-    gameDay: raw.gameDay || "Sunday Mornings",
-    gameTimeWindow: raw.gameTimeWindow || "9:00 AM – 1:30 PM",
+    competitionTier: text(info.skillLevel, raw.competitionTier),
+    gameDay: text(info.gameDay, raw.gameDay),
+    gameTimeWindow: text(info.gameTime, raw.gameTimeWindow),
     venue,
     teamCount,
     maxTeams,
     registrationFeePerTeam,
     individualFee,
     registrationStatus,
-    registrationDeadline: raw.registrationDeadline || "May 1, 2026",
-    seasonDates: raw.seasonDates || "May – August 2026",
+    registrationDeadline: text(info.registrationDeadline, raw.registrationDeadline),
+    seasonDates: text(info.seasonDates, raw.seasonDates),
     primaryColor: raw.primaryColor || "#3ca505",
     accentColor: raw.accentColor || "#3b82f6",
     logoUrl: raw.logoUrl || FLAGOS_LOGO,
@@ -306,7 +292,9 @@ export function normalizeToDirectoryLeague(
         : Array.isArray(raw.features) && raw.features.length > 0
         ? raw.features.filter((f: any) => typeof f === "string" && f.trim().length > 0)
         : [],
-    contactEmail: raw.contactEmail,
+    contactEmail: text(raw.publicContactEmail) || undefined,
+    acceptsFreeAgents: info.acceptsFreeAgents === true,
+    isListed: raw.directoryListed === true,
     isFeatured: Boolean(raw.isFeatured),
     isLive: meta?.isLive ?? Boolean(raw.isLive),
     isUserLeague: meta?.isUserLeague ?? Boolean(raw.isUserLeague),
@@ -424,9 +412,10 @@ export function buildDirectoryCatalog(
     }
   }
 
-  // 5. Strictly filter out private leagues and the shared demo league
+  // 5. Only opted-in public leagues are discoverable; a user's own/active leagues stay visible to them.
   const allLeagues = Array.from(mergedMap.values()).filter(
     (l) =>
+      (l.isListed || l.isUserLeague || l.isActive) &&
       l.visibility !== "private" &&
       l.id !== "league_private_live" &&
       l.id !== "default" &&

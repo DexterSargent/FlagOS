@@ -4752,7 +4752,7 @@ export const SEED_DEMO_MATCHES: DemoMatch[] = [
     "location": "Field 3 - North Turf",
     "status": "in_progress",
     "homeScore": 7,
-    "awayScore": 3,
+    "awayScore": 6,
     "matchdayIndex": 16,
     "order": 10,
     "isPreseason": false,
@@ -4764,7 +4764,7 @@ export const SEED_DEMO_MATCHES: DemoMatch[] = [
       "gameClock": 435,
       "possession": "Pittsburgh",
       "homeScore": 7,
-      "awayScore": 3,
+      "awayScore": 6,
       "homeTimeouts": 3,
       "awayTimeouts": 3,
       "firstHalfStartPossession": "Cleveland"
@@ -5195,12 +5195,16 @@ const SCRIPTED_DEMO_PLAYS: DemoPlay[] = [
     "id": "play_w16_11_4",
     "matchId": "match_w16_11",
     "possessionTeamId": "team_cle",
-    "playType": "Run",
+    "playType": "Pass",
     "down": 4,
     "half": 1,
     "gameClock": 495,
-    "points": 3,
-    "result": "27-yd Field Goal GOOD (CLE 3, PIT 0)"
+    "qbPlayerId": "Deshaun Watson",
+    "receiverPlayerId": "David Njoku",
+    "passOutcome": "Complete",
+    "isTouchdown": true,
+    "points": 6,
+    "result": "Deshaun Watson 22 yd TOUCHDOWN Pass to David Njoku! (CLE 6, PIT 0)"
   },
   {
     "id": "play_w16_11_5",
@@ -5229,7 +5233,7 @@ const SCRIPTED_DEMO_PLAYS: DemoPlay[] = [
     "runnerPlayerId": "Najee Harris",
     "isTouchdown": true,
     "points": 6,
-    "result": "13 yd TOUCHDOWN Run! (PIT 6, CLE 3)"
+    "result": "13 yd TOUCHDOWN Run! (PIT 6, CLE 6)"
   },
   {
     "id": "play_w16_11_7",
@@ -5243,7 +5247,7 @@ const SCRIPTED_DEMO_PLAYS: DemoPlay[] = [
     "passOutcome": "Complete",
     "isConversion": true,
     "points": 1,
-    "result": "1-PT Conversion GOOD (PIT 7, CLE 3)"
+    "result": "1-PT Conversion GOOD (PIT 7, CLE 6)"
   },
   {
     "id": "play_w16_11_8",

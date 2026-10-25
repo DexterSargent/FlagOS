@@ -16,10 +16,13 @@ import {
 } from "lucide-react";
 import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
 import ThemeToggle from "@/components/ThemeToggle";
+import { findVenue, mapsSearchUrl } from "@/lib/leaguePublicProfile";
+import { FLAGOS_SUPPORT_EMAIL } from "@/lib/platformAdmin";
 
 export default function LeagueFooter() {
   const { settings, openCustomizer, activeLeagueId, subscription } = useLeague();
   const { canRegisterAsPlayer, isAuthorized, isLeagueAdmin, user } = useAuth();
+  const homeVenue = findVenue(settings.venues, settings.defaultLocation) || settings.venues?.[0] || null;
 
   const isCustomOrPaidLeague =
     (activeLeagueId !== "default" && activeLeagueId !== "demo") ||
@@ -69,23 +72,41 @@ export default function LeagueFooter() {
                 <MapPin className="w-4 h-4 text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold block text-slate-900 dark:text-white">Home Field</span>
-                  <span className="text-slate-500 dark:text-neutral-400">{settings.defaultLocation || "Location to be announced"}</span>
+                  <span className="text-slate-500 dark:text-neutral-400 block">{homeVenue?.name || settings.defaultLocation || "Location to be announced"}</span>
+                  {homeVenue?.address && (
+                    <a
+                      href={mapsSearchUrl(homeVenue.address)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-300 underline underline-offset-2"
+                    >
+                      {homeVenue.address} · Directions
+                    </a>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-start gap-2 text-slate-600 dark:text-neutral-300">
                 <Mail className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold block text-slate-900 dark:text-white">Commissioner</span>
-                  {settings.contactEmail ? (
+                  <span className="font-bold block text-slate-900 dark:text-white">Organizer Contact</span>
+                  {settings.publicContactEmail ? (
                     <a
-                      href={`mailto:${settings.contactEmail}`}
-                      className="text-slate-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors underline underline-offset-2"
+                      href={`mailto:${settings.publicContactEmail}`}
+                      className="text-slate-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors underline underline-offset-2 break-all"
                     >
-                      {settings.contactEmail}
+                      {settings.publicContactEmail}
                     </a>
                   ) : (
-                    <span className="text-slate-500 dark:text-neutral-400">Contact your league administrator</span>
+                    <span className="text-slate-500 dark:text-neutral-400">
+                      Ask your coach, or email{" "}
+                      <a
+                        href={`mailto:${FLAGOS_SUPPORT_EMAIL}?subject=${encodeURIComponent(`Question about ${settings.leagueName || "my league"}`)}`}
+                        className="hover:text-emerald-600 dark:hover:text-emerald-300 underline underline-offset-2 break-all"
+                      >
+                        FlagOS support
+                      </a>
+                    </span>
                   )}
                 </div>
               </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { LeaguePlayerInfo, LeagueVenueInfo } from "@/lib/leaguePublicProfile";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePageGuide } from "@/lib/pageGuide";
@@ -7,6 +8,7 @@ import { LEAGUE_SETTINGS_GUIDES, LEAGUE_RULES_VIEW_GUIDE } from "@/lib/walkthrou
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { useLeague, LeagueRules, DEFAULT_LEAGUE_RULES, IFAF_5V5_RULES } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
+import { rosterHardCap } from "@/lib/rosterLimits";
 import {
   Palette,
   Shield,
@@ -44,6 +46,12 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { isRealTeam } from "@/components/TeamAssets";
 import { getSandboxTeams } from "@/lib/demoSandbox";
+
+/** Blank, built-in ("/..."), uploaded data images and web addresses are all fine. */
+function isAcceptableLogoUrl(value: string | undefined): boolean {
+  const trimmed = (value || "").trim();
+  return !trimmed || (trimmed.startsWith("/") && !trimmed.startsWith("//")) || /^https?:\/\//i.test(trimmed) || /^data:image\//i.test(trimmed);
+}
 
 const SAMPLE_LOGOS = [
   { name: "Shield Crest", Url: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=150&auto=format&fit=crop&q=80" },
@@ -128,7 +136,7 @@ export default function LeagueCustomizerContent() {
     setSubSuccessMsg("");
     try {
       await updateSubscriptionTeamCount(count);
-      setSubSuccessMsg(`Subscription updated to ${count} teams! Next monthly payment adjusted to $${40 + count * 15}/mo.`);
+      setSubSuccessMsg(`Subscription updated to ${count} teams! Next monthly payment adjusted to $${40 + count * 20}/mo.`);
       setTimeout(() => setSubSuccessMsg(""), 5000);
       await loadSubTeams();
     } catch (e) {
@@ -147,7 +155,7 @@ export default function LeagueCustomizerContent() {
       const teamNameToUse = newSubTeamName.trim() || `Team ${nextCount}`;
       await addTeamToSubscription(teamNameToUse);
       setNewSubTeamName("");
-      setSubSuccessMsg(`Added "${teamNameToUse}" and increased subscription to ${nextCount} teams ($${40 + nextCount * 15}/mo at next payment).`);
+      setSubSuccessMsg(`Added "${teamNameToUse}" and increased subscription to ${nextCount} teams ($${40 + nextCount * 20}/mo at next payment).`);
       setTimeout(() => setSubSuccessMsg(""), 5000);
       await loadSubTeams();
     } catch (e) {
@@ -161,14 +169,14 @@ export default function LeagueCustomizerContent() {
   const handleQuickRemoveTeam = async (teamId: string, teamName: string) => {
     const nextCount = Math.max(2, (subscription?.teamCount ?? 8) - 1);
     const confirmed = window.confirm(
-      `Remove "${teamName}" from the league and reduce your subscription by $15/month starting at your next monthly payment (new cost: $${40 + nextCount * 15}/mo)?`
+      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}Remove "${teamName}" from the league and reduce your subscription by $20/month starting at your next monthly payment (new cost: $${40 + nextCount * 20}/mo)?`
     );
     if (!confirmed) return;
     setIsUpdatingSub(true);
     setSubSuccessMsg("");
     try {
       await removeTeamFromSubscription(teamId);
-      setSubSuccessMsg(`Removed "${teamName}" and reduced subscription to ${nextCount} teams ($${40 + nextCount * 15}/mo at next payment).`);
+      setSubSuccessMsg(`Removed "${teamName}" and reduced subscription to ${nextCount} teams ($${40 + nextCount * 20}/mo at next payment).`);
       setTimeout(() => setSubSuccessMsg(""), 5000);
       await loadSubTeams();
     } catch (e) {
@@ -202,6 +210,14 @@ export default function LeagueCustomizerContent() {
   const [amenitiesText, setAmenitiesText] = useState<string>(
     settings.amenities ? settings.amenities.join(", ") : ""
   );
+  const [directoryListed, setDirectoryListed] = useState<boolean>(settings.directoryListed === true);
+  const [publicContactEmail, setPublicContactEmail] = useState(settings.publicContactEmail || "");
+  const [playerInfo, setPlayerInfo] = useState<LeaguePlayerInfo>(settings.playerInfo || {});
+  const [venues, setVenues] = useState<LeagueVenueInfo[]>(settings.venues || []);
+  const updatePlayerInfo = (key: keyof LeaguePlayerInfo, value: string | boolean) =>
+    setPlayerInfo((prev) => ({ ...prev, [key]: value }));
+  const updateVenue = (index: number, key: keyof LeagueVenueInfo, value: string) =>
+    setVenues((prev) => prev.map((venue, i) => (i === index ? { ...venue, [key]: value } : venue)));
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedJoinLink, setCopiedJoinLink] = useState(false);
 
@@ -256,6 +272,10 @@ export default function LeagueCustomizerContent() {
     setRegistrationFeePerTeam(settings.registrationFeePerTeam !== undefined ? String(settings.registrationFeePerTeam) : "");
     setIndividualFee(settings.individualFee !== undefined ? String(settings.individualFee) : "");
     setAmenitiesText(settings.amenities ? settings.amenities.join(", ") : "");
+    setDirectoryListed(settings.directoryListed === true);
+    setPublicContactEmail(settings.publicContactEmail || "");
+    setPlayerInfo(settings.playerInfo || {});
+    setVenues(settings.venues || []);
     setRules(settings.rules || DEFAULT_LEAGUE_RULES);
 
     if (!isLeagueAdmin && activeTab === "branding") {
@@ -284,8 +304,8 @@ export default function LeagueCustomizerContent() {
     setRules((prev) => ({
       ...prev,
       playersOnField: count,
-      minRosterSize: Math.max(count, prev.minRosterSize),
-      maxRosterSize: Math.max(count + 2, prev.maxRosterSize),
+      minRosterSize: Math.min(rosterHardCap(count), Math.max(count, prev.minRosterSize)),
+      maxRosterSize: Math.min(rosterHardCap(count), Math.max(count + 2, prev.maxRosterSize)),
     }));
   };
 
@@ -300,11 +320,16 @@ export default function LeagueCustomizerContent() {
 
   const handleSaveLeagueSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAcceptableLogoUrl(logoUrl)) {
+      setSaveError("The logo must be a web address starting with https:// (or leave it blank for the FlagOS logo).");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {
       const sanitizedMinRoster = Math.max(rules.playersOnField, rules.minRosterSize);
-      const sanitizedMaxRoster = Math.min(30, Math.max(sanitizedMinRoster, rules.maxRosterSize || 30));
+      const rosterCap = rosterHardCap(rules.playersOnField);
+      const sanitizedMaxRoster = Math.min(rosterCap, Math.max(sanitizedMinRoster, rules.maxRosterSize || rosterCap));
       const parsedTeamFee = registrationFeePerTeam.trim() !== "" ? Number(registrationFeePerTeam) : undefined;
       const parsedPlayerFee = individualFee.trim() !== "" ? Number(individualFee) : undefined;
       const parsedAmenities = amenitiesText.trim() !== ""
@@ -328,6 +353,18 @@ export default function LeagueCustomizerContent() {
         registrationFeePerTeam: Number.isFinite(parsedTeamFee) ? parsedTeamFee : undefined,
         individualFee: Number.isFinite(parsedPlayerFee) ? parsedPlayerFee : undefined,
         amenities: parsedAmenities,
+        directoryListed: visibility === "public" && directoryListed,
+        publicContactEmail: publicContactEmail.trim(),
+        playerInfo: Object.fromEntries(
+          Object.entries(playerInfo).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])
+        ) as LeaguePlayerInfo,
+        venues: venues
+          .map((venue) => ({
+            name: venue.name.trim(),
+            ...(venue.address?.trim() ? { address: venue.address.trim() } : {}),
+            ...(venue.notes?.trim() ? { notes: venue.notes.trim() } : {}),
+          }))
+          .filter((venue) => venue.name),
         rules: {
           ...rules,
           minRosterSize: sanitizedMinRoster,
@@ -533,11 +570,11 @@ export default function LeagueCustomizerContent() {
                     <span>League Privacy & Directory Listing</span>
                     <FieldHelpTooltip
                       title="League Visibility"
-                      content="Public leagues appear in the global directory and search. Private leagues are hidden and accessible only via direct league URL."
+                      content="Listed leagues appear in the public directory and free-agent search. Unlisted leagues are viewable only through the direct link. Private leagues are visible only to league members."
                     />
                   </span>
                   <p className="text-[11px] text-neutral-400 mt-0.5">
-                    Choose whether this league appears in the public FlagOS league directory or is accessible only via direct URL.
+                    Leagues are never listed publicly unless you choose to. Choose who can find and view this league.
                   </p>
                 </div>
                 <span
@@ -547,73 +584,80 @@ export default function LeagueCustomizerContent() {
                       : "bg-amber-500/10 text-amber-300 border-amber-500/30"
                   }`}
                 >
-                  {visibility === "public" ? "🌐 Public Directory" : "🔒 Private (Direct URL Only)"}
+                  {visibility === "private" ? "🔒 Private (Members Only)" : directoryListed ? "🌐 Listed Publicly" : "🔗 Unlisted (Link Only)"}
                 </span>
               </div>
 
-              {/* Two Options Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                {/* Public Option */}
-                <button
-                  type="button"
-                  onClick={() => setVisibility("public")}
-                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
-                    visibility === "public"
-                      ? "bg-emerald-500/10 border-emerald-500/60 shadow-lg shadow-emerald-500/10"
-                      : "bg-black/50 border-white/10 hover:border-white/20 text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-400">
-                        <Globe className="w-4 h-4" />
-                        <span>Public League</span>
-                      </div>
-                      {visibility === "public" && (
-                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center text-black">
-                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+              {/* Listing options */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                {([
+                  {
+                    id: "listed",
+                    title: "Listed Publicly",
+                    icon: Globe,
+                    tone: "emerald",
+                    body: "Appears in the public league directory and free-agent search. Anyone can find it and view the league hub.",
+                    foot: "\u2713 Discoverable in the directory",
+                  },
+                  {
+                    id: "unlisted",
+                    title: "Unlisted (Link Only)",
+                    icon: ExternalLink,
+                    tone: "cyan",
+                    body: "Not shown in the directory or search. Anyone signed in who has the direct link can view the league hub.",
+                    foot: "\u{1F517} Share the direct link yourself",
+                  },
+                  {
+                    id: "private",
+                    title: "Private (Members Only)",
+                    icon: Lock,
+                    tone: "amber",
+                    body: "Hidden from the directory. Only league admins, coaches and rostered players can open it. Recommended for youth leagues.",
+                    foot: "\u{1F512} Members only",
+                  },
+                ] as const).map((option) => {
+                  const current = visibility === "private" ? "private" : directoryListed ? "listed" : "unlisted";
+                  const selected = current === option.id;
+                  const Icon = option.icon;
+                  const toneText = option.tone === "emerald" ? "text-emerald-400" : option.tone === "cyan" ? "text-cyan-400" : "text-amber-400";
+                  const toneSelected = option.tone === "emerald"
+                    ? "bg-emerald-500/10 border-emerald-500/60"
+                    : option.tone === "cyan"
+                    ? "bg-cyan-500/10 border-cyan-500/60"
+                    : "bg-amber-500/10 border-amber-500/60";
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => {
+                        setVisibility(option.id === "private" ? "private" : "public");
+                        setDirectoryListed(option.id === "listed");
+                      }}
+                      className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                        selected ? `${toneSelected} shadow-lg` : "bg-black/50 border-white/10 hover:border-white/20 text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className={`flex items-center gap-2 text-xs font-black uppercase tracking-wider ${toneText}`}>
+                            <Icon className="w-4 h-4" />
+                            <span>{option.title}</span>
+                          </div>
+                          {selected && (
+                            <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-black">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <p className="text-[11px] leading-relaxed text-neutral-300">
-                      Shows in the <strong>public league directory</strong>. Athletes and teams searching for leagues to join can find, explore, and register for your league.
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-1.5 text-[10px] font-mono text-emerald-400">
-                    <span>✓ Discoverable on FlagOS homepage</span>
-                  </div>
-                </button>
-
-                {/* Private Option */}
-                <button
-                  type="button"
-                  onClick={() => setVisibility("private")}
-                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
-                    visibility === "private"
-                      ? "bg-amber-500/10 border-amber-500/60 shadow-lg shadow-amber-500/10"
-                      : "bg-black/50 border-white/10 hover:border-white/20 text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400">
-                        <Lock className="w-4 h-4" />
-                        <span>Private League</span>
+                        <p className="text-[11px] leading-relaxed text-neutral-300">{option.body}</p>
                       </div>
-                      {visibility === "private" && (
-                        <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-black">
-                          <Check className="w-2.5 h-2.5 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-[11px] leading-relaxed text-neutral-300">
-                      <strong>Hidden from the public directory</strong>. Unlisted from search results. Can only be accessed by visitors who have the direct URL link.
-                    </p>
-                  </div>
-                  <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-1.5 text-[10px] font-mono text-amber-400">
-                    <span>🔒 Accessible via direct URL only</span>
-                  </div>
-                </button>
+                      <div className={`mt-3 pt-2.5 border-t border-white/5 text-[10px] font-mono ${toneText}`}>
+                        {option.foot}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
               {/* Direct Access Link Box */}
@@ -624,7 +668,7 @@ export default function LeagueCustomizerContent() {
                     <span>Direct Access URL</span>
                   </span>
                   <span className="text-[10px] text-neutral-500">
-                    {visibility === "private" ? "Exclusive entry link for private participants" : "Shareable direct portal link"}
+                    {visibility === "private" ? "Opens only for league members" : "Shareable direct portal link"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -756,12 +800,17 @@ export default function LeagueCustomizerContent() {
                   />
                 </label>
                 <input
-                  type="Url"
+                  type="text"
+                  inputMode="url"
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
                   placeholder="https://example.com/league-logo.png"
+                  aria-invalid={!isAcceptableLogoUrl(logoUrl)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-amber-500 text-white text-xs outline-none transition-colors"
                 />
+                {!isAcceptableLogoUrl(logoUrl) && (
+                  <p className="mt-1 text-[10px] font-bold text-red-400">Use a full image address starting with https://, or leave it blank.</p>
+                )}
                 <div className="flex items-center gap-2 mt-2">
                   <span className="text-[10px] text-neutral-500">Preset Sample Logos:</span>
                   {SAMPLE_LOGOS.map((sample) => (
@@ -1087,6 +1136,121 @@ export default function LeagueCustomizerContent() {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white text-xs outline-none transition-colors"
                 />
               </div>
+
+              <div data-tour="settings-player-info" className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-3">
+                <div>
+                  <span className="text-[11px] uppercase font-bold text-neutral-300">Player-Facing Details (optional)</span>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">
+                    Shown on your directory listing and league page. Leave anything blank to hide it.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="space-y-1 sm:col-span-2">
+                    <span className="text-[10px] uppercase font-bold text-neutral-400">Public organizer contact email</span>
+                    <input
+                      type="email"
+                      value={publicContactEmail}
+                      onChange={(e) => setPublicContactEmail(e.target.value)}
+                      placeholder="e.g. league@example.com (shown publicly)"
+                      maxLength={254}
+                      className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white text-xs outline-none"
+                    />
+                    <span className="block text-[10px] text-neutral-500">Without one, players are pointed to FlagOS support.</span>
+                  </label>
+                  {([
+                    ["city", "City / area", "e.g. Toronto, ON", 80],
+                    ["venueName", "Main venue name", "e.g. Downsview Park", 120],
+                    ["address", "Venue address", "e.g. 70 Canuck Ave, Toronto, ON", 200],
+                    ["gameDay", "Game day", "e.g. Sundays", 60],
+                    ["gameTime", "Game time", "e.g. 9 AM \u2013 1 PM", 60],
+                    ["skillLevel", "Skill level", "e.g. Recreational, Competitive", 60],
+                    ["division", "Division", "e.g. Co-Ed, Men's, Youth U12", 60],
+                    ["registrationDeadline", "Registration deadline", "e.g. May 1", 32],
+                    ["seasonDates", "Season dates", "e.g. May \u2013 August", 80],
+                  ] as const).map(([key, label, placeholder, max]) => (
+                    <label key={key} className="space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-neutral-400">{label}</span>
+                      <input
+                        type="text"
+                        value={(playerInfo[key] as string | undefined) || ""}
+                        onChange={(e) => updatePlayerInfo(key, e.target.value)}
+                        placeholder={placeholder}
+                        maxLength={max}
+                        className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white text-xs outline-none"
+                      />
+                    </label>
+                  ))}
+                  <label className="flex items-center gap-2 sm:col-span-2 text-xs text-neutral-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={playerInfo.acceptsFreeAgents === true}
+                      onChange={(e) => updatePlayerInfo("acceptsFreeAgents", e.target.checked)}
+                      className="w-4 h-4 accent-emerald-500"
+                    />
+                    <span>Accepting free agents (players without a team)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div data-tour="settings-venues" className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-[11px] uppercase font-bold text-neutral-300">Fields &amp; Venues</span>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">
+                      Add an address so players get a Directions link on game cards. Names must match the location used on games (e.g. &ldquo;Field 1&rdquo;).
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setVenues((prev) => [...prev, { name: "", address: "", notes: "" }])}
+                    disabled={venues.length >= 20}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold disabled:opacity-40 cursor-pointer"
+                  >
+                    + Add venue
+                  </button>
+                </div>
+                {venues.length === 0 && (
+                  <p className="text-[11px] text-neutral-500 italic">No venues added yet.</p>
+                )}
+                {venues.map((venue, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_auto] gap-2 p-2.5 rounded-lg border border-white/10 bg-black/40">
+                    <input
+                      type="text"
+                      value={venue.name}
+                      onChange={(e) => updateVenue(index, "name", e.target.value)}
+                      placeholder="Field name (e.g. Field 1)"
+                      maxLength={100}
+                      aria-label={`Venue ${index + 1} name`}
+                      className="px-3 py-2 rounded-lg bg-black/80 border border-white/10 focus:border-emerald-400 text-white text-xs outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={venue.address || ""}
+                      onChange={(e) => updateVenue(index, "address", e.target.value)}
+                      placeholder="Street address"
+                      maxLength={200}
+                      aria-label={`Venue ${index + 1} address`}
+                      className="px-3 py-2 rounded-lg bg-black/80 border border-white/10 focus:border-emerald-400 text-white text-xs outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setVenues((prev) => prev.filter((_, i) => i !== index))}
+                      className="px-3 py-2 rounded-lg border border-red-500/30 text-red-300 hover:bg-red-500/10 text-[11px] font-bold cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                    <input
+                      type="text"
+                      value={venue.notes || ""}
+                      onChange={(e) => updateVenue(index, "notes", e.target.value)}
+                      placeholder="Notes (parking, entrance, which field)"
+                      maxLength={300}
+                      aria-label={`Venue ${index + 1} notes`}
+                      className="sm:col-span-3 px-3 py-2 rounded-lg bg-black/80 border border-white/10 focus:border-emerald-400 text-white text-xs outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Negative offsets cancel the scroll container's padding so the bar sits flush with the panel's bottom edge. */}
@@ -1217,6 +1381,9 @@ export default function LeagueCustomizerContent() {
                       <div className="text-[10px] text-neutral-400 mt-0.5">4 quarters with short breaks between</div>
                     </button>
                   </div>
+                  <p className="text-[10px] text-neutral-400 mt-2">
+                    Games already in progress keep the format they started with. The change applies from the next game.
+                  </p>
                 </div>
 
                 <div>
@@ -1496,13 +1663,13 @@ export default function LeagueCustomizerContent() {
                 <span>Stat Keeping Mode</span>
                 <FieldHelpTooltip
                   title="Stat Keeping Mode"
-                  content="Live uses the game clock, play clock and timeouts. Async drops the clocks and records both teams' plays by half, so games can be scored from the sideline or entered afterwards."
+                  content="Live uses the game clock, play clock and timeouts. No clock skips the timers and records both teams' plays by half, so games can be scored from the sideline or entered afterwards."
                 />
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {([
                   { id: "live", title: "Live clocks", body: "Game clock, play clock and timeouts run during the game." },
-                  { id: "async", title: "Async, both teams", body: "No clocks. Record each team's plays by half, live or after the game." },
+                  { id: "async", title: "No clock, both teams", body: "No clocks. Record each team's plays by half, live or after the game." },
                 ] as const).map((mode) => {
                   const active = (rules.statKeepingMode || "live") === mode.id;
                   return (
@@ -1579,18 +1746,18 @@ export default function LeagueCustomizerContent() {
                       type="number"
                       disabled={!isLeagueAdmin}
                       min={rules.minRosterSize}
-                      max={30}
+                      max={rosterHardCap(rules.playersOnField)}
                       value={rules.maxRosterSize}
                       onChange={(e) =>
                         setRules((prev) => ({
                           ...prev,
-                          maxRosterSize: Math.min(30, Math.max(prev.minRosterSize, parseInt(e.target.value) || prev.minRosterSize)),
+                          maxRosterSize: Math.min(rosterHardCap(prev.playersOnField), Math.max(prev.minRosterSize, parseInt(e.target.value) || prev.minRosterSize)),
                         }))
                       }
                       className="w-20 px-3 py-2 rounded-xl bg-black/80 border border-white/10 text-white font-mono font-bold text-center text-sm disabled:opacity-80"
                     />
                     <span className="text-[11px] text-neutral-400 leading-tight">
-                      Hard cap of 30 players. Teams cannot add players once this limit is reached.
+                      Up to {rosterHardCap(rules.playersOnField)} players ({rules.playersOnField}v{rules.playersOnField} allows 5 per spot on the field). Teams cannot add players once this limit is reached.
                     </span>
                   </div>
                 </div>
@@ -2086,7 +2253,7 @@ export default function LeagueCustomizerContent() {
                       League Team Subscription
                     </h3>
                     <p className="text-xs text-neutral-400">
-                      Tier Capacity: {subscription?.teamCount || 8} Teams • $40 base + $15/team per month
+                      Tier Capacity: {subscription?.teamCount || 8} Teams • $40 base + $20/team per month
                     </p>
                   </div>
                 </div>
@@ -2119,15 +2286,15 @@ export default function LeagueCustomizerContent() {
                     Team Slots ({targetTeamCount} teams)
                   </div>
                   <div className="text-base font-black text-emerald-400 font-mono">
-                    ${targetTeamCount * 15}.00 / mo
+                    ${targetTeamCount * 20}.00 / mo
                   </div>
-                  <div className="text-[10px] text-neutral-500">{targetTeamCount} × $15.00/team per month</div>
+                  <div className="text-[10px] text-neutral-500">{targetTeamCount} × $20.00/team per month</div>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
                   <div className="text-[10px] uppercase font-bold text-neutral-400">Adjusted Total Monthly</div>
                   <div className="text-base font-black text-cyan-400 font-mono">
-                    ${40 + targetTeamCount * 15}.00 / mo
+                    ${40 + targetTeamCount * 20}.00 / mo
                   </div>
                   <div className="text-[10px] text-neutral-500">Next bill on renewal date</div>
                 </div>
@@ -2149,7 +2316,7 @@ export default function LeagueCustomizerContent() {
                   </span>
                 </div>
                 <span className="text-[11px] text-neutral-400">
-                  Rate at next payment: <strong className="text-cyan-300 font-mono">${40 + targetTeamCount * 15}/mo</strong>
+                  Rate at next payment: <strong className="text-cyan-300 font-mono">${40 + targetTeamCount * 20}/mo</strong>
                 </span>
               </div>
             </div>
@@ -2163,7 +2330,7 @@ export default function LeagueCustomizerContent() {
                     <span>Adjust Paid Team Slots</span>
                   </h4>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Add or remove team capacity. Adjusts your monthly cost by $15 per team at next renewal.
+                    Add or remove team capacity. Adjusts your monthly cost by $20 per team at next renewal.
                   </p>
                 </div>
 
@@ -2188,7 +2355,7 @@ export default function LeagueCustomizerContent() {
                   <div className="px-5 py-2 rounded-xl bg-neutral-900 border border-white/10 text-center min-w-[130px]">
                     <div className="text-lg font-black text-white font-mono">{targetTeamCount} Teams</div>
                     <div className="text-[10px] text-neutral-400 font-mono">
-                      ${40 + targetTeamCount * 15}/mo
+                      ${40 + targetTeamCount * 20}/mo
                     </div>
                   </div>
 
@@ -2228,7 +2395,7 @@ export default function LeagueCustomizerContent() {
                     onClick={() => handleUpdateSubscriptionCount(targetTeamCount)}
                     className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
                   >
-                    {isUpdatingSub ? "Updating..." : `Confirm ${targetTeamCount} Teams ($${40 + targetTeamCount * 15}/mo)`}
+                    {isUpdatingSub ? "Updating..." : `Confirm ${targetTeamCount} Teams ($${40 + targetTeamCount * 20}/mo)`}
                   </button>
                 )}
               </div>
@@ -2239,10 +2406,10 @@ export default function LeagueCustomizerContent() {
               <div>
                 <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
                   <Plus className="w-4 h-4 text-cyan-400" />
-                  <span>Add New Team to Subscription (+ $15/mo)</span>
+                  <span>Add New Team to Subscription (+ $20/mo)</span>
                 </h4>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Provisions a new franchise slot and team record immediately. Monthly cost increases by $15 starting at your next renewal.
+                  Provisions a new franchise slot and team record immediately. Monthly cost increases by $20 starting at your next renewal.
                 </p>
               </div>
 
@@ -2262,7 +2429,7 @@ export default function LeagueCustomizerContent() {
                   className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>{isSubmittingNewTeam ? "Adding..." : "Add Team to Subscription (+$15/mo)"}</span>
+                  <span>{isSubmittingNewTeam ? "Adding..." : "Add Team to Subscription (+$20/mo)"}</span>
                 </button>
               </div>
             </div>
@@ -2276,7 +2443,7 @@ export default function LeagueCustomizerContent() {
                     <span>Current League Teams ({subTeamsList.length})</span>
                   </h4>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Removing a team deletes its franchise and automatically decrements your subscription by $15/mo at your next monthly payment.
+                    Removing a team deletes its franchise and automatically decrements your subscription by $20/mo at your next monthly payment.
                   </p>
                 </div>
               </div>
@@ -2315,7 +2482,7 @@ export default function LeagueCustomizerContent() {
                         title="Remove team and lower monthly fee"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Remove (-$15/mo)</span>
+                        <span>Remove (-$20/mo)</span>
                       </button>
                     </div>
                   ))}
@@ -2388,7 +2555,7 @@ export default function LeagueCustomizerContent() {
                 <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">
                   <div className="text-[10px] uppercase font-bold text-neutral-400">Monthly Licensing</div>
                   <div className="text-sm font-black text-cyan-400 font-mono mt-0.5">
-                    ${subscription?.totalMonthlyFee || 40 + (subscription?.teamCount || 8) * 15}/mo
+                    ${subscription?.totalMonthlyFee || 40 + (subscription?.teamCount || 8) * 20}/mo
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">

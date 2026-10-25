@@ -64,7 +64,7 @@ export const LEAGUE_RULES_GUIDE = guide("league-settings-rules", "League Rules",
     ["25s / 30s / 40s", "Choose the Play Clock Duration between downs."], help,
   ]),
   step("settings-stat-keeping", "Stat keeping mode", "Choose how league games are recorded when a stat keeper opens a game.", [
-    ["Live clocks", "Run the game clock, play clock and timeouts while recording each play."], ["Async, both teams", "Record plays for both rosters by half without clocks; scores, downs and stats still update."],
+    ["Live clocks", "Run the game clock, play clock and timeouts while recording each play."], ["No clock, both teams", "Record plays for both rosters by half without clocks; scores, downs and stats still update."],
     help,
   ]),
   step("settings-rosters", "Roster size limits", "Set the smallest and largest permitted team rosters.", [
@@ -99,10 +99,10 @@ export const LEAGUE_SUBSCRIPTION_GUIDE = guide("league-settings-subscription", "
   ]),
   step("settings-add-team", "Add an actual team", "Create a team record and increase the subscription together.", [
     ["Team name", "Type a name in the field, or leave it blank for the suggested Team number."],
-    ["Add Team to Subscription (+$15/mo)", "Create the team and increase paid capacity by one; wait for Adding... to finish."],
+    ["Add Team to Subscription (+$20/mo)", "Create the team and increase paid capacity by one; wait for Adding... to finish."],
   ]),
   step("settings-current-teams", "Current league teams", "Review the real team records included in your league.", [
-    ["Remove (-$15/mo)", "Ask to remove this team and reduce capacity. Read the confirmation before continuing; the fee change applies at the next payment."],
+    ["Remove (-$20/mo)", "Ask to remove this team and reduce capacity. Read the confirmation before continuing; the fee change applies at the next payment."],
   ]),
   step("settings-subscription-close", "Finish subscription review", "Success messages confirm completed changes. Closing does not undo an already confirmed subscription change.", [["Close", "Return to the league settings' underlying page."]]),
 ]);
@@ -186,7 +186,14 @@ export const ADMIN_ACTIVITY_GUIDE = guide("platform-admin-activity", "Platform A
     ["Search activity", "Search summaries, actor email addresses or target IDs."], ["All activity / Leagues & teams / Billing & ledger / Accounts", "Filter by the kind of administrative change."],
   ]),
 ]);
-export const ADMIN_CONSOLE_GUIDES = { overview: ADMIN_OVERVIEW_GUIDE, customers: ADMIN_CUSTOMERS_GUIDE, finance: ADMIN_FINANCE_GUIDE, users: ADMIN_USERS_GUIDE, activity: ADMIN_ACTIVITY_GUIDE };
+export const ADMIN_FREE_AGENTS_GUIDE = guide("platform-admin-free-agents", "Free Agent Interest", [
+  overview("admin-free-agents-intro", "Players looking for a team", "Players who could not find a listed league leave their name, email and area on the public Find a Team page. Only platform admins can see these."), consoleNavigation,
+  step("admin-free-agents-list", "Follow up with players", "Newest submissions appear first.", [
+    ["Refresh", "Reload the list."], ["Email", "Open your email app addressed to the player."],
+    ["Delete (trash)", "Asks for confirmation; Delete? permanently removes the submission."],
+  ]),
+]);
+export const ADMIN_CONSOLE_GUIDES = { overview: ADMIN_OVERVIEW_GUIDE, customers: ADMIN_CUSTOMERS_GUIDE, finance: ADMIN_FINANCE_GUIDE, users: ADMIN_USERS_GUIDE, activity: ADMIN_ACTIVITY_GUIDE, "free-agents": ADMIN_FREE_AGENTS_GUIDE };
 
 export const ADMIN_EDIT_LEAGUE_GUIDE = guide("platform-admin-edit-league", "Edit League", [
   overview("admin-edit-intro", "Edit a customer league", "Review all fields before saving. Changes here update the customer league rather than your own account."),

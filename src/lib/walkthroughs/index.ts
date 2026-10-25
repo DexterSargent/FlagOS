@@ -25,6 +25,7 @@ import {
   JOIN_LEAGUE_WALKTHROUGH,
   ACCOUNT_WALKTHROUGH,
   PROFILE_WALKTHROUGH,
+  FREE_AGENTS_WALKTHROUGH,
 } from "./public";
 import { ADMIN_OVERVIEW_GUIDE, ADMIN_SANDBOX_GUIDE } from "./admin";
 
@@ -51,6 +52,7 @@ export const ALL_WALKTHROUGHS: Record<string, ToolWalkthrough> = Object.fromEntr
     JOIN_LEAGUE_WALKTHROUGH,
     ACCOUNT_WALKTHROUGH,
     PROFILE_WALKTHROUGH,
+    FREE_AGENTS_WALKTHROUGH,
     ADMIN_OVERVIEW_GUIDE,
     ADMIN_SANDBOX_GUIDE,
   ].map((w) => [w.id, w])
@@ -62,6 +64,7 @@ const ROUTES: Array<[RegExp, ToolWalkthrough]> = [
   [/^\/my-story\/?$/, MY_STORY_WALKTHROUGH],
   [/^\/login\/?$/, LOGIN_WALKTHROUGH],
   [/^\/leagues\/?$/, LEAGUE_DIRECTORY_WALKTHROUGH],
+  [/^\/free-agents\/?$/, FREE_AGENTS_WALKTHROUGH],
   [/^\/join(\/|$)/, JOIN_LEAGUE_WALKTHROUGH],
   [/^\/account\/?$/, ACCOUNT_WALKTHROUGH],
   [/^\/profile\/?$/, PROFILE_WALKTHROUGH],
