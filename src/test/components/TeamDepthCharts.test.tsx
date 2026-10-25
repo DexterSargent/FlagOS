@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import TeamDepthCharts from "@/components/TeamDepthCharts";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { getDepthFormations } from "@/lib/depthChart";
@@ -35,7 +35,7 @@ describe("coachable depth charts", () => {
     view.unmount();
     vi.mocked(requestPrivateData).mockResolvedValue({ charts: [chart], formations: getDepthFormations(), visibleToPlayers: true, canEdit: true });
     render(<TeamDepthCharts {...props} />);
-    expect(await screen.findByText("1. #- Alex")).toBeInTheDocument();
+    expect(await screen.findByText("Alex")).toBeInTheDocument();
   });
   it("uses the playbook formation's exact slots", async () => {
     vi.mocked(requestPrivateData).mockResolvedValue({
@@ -50,7 +50,7 @@ describe("coachable depth charts", () => {
   it("shows published charts read-only to players", async () => {
     vi.mocked(requestPrivateData).mockResolvedValue({ charts: [chart], formations: getDepthFormations(), visibleToPlayers: true, canEdit: false });
     render(<TeamDepthCharts {...props} canManage={false} />);
-    expect(await screen.findByText("1. #- Alex")).toBeInTheDocument();
+    expect(await screen.findByText("Alex")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save Depth Charts" })).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
@@ -74,8 +74,35 @@ describe("coachable depth charts", () => {
     vi.mocked(requestPrivateData).mockResolvedValue({ charts: [chart], formations: getDepthFormations(), visibleToPlayers: false, canEdit: true });
     render(<TeamDepthCharts {...props} />);
     fireEvent.click(await screen.findByRole("button", { name: "Remove Alex from Quarterback" }));
-    expect(screen.queryByText("1. #- Alex")).not.toBeInTheDocument();
+    expect(screen.queryByText("Alex")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Delete Chart" }));
     expect(screen.queryByRole("group", { name: "Depth charts" })).not.toBeInTheDocument();
+  });
+  it("distinguishes starters, backups, stats and unfilled positions", async () => {
+    vi.mocked(requestPrivateData).mockResolvedValue({ charts: [chart], formations: getDepthFormations(), visibleToPlayers: true, canEdit: false });
+    render(<TeamDepthCharts {...props} canManage={false} showStats playerStats={{ Alex: { gamesPlayed: 3, totalTDs: 2 } }} />);
+    const position = await screen.findByRole("region", { name: "Quarterback depth chart" });
+    const order = within(position).getAllByRole("listitem");
+    expect(within(order[0]).getByText("Alex")).toBeInTheDocument();
+    expect(within(order[0]).getByText(/Starter/)).toBeInTheDocument();
+    expect(within(order[0]).getByText("3 GP / 2 TD")).toBeInTheDocument();
+    expect(within(order[1]).getByText("Sam")).toBeInTheDocument();
+    expect(within(order[1]).getByText(/Backup/)).toBeInTheDocument();
+    expect(within(position).getByText("2 players")).toBeInTheDocument();
+    expect(screen.getByText(/1 \/ 4 positions filled/)).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Wide Receiver depth chart" })).getByText("No players assigned")).toBeInTheDocument();
+    expect(screen.getByText("Visible to players")).toBeInTheDocument();
+  });
+  it("switches charts and retains missing-roster assignments", async () => {
+    vi.mocked(requestPrivateData).mockResolvedValue({
+      charts: [chart, { id: "second", name: "Defense", formationKey: "default:defense", assignments: { DB: ["former-player"] } }],
+      formations: getDepthFormations(), visibleToPlayers: true, canEdit: false,
+    });
+    render(<TeamDepthCharts {...props} canManage={false} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Defense" }));
+    expect(screen.getByRole("button", { name: "Defense" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Player no longer on roster")).toBeInTheDocument();
+    expect(screen.queryByText("Alex")).not.toBeInTheDocument();
+    expect(createSecureRecord).not.toHaveBeenCalled();
   });
 });
