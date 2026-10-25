@@ -567,7 +567,10 @@ export function calculateTeamComprehensiveStats(
 
     // PATs (Points After Touchdown)
     const convPts = play.conversionAttempt ?? play.conversionPts;
-    if (isOffense && convPts !== undefined && convPts !== null) {
+    // A pick-6 conversion is attempted by the defence that scored.
+    const isPick6Play = Boolean(play.isPick6 || play.result === "Pick 6" || play.result === "Pick 6 Touchdown");
+    const attemptedConversion = isPick6Play ? !isOffense : isOffense;
+    if (attemptedConversion && convPts !== undefined && convPts !== null) {
       const numPts = Number(convPts);
       const isGood = Boolean(play.conversionSuccess);
 

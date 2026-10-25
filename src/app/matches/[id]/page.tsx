@@ -273,7 +273,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
               <div>
                 <h3 className="font-semibold text-lg text-white">Game Administration</h3>
                 <p className="text-sm text-neutral-400">
-                  {matchData.isAsyncStatKeeping
+                  {matchData.isAsyncStatKeeping || matchData.isIndependent || (matchData.isAsyncStatKeeping !== false && !matchData.matchState?.gameClock && settings?.rules?.statKeepingMode === "async")
                     ? "Record plays and scores by half without a running clock."
                     : "Record plays and scores with the game clock and play clock."}
                 </p>
@@ -320,7 +320,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   href={`/matches/${matchId}/play-by-play`}
                   className="px-6 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                 >
-                  {matchData.isAsyncStatKeeping ? "Stat Keeper" : "Stat Keeper"}
+                  Stat Keeper
                 </Link>
               ) : isDemoLeague && isLeagueAdmin ? (
                 <div className="flex items-center gap-2">

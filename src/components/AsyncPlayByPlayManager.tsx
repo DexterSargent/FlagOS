@@ -43,8 +43,11 @@ import {
   limit,
 } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
+import { getPlayScoreDelta } from "@/lib/playScoring";
+import { addMatchSub, getMatchSubsByTeam, loadMatchRosterPlayers, type MatchSubsByTeam } from "@/lib/matchRoster";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo } from "@/components/TeamAssets";
+import FitTeamName from "@/components/FitTeamName";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
 import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts, getDefensiveStatCategory, getDefensiveStatLabel, getEligibleReceivers } from "@/lib/playerNumberHelper";
 import { loadStatKeeperHistory } from "@/lib/statKeeperHistory";
@@ -124,11 +127,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [awayTeamName, setAwayTeamName] = useState("AWAY");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
-  const { home: homeTeamColors, away: awayTeamColors } = useMatchTeamColors(matchData, isDemo);
+  const { home: homeTeamColors, away: awayTeamColors, homeShortcode, awayShortcode } = useMatchTeamColors(matchData, isDemo);
 
   // Players & Subs
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
-  const [subs, setSubs] = useState<string[]>([]);
+  const [subs, setSubs] = useState<MatchSubsByTeam>({ home: [], away: [] });
   const [homePlayers, setHomePlayers] = useState<string[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<string[]>([]);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
@@ -236,15 +239,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           }
 
           try {
-            const rosterTeamId = mData.managingTeamId || mData.homeTeamId || mData.awayTeamId;
-            if (rosterTeamId) {
-              const playersSnap = await getDocs(query(
-                collection(db, "players"),
-                where("teamId", "in", [rosterTeamId]),
-                limit(60),
-              ));
-              allP = playersSnap.docs.map((d) => d.data());
-            }
+            allP = await loadMatchRosterPlayers(mData);
           } catch (e) {
             console.warn("Could not load players from Firestore:", e);
           }
@@ -279,7 +274,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           if (typeof mData.awayScore === "number") setAwayScore(mData.awayScore);
         }
 
-        const matchSubs = mData.subs || [];
+        const matchSubs = getMatchSubsByTeam(mData);
         setSubs(matchSubs);
 
         setAllPlayers(allP);
@@ -290,8 +285,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         const homeRosterFromDoc = Array.isArray(mData.roster?.home) ? mData.roster.home : (mData.homeRoster || []);
         const awayRosterFromDoc = Array.isArray(mData.roster?.away) ? mData.roster.away : (mData.awayRoster || []);
 
-        setHomePlayers(Array.from(new Set([...homeP, ...homeRosterFromDoc, ...matchSubs])).sort());
-        setAwayPlayers(Array.from(new Set([...awayP, ...awayRosterFromDoc, ...matchSubs])).sort());
+        setHomePlayers(Array.from(new Set([...homeP, ...homeRosterFromDoc, ...matchSubs.home])).sort());
+        setAwayPlayers(Array.from(new Set([...awayP, ...awayRosterFromDoc, ...matchSubs.away])).sort());
 
         // Load historical/season plays for stats leader ordering
         try {
@@ -397,6 +392,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         status: (matchStatus === "completed" ? "completed" : "in_progress") as "completed" | "in_progress",
         homeScore,
         awayScore,
+        isAsyncStatKeeping: true,
         matchState: {
           currentDown,
           possession,
@@ -425,8 +421,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const handleAddSub = async (subName: string, teamToAdd: "HOME" | "AWAY") => {
     if (!subName.trim()) return;
     const name = subName.trim();
-    const newSubs = Array.from(new Set([...subs, name]));
-    setSubs(newSubs);
+    const update = addMatchSub(subs, teamToAdd, name);
+    setSubs(update.subsByTeam);
     if (teamToAdd === "HOME") {
       setHomePlayers((prev) => Array.from(new Set([...prev, name])).sort());
     } else {
@@ -435,11 +431,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     setNewSubInput("");
     setIsSubModalOpen(false);
     if (isDemo) {
-      updateSandboxMatch(matchId, { subs: newSubs });
+      updateSandboxMatch(matchId, update);
       return;
     }
     try {
-      await setDoc(doc(db, "matches", matchId), { subs: newSubs }, { merge: true });
+      await setDoc(doc(db, "matches", matchId), update, { merge: true });
     } catch (e) {
       console.warn("Error saving sub to match Firestore, saving locally:", e);
     }
@@ -577,7 +573,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
     // The opponent has no roster in a team stat tracker; auto-fill their passer / runner so our
     // defenders/flaggers are still credited without inventing opponent player stats.
     const offenseIsUnrostered = (possession === homeTeamName ? homePlayers : awayPlayers).length === 0;
-    const managingTeamName = managingTeamId === homeTeamId ? homeTeamName : (managingTeamId === awayTeamId ? awayTeamName : "");
+    // League games (no managing team) track both sides, so neither side is treated as the opponent.
+    const trackedTeamId = matchData?.managingTeamId;
+    const managingTeamName = trackedTeamId === homeTeamId ? homeTeamName : (trackedTeamId === awayTeamId ? awayTeamName : "");
     const isTeamOnDefense = offenseIsUnrostered || (!!managingTeamName && possession !== managingTeamName);
 
     if (type === "Pass") {
@@ -639,7 +637,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const buildPlayData = (result: string, extra?: any) => {
     return {
       matchId,
-      possessionTeamId: (playResult === "Pick 6" ? possession !== homeTeamName : possession === homeTeamName) ? homeTeamId : awayTeamId,
+      possessionTeamId: (result === "Pick 6" ? possession !== homeTeamName : possession === homeTeamName) ? homeTeamId : awayTeamId,
       down: currentDown,
       playType,
       firstDown: result === "First Down" || result === "Touchdown",
@@ -862,11 +860,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
           const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
           setPossession(wasHomePossession ? homeTeamName : awayTeamName);
 
-          const pts = lastPlay.pointsScored || (lastPlay.isTouchdown ? 6 : 0) || (lastPlay.points || 0);
-          if (pts > 0) {
-            if (wasHomePossession) setHomeScore((s) => Math.max(0, s - pts));
-            else setAwayScore((s) => Math.max(0, s - pts));
-          }
+          const delta = getPlayScoreDelta(lastPlay as any, homeTeamId);
+          if (delta.home) setHomeScore((s) => Math.max(0, s - delta.home));
+          if (delta.away) setAwayScore((s) => Math.max(0, s - delta.away));
+          if (lastPlay.half) setHalf(lastPlay.half);
 
           deleteSandboxPlay(lastPlay.id);
           resetPlayForm();
@@ -893,11 +890,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
         setPossession(wasHomePossession ? homeTeamName : awayTeamName);
 
-        const pts = lastPlay.pointsScored || (lastPlay.isTouchdown ? 6 : 0) || 0;
-        if (pts > 0) {
-          if (wasHomePossession) setHomeScore((s) => Math.max(0, s - pts));
-          else setAwayScore((s) => Math.max(0, s - pts));
-        }
+        const delta = getPlayScoreDelta(lastPlay as any, homeTeamId);
+        if (delta.home) setHomeScore((s) => Math.max(0, s - delta.home));
+        if (delta.away) setAwayScore((s) => Math.max(0, s - delta.away));
+        if (lastPlay.half) setHalf(lastPlay.half);
 
         await deleteDoc(lastPlayDoc.ref);
         resetPlayForm();
@@ -1244,9 +1240,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 isDemo={isDemo}
                 primaryColor={homeTeamText}
               />
-              <span title={homeTeamName} className="min-w-0 text-[10px] sm:text-xs md:text-base font-black uppercase tracking-wide truncate" style={{ color: homeTeamText }}>
-                {homeTeamName}
-              </span>
+              <FitTeamName name={homeTeamName} shortcode={homeShortcode} className="text-[10px] sm:text-xs md:text-base font-black uppercase tracking-wide" style={{ color: homeTeamText }} />
               {possession === homeTeamName && (
                 <span className="w-2 h-2 shrink-0 rounded-full animate-pulse" style={{ backgroundColor: homeTeamPalette.primary }} title="Possession" />
               )}
@@ -1283,9 +1277,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               {possession === awayTeamName && (
                 <span className="w-2 h-2 shrink-0 rounded-full animate-pulse" style={{ backgroundColor: awayTeamPalette.primary }} title="Possession" />
               )}
-              <span title={awayTeamName} className="min-w-0 text-[10px] sm:text-xs md:text-base font-black uppercase tracking-wide truncate" style={{ color: awayTeamText }}>
-                {awayTeamName}
-              </span>
+              <FitTeamName name={awayTeamName} shortcode={awayShortcode} className="text-[10px] sm:text-xs md:text-base font-black uppercase tracking-wide" style={{ color: awayTeamText }} />
               <TeamLogo
                 teamName={awayTeamName}
                 className="hidden sm:block w-5 h-5 md:w-6 md:h-6 shrink-0"

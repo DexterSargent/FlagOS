@@ -3,12 +3,15 @@
 import { useState, useEffect, use, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Zap, RotateCcw, Flag, Maximize, Minimize, Play, Pause, AlertCircle, Timer, Save, Plus, Minus, X, ChevronRight, ChevronDown, ChevronUp, Undo, AlertTriangle, Shield, Check } from "lucide-react";
+import { ChevronLeft, Zap, RotateCcw, Flag, Play, Pause, AlertCircle, Timer, Save, Plus, Minus, X, ChevronRight, ChevronDown, ChevronUp, Undo, AlertTriangle, Shield, Check } from "lucide-react";
 import SiteControls from "@/components/SiteControls";
 import { db } from "@/lib/firebase";
 import { createSecureRecord } from "@/lib/secureWrites";
 import { collection, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
 import { useLeague } from "@/lib/leagueContext";
+import { getPlayScoreDelta } from "@/lib/playScoring";
+import { projectGameClock, useWallClockCountdown } from "@/lib/wallClock";
+import { addMatchSub, getMatchSubsByTeam, loadMatchRosterPlayers, type MatchSubsByTeam } from "@/lib/matchRoster";
 import { useAuth } from "@/lib/authContext";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -38,6 +41,7 @@ import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import FitTeamName from "@/components/FitTeamName";
 import { usePageGuide } from "@/lib/pageGuide";
 import { sandboxHeartbeatWriter, useLiveGameHeartbeat } from "@/lib/gameLiveState";
 import {
@@ -100,12 +104,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [awayTeamName, setAwayTeamName] = useState("AWAY");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
-  const { home: homeTeamColors, away: awayTeamColors } = useMatchTeamColors(matchData, isDemo);
+  const { home: homeTeamColors, away: awayTeamColors, homeShortcode, awayShortcode } = useMatchTeamColors(matchData, isDemo);
   const homeText = useMemo(() => getReadableTextColor(homeTeamColors.secondary, homeTeamColors.primary), [homeTeamColors]);
   const awayText = useMemo(() => getReadableTextColor(awayTeamColors.secondary, awayTeamColors.primary), [awayTeamColors]);
 
   const [allPlayers, setAllPlayers] = useState<any[]>([]);
-  const [subs, setSubs] = useState<string[]>([]);
+  const [subs, setSubs] = useState<MatchSubsByTeam>({ home: [], away: [] });
   const [homePlayers, setHomePlayers] = useState<string[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<string[]>([]);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
@@ -119,18 +123,18 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const handleAddSub = async (subName: string, teamToAdd: "HOME" | "AWAY") => {
     if (subName && subName.trim()) {
       const name = subName.trim();
-      const newSubs = [...subs, name];
-      setSubs(newSubs);
+      const update = addMatchSub(subs, teamToAdd, name);
+      setSubs(update.subsByTeam);
       if (teamToAdd === "HOME") {
-        setHomePlayers(prev => [...prev, name].sort());
+        setHomePlayers(prev => Array.from(new Set([...prev, name])).sort());
       } else {
-        setAwayPlayers(prev => [...prev, name].sort());
+        setAwayPlayers(prev => Array.from(new Set([...prev, name])).sort());
       }
       setIsSubModalOpen(false);
       if (isDemo) {
-        updateSandboxMatch(matchId, { subs: newSubs });
+        updateSandboxMatch(matchId, update);
       } else {
-        await import('firebase/firestore').then(({ updateDoc, doc }) => updateDoc(doc(db, "matches", matchId), { subs: newSubs }));
+        await import('firebase/firestore').then(({ updateDoc, doc }) => updateDoc(doc(db, "matches", matchId), update));
       }
     }
   };
@@ -160,7 +164,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [playClock, setPlayClock] = useState(playClockSeconds);
   const [isPlayClockRunning, setIsPlayClockRunning] = useState(false);
 
-  const [isScoreboardFullscreen, setIsScoreboardFullscreen] = useState(false);
 
   // Wizard State
   const [step, setStep] = useState<'PLAY_TYPE' | 'DETAILS' | 'CONVERSION' | 'HALFTIME' | 'GAME_OVER'>('PLAY_TYPE');
@@ -356,15 +359,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               allP = getSandboxPlayers();
             } else {
               mData = matchDoc.data() as any;
-              const rosterTeamId = mData.managingTeamId || mData.homeTeamId || mData.awayTeamId;
-              const playersSnap = rosterTeamId
-                ? await getDocs(query(
-                    collection(db, "players"),
-                    where("teamId", "==", rosterTeamId),
-                    limit(30),
-                  ))
-                : { docs: [] };
-              allP = playersSnap.docs.map(d => d.data());
+              allP = await loadMatchRosterPlayers(mData).catch((err) => {
+                console.warn("Unable to load match rosters:", err);
+                return [];
+              });
             }
           } catch (err) {
             console.warn("Unable to fetch live match from Firestore, falling back to local/sandbox:", err);
@@ -400,7 +398,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           if (s.awayScore !== undefined) setAwayScore(s.awayScore);
           else if (typeof mData.awayScore === "number") setAwayScore(mData.awayScore);
           if (s.half !== undefined) setHalf(s.half);
-          if (s.gameClock !== undefined) setGameClock(s.gameClock);
+          if (s.gameClock !== undefined) {
+            // A reload mid-play picks the running clock back up where viewers see it.
+            const resumeRunning = !!s.gameClockRunning && typeof s.gameClockSavedAt === "number" && Date.now() - s.gameClockSavedAt < 60_000;
+            const restoredClock = resumeRunning ? projectGameClock(s, Date.now()) ?? s.gameClock : s.gameClock;
+            setGameClock(restoredClock);
+            if (resumeRunning && restoredClock > 0) setIsGameClockRunning(true);
+          }
           if (s.homeTimeouts !== undefined) setHomeTimeouts(s.homeTimeouts);
           if (s.awayTimeouts !== undefined) setAwayTimeouts(s.awayTimeouts);
           if (s.firstHalfStartPossession) {
@@ -415,17 +419,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           if (typeof mData.awayScore === "number") setAwayScore(mData.awayScore);
         }
 
-        const matchSubs = mData.subs || [];
+        const matchSubs = getMatchSubsByTeam(mData);
         setSubs(matchSubs);
 
         // players loaded above
         setAllPlayers(allP);
 
-        const homeP = allP.filter(p => p.teamId === mData.homeTeamId).map(p => p.playerName);
-        const awayP = allP.filter(p => p.teamId === mData.awayTeamId).map(p => p.playerName);
+        const homeP = allP.filter(p => p.teamId === mData.homeTeamId).map(p => p.playerName || p.name).filter(Boolean);
+        const awayP = allP.filter(p => p.teamId === mData.awayTeamId).map(p => p.playerName || p.name).filter(Boolean);
 
-        setHomePlayers([...homeP, ...matchSubs].sort());
-        setAwayPlayers([...awayP, ...matchSubs].sort());
+        setHomePlayers(Array.from(new Set([...homeP, ...matchSubs.home])).sort());
+        setAwayPlayers(Array.from(new Set([...awayP, ...matchSubs.away])).sort());
 
         // Load historical/season plays for stats leader ordering
         try {
@@ -448,55 +452,21 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   }, [matchId, isDemo, homeTeamName, awayTeamName, homeTeamId, downsPerSeries]);
 
 
-  // Game Clock
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isGameClockRunning && gameClock > 0) {
-      interval = setInterval(() => setGameClock(c => Math.max(0, c - 1)), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isGameClockRunning, gameClock]);
-
+  // Clocks follow wall time so they stay accurate on throttled or locked devices.
+  useWallClockCountdown(gameClock, setGameClock, isGameClockRunning);
   // Play Clock (IFAF Rules: counts down independently of game clock on referee ready-for-play)
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isPlayClockRunning && playClock > 0) {
-      interval = setInterval(() => {
-        setPlayClock((c) => {
-          if (c <= 1) {
-            setIsPlayClockRunning(false);
-            return 0;
-          }
-          return c - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isPlayClockRunning, playClock]);
+  useWallClockCountdown(playClock, setPlayClock, isPlayClockRunning, () => setIsPlayClockRunning(false));
+  useWallClockCountdown(timeoutClock, setTimeoutClock, isTimeoutActive);
+  useWallClockCountdown(halftimeClock, setHalftimeClock, step === 'HALFTIME');
 
-  // Timeout Clock
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isTimeoutActive && timeoutClock > 0) {
-      interval = setInterval(() => setTimeoutClock(c => Math.max(0, c - 1)), 1000);
-    } else if (isTimeoutActive && timeoutClock === 0) {
-      setIsTimeoutActive(false);
-      setPlayClock(playClockSeconds);
-      setIsBallSpotted(false);
-      setIsGameClockRunning(false);
-      setIsFirstPlayOfHalf(true);
-    }
-    return () => clearInterval(interval);
+    if (!isTimeoutActive || timeoutClock > 0) return;
+    setIsTimeoutActive(false);
+    setPlayClock(playClockSeconds);
+    setIsBallSpotted(false);
+    setIsGameClockRunning(false);
+    setIsFirstPlayOfHalf(true);
   }, [isTimeoutActive, timeoutClock, playClockSeconds]);
-
-  // Halftime Clock
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (step === 'HALFTIME' && halftimeClock > 0) {
-      interval = setInterval(() => setHalftimeClock(c => Math.max(0, c - 1)), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [step, halftimeClock]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(Math.max(0, seconds) / 60);
@@ -536,17 +506,25 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   );
 
   // Autosave
+  const gameClockRef = useRef(gameClock);
+  useEffect(() => { gameClockRef.current = gameClock; }, [gameClock]);
+  // While the clock runs, sync every 10 seconds; viewers project the clock between saves.
+  const gameClockSyncKey = isGameClockRunning ? Math.floor(gameClock / 10) : gameClock;
   useEffect(() => {
     if (loadingData || isResetting || matchStatus !== 'in_progress') return;
     const saveState = setTimeout(() => {
+      const liveMatchState = {
+        currentDown, possession, homeScore, awayScore, half, gameClock: gameClockRef.current,
+        gameClockRunning: isGameClockRunning && gameClockRef.current > 0, gameClockSavedAt: Date.now(),
+        homeTimeouts, awayTimeouts, firstHalfStartPossession
+      };
       if (isDemo) {
         updateSandboxMatch(matchId, {
           status: 'in_progress',
           homeScore,
           awayScore,
-          matchState: {
-            currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession
-          }
+          isAsyncStatKeeping: false,
+          matchState: liveMatchState
         });
         return;
       }
@@ -554,13 +532,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         status: 'in_progress',
         homeScore,
         awayScore,
-        matchState: {
-          currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession
-        }
+        isAsyncStatKeeping: false,
+        matchState: liveMatchState
       }).catch(console.error);
     }, 1000);
     return () => clearTimeout(saveState);
-  }, [currentDown, possession, homeScore, awayScore, half, gameClock, homeTimeouts, awayTimeouts, firstHalfStartPossession, loadingData, isResetting, matchStatus, isDemo, matchId]);
+  }, [currentDown, possession, homeScore, awayScore, half, gameClockSyncKey, isGameClockRunning, homeTimeouts, awayTimeouts, firstHalfStartPossession, loadingData, isResetting, matchStatus, isDemo, matchId]);
 
   // Reset Game to Pre-Game State handler
   const handleResetGameToPreGame = async () => {
@@ -793,19 +770,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
           setPossession(wasHomePossession ? (homeTeamName || "HOME") : (awayTeamName || "AWAY"));
 
-          const pts = lastPlay.points ?? lastPlay.pointsScored ?? 0;
-          if (pts > 0) {
-            const didOffenseScore = lastPlay.isTouchdown || lastPlay.result === "Conversion Good" || (lastPlay.pointsScored && !lastPlay.isPick6 && !lastPlay.isSafety);
-            const didDefenseScore = lastPlay.isPick6 || lastPlay.isSafety || lastPlay.result === "Defensive Conversion";
-
-            if (didOffenseScore) {
-              if (wasHomePossession) setHomeScore(s => Math.max(0, s - pts));
-              else setAwayScore(s => Math.max(0, s - pts));
-            } else if (didDefenseScore) {
-              if (wasHomePossession) setAwayScore(s => Math.max(0, s - pts));
-              else setHomeScore(s => Math.max(0, s - pts));
-            }
-          }
+          const delta = getPlayScoreDelta(lastPlay, homeTeamId);
+          if (delta.home) setHomeScore(s => Math.max(0, s - delta.home));
+          if (delta.away) setAwayScore(s => Math.max(0, s - delta.away));
 
           deleteSandboxPlay(lastPlay.id);
           setStep("PLAY_TYPE");
@@ -828,22 +795,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         const lastPlay = lastPlayDoc.data();
 
         // Revert state
-        setCurrentDown(lastPlay.down);
+        if (lastPlay.down !== undefined) setCurrentDown(lastPlay.down);
         const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;
         setPossession(wasHomePossession ? (homeTeamName || "HOME") : (awayTeamName || "AWAY"));
 
-        if (lastPlay.points > 0) {
-          const didOffenseScore = lastPlay.isTouchdown || lastPlay.result === "Conversion Good";
-          const didDefenseScore = lastPlay.isPick6 || lastPlay.isSafety || lastPlay.result === "Defensive Conversion";
-
-          if (didOffenseScore) {
-            if (wasHomePossession) setHomeScore(s => Math.max(0, s - lastPlay.points));
-            else setAwayScore(s => Math.max(0, s - lastPlay.points));
-          } else if (didDefenseScore) {
-            if (wasHomePossession) setAwayScore(s => Math.max(0, s - lastPlay.points));
-            else setHomeScore(s => Math.max(0, s - lastPlay.points));
-          }
-        }
+        const delta = getPlayScoreDelta(lastPlay, homeTeamId);
+        if (delta.home) setHomeScore(s => Math.max(0, s - delta.home));
+        if (delta.away) setAwayScore(s => Math.max(0, s - delta.away));
 
         await deleteDoc(lastPlayDoc.ref);
         setStep("PLAY_TYPE");
@@ -972,7 +930,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const buildPlayData = (result: string, extra?: any) => {
     return {
       matchId,
-      possessionTeamId: possession === homeTeamName ? homeTeamId : awayTeamId,
+      // After a pick-6 the scoring defence already has the ball, but the play belongs to the team that threw it.
+      possessionTeamId: (result === 'Pick 6' ? possession !== homeTeamName : possession === homeTeamName) ? homeTeamId : awayTeamId,
       down: currentDown,
       playType,
       firstDown: result === 'First Down' || result === 'Touchdown',
@@ -1246,76 +1205,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     );
   }
 
-  if (isScoreboardFullscreen) {
-    return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col p-12 overflow-hidden">
-        <button onClick={() => setIsScoreboardFullscreen(false)} className="absolute top-8 right-8 text-neutral-400 hover:text-white bg-white/10 p-4 rounded-full">
-          <Minimize className="w-8 h-8" />
-        </button>
-        <div className="flex-1 flex flex-col justify-center gap-12">
-          <div className="flex flex-col items-center">
-            <span className="text-3xl font-bold uppercase tracking-widest mb-4" style={{ color: possessionTeamColors.tertiary }}>
-              {getOrdinal(half)} {periodType === 'quarters' ? 'Quarter' : 'Half'}
-            </span>
-            <span className="text-[12rem] font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(gameClock)}</span>
-          </div>
-          <div className="flex justify-between items-center px-24">
-            <div 
-              className="flex flex-col items-center gap-6 p-8 rounded-3xl border shadow-2xl"
-              style={{
-                backgroundColor: homeTeamColors.secondary,
-                borderColor: `${homeTeamColors.primary}40`,
-              }}
-            >
-              <div className="flex items-center gap-6">
-                <FootballIcon active={possession === (homeTeamName || "HOME")} className="w-12 h-12" style={{ color: homeText }} />
-                <span className="text-6xl font-black uppercase" style={{ color: homeText }}>{homeTeamName}</span>
-              </div>
-              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: homeText }}>{homeScore}</span>
-              <div className="flex gap-3">
-                {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-8 h-8 rounded-full ${i < homeTimeouts ? '' : 'opacity-30'}`}
-                    style={{ backgroundColor: homeTeamColors.primary, boxShadow: `0 0 15px ${homeTeamColors.primary}99` }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col items-center justify-center pt-24">
-              <span className="text-4xl font-bold text-neutral-600 uppercase tracking-widest mb-8">Play Clock</span>
-              <span className={`text-9xl font-black tabular-nums leading-none ${playClock <= 0 ? 'text-red-600 animate-pulse' : playClock <= 10 ? 'text-amber-500' : 'text-neutral-300'}`}>
-                {playClock}
-              </span>
-            </div>
-            <div 
-              className="flex flex-col items-center gap-6 p-8 rounded-3xl border shadow-2xl"
-              style={{
-                backgroundColor: awayTeamColors.secondary,
-                borderColor: `${awayTeamColors.primary}40`,
-              }}
-            >
-              <div className="flex items-center gap-6">
-                <span className="text-6xl font-black uppercase" style={{ color: awayText }}>{awayTeamName}</span>
-                <FootballIcon active={possession === (awayTeamName || "AWAY")} className="w-12 h-12" style={{ color: awayText }} />
-              </div>
-              <span className="text-[15rem] font-black leading-none tabular-nums" style={{ color: awayText }}>{awayScore}</span>
-              <div className="flex gap-3">
-                {Array.from({ length: timeoutsPerTeam }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-8 h-8 rounded-full ${i < awayTimeouts ? '' : 'opacity-30'}`}
-                    style={{ backgroundColor: awayTeamColors.primary, boxShadow: `0 0 15px ${awayTeamColors.primary}99` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] w-full min-h-0 max-w-full bg-black text-white font-sans overflow-hidden flex flex-col relative pb-[env(safe-area-inset-bottom)]">
 
@@ -1473,36 +1362,37 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       )}
 
       {/* SYNC SCOREBOARD & GAME CONTROLS */}
-      <header data-tour="score-header" className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full [&_button]:min-h-9 [&_button]:min-w-9 [&_button]:items-center [&_button]:justify-center [&_a]:min-h-9 [&_a]:min-w-9 [&_a]:justify-center" style={{ top: "var(--role-switcher-height, 0px)" }}>
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] lg:flex lg:flex-nowrap items-center justify-between gap-1 sm:gap-1.5 md:gap-3 w-full min-w-0">
-          <div className="order-1 lg:order-none flex flex-col lg:flex-row items-center gap-0.5 sm:gap-1 shrink-0">
+      <header data-tour="score-header" className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full [&_button]:items-center [&_button]:justify-center" style={{ top: "var(--role-switcher-height, 0px)" }}>
+        <div className="flex items-center justify-between gap-1 sm:gap-1.5 md:gap-3 w-full min-w-0">
+          <div className="flex flex-col lg:flex-row items-center gap-1 shrink-0">
             {!isEmbedded && (
-              <Link href={`/matches/${matchId}`} aria-label="Back to match" className="flex items-center text-neutral-400 hover:text-white bg-black p-1 md:p-2 rounded-md sm:rounded-lg border border-white/10">
-                <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+              <Link href={`/matches/${matchId}`} aria-label="Back to match" title="Back to match" className="inline-flex items-center justify-center h-8 w-8 text-neutral-400 hover:text-white bg-black rounded-lg border border-white/10">
+                <ChevronLeft className="w-4 h-4" />
               </Link>
             )}
-            <button onClick={handleUndoLastPlay} aria-label="Undo last play" className="flex items-center text-white hover:text-amber-400 bg-white/10 p-1 md:p-2 rounded-md sm:rounded-lg border border-white/10 cursor-pointer" title="Undo Last Play">
-              <Undo className="w-3 h-3 sm:w-4 sm:h-4" />
+            <button onClick={handleUndoLastPlay} aria-label="Undo last play" className="inline-flex items-center justify-center h-8 w-8 text-white hover:text-amber-400 bg-white/10 rounded-lg border border-white/10 cursor-pointer" title="Undo Last Play">
+              <Undo className="w-4 h-4" />
             </button>
           </div>
 
-          <div 
-            className="order-2 lg:order-none flex flex-col items-center flex-1 min-w-0 lg:max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
+          <div
+            className="flex flex-col items-center justify-center flex-1 min-w-0 lg:max-w-[9rem] self-stretch px-1 py-0.5 rounded-xl border shadow-sm"
             style={{
               backgroundColor: homeTeamColors.secondary,
               borderColor: `${homeTeamColors.primary}40`,
             }}
           >
-            <span className="flex items-center gap-0.5 text-[10px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: homeText }}>
-              {homeTeamName}
-              <FootballIcon active={possession === homeTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: homeText }} />
+            <span className="flex items-center justify-center gap-1 text-[10px] md:text-xs font-black uppercase w-full min-w-0" style={{ color: homeText }}>
+              <FitTeamName name={homeTeamName} shortcode={homeShortcode} />
+              <FootballIcon active={possession === homeTeamName} className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" style={{ color: homeText }} />
             </span>
-            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: homeText }}>{homeScore}</span>
-            <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
+            <span className="text-lg sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: homeText }}>{homeScore}</span>
+            <div className="flex items-center gap-1 mt-0.5">
               <button
                 disabled={homeTimeouts === 0}
                 onClick={() => callTimeout("home")}
-                className="px-1 py-0.5 rounded text-[10px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
+                aria-label={`Call home timeout (${homeTimeouts} left)`}
+                className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-black whitespace-nowrap border border-current/30 disabled:opacity-30 disabled:line-through transition-colors cursor-pointer"
                 style={{ backgroundColor: homeTeamColors.secondary, color: homeText }}
                 title="Call home team timeout"
               >
@@ -1516,104 +1406,98 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          {/* GAME CLOCK & DOWN ADJUSTER */}
-          <div data-tour="game-clock-controls" className="order-3 lg:order-none flex flex-col items-center bg-black/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
-            {/* TOP: PERIOD & GAME CLOCK */}
-            <div className="flex items-center gap-0.5 sm:gap-1.5">
-              <span className="hidden sm:block text-[10px] font-bold uppercase text-[var(--text-muted)]">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
-              <button onPointerDown={() => startAdjustingClock(-10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-[var(--text-muted)] hover:text-white p-0.5" title="Remove 10 seconds">
-                <Minus className="w-3 h-3" />
-              </button>
-              <span className="text-sm sm:text-lg md:text-xl font-black tabular-nums text-white text-center leading-none">{formatTime(gameClock)}</span>
-              <button onPointerDown={() => startAdjustingClock(10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-[var(--text-muted)] hover:text-white p-0.5" title="Add 10 seconds">
-                <Plus className="w-3 h-3" />
-              </button>
-              <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} aria-label={isGameClockRunning ? "Pause game clock" : "Start game clock"} className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? "bg-red-500/20 text-red-500" : "bg-emerald-500/20 text-emerald-500"}`}>
-                {isGameClockRunning ? <Pause className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" /> : <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />}
-              </button>
+          {/* GAME CLOCK + DOWN (left) AND PLAY CLOCK (right) SHARE ONE BLOCK */}
+          <div className="flex items-stretch bg-black/40 rounded-lg sm:rounded-xl border border-white/10 shrink-0 divide-x divide-white/10">
+            <div data-tour="game-clock-controls" className="flex flex-col items-center justify-center px-1 sm:px-2 py-0.5">
+              <div className="flex items-center gap-0.5 sm:gap-1">
+                <span className="hidden sm:block text-[10px] font-bold uppercase text-[var(--text-muted)]">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
+                <button onPointerDown={() => startAdjustingClock(-10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} aria-label="Remove 10 seconds" className="hidden sm:inline-flex items-center justify-center h-6 w-6 rounded-md text-[var(--text-muted)] hover:text-white hover:bg-white/10" title="Remove 10 seconds">
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="text-base sm:text-lg md:text-xl font-black tabular-nums text-white text-center leading-none">{formatTime(gameClock)}</span>
+                <button onPointerDown={() => startAdjustingClock(10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} aria-label="Add 10 seconds" className="hidden sm:inline-flex items-center justify-center h-6 w-6 rounded-md text-[var(--text-muted)] hover:text-white hover:bg-white/10" title="Add 10 seconds">
+                  <Plus className="w-3 h-3" />
+                </button>
+                <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} aria-label={isGameClockRunning ? "Pause game clock" : "Start game clock"} title={isGameClockRunning ? "Pause game clock" : "Start game clock"} className={`inline-flex items-center justify-center h-7 w-7 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? "bg-red-500/20 text-red-500" : "bg-emerald-500/20 text-emerald-500"}`}>
+                  {isGameClockRunning ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current translate-x-[1px]" />}
+                </button>
+              </div>
+
+              <div data-tour="down-selector" className="flex items-center justify-center gap-0.5 mt-0.5 pt-0.5 border-t border-white/10 w-full" title="Current Down (Use - and + to adjust)">
+                <button
+                  type="button"
+                  onClick={() => setCurrentDown((d) => Math.max(1, d - 1))}
+                  disabled={currentDown <= 1}
+                  aria-label="Decrease Down"
+                  title="Decrease Down"
+                  className="inline-flex items-center justify-center h-6 w-6 rounded-md text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="text-[11px] sm:text-xs font-black text-white px-0.5 tabular-nums tracking-wide min-w-[1.75rem] text-center">
+                  {getOrdinal(currentDown)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentDown((d) => Math.min(downsPerSeries, d + 1))}
+                  disabled={currentDown >= downsPerSeries}
+                  aria-label="Increase Down"
+                  title="Increase Down"
+                  className="inline-flex items-center justify-center h-6 w-6 rounded-md text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
-            {/* BOTTOM: UNDERNEATH THE CLOCK - COMPACT DOWN STEPPER */}
-            <div data-tour="down-selector" className="flex items-center justify-center gap-1 mt-0.5 pt-0.5 border-t border-white/10 w-full" title="Current Down (Use - and + to adjust)">
-              <button
-                type="button"
-                onClick={() => setCurrentDown((d) => Math.max(1, d - 1))}
-                disabled={currentDown <= 1}
-                aria-label="Decrease Down"
-                title="Decrease Down"
-                className="p-0.5 rounded text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-              </button>
-              <span className="text-[10px] sm:text-xs font-black text-white px-0.5 sm:px-1 tabular-nums tracking-wide">
-                {getOrdinal(currentDown)}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentDown((d) => Math.min(downsPerSeries, d + 1))}
-                disabled={currentDown >= downsPerSeries}
-                aria-label="Increase Down"
-                title="Increase Down"
-                className="p-0.5 rounded text-neutral-400 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors"
-              >
-                <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-              </button>
+            <div data-tour="play-clock-controls" className="flex flex-col items-center justify-center px-1 sm:px-2 py-0.5" title="Play Clock">
+              <div className="flex items-center gap-0.5 sm:gap-1">
+                <span className={`text-base sm:text-lg md:text-xl font-black tabular-nums leading-none min-w-[1.4rem] text-center ${playClock <= 0 ? "text-red-700 dark:text-red-300" : playClock <= 5 ? "text-amber-700 dark:text-amber-300" : "text-amber-700 dark:text-amber-400"}`}>
+                  {playClock}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsPlayClockRunning((prev) => !prev)}
+                  aria-label={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
+                  title={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
+                  className={`inline-flex items-center justify-center h-7 w-7 rounded-full cursor-pointer shrink-0 transition-colors ${isPlayClockRunning ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-neutral-300 hover:text-white"}`}
+                >
+                  {isPlayClockRunning ? <Pause className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current translate-x-[1px]" />}
+                </button>
+              </div>
+              <div className="flex items-center justify-center gap-0.5 mt-0.5 pt-0.5 border-t border-white/10 w-full">
+                <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Play</span>
+                <button
+                  type="button"
+                  onClick={handleResetPlayClock}
+                  aria-label="Reset play clock"
+                  title={`Reset play clock to ${playClockSeconds}s`}
+                  className="inline-flex items-center justify-center h-6 w-6 rounded-md text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer shrink-0 transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* IFAF PLAY CLOCK CONTAINER WITH CONTROLS */}
-          <div data-tour="play-clock-controls" className="order-6 lg:order-none col-span-3 justify-self-center flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
-            <div className="flex flex-col items-center leading-none" title="IFAF Play Clock">
-              <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Play</span>
-              <span className={`text-sm md:text-base font-black tabular-nums ${playClock <= 0 ? "text-red-700 dark:text-red-300" : playClock <= 5 ? "text-amber-700 dark:text-amber-300" : "text-amber-700 dark:text-amber-400"
-                }`}>
-                {playClock}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsPlayClockRunning((prev) => !prev)}
-              aria-label={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
-              title={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
-              className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 transition-colors ${isPlayClockRunning ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-neutral-400 hover:text-white"
-                }`}
-            >
-              {isPlayClockRunning ? (
-                <Pause className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
-              ) : (
-                <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleResetPlayClock}
-              aria-label="Reset play clock"
-              title={`Reset play clock to ${playClockSeconds}s`}
-              className="p-0.5 sm:p-1 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer shrink-0 transition-colors"
-            >
-              <RotateCcw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-            </button>
-          </div>
-
-          <div 
-            className="order-4 lg:order-none flex flex-col items-center flex-1 min-w-0 lg:max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
+          <div
+            className="flex flex-col items-center justify-center flex-1 min-w-0 lg:max-w-[9rem] self-stretch px-1 py-0.5 rounded-xl border shadow-sm"
             style={{
               backgroundColor: awayTeamColors.secondary,
               borderColor: `${awayTeamColors.primary}40`,
             }}
           >
-            <span className="flex items-center gap-0.5 text-[10px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: awayText }}>
-              <FootballIcon active={possession === awayTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: awayText }} />
-              {awayTeamName}
+            <span className="flex items-center justify-center gap-1 text-[10px] md:text-xs font-black uppercase w-full min-w-0" style={{ color: awayText }}>
+              <FootballIcon active={possession === awayTeamName} className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" style={{ color: awayText }} />
+              <FitTeamName name={awayTeamName} shortcode={awayShortcode} />
             </span>
-            <span className="text-base sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: awayText }}>{awayScore}</span>
-            <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5">
+            <span className="text-lg sm:text-xl md:text-3xl font-black leading-none tabular-nums" style={{ color: awayText }}>{awayScore}</span>
+            <div className="flex items-center gap-1 mt-0.5">
               <button
                 disabled={awayTimeouts === 0}
                 onClick={() => callTimeout("away")}
-                className="px-1 py-0.5 rounded text-[10px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
+                aria-label={`Call away timeout (${awayTimeouts} left)`}
+                className="inline-flex items-center justify-center h-6 px-1.5 rounded-md text-[10px] font-black whitespace-nowrap border border-current/30 disabled:opacity-30 disabled:line-through transition-colors cursor-pointer"
                 style={{ backgroundColor: awayTeamColors.secondary, color: awayText }}
                 title="Call away team timeout"
               >
@@ -1627,30 +1511,27 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          <div className="order-5 lg:order-none flex flex-col lg:flex-row items-center gap-0.5 sm:gap-1 shrink-0">
-            <button onClick={() => setIsScoreboardFullscreen(true)} aria-label="Fullscreen scoreboard" className="bg-white/10 p-1 sm:p-1.5 md:p-2 rounded-md sm:rounded-lg hover:bg-white/20 text-neutral-300" title="Fullscreen Scoreboard">
-              <Maximize className="w-3 h-3 sm:w-4 sm:h-4" />
-            </button>
+          <div className="flex flex-col lg:flex-row items-center gap-1 shrink-0">
+            {/* The Guide takes the top-right slot on phones; from md up it lives inside SiteControls next to the theme toggle. */}
+            {!isEmbedded ? (
+              <>
+                <PageGuideButton className="!h-8 !w-8 !min-w-8 !px-0 md:hidden" labelClassName="hidden" />
+                <div className="hidden md:block shrink-0">
+                  <SiteControls />
+                </div>
+              </>
+            ) : (
+              <PageGuideButton className="!h-8 !w-8 !min-w-8 !px-0" labelClassName="hidden" />
+            )}
             {isPlatformAdmin && isUnstartedGame && (
-              <button onClick={handleSimulateGame} disabled={isSimulating} className="bg-amber-500/15 text-amber-300 border border-amber-500/40 rounded-lg p-1 disabled:opacity-50" title={isSimulating ? "Simulating game" : "Simulate full game"}>
-                <Zap className={`w-3 h-3 sm:w-4 sm:h-4 ${isSimulating ? "animate-spin" : ""}`} />
+              <button onClick={handleSimulateGame} disabled={isSimulating} aria-label="Simulate full game" className="inline-flex items-center justify-center h-8 w-8 bg-amber-500/15 text-amber-300 border border-amber-500/40 rounded-lg disabled:opacity-50" title={isSimulating ? "Simulating game" : "Simulate full game"}>
+                <Zap className={`w-4 h-4 ${isSimulating ? "animate-spin" : ""}`} />
               </button>
             )}
-            <button onClick={() => setIsResetModalOpen(true)} aria-label="Reset game" className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 rounded-lg p-1" title="Reset Game to Pre-Game State">
-              <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" />
+            <button onClick={() => setIsResetModalOpen(true)} aria-label="Reset game" className="inline-flex items-center justify-center h-8 w-8 bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 rounded-lg cursor-pointer" title="Reset Game to Pre-Game State">
+              <AlertTriangle className="w-4 h-4" />
             </button>
           </div>
-          {!isEmbedded ? (
-            <>
-              {/* SiteControls (with the Guide) only fit from md up; phones keep the Guide in the same top-right spot. */}
-              <PageGuideButton className="order-7 col-span-2 justify-self-center lg:order-none md:hidden" />
-              <div className="order-7 col-span-2 justify-self-center lg:order-none hidden md:block shrink-0">
-                <SiteControls />
-              </div>
-            </>
-          ) : (
-            <PageGuideButton className="order-7 col-span-2 justify-self-center lg:order-none" />
-          )}
         </div>
       </header>
 
@@ -1697,18 +1578,18 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   borderColor: `${homeTeamColors.primary}40`,
                 }}
               >
-                <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
+                <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 w-full">
                   <FootballIcon
                     active={possession === (homeTeamName || "HOME")}
                     className="w-[clamp(0.875rem,2vw,1.75rem)] h-[clamp(0.875rem,2vw,1.75rem)] shrink-0"
                     style={{ color: homeText }}
                   />
-                  <span
-                    className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase truncate"
+                  <FitTeamName
+                    name={homeTeamName}
+                    shortcode={homeShortcode}
+                    className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase"
                     style={{ color: homeText }}
-                  >
-                    {homeTeamName}
-                  </span>
+                  />
                 </div>
                 <span
                   className="text-[clamp(1.5rem,6vw,5rem)] font-black leading-none tabular-nums my-0.5"
@@ -1803,13 +1684,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                   borderColor: `${awayTeamColors.primary}40`,
                 }}
               >
-                <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 max-w-full">
-                  <span
-                    className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase truncate"
+                <div className="flex items-center justify-center gap-1 sm:gap-2 min-w-0 w-full">
+                  <FitTeamName
+                    name={awayTeamName}
+                    shortcode={awayShortcode}
+                    className="text-[clamp(0.625rem,2vw,1.5rem)] font-black uppercase"
                     style={{ color: awayText }}
-                  >
-                    {awayTeamName}
-                  </span>
+                  />
                   <FootballIcon
                     active={possession === (awayTeamName || "AWAY")}
                     className="w-[clamp(0.875rem,2vw,1.75rem)] h-[clamp(0.875rem,2vw,1.75rem)] shrink-0"

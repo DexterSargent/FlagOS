@@ -148,7 +148,7 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
 
     await waitFor(() => {
       // Home team timeout button (first of two TO buttons)
-      const toButtons = screen.getAllByRole("button", { name: /TO\s*\(?2\)?/i });
+      const toButtons = screen.getAllByRole("button", { name: /Call (home|away) timeout \(2 left\)/i });
       expect(toButtons.length).toBe(2);
 
       fireEvent.click(toButtons[0]);

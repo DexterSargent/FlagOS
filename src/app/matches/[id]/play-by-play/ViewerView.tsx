@@ -31,6 +31,7 @@ import PoweredByFooter from "@/components/PoweredByFooter";
 import { useTheme } from "@/lib/themeContext";
 import { GAME_STATE_LABEL, getGameDisplayState, useNow, type GameDisplayState } from "@/lib/gameLiveState";
 import { usePageGuide } from "@/lib/pageGuide";
+import { projectGameClock } from "@/lib/wallClock";
 import { LIVE_VIEWER_WALKTHROUGH } from "@/lib/walkthroughs/league";
 
 const GAME_STATE_BADGE: Record<GameDisplayState, string> = {
@@ -577,7 +578,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
                 `${getOrdinal(s.half)} ${effectiveMatchData.isAsyncStatKeeping || effectiveMatchData.isIndependent ? "Half" : settings.rules?.periodType === "quarters" ? "Quarter" : "Half"}`}
             </span>
             {s.gameClock != null && !effectiveMatchData.isAsyncStatKeeping && !effectiveMatchData.isIndependent ? (
-              <span className="text-xl sm:text-2xl md:text-4xl font-black leading-none text-white tracking-tighter tabular-nums">{formatTime(s.gameClock)}</span>
+              <LiveGameClock state={viewerGameState === "live" ? s : { ...s, gameClockRunning: false }} className="text-xl sm:text-2xl md:text-4xl font-black leading-none text-white tracking-tighter tabular-nums" />
             ) : (
               <span className="text-base sm:text-xl md:text-3xl font-black leading-none text-emerald-400 uppercase tracking-widest">
                 {effectiveMatchData.status === "completed" ? "Game Complete" : s.half === 2 ? "2nd Half" : "1st Half"}
@@ -767,4 +768,23 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       {!isEmbedded && <PoweredByFooter compact />}
     </div>
   );
+}
+
+function formatClock(seconds: number) {
+  const m = Math.floor(Math.max(0, seconds) / 60);
+  const sec = Math.max(0, seconds) % 60;
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+/** Ticks locally between scorekeeper saves so the clock keeps moving for viewers. */
+function LiveGameClock({ state, className }: { state: { gameClock?: number | null; gameClockRunning?: boolean; gameClockSavedAt?: number | null }; className?: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  const running = !!state.gameClockRunning;
+  useEffect(() => {
+    if (!running) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, [running, state.gameClockSavedAt]);
+  return <span className={className}>{formatClock(projectGameClock(state, now) ?? 0)}</span>;
 }

@@ -453,7 +453,8 @@ describe("Full Game Play-by-Play Wizard & Box Score End-to-End Audit", () => {
     expect(homeTeamStats.passTDs).toBe(1);
     expect(homeTeamStats.defTDs).toBe(1);
     expect(homeTeamStats.safeties).toBe(1);
-    expect(homeTeamStats.pat1Attempts).toBe(1);
+    // Home tried a 1-point conversion after its passing TD (good) and after the pick-6 (no good).
+    expect(homeTeamStats.pat1Attempts).toBe(2);
     expect(homeTeamStats.pat1Conversions).toBe(1);
     expect(homeTeamStats.interceptions).toBe(1); // Ethan's pick 6
 
@@ -464,6 +465,7 @@ describe("Full Game Play-by-Play Wizard & Box Score End-to-End Audit", () => {
     expect(awayTeamStats.rushTDs).toBe(1);
     expect(awayTeamStats.pat2Attempts).toBe(1);
     expect(awayTeamStats.pat2Conversions).toBe(1);
+    expect(awayTeamStats.pat1Attempts).toBe(0);
     expect(awayTeamStats.interceptions).toBe(1); // Ian's interception
     expect(awayTeamStats.pbus).toBe(1);         // Hank's PBU
   });

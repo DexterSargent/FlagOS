@@ -15,7 +15,8 @@ import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 
 export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: string }> }) {
   const { isLeagueAdmin, canManageTeam, loading } = useAuth();
-  const { isDemoLeague, activeLeagueId } = useLeague();
+  const { isDemoLeague, activeLeagueId, settings } = useLeague();
+  const leagueStatKeepingMode = settings?.rules?.statKeepingMode;
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const [matchData, setMatchData] = useState<any>(null);
@@ -72,10 +73,15 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
         setActiveMode(urlMode);
       } else if (matchData?.isAsyncStatKeeping || matchData?.isIndependent) {
         setActiveMode("async");
+      } else {
+        // A league set to async opens games in the clockless manager, unless a live clock game is already underway.
+        const liveGameUnderway = matchData?.isAsyncStatKeeping === false || (matchData?.matchState && matchData.matchState.gameClock !== undefined && !matchData.matchState.isAsyncStatKeeping);
+        const isLeagueGame = !!matchData?.leagueId && !matchData?.isStandalone;
+        setActiveMode(isLeagueGame && leagueStatKeepingMode === "async" && !liveGameUnderway ? "async" : "sync");
       }
       setModeInitialized(true);
     }
-  }, [matchData]);
+  }, [matchData, leagueStatKeepingMode]);
 
   if (loading || isFetching) {
     return (

@@ -5,6 +5,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { getSandboxTeams, subscribeDemoSandbox } from "./demoSandbox";
 import { resolveTeamColorPalette, type TeamColorSource } from "./teamColors";
+import { getTeamShortcode } from "@/components/TeamAssets";
 
 export interface MatchTeamColorSource {
   homeTeamId?: string;
@@ -17,10 +18,14 @@ export interface MatchTeamColorSource {
   awayTeamSecondaryColor?: string;
   homeTeamTertiaryColor?: string;
   awayTeamTertiaryColor?: string;
+  homeTeamName?: string;
+  awayTeamName?: string;
+  homeTeamShortcode?: string;
+  awayTeamShortcode?: string;
 }
 
 export function useMatchTeamColors(match: MatchTeamColorSource | null, isDemo: boolean) {
-  const [teams, setTeams] = useState<Record<string, TeamColorSource>>({});
+  const [teams, setTeams] = useState<Record<string, TeamColorSource & { name?: string; shortcode?: string }>>({});
   const homeId = match?.homeTeamId;
   const awayId = match?.awayTeamId;
   useEffect(() => {
@@ -56,5 +61,18 @@ export function useMatchTeamColors(match: MatchTeamColorSource | null, isDemo: b
       (id && teams[id]) || fallback,
     );
   };
-  return { home: palette("home"), away: palette("away") };
+  const shortcode = (side: "home" | "away") => {
+    const id = match?.[`${side}TeamId`];
+    const team = id ? teams[id] : undefined;
+    return getTeamShortcode({
+      shortcode: team?.shortcode || match?.[`${side}TeamShortcode`],
+      name: match?.[`${side}TeamName`] || team?.name,
+    });
+  };
+  return {
+    home: palette("home"),
+    away: palette("away"),
+    homeShortcode: shortcode("home"),
+    awayShortcode: shortcode("away"),
+  };
 }

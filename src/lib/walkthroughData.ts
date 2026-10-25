@@ -1975,13 +1975,13 @@ export const PLAY_VIEWER_WALKTHROUGH: ToolWalkthrough = {
 export const ASYNC_STAT_KEEPER_WALKTHROUGH: ToolWalkthrough = {
   "id": "async-stat-keeper",
   "toolName": "Untimed Stat Keeper",
-  "subtitle": "Authorized coaches record plays, change possession and finalize the result. Players and visitors can read the Play Log, Box Score and Team Stats without entering plays. Only controls available in your current tab and play-entry stage are highlighted; reopen Guide after advancing.",
+  "subtitle": "Authorized coaches record plays, change possession and finalize the result. League games track both rosters; team-run games track your roster against an unrostered opponent. Players and visitors can read the Play Log, Box Score and Team Stats without entering plays. Only controls available in your current tab and play-entry stage are highlighted; reopen Guide after advancing.",
   "steps": [
     {
       "id": "async-overview",
       "targetSelector": "",
       "title": "Record a game without a clock",
-      "description": "Authorized coaches record plays, change possession and finalize the result. Players and visitors can read the Play Log, Box Score and Team Stats without entering plays. Only controls available in your current tab and play-entry stage are highlighted; reopen Guide after advancing."
+      "description": "Authorized coaches record plays, change possession and finalize the result. League games track both rosters; team-run games track your roster against an unrostered opponent. Players and visitors can read the Play Log, Box Score and Team Stats without entering plays. Only controls available in your current tab and play-entry stage are highlighted; reopen Guide after advancing."
     },
     {
       "id": "async-navigation",

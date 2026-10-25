@@ -1489,6 +1489,42 @@ export default function LeagueCustomizerContent() {
               </div>
             </div>
 
+            {/* Stat keeping mode */}
+            <div data-tour="settings-stat-keeping" className="space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Stat Keeping Mode</span>
+                <FieldHelpTooltip
+                  title="Stat Keeping Mode"
+                  content="Live uses the game clock, play clock and timeouts. Async drops the clocks and records both teams' plays by half, so games can be scored from the sideline or entered afterwards."
+                />
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {([
+                  { id: "live", title: "Live clocks", body: "Game clock, play clock and timeouts run during the game." },
+                  { id: "async", title: "Async, both teams", body: "No clocks. Record each team's plays by half, live or after the game." },
+                ] as const).map((mode) => {
+                  const active = (rules.statKeepingMode || "live") === mode.id;
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      aria-pressed={active}
+                      disabled={!isLeagueAdmin}
+                      onClick={() => setRules((prev) => ({ ...prev, statKeepingMode: mode.id }))}
+                      className={`text-left p-3 rounded-xl border transition-all ${active
+                        ? "bg-cyan-500/20 border-cyan-400 text-cyan-300"
+                        : "bg-black/40 border-white/10 text-neutral-400"
+                        } ${isLeagueAdmin ? "cursor-pointer hover:text-white" : "cursor-default"}`}
+                    >
+                      <span className="block text-xs font-black uppercase tracking-wide">{mode.title}</span>
+                      <span className="block text-[11px] mt-1 text-neutral-400">{mode.body}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Rule 5: Roster Limits */}
             <div data-tour="settings-rosters" className="space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">

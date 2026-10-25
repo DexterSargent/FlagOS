@@ -279,7 +279,7 @@ export const STAT_KEEPER_WALKTHROUGH: ToolWalkthrough = {
       { label: "Undo last play", text: "Reverse the most recent play and restore its score and game-state changes." },
       { label: "Call home team timeout", text: "Use one home timeout and stop the game clock." },
       { label: "Call away team timeout", text: "Use one away timeout and stop the game clock." },
-      { label: "Fullscreen scoreboard", text: "Show a larger score display for the sideline or crowd." },
+      { label: "Guide", text: "Reopen this walkthrough of every control on the stat keeper." },
       { label: "Simulate full game", text: "Generate a sample game when this control is available to your role." },
       { label: "Reset game", text: "Return the game to pre-game after confirmation. This clears the current game state." },
     ] },
@@ -290,7 +290,7 @@ export const STAT_KEEPER_WALKTHROUGH: ToolWalkthrough = {
       { label: "Decrease Down", text: "Correct the down by one." },
       { label: "Increase Down", text: "Correct the down by one." },
     ] },
-    { id: "play-clock", targetSelector: '[data-tour="play-clock-controls"]', title: "Play Clock", category: "Clock", description: "Track the time between plays. The display warns as the play clock runs low.", details: [
+    { id: "play-clock", targetSelector: '[data-tour="play-clock-controls"]', title: "Play Clock", category: "Clock", description: "Sits right of the game clock and tracks the time between plays. The number turns amber, then red, as it runs low.", details: [
       { label: "Start / Pause play clock", text: "Run or pause the between-plays clock." },
       { label: "Reset play clock", text: "Start the play clock again from its full duration." },
     ] },

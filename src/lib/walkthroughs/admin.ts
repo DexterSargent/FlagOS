@@ -63,6 +63,10 @@ export const LEAGUE_RULES_GUIDE = guide("league-settings-rules", "League Rules",
     ["3 Downs / 4 Downs", "Choose three (Canadian Standard) or four (American Standard) downs per series."], ["1 Yds / 5 Yds / 7 Yds / 10 Yds", "Set the Rush Distance behind the line of scrimmage."],
     ["25s / 30s / 40s", "Choose the Play Clock Duration between downs."], help,
   ]),
+  step("settings-stat-keeping", "Stat keeping mode", "Choose how league games are recorded when a stat keeper opens a game.", [
+    ["Live clocks", "Run the game clock, play clock and timeouts while recording each play."], ["Async, both teams", "Record plays for both rosters by half without clocks; scores, downs and stats still update."],
+    help,
+  ]),
   step("settings-rosters", "Roster size limits", "Set the smallest and largest permitted team rosters.", [
     ["Minimum Roster Size", "Type the minimum player count; it must be at least the on-field squad size."], ["Maximum Roster Size", "Type the maximum permitted player count."], help,
   ]),
