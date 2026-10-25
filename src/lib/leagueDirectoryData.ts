@@ -424,9 +424,13 @@ export function buildDirectoryCatalog(
     }
   }
 
-  // 5. Strictly filter out any private leagues
+  // 5. Strictly filter out private leagues and the shared demo league
   const allLeagues = Array.from(mergedMap.values()).filter(
-    (l) => l.visibility !== "private" && l.id !== "league_private_live"
+    (l) =>
+      l.visibility !== "private" &&
+      l.id !== "league_private_live" &&
+      l.id !== "default" &&
+      l.id !== "demo"
   );
 
   // 6. Sort existing leagues to the top: Active -> User's own -> Live remote -> Sample
