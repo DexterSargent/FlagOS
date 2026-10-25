@@ -33,6 +33,8 @@ import {
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
 import { isStandaloneTeam } from "@/lib/demoSandboxRuntime";
+import { usePageGuide } from "@/lib/pageGuide";
+import { TEAMS_DIRECTORY_WALKTHROUGH } from "@/lib/walkthroughs/league";
 
 interface Team {
   id: string;
@@ -68,6 +70,7 @@ const getShorthand = (name: string) => {
 };
 
 export default function TeamsPage() {
+  usePageGuide(TEAMS_DIRECTORY_WALKTHROUGH);
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
@@ -439,7 +442,7 @@ export default function TeamsPage() {
     }
   };
 
-  const activeTeam = useMemo(() => teams.find(t => t.id === activeTeamId), [teams, activeTeamId]);
+  const activeTeam = teams.find(t => t.id === activeTeamId);
   const teamPlayers = useMemo(
     () =>
       players
@@ -449,7 +452,7 @@ export default function TeamsPage() {
   );
 
   const teamIdSet = useMemo(() => new Set(teams.map((t) => t.id)), [teams]);
-  const competitiveTeams = useMemo(() => teams.filter((team) => isRealTeam(team)), [teams]);
+  const competitiveTeams = teams.filter((team) => isRealTeam(team));
   const freeAgentPlayers = useMemo(
     () =>
       players.filter(
@@ -641,7 +644,7 @@ export default function TeamsPage() {
 
       <div className="max-w-7xl mx-auto space-y-8 relative z-10 w-full px-4 sm:px-6 py-6 sm:py-8 flex-1">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
+        <div data-tour="teams-controls" className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
           <div>
             {!activeTeamId ? (
               <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -810,7 +813,7 @@ export default function TeamsPage() {
                   <span>League Teams ({competitiveTeams.length})</span>
                 </h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div data-tour="teams-directory" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {competitiveTeams.map(team => {
                   const teamRosterCount = players.filter(p => p.teamId === team.id).length;
 
@@ -911,7 +914,7 @@ export default function TeamsPage() {
 
             {/* FREE AGENT DRAFT POOL SECTION (Visible only to League Admins and Team Admins) */}
             {settings.rules?.enableFreeAgents !== false && isAdmin && (
-              <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+              <div data-tour="teams-free-agents" className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
                 <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10">
@@ -1138,7 +1141,7 @@ export default function TeamsPage() {
           <div className="flex flex-col xl:flex-row gap-8 animate-in fade-in slide-in-from-bottom-8 duration-300">
 
             {/* Left Column: Roster */}
-            <div className="w-full xl:w-1/3 flex flex-col gap-6">
+            <div data-tour="teams-roster" className="w-full xl:w-1/3 flex flex-col gap-6">
               <div className="bg-neutral-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl">
                 <div className="bg-neutral-900 px-6 py-5 border-b border-white/5 flex items-center justify-between sticky top-0 z-20">
                   <div className="flex items-center gap-3">

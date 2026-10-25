@@ -27,6 +27,8 @@ import {
   type LedgerType,
   type PeriodKey,
 } from "@/lib/adminMetrics";
+import { usePageGuide } from "@/lib/pageGuide";
+import { ADMIN_LEDGER_GUIDE, ADMIN_BILLING_GUIDE } from "@/lib/walkthroughs/admin";
 import type { LedgerDraft, SubscriptionDraft } from "@/lib/adminBusiness";
 import {
   EmptyState,
@@ -166,7 +168,7 @@ export default function AdminFinance({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-tour="admin-finance-period" className="flex flex-wrap items-center gap-2">
         <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-white/10 bg-neutral-900 p-1" role="tablist" aria-label="Reporting period">
           {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((key) => (
             <button
@@ -191,7 +193,7 @@ export default function AdminFinance({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div data-tour="admin-finance-kpis" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Net revenue" value={formatMoney(pnl.netRevenue, { cents: true })} hint={pnl.refunds ? `${formatMoney(pnl.refunds, { cents: true })} refunds` : PERIOD_LABELS[period]} icon={Wallet} tone="emerald" />
         <StatCard label="Expenses" value={formatMoney(pnl.expenses, { cents: true })} hint={PERIOD_LABELS[period]} icon={Receipt} tone="rose" />
         <StatCard
@@ -204,7 +206,7 @@ export default function AdminFinance({
         <StatCard label="Entries" value={periodEntries.length} hint={`${periodEntries.filter((entry) => entry.type === "income").length} income · ${periodEntries.filter((entry) => entry.type === "expense").length} expense`} icon={Receipt} />
       </div>
 
-      <Panel title={`Profit & loss · ${PERIOD_LABELS[period]}`} icon={BadgeDollarSign}>
+      <Panel tour="admin-finance-pnl" title={`Profit & loss · ${PERIOD_LABELS[period]}`} icon={BadgeDollarSign}>
         <div className="grid gap-6 md:grid-cols-2">
           <CategoryBreakdown title="Income by category" rows={pnl.incomeByCategory} tone="bg-emerald-400/80" />
           <CategoryBreakdown title="Expenses by category" rows={pnl.expensesByCategory} tone="bg-rose-400/70" />
@@ -212,6 +214,7 @@ export default function AdminFinance({
       </Panel>
 
       <Panel
+        tour="admin-finance-subscriptions"
         title="Subscriptions & billing"
         icon={Wallet}
         action={
@@ -301,6 +304,7 @@ export default function AdminFinance({
       </Panel>
 
       <Panel
+        tour="admin-finance-ledger"
         title="Ledger"
         icon={Receipt}
         action={
@@ -389,6 +393,7 @@ export function LedgerEntryModal({
   onClose: () => void;
   onSave: (draft: LedgerDraft) => Promise<void>;
 }) {
+  usePageGuide(ADMIN_LEDGER_GUIDE, 2);
   const [type, setType] = useState<LedgerType>(prefill?.type ?? "income");
   const [amount, setAmount] = useState(prefill?.amount !== undefined ? String(prefill.amount) : "");
   const [date, setDate] = useState(prefill?.date ?? today());
@@ -437,8 +442,8 @@ export function LedgerEntryModal({
 
   return (
     <Modal title={type === "income" ? "Record income" : "Record expense"} onClose={onClose} labelId="ledger-entry-title">
-      <form onSubmit={(event) => void submit(event)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-neutral-950 p-1" role="radiogroup" aria-label="Entry type">
+      <form data-tour="admin-ledger-fields" onSubmit={(event) => void submit(event)} className="space-y-4">
+        <div data-tour="admin-ledger-type" className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-neutral-950 p-1" role="radiogroup" aria-label="Entry type">
           {(["income", "expense"] as const).map((option) => (
             <button
               key={option}
@@ -495,7 +500,7 @@ export function LedgerEntryModal({
           </label>
         )}
         {error && <p role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div data-tour="admin-ledger-save" className="flex justify-end gap-2 border-t border-white/10 pt-4">
           <button type="button" className={ghostButtonClass} onClick={onClose}>Cancel</button>
           <button type="submit" className={primaryButtonClass} disabled={saving}>
             {saving && <LoaderCircle className="h-4 w-4 animate-spin" />} Save entry
@@ -515,6 +520,7 @@ export function BillingModal({
   onClose: () => void;
   onSave: (draft: SubscriptionDraft) => Promise<void>;
 }) {
+  usePageGuide(ADMIN_BILLING_GUIDE, 2);
   const [status, setStatus] = useState(record.status === "unknown" ? "active" : record.status);
   const [paymentMethod, setPaymentMethod] = useState(record.paymentMethod);
   const [monthlyFee, setMonthlyFee] = useState(String(record.monthlyFee));
@@ -550,7 +556,7 @@ export function BillingModal({
   return (
     <Modal title={`Billing · ${record.name}`} onClose={onClose} labelId="billing-title">
       <form onSubmit={(event) => void submit(event)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div data-tour="admin-billing-status" className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className={labelClass}>Status</span>
             <select className={inputClass} value={status} onChange={(event) => setStatus(event.target.value as typeof status)}>
@@ -570,7 +576,7 @@ export function BillingModal({
           </label>
         </div>
         {record.kind === "league" ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div data-tour="admin-billing-fees" className="grid grid-cols-3 gap-3">
             <label className="block">
               <span className={labelClass}>Base / mo</span>
               <input className={inputClass} type="number" min="0" step="0.01" value={baseFee} onChange={(event) => setBaseFee(event.target.value)} />
@@ -588,7 +594,7 @@ export function BillingModal({
             </p>
           </div>
         ) : (
-          <label className="block">
+          <label data-tour="admin-billing-fees" className="block">
             <span className={labelClass}>Monthly fee (CAD)</span>
             <input className={inputClass} type="number" min="0" step="0.01" value={monthlyFee} onChange={(event) => setMonthlyFee(event.target.value)} />
           </label>
@@ -598,7 +604,7 @@ export function BillingModal({
           <input className={inputClass} type="date" value={renewsAt} onChange={(event) => setRenewsAt(event.target.value)} />
         </label>
         {error && <p role="alert" className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
-        <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+        <div data-tour="admin-billing-save" className="flex justify-end gap-2 border-t border-white/10 pt-4">
           <button type="button" className={ghostButtonClass} onClick={onClose}>Cancel</button>
           <button type="submit" className={primaryButtonClass} disabled={saving}>
             {saving && <LoaderCircle className="h-4 w-4 animate-spin" />} Save billing

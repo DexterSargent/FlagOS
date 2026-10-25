@@ -1,4 +1,7 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { EDIT_PLAYBOOK_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import React, { useState, useEffect } from "react";
 import { PlaySide, Playbook } from "@/lib/playbookTypes";
@@ -38,6 +41,7 @@ export default function EditPlaybookModal({
     }
   }, [isOpen, playbook, leagueRulePlayers]);
 
+  usePageGuide(isOpen ? EDIT_PLAYBOOK_WALKTHROUGH : null, 2);
   if (!isOpen || !playbook) return null;
 
   const formationsCount = playbook.formations?.length || 0;
@@ -71,9 +75,9 @@ export default function EditPlaybookModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="edit-playbook-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+      className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
     >
-      <div className="bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-2xl relative text-white">
+      <div className="max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-2xl relative text-white">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
@@ -86,6 +90,7 @@ export default function EditPlaybookModal({
                 {formationsCount} {formationsCount === 1 ? "Formation" : "Formations"} • {playsCount} {playsCount === 1 ? "Play" : "Plays"}
               </span>
             </div>
+            <PageGuideButton />
             <h2 id="edit-playbook-title" className="text-xl font-black uppercase text-white mt-1">
               Edit Playbook Details
             </h2>
@@ -100,7 +105,7 @@ export default function EditPlaybookModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form data-tour="edit-playbook-fields" onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div
               role="alert"
@@ -274,7 +279,7 @@ export default function EditPlaybookModal({
               Cancel
             </button>
             <button
-              type="submit"
+              data-tour="edit-playbook-save" type="submit"
               data-testid="edit-playbook-save-button"
               className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 cursor-pointer ${
                 type === "offense"

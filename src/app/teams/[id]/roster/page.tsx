@@ -1,4 +1,5 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import { use, useEffect, useState, useRef } from "react";
 import Link from "next/link";
@@ -47,7 +48,7 @@ import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 import { usePageGuide } from "@/lib/pageGuide";
-import { TEAM_ROSTER_WALKTHROUGH } from "@/lib/walkthroughData";
+import { TEAM_ROSTER_WALKTHROUGH, TEAM_ADD_PLAYER_WALKTHROUGH, TEAM_EDIT_PLAYER_WALKTHROUGH, TEAM_PLAYER_STATS_WALKTHROUGH } from "@/lib/walkthroughData";
 
 const TeamDepthCharts = dynamic(() => import("@/components/TeamDepthCharts"), {
   loading: () => <p role="status">Loading depth charts...</p>,
@@ -107,6 +108,9 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [editPlayerEmails, setEditPlayerEmails] = useState("");
   const [editPlayerPositions, setEditPlayerPositions] = useState<string[]>(["ATH"]);
   const [savingPlayer, setSavingPlayer] = useState(false);
+  usePageGuide(isAddModalOpen ? TEAM_ADD_PLAYER_WALKTHROUGH : null, 2);
+  usePageGuide(editingPlayer ? TEAM_EDIT_PLAYER_WALKTHROUGH : null, 2);
+  usePageGuide(selectedPlayerForStats ? TEAM_PLAYER_STATS_WALKTHROUGH : null, 2);
   const isTeamOrLeagueAdmin = isLeagueAdmin || canManageTeam(teamId) || (typeof isTeamAdmin === "function" && isTeamAdmin(teamId));
 
   const fetchData = async () => {
@@ -894,12 +898,13 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 <UserPlus className="w-6 h-6" />
               </div>
               <div>
+                <PageGuideButton className="mb-2" />
                 <h2 className="text-xl font-black uppercase tracking-tight">Add Player to Roster</h2>
                 <p className="text-xs text-neutral-400">Add player details for {teamName}.</p>
               </div>
             </div>
 
-            <form onSubmit={handleAddPlayer} className="space-y-4">
+            <form data-tour="team-add-player-identity" onSubmit={handleAddPlayer} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Player Name *
@@ -928,7 +933,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 />
               </div>
 
-              <div>
+              <div data-tour="team-add-player-access">
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
                   <span>Player Emails</span>
                   <span className="text-[10px] text-neutral-500 font-mono">1 or more, comma-separated</span>
@@ -969,7 +974,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <div data-tour="team-add-player-save" className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
@@ -1007,12 +1012,13 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 <Edit2 className="w-6 h-6" />
               </div>
               <div>
+                <PageGuideButton className="mb-2" />
                 <h2 className="text-xl font-black uppercase tracking-tight">Edit Player Details</h2>
                 <p className="text-xs text-neutral-400">Update player name, jersey number, linked emails, and QB status.</p>
               </div>
             </div>
 
-            <form onSubmit={handleSavePlayer} className="space-y-4">
+            <form data-tour="team-edit-player-identity" onSubmit={handleSavePlayer} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Player Name *
@@ -1038,7 +1044,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 />
               </div>
 
-              <div>
+              <div data-tour="team-edit-player-access">
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
                   <span>Player Emails</span>
                   <span className="text-[10px] text-neutral-500 font-mono">1 or more, comma-separated</span>
@@ -1079,7 +1085,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <div data-tour="team-edit-player-save" className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setEditingPlayer(null)}
@@ -1116,6 +1122,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 {selectedPlayerForStats.number ? `#${selectedPlayerForStats.number}` : <User className="w-6 h-6" />}
               </div>
               <div>
+                <PageGuideButton className="mb-2" />
                 <h2 className="text-2xl font-black">{selectedPlayerForStats.playerName}</h2>
                 <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="text-xs text-neutral-400">{teamName}</span>
@@ -1138,7 +1145,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             {(() => {
               const s = playerStats[selectedPlayerForStats.playerName] || {};
               return (
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div data-tour="team-player-stats-totals" className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
                     <span className="text-xs text-neutral-500 block">Games Played</span>
                     <span className="text-xl font-black text-white">{s.gamesPlayed || 0}</span>

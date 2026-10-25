@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Trophy, X, Sparkles, Check, Shield } from "lucide-react";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 
 interface EditPlayoffFormatModalProps {
@@ -74,7 +75,7 @@ export default function EditPlayoffFormatModal({
     .filter((n, idx, arr) => n >= 2 && n <= totalTeams && arr.indexOf(n) === idx);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
       <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/[0.02]">
@@ -92,6 +93,7 @@ export default function EditPlayoffFormatModal({
             </div>
           </div>
 
+          <PageGuideButton />
           <button
             onClick={onClose}
             className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
@@ -107,7 +109,7 @@ export default function EditPlayoffFormatModal({
           </p>
 
           {/* Elimination Structure Selector */}
-          <div className="space-y-2">
+          <div data-tour="playoff-format-structure" className="space-y-2">
             <label className="text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
               <span>Elimination System</span>
               <FieldHelpTooltip
@@ -165,7 +167,7 @@ export default function EditPlayoffFormatModal({
           </div>
 
           {/* Teams Count Selector */}
-          <div className="space-y-3 p-4 rounded-2xl bg-black/60 border border-white/10">
+          <div data-tour="playoff-format-qualifiers" className="space-y-3 p-4 rounded-2xl bg-black/60 border border-white/10">
             <div className="flex items-center justify-between">
               <label className="text-xs font-mono font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-1.5">
                 <span>Playoff Qualifiers</span>
@@ -201,7 +203,7 @@ export default function EditPlayoffFormatModal({
           </div>
 
           {/* Quick Presets */}
-          <div className="space-y-1.5">
+          <div data-tour="playoff-format-presets" className="space-y-1.5">
             <label className="text-[11px] font-mono font-bold text-neutral-400 uppercase tracking-wider">
               Quick Presets
             </label>
@@ -224,7 +226,7 @@ export default function EditPlayoffFormatModal({
           </div>
 
           {/* Live Bracket Structure Preview */}
-          <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+          <div data-tour="playoff-format-preview" className={`p-4 rounded-2xl border space-y-2 text-xs ${
             selectedStructure === "double_elimination"
               ? "bg-amber-950/20 border-amber-500/30 text-amber-200"
               : "bg-cyan-950/20 border-cyan-500/30 text-cyan-200"
@@ -262,7 +264,7 @@ export default function EditPlayoffFormatModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between gap-4">
+        <div data-tour="playoff-format-actions" className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={onClose}

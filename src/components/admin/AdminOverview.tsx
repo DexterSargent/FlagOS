@@ -58,7 +58,7 @@ export default function AdminOverview({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div data-tour="admin-overview-kpis" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="MRR (billed)"
           value={money(kpis.billedMrr)}
@@ -93,7 +93,7 @@ export default function AdminOverview({
       </div>
 
       {kpis.complimentaryCustomers > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3 text-sm">
+        <div data-tour="admin-overview-comp" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3 text-sm">
           <Gift className="h-4 w-4 shrink-0 text-violet-300" />
           <span className="min-w-0 flex-1 text-violet-100">
             {kpis.complimentaryCustomers} complimentary {kpis.complimentaryCustomers === 1 ? "subscription is" : "subscriptions are"} worth{" "}
@@ -104,7 +104,7 @@ export default function AdminOverview({
       )}
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <Panel title="Revenue vs expenses" icon={BadgeDollarSign} className="lg:col-span-2" action={<span className="text-xs text-neutral-500">Last 12 months · ledger</span>}>
+        <Panel tour="admin-overview-charts" title="Revenue vs expenses" icon={BadgeDollarSign} className="lg:col-span-2" action={<span className="text-xs text-neutral-500">Last 12 months · ledger</span>}>
           <MonthlyBars points={series} format={money} />
         </Panel>
         <Panel title="Customer mix" icon={Users}>
@@ -128,7 +128,7 @@ export default function AdminOverview({
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
-        <Panel title="Customer growth" icon={TrendingUp} action={<span className="text-xs text-neutral-500">Total customers</span>}>
+        <Panel tour="admin-overview-trends" title="Customer growth" icon={TrendingUp} action={<span className="text-xs text-neutral-500">Total customers</span>}>
           <TrendLine id="trend-customers" values={series.map((point) => point.totalCustomers)} labels={series.map((point) => point.label)} format={(value) => String(value)} />
         </Panel>
         <Panel title="Billed MRR trend" icon={BadgeDollarSign} action={<span className="text-xs text-neutral-500">Paid subscriptions</span>}>
@@ -137,7 +137,7 @@ export default function AdminOverview({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <Panel title="Renewals due (30 days)" icon={CalendarClock}>
+        <Panel tour="admin-overview-renewals" title="Renewals due (30 days)" icon={CalendarClock}>
           {renewals.length === 0 && pastDue.length === 0 ? (
             <EmptyState>No paid renewals due in the next 30 days.</EmptyState>
           ) : (
@@ -160,7 +160,7 @@ export default function AdminOverview({
             </ul>
           )}
         </Panel>
-        <Panel title="Recent signups" icon={UserPlus} action={<button type="button" className="text-xs font-bold text-cyan-400 hover:text-cyan-300" onClick={() => onNavigate("users")}>All users</button>}>
+        <Panel tour="admin-overview-signups" title="Recent signups" icon={UserPlus} action={<button type="button" className="text-xs font-bold text-cyan-400 hover:text-cyan-300" onClick={() => onNavigate("users")}>All users</button>}>
           {recentSignups.length === 0 ? (
             <EmptyState>No accounts loaded.</EmptyState>
           ) : (
@@ -174,7 +174,7 @@ export default function AdminOverview({
             </ul>
           )}
         </Panel>
-        <Panel title="Platform health" icon={Database} action={<button type="button" className="text-xs font-bold text-cyan-400 hover:text-cyan-300" onClick={() => onNavigate("activity")}>Activity</button>}>
+        <Panel tour="admin-overview-health" title="Platform health" icon={Database} action={<button type="button" className="text-xs font-bold text-cyan-400 hover:text-cyan-300" onClick={() => onNavigate("activity")}>Activity</button>}>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             {([
               ["Leagues", counts?.leagues],
@@ -199,7 +199,7 @@ export default function AdminOverview({
       </div>
 
       {records.length > 0 && (
-        <Panel title="Top accounts by value" icon={BadgeDollarSign}>
+        <Panel tour="admin-overview-top" title="Top accounts by value" icon={BadgeDollarSign}>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {[...records].sort((a, b) => b.monthlyFee - a.monthlyFee).slice(0, 6).map((record) => (
               <div key={`${record.kind}-${record.id}`} className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5">

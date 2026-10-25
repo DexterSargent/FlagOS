@@ -26,9 +26,12 @@ import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor, getTeamBadgeStyle } from "@/lib/teamColors";
 import GameTeamStats from "@/components/match/GameTeamStats";
 import SiteControls from "@/components/SiteControls";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import PoweredByFooter from "@/components/PoweredByFooter";
 import { useTheme } from "@/lib/themeContext";
 import { GAME_STATE_LABEL, getGameDisplayState, useNow, type GameDisplayState } from "@/lib/gameLiveState";
+import { usePageGuide } from "@/lib/pageGuide";
+import { LIVE_VIEWER_WALKTHROUGH } from "@/lib/walkthroughs/league";
 
 const GAME_STATE_BADGE: Record<GameDisplayState, string> = {
   live: "bg-red-500/10 border-red-500/30 text-red-400",
@@ -44,6 +47,7 @@ const GAME_STATE_DOT: Record<GameDisplayState, string> = {
 };
 
 export default function ViewerView({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(LIVE_VIEWER_WALKTHROUGH);
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
@@ -460,7 +464,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="h-[100dvh] bg-black text-white font-sans flex flex-col">
-      <header className="sticky top-0 z-30 bg-neutral-900/90 backdrop-blur-md border-b border-white/10 p-2 sm:p-3 flex items-center justify-between shrink-0">
+      <header data-tour="viewer-header" className="sticky top-0 z-30 bg-neutral-900/90 backdrop-blur-md border-b border-white/10 p-2 sm:p-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           {!isEmbedded && (
             <Link href={`/matches/${matchId}`} className="flex items-center text-neutral-400 hover:text-white transition-colors bg-black p-2.5 rounded-2xl border border-white/10">
@@ -546,11 +550,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
             <MapPin className="w-3 h-3 text-cyan-400" />
             <span>{effectiveMatchData.location || settings.defaultLocation}</span>
           </span>
-          {!isEmbedded && <SiteControls />}
+          {isEmbedded ? <PageGuideButton /> : <SiteControls />}
         </div>
       </header>
 
-      <div className="bg-neutral-950 p-2 sm:p-3 md:p-4 border-b border-white/10 shrink-0">
+      <div data-tour="viewer-scoreboard" className="bg-neutral-950 p-2 sm:p-3 md:p-4 border-b border-white/10 shrink-0">
         <div className="max-w-4xl mx-auto flex flex-row items-center justify-between gap-1 sm:gap-2 md:gap-0">
           <div data-testid="home-scoreboard" className="flex flex-col items-center gap-1 md:gap-4 w-1/3 rounded-2xl border p-2" style={{ backgroundColor: homeColors.secondary, borderColor: `${homeColors.primary}40`, color: homeText }}>
             <div className="flex flex-col md:flex-row items-center gap-1 md:gap-4 text-center">
@@ -601,7 +605,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
-      <div className="bg-neutral-900 border-b border-white/10 shrink-0">
+      <div data-tour="viewer-tabs" className="bg-neutral-900 border-b border-white/10 shrink-0">
         <div className="max-w-4xl mx-auto flex">
           <button
             onClick={() => setActiveTab('play-by-play')}

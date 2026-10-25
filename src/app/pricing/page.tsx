@@ -1,5 +1,9 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { PRICING_WALKTHROUGH, TEAM_SUBSCRIPTION_WALKTHROUGH, LEAGUE_SUBSCRIPTION_WALKTHROUGH, DEVELOPMENT_NOTICE_WALKTHROUGH } from "@/lib/walkthroughs/public";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,6 +39,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import AccountMenu from "@/components/AccountMenu";
 
 export default function PricingPage() {
+  usePageGuide(PRICING_WALKTHROUGH);
   const router = useRouter();
   const { activeLeagueId, settings, createLeague } = useLeague();
   const { user, isAuthorized, isPlatformAdmin } = useAuth();
@@ -62,6 +67,7 @@ export default function PricingPage() {
   const [showDevelopmentNotice, setShowDevelopmentNotice] = useState(false);
   const [isLeagueModalOpen, setIsLeagueModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  usePageGuide(isLeagueModalOpen ? LEAGUE_SUBSCRIPTION_WALKTHROUGH : isTeamModalOpen ? TEAM_SUBSCRIPTION_WALKTHROUGH : showDevelopmentNotice ? DEVELOPMENT_NOTICE_WALKTHROUGH : null, 2);
 
   // League subscription state
   const [leagueName, setLeagueName] = useState("");
@@ -442,7 +448,7 @@ export default function PricingPage() {
       </div>
 
       {/* DEDICATED FLAGOS MARKETING NAV HEADER (Replaces League Header) */}
-      <header className="relative sticky top-0 z-50 border-b border-neutral-200/80 dark:border-white/10 bg-white/80 dark:bg-[#07090E]/80 backdrop-blur-xl">
+      <header data-tour="public-nav" className="relative sticky top-0 z-50 border-b border-neutral-200/80 dark:border-white/10 bg-white/80 dark:bg-[#07090E]/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 shrink">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0">
@@ -497,7 +503,8 @@ export default function PricingPage() {
           </nav>
 
           {/* Desktop Action CTAs */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div data-tour="public-controls" className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <PageGuideButton labelClassName="hidden sm:inline" />
             <ThemeToggle size="md" />
 
             {isPlatformAdmin && (
@@ -608,7 +615,7 @@ export default function PricingPage() {
 
         {/* SIDE-BY-SIDE PLANS GRID (TEAM VS LEAGUE) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">          {/* TIER 1: THE TEAM PLAN (LEFT) */}
-          <div className="bg-white dark:bg-neutral-900/80 border border-neutral-200 dark:border-emerald-500/30 rounded-3xl p-6 sm:p-8 space-y-6 relative shadow-lg dark:shadow-none hover:shadow-xl transition-all flex flex-col justify-between">
+          <div data-tour="pricing-team" className="bg-white dark:bg-neutral-900/80 border border-neutral-200 dark:border-emerald-500/30 rounded-3xl p-6 sm:p-8 space-y-6 relative shadow-lg dark:shadow-none hover:shadow-xl transition-all flex flex-col justify-between">
             <div className="space-y-6">
               {/* Card Header */}
               <div className="flex items-center justify-between gap-2">
@@ -739,7 +746,7 @@ export default function PricingPage() {
           </div>
 
           {/* TIER 2: THE LEAGUE PLAN (RIGHT) */}
-          <div className="bg-white dark:bg-neutral-900/80 border-2 border-blue-500/50 dark:border-blue-500/40 rounded-3xl p-6 sm:p-8 space-y-6 relative shadow-xl hover:border-blue-500/70 transition-all flex flex-col justify-between">
+          <div data-tour="pricing-league" className="bg-white dark:bg-neutral-900/80 border-2 border-blue-500/50 dark:border-blue-500/40 rounded-3xl p-6 sm:p-8 space-y-6 relative shadow-xl hover:border-blue-500/70 transition-all flex flex-col justify-between">
             <div className="space-y-6">
               {/* Card Header */}
               <div className="flex items-center justify-between gap-2">
@@ -898,7 +905,7 @@ export default function PricingPage() {
         </div>
 
         {/* VALUE COMPARISON: WHAT IT WOULD COST TO BUILD THIS STACK FROM SCRATCH */}
-        <section className="space-y-8 pt-8 border-t border-neutral-200 dark:border-white/10">
+        <section data-tour="pricing-savings" className="space-y-8 pt-8 border-t border-neutral-200 dark:border-white/10">
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">
               Everything in One Plan
@@ -1135,7 +1142,7 @@ export default function PricingPage() {
         </section>
 
         {/* COMPREHENSIVE FEATURE COMPARISON MATRIX */}
-        <section className="space-y-8 pt-8 border-t border-neutral-200 dark:border-white/10">
+        <section data-tour="pricing-features" className="space-y-8 pt-8 border-t border-neutral-200 dark:border-white/10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">
@@ -1307,7 +1314,7 @@ export default function PricingPage() {
         </section>
 
         {/* FREQUENTLY ASKED QUESTIONS (FAQ ACCORDION) */}
-        <section className="space-y-6 pt-8 border-t border-neutral-200 dark:border-white/10">
+        <section data-tour="pricing-faq" className="space-y-6 pt-8 border-t border-neutral-200 dark:border-white/10">
           <div className="text-center space-y-2 max-w-2xl mx-auto">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-blue-800 dark:text-[#60a5fa]">
               Common Questions
@@ -1380,7 +1387,7 @@ export default function PricingPage() {
       </div>
 
       {/* DEDICATED MARKETING FOOTER */}
-      <footer className="relative z-10 border-t border-neutral-200 dark:border-white/10 bg-white dark:bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-600 dark:text-neutral-400 mt-12 transition-colors">
+      <footer data-tour="public-footer" className="relative z-10 border-t border-neutral-200 dark:border-white/10 bg-white dark:bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-600 dark:text-neutral-400 mt-12 transition-colors">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="space-y-3">
             <span className="text-lg font-black uppercase tracking-wider text-neutral-950 dark:text-white">
@@ -1444,52 +1451,55 @@ export default function PricingPage() {
                 <Building2 className="w-6 h-6" />
               </div>
               <div>
+                <PageGuideButton className="mb-2" />
                 <h3 className="text-xl font-black uppercase text-neutral-950 dark:text-white">Subscribe League Portal</h3>
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">Baseline fee + per-team scaling • Includes full team hubs for every team</p>
               </div>
             </div>
 
             <form onSubmit={handleSubscribeLeague} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">League Name</label>
-                <input
-                  type="text"
-                  required
-                  value={leagueName}
-                  onChange={(e) => setLeagueName(e.target.value)}
-                  placeholder="e.g. Gotham Flag Football League"
-                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-blue-500 font-semibold"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div data-tour="subscribe-league-identity" className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Shortcode</label>
+                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">League Name</label>
                   <input
                     type="text"
                     required
-                    maxLength={6}
-                    value={leagueShortcode}
-                    onChange={(e) => setLeagueShortcode(e.target.value.toUpperCase())}
-                    placeholder="e.g. GFFL"
-                    className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-blue-500 font-mono uppercase"
+                    value={leagueName}
+                    onChange={(e) => setLeagueName(e.target.value)}
+                    placeholder="e.g. Gotham Flag Football League"
+                    className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-blue-500 font-semibold"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Capacity</label>
-                  <input
-                    type="number"
-                    min={4}
-                    max={64}
-                    value={teamCount}
-                    onChange={(e) => setTeamCount(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-blue-500 font-mono"
-                  />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Shortcode</label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      value={leagueShortcode}
+                      onChange={(e) => setLeagueShortcode(e.target.value.toUpperCase())}
+                      placeholder="e.g. GFFL"
+                      className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-blue-500 font-mono uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Capacity</label>
+                    <input
+                      type="number"
+                      min={4}
+                      max={64}
+                      value={teamCount}
+                      onChange={(e) => setTeamCount(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-blue-500 font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* League Logo (Optional, defaults to FlagOS logo) */}
-              <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-2">
+              <div data-tour="subscribe-league-logo" className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
                     <ImageIcon className="w-3.5 h-3.5 text-blue-600 dark:text-[#60a5fa]" />
@@ -1550,7 +1560,7 @@ export default function PricingPage() {
               </div>
 
               {/* Brand Colors: Primary, Secondary, Tertiary */}
-              <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-3">
+              <div data-tour="subscribe-league-colors" className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">Brand Color Palette</span>
                   <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400">
@@ -1662,7 +1672,7 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              <button
+              <button data-tour="subscribe-league-confirm"
                 type="submit"
                 disabled={isSubmittingLeague}
                 className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
@@ -1695,38 +1705,41 @@ export default function PricingPage() {
                 <Users className="w-6 h-6" />
               </div>
               <div>
+                <PageGuideButton className="mb-2" />
                 <h3 className="text-xl font-black uppercase text-neutral-950 dark:text-white">Subscribe Team Portal</h3>
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">Single monthly fee • Full stats tracking, roster hub &amp; up to 5 playbooks</p>
               </div>
             </div>
 
             <form onSubmit={handleSubscribeTeam} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team / Club Name</label>
-                <input
-                  type="text"
-                  required
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="e.g. Apex Predators"
-                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-emerald-500 font-semibold"
-                />
-              </div>
+              <div data-tour="subscribe-team-identity" className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team / Club Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="e.g. Apex Predators"
+                    className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
 
-              <div>
-                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Shortcode</label>
-                <input
-                  type="text"
-                  maxLength={5}
-                  value={teamShortcode}
-                  onChange={(e) => setTeamShortcode(e.target.value.toUpperCase())}
-                  placeholder="e.g. APX"
-                  className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-emerald-500 font-mono uppercase"
-                />
+                <div>
+                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Shortcode</label>
+                  <input
+                    type="text"
+                    maxLength={5}
+                    value={teamShortcode}
+                    onChange={(e) => setTeamShortcode(e.target.value.toUpperCase())}
+                    placeholder="e.g. APX"
+                    className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-emerald-500 font-mono uppercase"
+                  />
+                </div>
               </div>
 
               {/* Team Logo (Optional, defaults to FlagOS logo) */}
-              <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-2">
+              <div data-tour="subscribe-team-logo" className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
                     <ImageIcon className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
@@ -1787,7 +1800,7 @@ export default function PricingPage() {
               </div>
 
               {/* Brand Colors: Primary, Secondary, Tertiary */}
-              <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-3">
+              <div data-tour="subscribe-team-colors" className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-neutral-900/60 p-3.5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">Team Color Palette</span>
                   <div className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-neutral-400">
@@ -1883,7 +1896,7 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              <div>
+              <div data-tour="subscribe-team-visibility">
                 <label htmlFor="team-visibility" className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Portal Visibility</label>
                 <select
                   id="team-visibility"
@@ -1912,7 +1925,7 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              <button
+              <button data-tour="subscribe-team-confirm"
                 type="submit"
                 disabled={isSubmittingTeam}
                 className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
@@ -1934,7 +1947,7 @@ export default function PricingPage() {
           className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
           onClick={() => setShowDevelopmentNotice(false)}
         >
-          <section
+          <section data-tour="pricing-development"
             role="dialog"
             aria-modal="true"
             aria-labelledby="development-notice-title"
@@ -1952,6 +1965,7 @@ export default function PricingPage() {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-[#60a5fa]">
               <Sparkles className="h-6 w-6" />
             </div>
+            <PageGuideButton className="mb-3" />
             <h2 id="development-notice-title" className="text-xl font-black text-neutral-950 dark:text-white">
               FlagOS is still in development
             </h2>

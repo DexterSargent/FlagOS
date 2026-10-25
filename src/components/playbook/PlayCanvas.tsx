@@ -133,7 +133,7 @@ const PlayNotesDialog = dynamic(() => import("./PlayCanvasDialogs").then((mod) =
 const loadRouteCatalogDrawer = () => import("./RouteCatalogDrawer");
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
-import { PLAY_DESIGNER_WALKTHROUGH } from "@/lib/walkthroughData";
+import { PLAY_DESIGNER_WALKTHROUGH, PLAY_VIEWER_WALKTHROUGH } from "@/lib/walkthroughData";
 // The route tree drawer (40+ preset cards) is split out and warmed on hover/focus of its toggle.
 const RouteCatalogDrawer = dynamic(loadRouteCatalogDrawer, {
   loading: () => (
@@ -190,7 +190,7 @@ export default function PlayCanvas({
   guideInToolbar = "auto",
 }: PlayCanvasProps) {
   const canEdit = hasEditAccess ?? !readOnly;
-  usePageGuide(readOnly ? null : PLAY_DESIGNER_WALKTHROUGH, 1);
+  usePageGuide(readOnly ? PLAY_VIEWER_WALKTHROUGH : PLAY_DESIGNER_WALKTHROUGH, 1);
   // Pointer drags edit a local draft so the parent (and its localStorage persistence) only
   // receives the released result instead of one full playbook write per pointer move.
   const [dragDraft, setDragDraft] = useState<PlayDiagram | null>(null);
@@ -2846,11 +2846,9 @@ export default function PlayCanvas({
               )}
             </button>
           )}
-          {!readOnly && (
-            <span className={styles.toolbarGuide} data-always={guideInToolbar === "always" ? "" : undefined}>
-              <PageGuideButton />
-            </span>
-          )}
+          <span className={styles.toolbarGuide} data-always={guideInToolbar === "always" ? "" : undefined}>
+            <PageGuideButton />
+          </span>
         </div>
       </div>
 
@@ -4355,7 +4353,7 @@ export default function PlayCanvas({
             </div>
 
           {readOnly ? (
-            <section aria-label="Player assignment" className="space-y-2 text-sm text-neutral-800 dark:text-neutral-200">
+            <section data-tour="player-view-assignment" aria-label="Player assignment" className="space-y-2 text-sm text-neutral-800 dark:text-neutral-200">
               {selectedPlayer ? (
                 <>
                   <div className="flex items-center justify-between gap-2">
@@ -4502,7 +4500,7 @@ export default function PlayCanvas({
               {/* Pre-Snap Motion Menu (larger panel) */}
               {isMotionMenuOpen && (
                 <div
-                  data-testid="motion-menu"
+                  data-tour="motion-options" data-testid="motion-menu"
                   className={`${styles.picker} bg-white dark:bg-[#0A0E17] border border-amber-500/40 shadow-2xl`}
                 >
                   <div className={`${styles.pickerHeader} border-b border-neutral-200 dark:border-white/10`}>

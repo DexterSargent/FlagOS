@@ -60,6 +60,9 @@ import AutomatedScheduleBuilderModal from "@/components/schedule/AutomatedSchedu
 import EditPlayoffFormatModal from "@/components/schedule/EditPlayoffFormatModal";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
+import { usePageGuide } from "@/lib/pageGuide";
+import { SCHEDULE_WALKTHROUGH, SCHEDULE_EVENT_MODAL_WALKTHROUGH, PLAYOFF_FORMAT_MODAL_WALKTHROUGH } from "@/lib/walkthroughs/league";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 interface Match {
   id: string;
@@ -84,6 +87,7 @@ interface Match {
 }
 
 export default function Calendar() {
+  usePageGuide(SCHEDULE_WALKTHROUGH);
   const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
   const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived } = useLeague();
   const [matches, setMatches] = useState<Match[]>([]);
@@ -171,6 +175,7 @@ export default function Calendar() {
 
   // Manual Match Edit/Create Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  usePageGuide(isModalOpen ? SCHEDULE_EVENT_MODAL_WALKTHROUGH : null, 1);
   const [editingMatch, setEditingMatch] = useState<Partial<Match> | null>(null);
   const [matchSaveError, setMatchSaveError] = useState<string | null>(null);
 
@@ -184,6 +189,7 @@ export default function Calendar() {
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   // In-Season Playoff Format Customizer Modal
   const [isEditPlayoffFormatOpen, setIsEditPlayoffFormatOpen] = useState(false);
+  usePageGuide(isEditPlayoffFormatOpen ? PLAYOFF_FORMAT_MODAL_WALKTHROUGH : null, 1);
 
   // 24-Hour Overwrite Schedule Backup State (Single Snapshot)
   const [scheduleBackup, setScheduleBackup] = useState<ScheduleBackup | null>(null);
@@ -703,7 +709,7 @@ export default function Calendar() {
           </div>
 
           {canManageSchedule && (
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            <div data-tour="schedule-actions" className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
               <button
                 onClick={() => setIsAutoScheduleOpen(true)}
                 className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 cursor-pointer"
@@ -743,7 +749,7 @@ export default function Calendar() {
 
         {/* 24-Hour Schedule Restore Alert Banner (Single Snapshot) */}
         {canManageSchedule && scheduleBackup && (
-          <div className="rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-amber-50/95 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-neutral-900/90 dark:to-black/80 p-4 md:p-5 backdrop-blur-md shadow-md dark:shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fadeIn">
+          <div data-tour="schedule-backup" className="rounded-2xl border border-amber-300 dark:border-amber-500/40 bg-amber-50/95 dark:bg-gradient-to-r dark:from-amber-950/40 dark:via-neutral-900/90 dark:to-black/80 p-4 md:p-5 backdrop-blur-md shadow-md dark:shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fadeIn">
             <div className="flex items-start gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <RotateCcw className="w-5 h-5" />
@@ -783,7 +789,7 @@ export default function Calendar() {
         )}
 
         {/* View Switcher Tabs: "Regular Season" vs "Playoff Picture" / "Playoffs" */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+        <div data-tour="schedule-views" className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
           <div className="flex items-center gap-2 bg-neutral-900/80 p-1.5 rounded-2xl border border-white/10 shrink-0">
             <button
               onClick={() => setActiveView("schedule")}
@@ -849,7 +855,7 @@ export default function Calendar() {
           </div>
         ) : activeView === "playoffs" ? (
           /* Playoff Picture / Playoffs View */
-          <div className="space-y-8">
+          <div data-tour="schedule-games" className="space-y-8">
             {championTeam && (
               <div className="flex items-center gap-4 p-5 md:p-6 rounded-3xl border border-amber-400/40 bg-gradient-to-r from-amber-500/15 via-amber-400/5 to-transparent">
                 <div className="w-12 h-12 rounded-2xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center shrink-0">
@@ -916,7 +922,7 @@ export default function Calendar() {
           </div>
         ) : (
           /* Regular Season View */
-          <div className="space-y-12">
+          <div data-tour="schedule-games" className="space-y-12">
             {/* Empty Schedule State Call-to-Action */}
             {matches.length === 0 ? (
               <div className="p-12 md:p-16 rounded-3xl border border-dashed border-cyan-500/30 bg-gradient-to-b from-neutral-900/50 to-black/80 text-center space-y-6">
@@ -1118,10 +1124,12 @@ export default function Calendar() {
 
       {/* Manual Edit/Create Match Modal */}
       {isModalOpen && editingMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div role="dialog" aria-modal="true" aria-labelledby="schedule-match-modal-title" className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-6">
               <h2 id="schedule-match-modal-title" className="text-2xl font-bold">{editingMatch.id ? "Edit Game" : "Schedule Game"}</h2>
+              <div className="flex items-center gap-2">
+              <PageGuideButton />
               <button
                 onClick={() => { setIsModalOpen(false); setMatchSaveError(null); }}
                 aria-label="Close"
@@ -1129,9 +1137,11 @@ export default function Calendar() {
               >
                 <X className="w-5 h-5" />
               </button>
+              </div>
             </div>
 
             <form onSubmit={handleSaveMatch} className="space-y-4">
+              <div data-tour="schedule-event-basics" className="space-y-4">
               <div>
                 <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
                   <span>Week Title</span>
@@ -1258,8 +1268,9 @@ export default function Calendar() {
 
 
 
+              </div>
               {editingMatch.id && (
-                <div className="grid grid-cols-3 gap-3">
+                <div data-tour="schedule-event-score" className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
                       <span>Home Score</span>
@@ -1316,7 +1327,7 @@ export default function Calendar() {
                   {matchSaveError}
                 </p>
               )}
-              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3 mt-4">
+              <div data-tour="schedule-event-actions" className="pt-4 border-t border-white/10 flex items-center justify-between gap-3 mt-4">
                 {editingMatch.id ? (
                   <button
                     type="button"

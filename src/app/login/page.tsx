@@ -1,5 +1,8 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { LOGIN_WALKTHROUGH } from "@/lib/walkthroughs/public";
+
 import { useAuth } from "@/lib/authContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,6 +14,7 @@ import { useTheme } from "@/lib/themeContext";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 
 export default function LoginPage() {
+  usePageGuide(LOGIN_WALKTHROUGH);
   const { resolvedTheme } = useTheme();
   const {
     user,
@@ -163,7 +167,7 @@ export default function LoginPage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35rem] h-[35rem] bg-cyan-600 rounded-full mix-blend-screen filter blur-[150px] opacity-15 pointer-events-none"></div>
 
       {/* Back Button */}
-      <div className="absolute top-8 left-8">
+      <div data-tour="login-back" className="absolute top-8 left-8">
         <button
           onClick={() => router.push("/")}
           className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md cursor-pointer text-xs"
@@ -223,7 +227,7 @@ export default function LoginPage() {
 
         {/* Email-only roster role simulation is intentionally limited to local development. */}
         {isLocalhost && !user && (
-          <form onSubmit={handlePlayerEmailSubmit} className="w-full mb-6 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3">
+          <form data-tour="login-local-email" onSubmit={handlePlayerEmailSubmit} className="w-full mb-6 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" />
@@ -260,7 +264,7 @@ export default function LoginPage() {
         )}
 
         {!user && (
-          <form
+          <form data-tour="login-email"
             onSubmit={handleEmailPasswordSubmit}
             className="w-full mb-5 p-4 rounded-2xl bg-black/60 border border-white/10 space-y-3"
           >
@@ -349,7 +353,7 @@ export default function LoginPage() {
 
         {/* Google Auth section */}
         {user ? (
-          <div className="flex flex-col items-center gap-4 text-center w-full mb-6 p-4 rounded-2xl bg-black/40 border border-white/10">
+          <div data-tour="login-session" className="flex flex-col items-center gap-4 text-center w-full mb-6 p-4 rounded-2xl bg-black/40 border border-white/10">
             <div>
               <p className="text-xs text-neutral-400">Signed in as</p>
               <p className="text-sm text-white font-bold font-mono">{user.email}</p>
@@ -433,7 +437,7 @@ export default function LoginPage() {
                 {googleLoginError}
               </p>
             )}
-            <button
+            <button data-tour="login-google"
               onClick={handleGoogleLogin}
               disabled={googleLoggingIn}
               className="w-full py-3.5 mb-6 bg-white hover:bg-neutral-200 text-black font-extrabold text-sm rounded-2xl transition-all active:scale-98 shadow-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -446,7 +450,7 @@ export default function LoginPage() {
 
         {/* Localhost Role Switcher & Dev Tools (ONLY rendered in local development, NEVER in production on flagos.ca) */}
         {isLocalhost && (
-          <div className="w-full border-t border-white/10 pt-6">
+          <div data-tour="login-local-roles" className="w-full border-t border-white/10 pt-6">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
                 Preview a Role

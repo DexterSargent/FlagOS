@@ -74,7 +74,7 @@ export default function AdminUsers({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div data-tour="admin-users-stats" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Accounts" value={users.length} icon={Users} tone="cyan" />
         <StatCard label="New (30d)" value={users.filter((user) => (user.createdAt ?? 0) >= monthAgo).length} tone="emerald" />
         <StatCard label="Active (30d)" value={users.filter((user) => (user.lastSignInAt ?? 0) >= monthAgo).length} tone="violet" />
@@ -82,6 +82,7 @@ export default function AdminUsers({
       </div>
 
       <Panel
+        tour="admin-users-accounts"
         title={`Accounts (${rows.length})`}
         icon={Users}
         action={

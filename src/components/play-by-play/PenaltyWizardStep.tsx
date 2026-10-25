@@ -159,7 +159,7 @@ export default function PenaltyWizardStep({
       {activeStep === 1 && (
         <>
           <div className="flex min-h-0 flex-1 flex-col gap-1">
-            <section className="shrink-0 space-y-1">
+            <section data-tour="penalty-side" className="shrink-0 space-y-1">
               <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
                 Infraction committed by
               </label>
@@ -203,7 +203,7 @@ export default function PenaltyWizardStep({
               </div>
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col gap-1">
+            <section data-tour="penalty-infraction" className="flex min-h-0 flex-1 flex-col gap-1">
               <label className="block shrink-0 text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
                 Select infraction ({side})
               </label>
@@ -259,7 +259,7 @@ export default function PenaltyWizardStep({
               <p className="mb-2 text-center text-xs font-bold text-neutral-400">
                 {selectedDef?.name ?? "Penalty"} · {penalizedTeamName}
               </p>
-              <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 md:gap-3">
+              <div data-tour="penalty-enforcement" className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 md:gap-3">
               <section className="space-y-1">
                 <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
                   Enforcement
@@ -371,7 +371,7 @@ export default function PenaltyWizardStep({
               <p className="line-clamp-2 text-xs font-bold leading-snug text-white">{liveStatement}</p>
             </div>
           </div>
-          <section className="flex min-h-0 flex-1 flex-col gap-1">
+          <section data-tour="penalty-player" className="flex min-h-0 flex-1 flex-col gap-1">
             <label className="flex shrink-0 items-center justify-between gap-2 text-[10px] font-mono font-bold uppercase tracking-wider text-neutral-400">
               <span>Athlete responsible (optional)</span>
               <span className="font-normal text-neutral-500">

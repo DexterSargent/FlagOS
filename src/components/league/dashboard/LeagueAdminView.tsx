@@ -19,7 +19,7 @@ import { LeagueTeamsGrid } from "./LeagueTeamsGrid";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
 import { useEmbedState } from "@/lib/embedState";
-import { LEAGUE_DIRECTORY_WALKTHROUGH } from "@/lib/walkthroughData";
+import { COMMISSIONER_DASHBOARD_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import { useLeague } from "@/lib/leagueContext";
 
 export interface LeagueAdminViewProps {
@@ -64,7 +64,7 @@ export function LeagueAdminView({
   const [copiedLeagueLink, setCopiedLeagueLink] = useState(false);
   const { isLeagueArchived } = useLeague();
   const { embedQuery } = useEmbedState();
-  usePageGuide(LEAGUE_DIRECTORY_WALKTHROUGH);
+  usePageGuide(COMMISSIONER_DASHBOARD_WALKTHROUGH);
 
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 flex-1 w-full max-w-full space-y-5 sm:space-y-8">

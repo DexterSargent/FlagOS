@@ -56,6 +56,7 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
 
   return (
     <nav
+      data-tour="team-navigation"
       aria-label={`${teamName} sections`}
       className={`sticky top-[var(--role-switcher-height,0px)] z-40 w-full shrink-0 border-b border-white/10 bg-black/85 backdrop-blur-md ${className}`}
     >

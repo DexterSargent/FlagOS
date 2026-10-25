@@ -1,5 +1,8 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { JOIN_LEAGUE_WALKTHROUGH } from "@/lib/walkthroughs/public";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -21,6 +24,7 @@ interface Player {
 }
 
 export default function JoinLeague() {
+  usePageGuide(JOIN_LEAGUE_WALKTHROUGH);
   const router = useRouter();
   const { settings, isDemoLeague, activeLeagueId, switchLeague } = useLeague();
   const { isPlayer, playerData, isLeagueAdmin, role, canRegisterAsPlayer, managedTeamId } = useAuth();
@@ -148,7 +152,7 @@ export default function JoinLeague() {
   // NOT ELIGIBLE FOR FREE AGENT JOIN (ALREADY AN ADMIN, TEAM ADMIN, OR ROSTERED PLAYER)
   if (!canRegisterAsPlayer) {
     return (
-      <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-center items-center">
+      <div data-tour="join-status" className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-center items-center">
         <div className="max-w-md mx-auto my-auto p-8 text-center bg-[#0B0F19] border border-cyan-500/30 rounded-3xl shadow-2xl space-y-6 my-20">
           <div className="w-16 h-16 mx-auto rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
             <Check className="w-8 h-8" />
@@ -204,7 +208,7 @@ export default function JoinLeague() {
             <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold uppercase tracking-wider">
               Registration Closed
             </span>
-            <h2 className="text-2xl font-black uppercase text-white mt-3">Player Registration Closed</h2>
+            <h2 data-tour="join-status" className="text-2xl font-black uppercase text-white mt-3">Player Registration Closed</h2>
             <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
               Online free agent registration is currently disabled by the league commissioner. Please contact the league office or check back for upcoming tournament sign-ups.
             </p>
@@ -283,57 +287,59 @@ export default function JoinLeague() {
 
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
             <div className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
-                  Full Name *
-                </label>
-                <input
-                  required
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Maya Jenkinson"
-                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3.5 text-base font-semibold focus:outline-none focus:border-cyan-400 transition-colors"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div data-tour="join-identity" className="space-y-5">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
-                    Email Address *
+                    Full Name *
                   </label>
                   <input
-                    type="email"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="athlete@example.com"
-                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3.5 text-base focus:outline-none focus:border-cyan-400 transition-colors font-mono text-sm"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Maya Jenkinson"
+                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3.5 text-base font-semibold focus:outline-none focus:border-cyan-400 transition-colors"
                   />
-                  <span className="text-[10px] text-neutral-500 mt-1 block">
-                    Used to log in as a Player and view your profile & stats.
-                  </span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
-                    Experience Level
-                  </label>
-                  <select
-                    value={experience}
-                    onChange={(e) => setExperience(e.target.value)}
-                    className="w-full bg-black border border-white/10 rounded-xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer"
-                  >
-                    <option>Beginner (0-1 years)</option>
-                    <option>Intermediate (2-4 years)</option>
-                    <option>Advanced (5+ years)</option>
-                    <option>Veteran Competitor</option>
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="athlete@example.com"
+                      className="w-full bg-black border border-white/10 rounded-xl px-4 py-3.5 text-base focus:outline-none focus:border-cyan-400 transition-colors font-mono text-sm"
+                    />
+                    <span className="text-[10px] text-neutral-500 mt-1 block">
+                      Used to log in as a Player and view your profile & stats.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
+                      Experience Level
+                    </label>
+                    <select
+                      value={experience}
+                      onChange={(e) => setExperience(e.target.value)}
+                      className="w-full bg-black border border-white/10 rounded-xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer"
+                    >
+                      <option>Beginner (0-1 years)</option>
+                      <option>Intermediate (2-4 years)</option>
+                      <option>Advanced (5+ years)</option>
+                      <option>Veteran Competitor</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
               {/* Positions Selection */}
-              <div>
+              <div data-tour="join-positions">
                 <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
                   Position(s) You Want to Play (Select all that apply)
                 </label>
@@ -363,7 +369,7 @@ export default function JoinLeague() {
             </div>
 
             {/* Teammates Selection */}
-            <div className="pt-6 border-t border-white/10">
+            <div data-tour="join-teammates" className="pt-6 border-t border-white/10">
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-bold uppercase tracking-widest text-neutral-400">
                   Preferred Teammates
@@ -430,7 +436,7 @@ export default function JoinLeague() {
               </div>
             </div>
 
-            <div className="pt-4">
+            <div data-tour="join-submit" className="pt-4">
               <button
                 type="submit"
                 disabled={submitting || !name.trim()}

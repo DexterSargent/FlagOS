@@ -119,6 +119,14 @@ export default function WalkthroughModal({
     if (cardRef.current) setCardHeight(cardRef.current.offsetHeight);
   }, [stepIndex, isOpen, viewport.width, steps]);
 
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!isOpen || !el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setCardHeight(el.offsetHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isOpen, stepIndex]);
+
   const goNext = useCallback(() => {
     if (isLastStep) onClose();
     else setStepIndex((prev) => prev + 1);
@@ -195,7 +203,12 @@ export default function WalkthroughModal({
     };
   };
 
-  const position = computeCardPosition();
+  // Targets scrolled out of view (e.g. inside a scrolling panel) can yield off-screen coordinates; keep the card visible.
+  const rawPosition = computeCardPosition();
+  const position = {
+    top: Math.max(PADDING, Math.min(rawPosition.top, viewport.height - effectiveCardHeight - PADDING)),
+    left: Math.max(PADDING, Math.min(rawPosition.left, viewport.width - cardWidth - PADDING)),
+  };
   const spotlight = targetRect
     ? {
         x: Math.max(0, targetRect.left - 6),

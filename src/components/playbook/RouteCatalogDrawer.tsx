@@ -32,6 +32,7 @@ export default function RouteCatalogDrawer({
 }: RouteCatalogDrawerProps) {
   return (
       <div
+        data-tour="route-catalog"
         data-testid="route-presets-catalog"
         className={`${styles.picker} bg-white dark:bg-[#0A0E17] border border-neutral-200 dark:border-cyan-500/40 shadow-2xl`}
       >

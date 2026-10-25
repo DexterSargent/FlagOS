@@ -1,5 +1,7 @@
 "use client";
 
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+
 import { useEffect, type ReactNode } from "react";
 import { X, type LucideIcon } from "lucide-react";
 
@@ -41,12 +43,14 @@ export function StatCard({
 }
 
 export function Panel({
+  tour,
   title,
   icon: Icon,
   action,
   children,
   className = "",
 }: {
+  tour?: string;
   title: string;
   icon?: LucideIcon;
   action?: ReactNode;
@@ -54,7 +58,7 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`min-w-0 rounded-2xl border border-white/10 bg-neutral-900/70 p-4 sm:p-5 ${className}`}>
+    <section data-tour={tour} className={`min-w-0 rounded-2xl border border-white/10 bg-neutral-900/70 p-4 sm:p-5 ${className}`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-black">
           {Icon && <Icon className="h-4 w-4 text-neutral-400" aria-hidden />} {title}
@@ -193,7 +197,7 @@ export function Modal({
 }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !document.querySelector('[aria-label$=" walkthrough"]')) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -203,6 +207,7 @@ export function Modal({
       <div role="dialog" aria-modal="true" aria-labelledby={labelId} className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/15 bg-neutral-900 p-5 text-white shadow-2xl sm:rounded-3xl sm:p-7">
         <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
           <h2 id={labelId} className="text-lg font-black">{title}</h2>
+          <PageGuideButton />
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-neutral-400 hover:bg-white/10 hover:text-white">
             <X className="h-5 w-5" />
           </button>

@@ -7,8 +7,8 @@ import type { ToolWalkthrough } from "@/lib/walkthroughData";
 import {
   PLAY_DESIGNER_WALKTHROUGH,
   PLAYBOOK_STUDIO_WALKTHROUGH,
-  getToolWalkthroughForRoute,
 } from "@/lib/walkthroughData";
+import { getToolWalkthroughForRoute } from "@/lib/walkthroughs";
 
 describe("Walkthrough System", () => {
   afterEach(() => {
@@ -20,7 +20,7 @@ describe("Walkthrough System", () => {
     expect(getToolWalkthroughForRoute("/matches/match-1/play-by-play")?.id).toBe("stat-keeper");
     expect(getToolWalkthroughForRoute("/teams/team-1/roster")?.id).toBe("team-roster");
     expect(getToolWalkthroughForRoute("/teams/team-1")?.id).toBe("team-hub");
-    expect(getToolWalkthroughForRoute("/league/league-1")?.id).toBe("league-directory");
+    expect(getToolWalkthroughForRoute("/league/league-1")?.id).toBe("commissioner-dashboard");
   });
 
   it("gives every step a title, description and unique id", () => {
@@ -35,19 +35,26 @@ describe("Walkthrough System", () => {
 
   it("renders the guided tour with per-button details and navigates between steps", () => {
     const handleClose = vi.fn();
+    const toolbar = document.createElement("div");
+    toolbar.setAttribute("data-testid", "designer-toolbar");
+    document.body.appendChild(toolbar);
+    vi.spyOn(toolbar, "getBoundingClientRect").mockReturnValue({
+      top: 0, left: 0, bottom: 40, right: 200, width: 200, height: 40, x: 0, y: 0, toJSON: () => ({}),
+    });
     render(<WalkthroughModal walkthrough={PLAY_DESIGNER_WALKTHROUGH} isOpen={true} onClose={handleClose} />);
 
     expect(screen.getByText(/Step 1 of/i)).toBeInTheDocument();
+    expect(screen.getByText("Build and teach a play")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
+    expect(screen.getByText(/Step 2 of/i)).toBeInTheDocument();
     expect(screen.getByText("Studio Toolbar")).toBeInTheDocument();
     expect(screen.getByText("What each control does")).toBeInTheDocument();
     expect(screen.getByText("Back to Plays")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }));
-    expect(screen.getByText(/Step 2 of/i)).toBeInTheDocument();
-    expect(screen.getByText("Play Details Bar")).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: /Back/i }));
-    expect(screen.getByText("Studio Toolbar")).toBeInTheDocument();
+    expect(screen.getByText("Build and teach a play")).toBeInTheDocument();
+    toolbar.remove();
 
     fireEvent.click(screen.getByRole("button", { name: /Skip tour/i }));
     expect(handleClose).toHaveBeenCalled();
@@ -68,7 +75,7 @@ describe("Walkthrough System", () => {
     });
 
     const steps = getAvailableSteps(PLAYBOOK_STUDIO_WALKTHROUGH.steps);
-    expect(steps.map((s) => s.id)).toEqual(["studio-overview", "create-playbook"]);
+    expect(steps.map((s) => s.id)).toEqual(["studio-overview", "create-playbook-btn"]);
     visible.remove();
   });
 
@@ -94,7 +101,7 @@ describe("Walkthrough System", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Play Designer guided tour/i }));
     expect(screen.getByRole("dialog", { name: /Play Designer walkthrough/i })).toBeInTheDocument();
-    expect(screen.getByText("Studio Toolbar")).toBeInTheDocument();
+    expect(screen.getByText("Build and teach a play")).toBeInTheDocument();
   });
 
   it("hides the Guide on pages without a tour", () => {

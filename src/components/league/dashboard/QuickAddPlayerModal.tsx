@@ -4,6 +4,9 @@ import React, { useState } from "react";
 import { UserPlus, X } from "lucide-react";
 import { addSandboxPlayer } from "@/lib/demoSandbox";
 import { createSecureRecord } from "@/lib/secureWrites";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { QUICK_ADD_PLAYER_WALKTHROUGH } from "@/lib/walkthroughs/league";
 
 const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
@@ -24,6 +27,7 @@ export function QuickAddPlayerModal({
   isEffectiveDemo,
   onPlayerAdded,
 }: QuickAddPlayerModalProps) {
+  usePageGuide(isOpen ? QUICK_ADD_PLAYER_WALKTHROUGH : null, 1);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerNumber, setNewPlayerNumber] = useState("");
   const [newPlayerPositions, setNewPlayerPositions] = useState<string[]>([]);
@@ -106,22 +110,26 @@ export function QuickAddPlayerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
       <div className="bg-[#0D121F] border border-cyan-500/40 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative">
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-line">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-cyan-400" />
             <h3 className="text-lg font-black uppercase text-white">Add Player to Roster</h3>
           </div>
-          <button
+          <div className="flex items-center gap-2">
+            <PageGuideButton />
+            <button
             onClick={onClose}
+            aria-label="Close"
             className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-surface-muted cursor-pointer"
           >
             <X className="w-5 h-5" />
-          </button>
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleQuickAddPlayer} className="space-y-4">
+        <form data-tour="quick-add-player-fields" onSubmit={handleQuickAddPlayer} className="space-y-4">
           <div>
             <label className="text-[11px] uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
               Team
@@ -202,7 +210,7 @@ export function QuickAddPlayerModal({
             </select>
           </div>
 
-          <div className="pt-3 flex items-center justify-end gap-3">
+          <div data-tour="quick-add-player-actions" className="pt-3 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}

@@ -1,4 +1,7 @@
 "use client";
+import { usePageGuide } from "@/lib/pageGuide";
+import { PLAY_QUESTIONS_WALKTHROUGH } from "@/lib/walkthroughData";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import React, { useState } from "react";
 import { PlayDiagram, PlayQuestion, PlayQuestionAnswer } from "@/lib/playbookTypes";
@@ -53,6 +56,7 @@ export default function PlayQuestionsModal({
   const [replyText, setReplyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  usePageGuide(isOpen ? PLAY_QUESTIONS_WALKTHROUGH : null, 2);
   if (!isOpen) return null;
 
   const questions: PlayQuestion[] = play.questions || [];
@@ -130,13 +134,13 @@ export default function PlayQuestionsModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md transition-all"
+      className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md transition-all"
       data-testid="play-questions-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="questions-modal-title"
     >
-      <div className="bg-white dark:bg-[#0B0F19] text-neutral-900 dark:text-white border border-neutral-200 dark:border-white/10 rounded-2xl sm:rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden transition-colors">
+      <div className="bg-white dark:bg-[#0B0F19] text-neutral-900 dark:text-white border border-neutral-200 dark:border-white/10 rounded-2xl sm:rounded-3xl max-w-2xl w-full max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] flex flex-col shadow-2xl overflow-hidden transition-colors">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between gap-3 bg-neutral-50/80 dark:bg-black/40">
           <div className="flex items-center gap-3 min-w-0">
@@ -145,6 +149,7 @@ export default function PlayQuestionsModal({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
+                <PageGuideButton />
                 <h2
                   id="questions-modal-title"
                   className="text-base sm:text-lg font-black uppercase tracking-tight truncate"
@@ -181,7 +186,7 @@ export default function PlayQuestionsModal({
         {/* Scrollable Questions Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Ask Question Form (always accessible to players, and coaches can post prompts) */}
-          <div className="bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+          <div data-tour="play-question-form" className="bg-neutral-50 dark:bg-white/5 border border-neutral-200 dark:border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
               <label
                 htmlFor="new-question-input"
@@ -253,7 +258,7 @@ export default function PlayQuestionsModal({
 
           {/* Questions Stream */}
           <div className="space-y-3 pt-2">
-            <h3 className="text-xs font-black uppercase tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
+            <h3 data-tour="play-question-discussion" className="text-xs font-black uppercase tracking-wider text-neutral-600 dark:text-neutral-400 flex items-center justify-between">
               <span>Discussion & Coaching Answers</span>
               <span className="text-[10px] font-mono font-normal">
                 {questions.length} total
@@ -417,7 +422,7 @@ export default function PlayQuestionsModal({
         </div>
 
         {/* Footer */}
-        <div className="p-3 sm:p-4 border-t border-neutral-200 dark:border-white/10 bg-neutral-50/80 dark:bg-black/40 flex items-center justify-between">
+        <div data-tour="play-question-close" className="p-3 sm:p-4 border-t border-neutral-200 dark:border-white/10 bg-neutral-50/80 dark:bg-black/40 flex items-center justify-between">
           <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
             {isPlayer
               ? "Your coach will receive notification of your questions during film review."

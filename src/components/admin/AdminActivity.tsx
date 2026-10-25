@@ -49,6 +49,7 @@ export default function AdminActivity({ entries }: { entries: AuditEntry[] }) {
 
   return (
     <Panel
+      tour="admin-activity-log"
       title="Activity log"
       icon={Activity}
       action={

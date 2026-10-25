@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePageGuide } from "@/lib/pageGuide";
+import { ADMIN_SANDBOX_GUIDE } from "@/lib/walkthroughs/admin";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { Database, Trash2, ChevronLeft } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, deleteDoc, updateDoc, query, where, limit } from "firebase/firestore";
@@ -10,6 +13,7 @@ import { useAuth } from "@/lib/authContext";
 
 export default function Sandbox() {
   const { isPlatformAdmin } = useAuth();
+  usePageGuide(isPlatformAdmin ? ADMIN_SANDBOX_GUIDE : null);
   const [loading, setLoading] = useState(false);
 
   const generateFakeData = async () => {
@@ -153,14 +157,16 @@ export default function Sandbox() {
 
   return (
     <div className="min-h-screen bg-black text-white p-12">
-      <Link href="/" className="inline-flex items-center text-neutral-400 hover:text-white mb-8">
+      <Link data-tour="admin-sandbox-home" href="/" className="inline-flex items-center text-neutral-400 hover:text-white mb-8">
         <ChevronLeft className="w-5 h-5 mr-1" /> Dashboard
       </Link>
+      <PageGuideButton />
       <h1 className="text-4xl font-black mb-8">Admin Sandbox</h1>
       <p className="text-neutral-400 mb-8 max-w-xl">Use these tools to inject mock data into the database so you can test how the frontend responds without cluttering your production records.</p>
       
       <div className="flex gap-4">
         <button 
+          data-tour="admin-sandbox-generate"
           onClick={generateFakeData}
           disabled={loading}
           className="flex items-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-bold transition-all disabled:opacity-50"
@@ -169,6 +175,7 @@ export default function Sandbox() {
         </button>
 
         <button 
+          data-tour="admin-sandbox-wipe"
           onClick={wipeFakeData}
           disabled={loading}
           className="flex items-center gap-3 px-8 py-4 bg-red-600 hover:bg-red-500 rounded-2xl font-bold transition-all disabled:opacity-50"

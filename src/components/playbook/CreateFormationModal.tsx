@@ -1,4 +1,7 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { FORMATION_EDITOR_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useLeague } from "@/lib/leagueContext";
@@ -108,6 +111,7 @@ export default function CreateFormationModal({
     cursorY: number;
   } | null>(null);
 
+  usePageGuide(isOpen ? FORMATION_EDITOR_WALKTHROUGH : null, 2);
   if (!isOpen) return null;
 
   // Convert client cursor coords to SVG percentage (0 - 100)
@@ -221,8 +225,8 @@ export default function CreateFormationModal({
     : ["Cover 2 Zone", "Cover 1 Man Lock", "Cover 3 Cloud", "Goal Line Tight"];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-4xl p-5 sm:p-7 space-y-5 shadow-2xl relative">
+    <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto">
+      <div className="max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-4xl p-5 sm:p-7 space-y-5 shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
@@ -240,6 +244,7 @@ export default function CreateFormationModal({
                 {playbook.title} • {squadCount}v{squadCount}
               </span>
             </div>
+            <PageGuideButton />
             <h2 className="text-xl font-black uppercase text-white mt-1">
               {initialFormation ? "Edit Formation Alignment" : "Design New Formation"}
             </h2>
@@ -264,7 +269,7 @@ export default function CreateFormationModal({
         )}
 
         {/* Formation Controls Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div data-tour="formation-settings" className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex-1 max-w-xs">
             <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1">
               Formation / Alignment Name
@@ -336,7 +341,7 @@ export default function CreateFormationModal({
         </div>
 
         {/* Interactive Field Viewport */}
-        <div className="space-y-2">
+        <div data-tour="formation-field" className="space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="text-neutral-400 font-mono flex items-center gap-1.5">
               <Move className="w-3.5 h-3.5 text-cyan-400" />
@@ -524,7 +529,7 @@ export default function CreateFormationModal({
         </div>
 
         {/* Submit Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+        <div data-tour="formation-save" className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
           <button
             type="button"
             onClick={onClose}

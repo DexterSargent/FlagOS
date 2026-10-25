@@ -1,4 +1,7 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { ASYNC_STAT_KEEPER_WALKTHROUGH, ASYNC_ADD_PLAYER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
@@ -90,6 +93,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const { canManageTeam, isLeagueAdmin, loading: authLoading } = useAuth();
   // Persisted team games are real data and must never route through the demo sandbox.
   const isDemo = isDemoMatchId(matchId) && (isDemoLeague || matchId?.startsWith("match_demo_"));
+  usePageGuide(ASYNC_STAT_KEEPER_WALKTHROUGH, 1);
   const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
@@ -128,6 +132,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   const [homePlayers, setHomePlayers] = useState<string[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<string[]>([]);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  usePageGuide(isSubModalOpen ? ASYNC_ADD_PLAYER_WALKTHROUGH : null, 2);
   const [subModalTeam, setSubModalTeam] = useState<"HOME" | "AWAY" | null>(null);
   const [newSubInput, setNewSubInput] = useState("");
 
@@ -1160,7 +1165,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
   return (
     <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 min-w-0 bg-black text-white font-sans selection:bg-emerald-500/30 selection:text-emerald-200 flex flex-col relative overflow-hidden pb-[env(safe-area-inset-bottom)]">
       {/* Top Banner & Navigation */}
-      <header className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-2 md:px-5 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30">
+      <header data-tour="async-navigation" className="border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl px-2 md:px-5 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30">
         <div className="flex min-w-0 items-center gap-2">
           {!isEmbedded && (
             <Link
@@ -1222,7 +1227,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       </header>
 
       {/* CLOCKLESS SCOREBOARD HEADER (TIMERS & TIMEOUTS REMOVED) */}
-      <div className="bg-gradient-to-b from-neutral-950 to-neutral-900 border-b border-white/10 p-2.5 md:p-3 relative shrink-0">
+      <div data-tour="async-scoreboard" className="bg-gradient-to-b from-neutral-950 to-neutral-900 border-b border-white/10 p-2.5 md:p-3 relative shrink-0">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
           {/* HOME TEAM */}
           <div data-testid="home-scoreboard"
@@ -1298,7 +1303,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
       {/* MAIN CONTENT AREA */}
       <div className="flex flex-col flex-1 min-h-0 min-w-0 w-full p-2 md:p-3 overflow-hidden">
         {(saveNotice || playsError) && (
-          <div className="mb-2 space-y-1 shrink-0">
+          <div data-tour="async-notices" className="mb-2 space-y-1 shrink-0">
             {saveNotice && (
               <div
                 role="alert"
@@ -1326,9 +1331,9 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
         )}
         {/* TAB 1: INTERACTIVE STAT KEEPER */}
         {canTrackPlays && activeTab === "tracker" && (
-          <div ref={playEntryRef} role="region" aria-label="Play entry" tabIndex={0} className={`flex flex-col flex-1 min-h-0 min-w-0 gap-2 ${step === "IDLE" || step === "GAME_OVER" ? "overflow-y-auto overscroll-contain" : "overflow-hidden"}`}>
+          <div data-tour="async-entry" ref={playEntryRef} role="region" aria-label="Play entry" tabIndex={0} className={`flex flex-col flex-1 min-h-0 min-w-0 gap-2 ${step === "IDLE" || step === "GAME_OVER" ? "overflow-y-auto overscroll-contain" : "overflow-hidden"}`}>
             {/* MASTER PERIOD & ACTION CONTROLS */}
-            <div className={`${step === "IDLE" ? "flex" : "hidden"} flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0`}>
+            <div data-tour="async-controls" className={`${step === "IDLE" ? "flex" : "hidden"} flex-wrap items-center justify-between gap-2 p-2 md:p-3 rounded-xl bg-neutral-900/60 border border-white/10 shrink-0`}>
               <div className="grid grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] sm:flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-neutral-300 w-full">
                 <span>Possession:</span>
                 <button
@@ -1435,6 +1440,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 </div>
 
                 <button
+                  data-tour="async-start"
                   onClick={handleStartPlay}
                   className="w-full max-w-md min-h-12 py-3 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm sm:text-lg uppercase tracking-wide transition-all shadow-lg cursor-pointer flex items-center justify-center gap-2 mx-auto shrink-0"
                 >
@@ -1458,7 +1464,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: PLAY_TYPE -> Choose Pass, Run, or Penalty */}
             {step === "PLAY_TYPE" && (
-              <PlayEntryWizard
+              <div data-tour="async-type" className="contents"><PlayEntryWizard
                 step="type"
                 variant="async"
                 possession={possession}
@@ -1468,7 +1474,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 accentColor={possessionTeamPalette.tertiary}
                 onSelectType={handlePlayTypeSelect}
                 onCancel={() => setStep("IDLE")}
-              />
+              /></div>
             )}
 
             {/* STEP: DETAILS -> Penalty Wizard Step OR Pass/Run Details */}
@@ -1511,11 +1517,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   </div>
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain grid grid-cols-1 md:grid-cols-2 content-start gap-2">
+                <div data-tour="async-players" className="flex-1 min-h-0 overflow-y-auto overscroll-contain grid grid-cols-1 md:grid-cols-2 content-start gap-2">
                 {!isOutcomeOpen && outcome && (
                   <SectionSummary className="md:col-span-2" label="Play Outcome" value={outcome} filled onOpen={() => setIsOutcomeOpen(true)} />
                 )}
-                {isOutcomeOpen && <div className="md:col-span-2">
+                {isOutcomeOpen && <div data-tour="async-outcome" className="md:col-span-2">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">
                     Play Outcome
                   </label>
@@ -1756,7 +1762,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                 )}
                 </div>
 
-                <div role="group" aria-label="Save play result" className="shrink-0 border-t border-white/10 pt-2 space-y-1 bg-neutral-900 pb-1">
+                <div data-tour="async-save" role="group" aria-label="Save play result" className="shrink-0 border-t border-white/10 pt-2 space-y-1 bg-neutral-900 pb-1">
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider block">
                     Save Play Result
                   </span>
@@ -1787,7 +1793,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
             {/* STEP: CONVERSION (PAT 1PT or 2PT) */}
             {step === "CONVERSION" && (
-              <PlayEntryWizard
+              <div data-tour="async-conversion" className="contents"><PlayEntryWizard
                 step="conversion"
                 variant="async"
                 points={convPts}
@@ -1836,12 +1842,12 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                     />
                   </div>
                 )}
-              </PlayEntryWizard>
+              </PlayEntryWizard></div>
             )}
 
             {/* STEP: GAME_OVER MODAL */}
             {step === "GAME_OVER" && (
-              <div className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-red-500/40 rounded-2xl p-3 md:p-5 flex flex-col gap-3 shadow-2xl text-center md:overflow-y-auto">
+              <div data-tour="async-finalize" className="shrink-0 md:shrink md:flex-1 md:min-h-0 bg-neutral-900 border border-red-500/40 rounded-2xl p-3 md:p-5 flex flex-col gap-3 shadow-2xl text-center md:overflow-y-auto">
                 <div className="space-y-2">
                   <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto border border-red-500/30">
                     <Trophy className="w-6 h-6" />
@@ -1876,7 +1882,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         {/* TAB 2: PLAY-BY-PLAY FEED (ZERO TIMESTAMPS OTHER THAN FIRST HALF / SECOND HALF) */}
         {activeTab === "play-by-play" && (
-          <div role="region" aria-label="Game play log" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
+          <div data-tour="async-log" role="region" aria-label="Game play log" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-base sm:text-xl font-black uppercase text-white">Game Play Log</h3>
               <span className="text-xs text-neutral-400 font-mono">
@@ -1938,7 +1944,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         {/* TAB 3: BOX SCORE */}
         {activeTab === "box-score" && (
-          <div role="region" aria-label="Player box score" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
+          <div data-tour="async-box-score" role="region" aria-label="Player box score" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
               <h3 className="text-base sm:text-xl font-black uppercase text-white">Player Box Score</h3>
               <div className="grid grid-cols-2 gap-2 min-w-0">
@@ -2035,13 +2041,13 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
         {/* TAB 4: TEAM STATS */}
         {activeTab === "team-stats" && (
-          <GameTeamStats matchData={matchData} plays={plays} isDemo={isDemo} />
+          <div data-tour="async-team-stats" className="contents"><GameTeamStats matchData={matchData} plays={plays} isDemo={isDemo} /></div>
         )}
       </div>
 
       {/* ADD SUB / CUSTOM PLAYER MODAL */}
       {isSubModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div data-tour="async-add-player" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-950 border border-white/20 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative">
             <button
               onClick={() => setIsSubModalOpen(false)}
@@ -2050,6 +2056,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
               <X className="w-5 h-5" />
             </button>
 
+            <PageGuideButton className="mb-2" />
             <h3 className="text-lg font-black uppercase text-white mb-1">Add Player / Sub</h3>
             <p className="text-xs text-neutral-400 mb-4">Add a roster player name for stat tracking</p>
 

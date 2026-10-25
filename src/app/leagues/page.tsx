@@ -1,5 +1,9 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { LEAGUE_DIRECTORY_WALKTHROUGH, LEAGUE_INQUIRY_WALKTHROUGH } from "@/lib/walkthroughs/public";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { collection, query, limit, getDocs } from "firebase/firestore";
@@ -46,6 +50,7 @@ import {
 } from "lucide-react";
 
 export default function LeagueDirectoryPage() {
+  usePageGuide(LEAGUE_DIRECTORY_WALKTHROUGH);
   const { userLeagues, settings, activeLeagueId, switchLeague } = useLeague();
   const { user } = useAuth();
 
@@ -136,6 +141,7 @@ export default function LeagueDirectoryPage() {
 
   // Contact Commissioner Modal State
   const [contactingLeague, setContactingLeague] = useState<DirectoryLeague | null>(null);
+  usePageGuide(contactingLeague ? LEAGUE_INQUIRY_WALKTHROUGH : null, 2);
   const [contactSubject, setContactSubject] = useState("Question about joining this league");
   const [contactMessage, setContactMessage] = useState("");
   const [contactSubmitted, setContactSubmitted] = useState(false);
@@ -427,7 +433,7 @@ export default function LeagueDirectoryPage() {
         {/* ========================================================= */}
         <section id="league-directory-results" className="bg-white dark:bg-[#0B0F19] rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-white/10 shadow-lg p-4 sm:p-6 space-y-4 transition-colors">
           {/* Category Switcher Tabs: All Leagues vs My Leagues */}
-          <div className="flex items-center gap-2 flex-wrap pb-2 border-b border-slate-200/80 dark:border-white/5">
+          <div data-tour="directory-categories" className="flex items-center gap-2 flex-wrap pb-2 border-b border-slate-200/80 dark:border-white/5">
             <button
               type="button"
               onClick={() => setSelectedCategory("all")}
@@ -456,7 +462,7 @@ export default function LeagueDirectoryPage() {
             </button>
           </div>
 
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div data-tour="directory-search" className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
             {/* Search Input */}
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 dark:text-neutral-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -552,10 +558,10 @@ export default function LeagueDirectoryPage() {
         <section className="space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Filter Pills Scrollable Row */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            <div data-tour="directory-filters" className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
               {/* Ruleset Format Multi-Select Dropdown (4v4 to 8v8) */}
               <div className="relative shrink-0" ref={formatDropdownRef}>
-                <button
+                <button data-tour="directory-format-options"
                   type="button"
                   onClick={() => setIsFormatDropdownOpen((prev) => !prev)}
                   aria-expanded={isFormatDropdownOpen}
@@ -722,7 +728,7 @@ export default function LeagueDirectoryPage() {
             </div>
 
             {/* View Mode Switcher */}
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-200/80 dark:bg-black/50 border border-slate-300 dark:border-white/10 text-xs font-bold shrink-0 self-end md:self-auto">
+            <div data-tour="directory-view" className="flex items-center gap-1 p-1 rounded-xl bg-slate-200/80 dark:bg-black/50 border border-slate-300 dark:border-white/10 text-xs font-bold shrink-0 self-end md:self-auto">
               <button
                 type="button"
                 onClick={() => setViewMode("cards")}
@@ -778,7 +784,7 @@ export default function LeagueDirectoryPage() {
         {/* LEAGUES CATALOG DISPLAY                                   */}
         {/* ========================================================= */}
         {processedLeagues.length === 0 ? (
-          <div className="text-center py-16 px-4 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-3xl space-y-4 shadow-sm">
+          <div data-tour="directory-results" className="text-center py-16 px-4 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-3xl space-y-4 shadow-sm">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-700 dark:text-cyan-400">
               <Search className="w-8 h-8" />
             </div>
@@ -800,7 +806,7 @@ export default function LeagueDirectoryPage() {
           /* ========================================================= */
           /* CARDS VIEW                                                */
           /* ========================================================= */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div data-tour="directory-results" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {processedLeagues.map((league) => (
               <div
                 key={league.id}
@@ -1031,7 +1037,7 @@ export default function LeagueDirectoryPage() {
           /* ========================================================= */
           /* VENUES & MAP LIST VIEW                                    */
           /* ========================================================= */
-          <div className="space-y-6">
+          <div data-tour="directory-results" className="space-y-6">
             {uniqueVenues.map(({ venue, leagues, distanceMiles }, idx) => (
               <div
                 key={idx}
@@ -1140,7 +1146,7 @@ export default function LeagueDirectoryPage() {
           /* ========================================================= */
           /* COMPARISON TABLE VIEW                                     */
           /* ========================================================= */
-          <div className="overflow-x-auto rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B0F19] shadow-sm">
+          <div data-tour="directory-results" className="overflow-x-auto rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0B0F19] shadow-sm">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/40 text-[11px] font-mono uppercase text-slate-500 dark:text-neutral-400">
@@ -1238,7 +1244,7 @@ export default function LeagueDirectoryPage() {
         {/* ========================================================= */}
         {/* COMMISSIONER ONBOARDING CALLOUT BANNER                    */}
         {/* ========================================================= */}
-        <section className="rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-cyan-950/30 dark:to-blue-950/40 border border-emerald-200 dark:border-emerald-500/20 p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+        <section data-tour="directory-list" className="rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:bg-gradient-to-r dark:from-emerald-950/40 dark:via-cyan-950/30 dark:to-blue-950/40 border border-emerald-200 dark:border-emerald-500/20 p-6 sm:p-10 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
           <div className="space-y-2 max-w-xl text-center md:text-left">
             <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400 flex items-center justify-center md:justify-start gap-1.5">
               <Sparkles className="w-3.5 h-3.5" />
@@ -1270,7 +1276,7 @@ export default function LeagueDirectoryPage() {
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+          <div data-tour="directory-inquiry" className="bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
@@ -1285,6 +1291,7 @@ export default function LeagueDirectoryPage() {
                   </span>
                 </div>
               </div>
+              <PageGuideButton />
               <button
                 type="button"
                 onClick={() => setContactingLeague(null)}

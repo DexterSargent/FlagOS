@@ -1,4 +1,7 @@
 "use client";
+import { usePageGuide } from "@/lib/pageGuide";
+
+import { TEAM_STATS_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -18,6 +21,7 @@ import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(TEAM_STATS_WALKTHROUGH);
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
   const { settings, isDemoLeague } = useLeague();
@@ -281,7 +285,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
   if (loadError && stats.length === 0) {
     return (
-      <div role="alert" className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
+      <div data-tour="team-stats-error" role="alert" className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
         <Shield className="w-14 h-14 text-red-500/70 mb-4" />
         <h2 className="text-2xl font-bold mb-2">Couldn&apos;t Load Stats</h2>
         <p className="text-neutral-400 text-sm mb-6 max-w-md">{loadError}</p>
@@ -323,7 +327,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
       <div className="max-w-6xl mx-auto relative z-10 flex-1 w-full px-4 py-5 sm:px-6 sm:py-8 md:px-10 space-y-6 sm:space-y-8">
         {/* Header */}
-        <header className="flex flex-col items-center text-center gap-2">
+        <header data-tour="team-stats-summary" className="flex flex-col items-center text-center gap-2">
           <span
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest border"
             style={{ backgroundColor: `${accent}1A`, borderColor: `${accent}55`, color: "var(--team-ink)" }}
@@ -357,7 +361,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           </div>
         ) : (
           sections.map((section) => (
-            <section key={section.title} aria-label={`${section.title} leaders`} className="space-y-3">
+            <section data-tour={section.title === "Offense" ? "team-stats-offense" : "team-stats-defense"} key={section.title} aria-label={`${section.title} leaders`} className="space-y-3">
               <h2 className="flex items-center gap-2 text-sm sm:text-base font-black uppercase tracking-widest text-white">
                 <section.icon className="h-4 w-4" style={{ color: "var(--team-ink)" }} />
                 {section.title}

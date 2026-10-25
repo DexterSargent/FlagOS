@@ -1,5 +1,8 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { SIGNED_IN_HOME_WALKTHROUGH } from "@/lib/walkthroughs/public";
+
 import Link from "next/link";
 import {
   BarChart3,
@@ -241,7 +244,7 @@ function UpNext({ memberships }: { memberships: Memberships }) {
   if (!games.length) return null;
 
   return (
-    <section aria-labelledby="up-next-title" className="space-y-3">
+    <section data-tour="home-next" aria-labelledby="up-next-title" className="space-y-3">
       <h2 id="up-next-title" className="text-xs font-black uppercase tracking-widest text-text-muted">Up next</h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {games.map(({ team, game, state }) => {
@@ -309,7 +312,7 @@ const startOptions = [
 
 function StartSomething({ emphasized }: { emphasized: boolean }) {
   return (
-    <section aria-labelledby="start-title" className="space-y-3">
+    <section data-tour="home-start" aria-labelledby="start-title" className="space-y-3">
       <h2 id="start-title" className="text-xs font-black uppercase tracking-widest text-text-muted">
         {emphasized ? "Get started" : "Start something new"}
       </h2>
@@ -372,6 +375,7 @@ function summarize(memberships: Memberships): string {
 
 /** Home for signed-in accounts: everything they're part of first, with roles shown per league and team. */
 export default function SignedInHome() {
+  usePageGuide(SIGNED_IN_HOME_WALKTHROUGH, 1);
   const { user, userProfile, playerData, isPlatformAdmin } = useAuth();
   const { data, loading, refreshing, error, retry } = useMyMemberships(user?.uid);
 
@@ -387,7 +391,7 @@ export default function SignedInHome() {
     <div className="flex min-h-screen flex-col bg-surface-base text-text-primary">
       <SiteHeader />
       <div className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6 sm:px-6 sm:py-10">
-        <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <section data-tour="home-welcome" className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <h1 className="text-2xl font-black tracking-tight sm:text-3xl">
               {name ? `Welcome back, ${name}` : "Welcome back"}
@@ -419,7 +423,7 @@ export default function SignedInHome() {
 
         {data && <UpNext memberships={data} />}
 
-        <section aria-labelledby="mine-title" className="space-y-3">
+        <section data-tour="home-memberships" aria-labelledby="mine-title" className="space-y-3">
           <h2 id="mine-title" className="text-xs font-black uppercase tracking-widest text-text-muted">Your leagues &amp; teams</h2>
           {showLoading ? (
             <LoadingCards />

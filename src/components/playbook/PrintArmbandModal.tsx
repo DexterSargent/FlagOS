@@ -1,4 +1,7 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { PRINT_ARMBAND_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -52,6 +55,7 @@ export default function PrintArmbandModal({
     }
   }, [playbook]);
 
+  usePageGuide(isOpen ? PRINT_ARMBAND_WALKTHROUGH : null, 2);
   if (!isOpen) return null;
   if (!mounted) return null;
 
@@ -244,11 +248,11 @@ export default function PrintArmbandModal({
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
 
       {/* Screen Backdrop */}
-      <div className="print-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-        <div className="print-modal-dialog bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
+      <div className="print-modal-backdrop fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+        <div className="print-modal-dialog bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-5xl max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] flex flex-col shadow-2xl overflow-hidden relative">
           
           {/* Modal Top Control Bar (Hidden during print) */}
-          <div className="no-print p-4 sm:p-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4 bg-[#0E1422]">
+          <div data-tour="print-actions" className="no-print p-4 sm:p-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4 bg-[#0E1422]">
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
@@ -258,7 +262,8 @@ export default function PrintArmbandModal({
                   {teamName} • {playbook.title}
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-black uppercase text-white mt-1">
+              <PageGuideButton />
+            <h2 className="text-lg sm:text-xl font-black uppercase text-white mt-1">
                 Armband Cards &amp; Playbook Printing
               </h2>
             </div>
@@ -282,7 +287,7 @@ export default function PrintArmbandModal({
           </div>
 
           {/* Mode Selector Tabs (Hidden during print) */}
-          <div className="no-print px-4 sm:px-6 py-3 bg-black/60 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div data-tour="print-layout" className="no-print px-4 sm:px-6 py-3 bg-black/60 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10">
               <button
                 onClick={() => setPrintMode("armband")}
@@ -356,7 +361,7 @@ export default function PrintArmbandModal({
           </div>
 
           {/* Filter Plays Drawer Toggle (Hidden during print) */}
-          <div className="no-print px-4 sm:px-6 py-2 bg-[#0B0F19] border-b border-white/5 flex items-center justify-between text-xs">
+          <div data-tour="print-filter" className="no-print px-4 sm:px-6 py-2 bg-[#0B0F19] border-b border-white/5 flex items-center justify-between text-xs">
             <button
               onClick={() => setIsPlayFilterOpen(!isPlayFilterOpen)}
               className="text-neutral-400 hover:text-white flex items-center gap-1 cursor-pointer font-mono text-[11px]"
@@ -385,6 +390,7 @@ export default function PrintArmbandModal({
                 return (
                   <button
                     key={play.id}
+                    data-tour="print-play-choices"
                     onClick={() => handleTogglePlay(play.id)}
                     className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${
                       isSelected
@@ -411,7 +417,7 @@ export default function PrintArmbandModal({
           {/* Live Printable Preview Area */}
           <div className="print-scroll-container flex-1 overflow-y-auto p-4 sm:p-8 bg-[#060911] text-black">
             <div
-              id="print-area"
+              id="print-area" data-tour="print-preview"
               className="max-w-4xl mx-auto bg-white p-6 sm:p-10 rounded-2xl shadow-2xl text-black font-sans"
             >
               {/* Header for print output (Clean, concise banner on page 1) */}

@@ -1,5 +1,8 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { ACCOUNT_WALKTHROUGH } from "@/lib/walkthroughs/public";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
@@ -7,6 +10,7 @@ import { accountEmailRequest, confirmAccountOwner, connectAccountEmail } from "@
 import type { AccountEmailSettings } from "@/lib/accountEmailTypes";
 
 export default function AccountPage() {
+  usePageGuide(ACCOUNT_WALKTHROUGH);
   const { user, loading, logout } = useAuth();
   const [settings, setSettings] = useState<AccountEmailSettings | null>(null);
   const [ownerPassword, setOwnerPassword] = useState("");
@@ -57,7 +61,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-black text-white px-6 py-12">
-      <div className="mx-auto max-w-xl space-y-6">
+      <div data-tour="account-intro" className="mx-auto max-w-xl space-y-6">
         <Link href="/login" className="text-sm text-neutral-400 hover:text-white">Back to sign-in settings</Link>
         <h1 className="text-3xl font-black">Account &amp; Connected Emails</h1>
         <p className="text-sm text-neutral-400">
@@ -72,7 +76,7 @@ export default function AccountPage() {
           <>
             {error && <p role="alert" className="rounded-xl bg-red-500/10 p-4 text-sm text-red-300">{error}</p>}
             {message && <p role="status" className="rounded-xl bg-emerald-500/10 p-4 text-sm text-emerald-300">{message}</p>}
-            <section className="space-y-3 rounded-2xl border border-white/10 bg-neutral-900 p-5">
+            <section data-tour="account-emails" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-900 p-5">
               <h2 className="font-bold">Connected sign-in emails ({settings?.emails.length ?? 1})</h2>
               {(settings?.emails || [{ uid: user.uid, email: user.email || "" }]).map((entry) => (
                 <div key={entry.uid} className="flex items-center justify-between gap-3 break-all text-sm">
@@ -90,7 +94,7 @@ export default function AccountPage() {
               ))}
             </section>
             {!confirmed ? (
-              <section className="space-y-3 rounded-2xl border border-white/10 bg-neutral-900 p-5">
+              <section data-tour="account-confirm" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-900 p-5">
                 <h2 className="font-bold">1. Confirm your primary account</h2>
                 <p className="text-xs text-neutral-400">Sign in again as {user.email} before adding or disconnecting an email.</p>
                 <form className="space-y-3" onSubmit={(event) => {
@@ -107,7 +111,7 @@ export default function AccountPage() {
                 })}>Confirm with Google instead</button>
               </section>
             ) : (
-              <section className="space-y-3 rounded-2xl border border-white/10 bg-neutral-900 p-5">
+              <section data-tour="account-connect" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-900 p-5">
                 <h2 className="font-bold">2. Sign in to the additional email</h2>
                 <p className="text-xs text-neutral-400">Use an existing verified account. This will not switch your current session.</p>
                 <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void connect(true); }}>

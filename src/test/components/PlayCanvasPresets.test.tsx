@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, type Mock } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import PlayCanvas from "@/components/playbook/PlayCanvas";
+import { PageGuideProvider } from "@/lib/pageGuide";
 import { PlayDiagram } from "@/lib/playbookTypes";
 import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 
@@ -128,6 +129,18 @@ describe("Man coverage animation", () => {
 });
 
 describe("PlayCanvas Route Presets Suite", () => {
+  it("keeps the toolbar Guide available for the read-only player viewer", () => {
+    render(
+      <PageGuideProvider>
+        <PlayCanvas play={mockOffensePlay} onChange={vi.fn()} readOnly guideInToolbar="always" />
+      </PageGuideProvider>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open Player Play Viewer guided tour" }));
+    expect(screen.getByRole("dialog", { name: "Player Play Viewer walkthrough" })).toBeInTheDocument();
+    expect(screen.getByText("Study your assignment")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Draw route" })).not.toBeInTheDocument();
+  });
+
   it("moves plays between custom categories without resetting player alignments or routes", () => {
     const book = { ...createDefaultPlaybooks("falcons")[0], formationsAreCategories: true, formations: [{ id: "run", name: "Run", side: "offense" as const }, { id: "pass", name: "Pass", side: "offense" as const }], plays: [mockOffensePlay] };
     const play = book.plays[0];

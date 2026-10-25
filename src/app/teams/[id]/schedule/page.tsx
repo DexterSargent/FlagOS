@@ -1,4 +1,8 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+
+import { TEAM_SCHEDULE_WALKTHROUGH, TEAM_SCHEDULE_GAME_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -28,6 +32,7 @@ function localMatchDate(value: string): Date {
 }
 
 export default function TeamSchedulePage({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(TEAM_SCHEDULE_WALKTHROUGH);
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
   const { settings, activeLeagueId, isDemoLeague } = useLeague();
@@ -66,6 +71,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   // Match Scheduling Modal State
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  usePageGuide(isScheduleModalOpen ? TEAM_SCHEDULE_GAME_WALKTHROUGH : null, 2);
   const [opponentName, setOpponentName] = useState("");
   const [isHostHome, setIsHostHome] = useState(true);
   const [gameType, setGameType] = useState<"regular" | "playoff" | "championship">("regular");
@@ -393,7 +399,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           {/* Schedule Game Button (Admins & Coaches) */}
           {canScheduleMatches && (
             <button
-              onClick={() => setIsScheduleModalOpen(true)}
+              data-tour="team-schedule-actions"
+                onClick={() => setIsScheduleModalOpen(true)}
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-3 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
               style={{
                 backgroundColor: palette.primary,
@@ -409,7 +416,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         {/* Schedule Grid: Upcoming & Past */}
         <div className="grid grid-cols-1 gap-8">
           {/* Upcoming Games */}
-          <div className="space-y-4">
+          <div data-tour="team-upcoming" className="space-y-4">
             <div 
               className="flex items-center gap-2.5 text-lg font-black uppercase tracking-wider"
               style={{ color: "var(--team-ink)" }}
@@ -538,7 +545,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           </div>
 
           {/* Past Matches */}
-          <div className="space-y-4 pt-4">
+          <div data-tour="team-past-results" className="space-y-4 pt-4">
             <div className="flex items-center gap-2.5 text-base sm:text-lg font-black uppercase tracking-wide sm:tracking-wider whitespace-nowrap text-blue-400">
               <History className="w-5 h-5 shrink-0" />
               <span>Past Results & Box Scores</span>
@@ -627,8 +634,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
       {/* SCHEDULE MATCH MODAL */}
       {isScheduleModalOpen && canScheduleMatches && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div role="dialog" aria-label="Schedule Exhibition Game" aria-modal="true" className="bg-neutral-950 border border-emerald-500/40 rounded-3xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 md:p-8 shadow-2xl relative">
+        <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div role="dialog" aria-label="Schedule Exhibition Game" aria-modal="true" className="bg-neutral-950 border border-emerald-500/40 rounded-3xl max-w-lg w-full max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setIsScheduleModalOpen(false)}
               aria-label="Close"
@@ -642,12 +649,13 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                 <Calendar className="w-6 h-6" />
               </div>
               <div>
+                <PageGuideButton className="mb-2" />
                 <h3 className="text-xl font-black uppercase text-white">Schedule Exhibition Game</h3>
                 <p className="text-xs text-neutral-400">Independent game against a custom named opponent</p>
               </div>
             </div>
 
-            <form onSubmit={handleCreateMatch} className="space-y-4">
+            <form data-tour="team-game-opponent" onSubmit={handleCreateMatch} className="space-y-4">
               {scheduleError && <p role="alert" className="text-red-300">{scheduleError}</p>}
               <div>
                 <label className="text-xs font-bold text-neutral-300 block mb-1">Opponent Team Name</label>
@@ -693,6 +701,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               <div>
                 <label htmlFor="team-game-type" className="text-xs font-bold text-neutral-300 block mb-1">Game Type</label>
                 <select
+                  data-tour="team-game-details"
                   id="team-game-type"
                   value={gameType}
                   onChange={(e) => setGameType(e.target.value as "regular" | "playoff" | "championship")}
@@ -751,6 +760,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
               <button
                 type="submit"
+                data-tour="team-game-save"
                 disabled={isScheduling}
                 className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >

@@ -1,4 +1,5 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import { use, useEffect, useState, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
@@ -56,7 +57,7 @@ import {
 } from "@/lib/teamStatsCalculator";
 import { loadTeamSeasonSummary, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 import { usePageGuide } from "@/lib/pageGuide";
-import { TEAM_HUB_WALKTHROUGH } from "@/lib/walkthroughData";
+import { TEAM_HUB_WALKTHROUGH, TEAM_EDIT_WALKTHROUGH, TEAM_STAFF_WALKTHROUGH } from "@/lib/walkthroughData";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
@@ -126,6 +127,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   // Coaches & Team Admins Modal State
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  usePageGuide(isEditModalOpen ? TEAM_EDIT_WALKTHROUGH : null, 2);
+  usePageGuide(isStaffModalOpen ? TEAM_STAFF_WALKTHROUGH : null, 2);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [staffActionError, setStaffActionError] = useState("");
   const [staffActionSuccess, setStaffActionSuccess] = useState("");
@@ -743,6 +746,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 {isIndependentTeam && !isDemoLeague && (
                   <button
                     type="button"
+                    data-tour="team-archive"
                     onClick={handleToggleSeasonArchive}
                     disabled={archivingSeason}
                     className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer disabled:opacity-50"
@@ -766,7 +770,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
         {/* Team Season Stats Banner (Customizable by Team Admin) */}
         {statsError && <div role="alert" className="w-full max-w-6xl mb-4 text-red-300">
-          {statsError} <button type="button" className="underline" onClick={() => setStatsReloadKey((key) => key + 1)}>Retry</button>
+          {statsError} <button data-tour="team-stats-retry" type="button" className="underline" onClick={() => setStatsReloadKey((key) => key + 1)}>Retry</button>
         </div>}
         {statsLoading && <div role="status" className="w-full max-w-6xl mb-8 rounded-3xl bg-white/5 p-6 animate-pulse">Loading season statistics...</div>}
         {!statsLoading && !statsError && (() => {
@@ -993,7 +997,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             if (e.target === e.currentTarget) setIsEditModalOpen(false);
           }}
         >
-          <div role="dialog" aria-modal="true" aria-labelledby="team-edit-modal-title" className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
+          <div data-tour="team-edit-dialog" role="dialog" aria-modal="true" aria-labelledby="team-edit-modal-title" className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
             {/* Pinned Header with permanently accessible Close button */}
             <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10">
               <div className="flex items-center gap-3">
@@ -1001,6 +1005,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <Edit3 className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
+                  <PageGuideButton />
                   <h2 id="team-edit-modal-title" className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white">Edit Team Details</h2>
                   <p className="text-xs text-neutral-400">Team identity, logo emblem, and primary / secondary colours.</p>
                 </div>
@@ -1017,7 +1022,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               </button>
             </div>
 
-            <form onSubmit={handleSaveTeam} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <form data-tour="team-edit-names" onSubmit={handleSaveTeam} className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
                 <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
@@ -1050,7 +1055,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 </span>
               </div>
 
-              <fieldset className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
+              <fieldset data-tour="team-edit-colours" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
                 <legend className="px-2 text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
                   <Palette className="w-3.5 h-3.5 text-[var(--team-ink)]" />
                   <span>Team Colours</span>
@@ -1114,7 +1119,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 </div>
               </fieldset>
 
-              <div className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
+              <div data-tour="team-edit-logo" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
                     <Upload className="w-3.5 h-3.5 text-amber-400" />
@@ -1241,7 +1246,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               </div>
 
               {/* Pinned Footer with Cancel and Save Changes Buttons */}
-              <div className="p-4 sm:p-5 border-t border-white/10 bg-[#0B0F19] flex items-center justify-end gap-3 shrink-0 z-10">
+              <div data-tour="team-edit-save" className="p-4 sm:p-5 border-t border-white/10 bg-[#0B0F19] flex items-center justify-end gap-3 shrink-0 z-10">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
@@ -1274,6 +1279,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
+                  <PageGuideButton />
                   <h2 id="team-staff-modal-title" className="text-xl font-black">Coaches &amp; Team Admins</h2>
                   <p className="text-xs text-neutral-400 mt-0.5">{team?.name || "Team"}</p>
                 </div>
@@ -1292,7 +1298,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* Explanation card */}
-            <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-neutral-300 space-y-1">
+            <div data-tour="team-staff-permissions" className="mt-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-xs text-neutral-300 space-y-1">
               <div className="font-bold text-[var(--team-ink)] uppercase tracking-wide text-[11px] flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" />
                 <span>Team Administrative Permissions</span>
@@ -1317,7 +1323,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             )}
 
             {/* Current Admins List */}
-            <div className="mt-5">
+            <div data-tour="team-staff-list" className="mt-5">
               <div className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2">
                 Current Team Admins ({currentAdminAccounts.length})
               </div>
@@ -1372,7 +1378,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             </div>
 
             {/* Add Team Admin Form */}
-            <form onSubmit={handleAddCoachAdmin} className="mt-6 pt-5 border-t border-white/10">
+            <form data-tour="team-staff-invite" onSubmit={handleAddCoachAdmin} className="mt-6 pt-5 border-t border-white/10">
               <label htmlFor="new-coach-email-input" className="block text-xs font-bold uppercase text-neutral-300 mb-1.5">
                 Add Coach as Team Admin
               </label>

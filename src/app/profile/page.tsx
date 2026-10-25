@@ -1,5 +1,8 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { PROFILE_WALKTHROUGH } from "@/lib/walkthroughs/public";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -52,6 +55,7 @@ interface PlayerStats {
 }
 
 export default function PlayerProfilePage() {
+  usePageGuide(PROFILE_WALKTHROUGH);
   const {
     user,
     role,
@@ -312,7 +316,7 @@ export default function PlayerProfilePage() {
       </div>
 
       <div className="max-w-7xl mx-auto w-full p-4 sm:p-6 md:p-8 space-y-8 relative z-10 flex-1">
-        <Link
+        <Link data-tour="profile-switch"
           href={effectiveTeamId ? `/teams/${effectiveTeamId}` : "/"}
           className="inline-flex items-center text-neutral-400 hover:text-white transition-colors bg-white/5 px-3.5 py-1.5 rounded-full border border-white/10 text-xs sm:text-sm font-semibold max-w-full"
         >
@@ -341,7 +345,7 @@ export default function PlayerProfilePage() {
 
             <div className="flex items-center gap-2 self-start md:self-auto">
               <label className="text-xs font-mono text-neutral-400 whitespace-nowrap">Switch Player:</label>
-              <select
+              <select data-tour="profile-player-selector"
                 value={selectedPlayerId}
                 onChange={(e) => handleSelectAnotherPlayer(e.target.value)}
                 className="px-3 py-1.5 rounded-xl bg-black border border-white/15 text-xs text-white focus:border-cyan-400 outline-none"
@@ -359,7 +363,7 @@ export default function PlayerProfilePage() {
         {/* ============================================================== */}
         {/* 1. ATHLETE HERO BANNER                                         */}
         {/* ============================================================== */}
-        <div className="relative bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 overflow-hidden shadow-2xl">
+        <div data-tour="profile-identity" className="relative bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 overflow-hidden shadow-2xl">
           {/* Subtle Jersey Number Watermark */}
           <div className="absolute -right-6 -bottom-10 text-[180px] font-black text-white/[0.03] select-none pointer-events-none leading-none">
             #{jerseyNumber}
@@ -459,7 +463,7 @@ export default function PlayerProfilePage() {
         {/* ============================================================== */}
         {/* 2. NAVIGATION TABS                                             */}
         {/* ============================================================== */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto">
+        <div data-tour="profile-tabs" className="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto">
           {[
             { id: "stats", label: "Player Statistics", icon: Activity },
             { id: "settings", label: "Appearance", icon: Palette },
@@ -491,7 +495,7 @@ export default function PlayerProfilePage() {
         {activeTab === "stats" && (
           <div className="space-y-8">
             {/* Top Quick Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div data-tour="profile-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-4 space-y-1">
                 <span className="text-[10px] font-mono uppercase font-bold text-neutral-400">Games Played</span>
                 <div className="text-2xl md:text-3xl font-black text-white">{playerStats.gamesPlayed}</div>
@@ -551,7 +555,7 @@ export default function PlayerProfilePage() {
             {/* Categorized Statistical Breakdown Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* 1. PASSING PERFORMANCE */}
-              <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4">
+              <div data-tour="profile-passing" className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="text-sm font-black uppercase tracking-wider text-cyan-400 flex items-center gap-2">
                     <Crosshair className="w-4 h-4" />
@@ -585,7 +589,7 @@ export default function PlayerProfilePage() {
               </div>
 
               {/* 2. RECEIVING & RUSHING PERFORMANCE */}
-              <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4">
+              <div data-tour="profile-receiving" className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="text-sm font-black uppercase tracking-wider text-blue-400 flex items-center gap-2">
                     <Zap className="w-4 h-4" />
@@ -615,7 +619,7 @@ export default function PlayerProfilePage() {
               </div>
 
               {/* 3. DEFENSIVE METRICS */}
-              <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4">
+              <div data-tour="profile-defense" className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="text-sm font-black uppercase tracking-wider text-purple-400 flex items-center gap-2">
                     <Shield className="w-4 h-4" />
@@ -647,7 +651,7 @@ export default function PlayerProfilePage() {
 
             {/* Playbook Quick Access Reminder for Rostered Player */}
             {effectiveTeamId && (!isLeagueAdmin || isTeamAdmin(effectiveTeamId)) && (
-              <div className="bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-[#0B0F19] border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-5 shadow-xl">
+              <div data-tour="profile-playbook" className="bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-[#0B0F19] border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-5 shadow-xl">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
                     <BookOpen className="w-6 h-6" />
@@ -678,7 +682,7 @@ export default function PlayerProfilePage() {
         {/* TAB 2: DISPLAY APPEARANCE                                      */}
         {/* ============================================================== */}
         {activeTab === "settings" && (
-          <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-xl max-w-4xl">
+          <div data-tour="profile-appearance" className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-xl max-w-4xl">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Palette className="w-5 h-5 text-cyan-400" />
@@ -708,7 +712,7 @@ export default function PlayerProfilePage() {
         {/* TAB 3: OFFICIAL LEAGUE RULES (VIEW-ONLY SUMMARY)               */}
         {/* ============================================================== */}
         {activeTab === "rules" && (
-          <div className="space-y-6">
+          <div data-tour="profile-rules" className="space-y-6">
             <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 space-y-3">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-cyan-400" />
@@ -805,7 +809,7 @@ export default function PlayerProfilePage() {
         {/* TAB 4: ACCOUNT & LINKED EMAILS                                 */}
         {/* ============================================================== */}
         {activeTab === "account" && (
-          <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 max-w-3xl shadow-xl">
+          <div data-tour="profile-account" className="bg-[#0B0F19] border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 max-w-3xl shadow-xl">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <User className="w-5 h-5 text-cyan-400" />

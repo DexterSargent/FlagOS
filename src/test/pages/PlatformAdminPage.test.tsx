@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { StrictMode } from "react";
 import PlatformAdminPage from "@/app/admin/page";
+import { PageGuideProvider, useActivePageGuide } from "@/lib/pageGuide";
+
+function ActiveGuide() {
+  const guide = useActivePageGuide();
+  return <output data-testid="active-guide">{guide?.id}</output>;
+}
 
 const {
   mockGetDocs,
@@ -103,6 +109,37 @@ describe("Platform management page", () => {
       isPlatformAdmin: true,
       loading: false,
     });
+  });
+
+  it("registers each console tab guide and restores it after a customer dialog closes", async () => {
+    render(<PageGuideProvider><PlatformAdminPage /><ActiveGuide /></PageGuideProvider>);
+    await screen.findByText("Customer League");
+    expect(screen.getByTestId("active-guide")).toHaveTextContent("platform-admin-customers");
+    for (const [label, id] of [["Overview", "overview"], ["Finance", "finance"], ["Users", "users"], ["Activity", "activity"], ["Customers", "customers"]]) {
+      fireEvent.click(screen.getByRole("tab", { name: new RegExp(`^${label}`) }));
+      await waitFor(() => expect(screen.getByTestId("active-guide")).toHaveTextContent(`platform-admin-${id}`));
+    }
+    fireEvent.click(screen.getByRole("button", { name: /^Edit$/ }));
+    await waitFor(() => expect(screen.getByTestId("active-guide")).toHaveTextContent("platform-admin-edit-league"));
+    expect(screen.getAllByRole("button", { name: "Open Edit League guided tour" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByTestId("active-guide")).toHaveTextContent("platform-admin-customers"));
+  });
+
+  it("keeps a ledger dialog open when Escape dismisses its guide", async () => {
+    render(<PageGuideProvider><PlatformAdminPage /><ActiveGuide /></PageGuideProvider>);
+    await screen.findByText("Customer League");
+    fireEvent.click(screen.getByRole("tab", { name: "Finance" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add entry" }));
+    const dialog = screen.getByRole("dialog", { name: "Record income" });
+    await waitFor(() => expect(screen.getByTestId("active-guide")).toHaveTextContent("platform-admin-ledger-entry"));
+    fireEvent.click(within(dialog).getByTestId("page-guide-button"));
+    expect(screen.getByRole("dialog", { name: "Ledger Entry walkthrough" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Ledger Entry walkthrough" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Record income" })).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.getByTestId("active-guide")).toHaveTextContent("platform-admin-finance"));
   });
 
   it("shows an access-denied page to signed-in users outside the owner allowlist", () => {

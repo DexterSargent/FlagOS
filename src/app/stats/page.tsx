@@ -31,6 +31,8 @@ import {
 } from "@/lib/leagueDataCache";
 import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
+import { usePageGuide } from "@/lib/pageGuide";
+import { STATS_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import { compareStandingRows, isPlayoffMatch } from "@/lib/standingsEngine";
 import { useAuth } from "@/lib/authContext";
 import { renderFlagOS } from "@/components/FlagOSText";
@@ -44,6 +46,7 @@ import {
 } from "@/lib/demoSandbox";
 
 export default function StatsAndStandings() {
+  usePageGuide(STATS_WALKTHROUGH);
   const { user } = useAuth();
   const { settings, isDemoLeague, activeLeagueId } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
@@ -525,7 +528,7 @@ export default function StatsAndStandings() {
         </div>
 
         {/* Main Tab Switcher */}
-        <div className="flex p-1.5 bg-slate-100 dark:bg-neutral-900/80 rounded-2xl w-full max-w-md mx-auto backdrop-blur-md border border-slate-200 dark:border-white/10">
+        <div data-tour="stats-tabs" className="flex p-1.5 bg-slate-100 dark:bg-neutral-900/80 rounded-2xl w-full max-w-md mx-auto backdrop-blur-md border border-slate-200 dark:border-white/10">
           <button
             onClick={() => setActiveTab("team")}
             className={`flex-1 flex items-center justify-center gap-2 min-w-0 py-3 px-2 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all ${
@@ -548,7 +551,7 @@ export default function StatsAndStandings() {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
           {/* TEAM STANDINGS VIEW */}
           {activeTab === "team" && (
-            <div className="bg-neutral-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl mt-4">
+            <div data-tour="stats-standings" className="bg-neutral-900/50 border border-white/5 rounded-3xl overflow-hidden backdrop-blur-md shadow-2xl mt-4">
               <div className="bg-neutral-900/80 px-4 sm:px-8 py-5 sm:py-6 border-b border-white/5 flex items-center gap-3">
                 <Trophy className="w-6 h-6 text-amber-400" />
                 <h2 className="text-2xl font-black uppercase tracking-tight">Team Standings</h2>
@@ -629,7 +632,7 @@ export default function StatsAndStandings() {
 
           {/* INDIVIDUAL STATS VIEW */}
           {activeTab === "individual" && (
-            <div className="space-y-6">
+            <div data-tour="stats-individual" className="space-y-6">
               {/* Individual Header & Mode Toggle */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900/60 border border-white/5 rounded-2xl p-4 backdrop-blur-md">
                 <div className="flex items-center gap-3">

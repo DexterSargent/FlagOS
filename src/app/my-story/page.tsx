@@ -1,5 +1,9 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { MY_STORY_WALKTHROUGH, STORY_PHOTO_WALKTHROUGH } from "@/lib/walkthroughs/public";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -159,6 +163,7 @@ const STORY_SECTIONS: StorySection[] = [
 const STORAGE_KEY = "flagos_story_photos";
 
 export default function MyStoryPage() {
+  usePageGuide(MY_STORY_WALKTHROUGH);
   const router = useRouter();
   const { user, isPlatformAdmin, loading } = useAuth();
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -168,6 +173,7 @@ export default function MyStoryPage() {
 
   // Modal State for adding/updating a photo
   const [activeModalSection, setActiveModalSection] = useState<StorySection | null>(null);
+  usePageGuide(activeModalSection ? STORY_PHOTO_WALKTHROUGH : null, 2);
   const [modalImageUrl, setModalImageUrl] = useState("");
   const [modalCaption, setModalCaption] = useState("");
   const [isReadingFile, setIsReadingFile] = useState(false);
@@ -322,10 +328,11 @@ export default function MyStoryPage() {
   if (!isMe) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F9F8F5] px-4 text-center dark:bg-[#080B08]">
-        <div className="max-w-md rounded-2xl border border-black/10 bg-white p-8 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#121612]">
+        <div data-tour="story-private" className="max-w-md rounded-2xl border border-black/10 bg-white p-8 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#121612]">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#3CA505]/10 text-[#3CA505]">
             <Lock className="h-6 w-6" />
           </div>
+          <PageGuideButton className="mb-4" />
           <h1 className="text-xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
             Private Founder Story
           </h1>
@@ -354,7 +361,7 @@ export default function MyStoryPage() {
       />
 
       {/* Modern Sticky Navigation Header */}
-      <header className="sticky top-0 z-50 border-b border-black/[0.08] bg-[#F9F8F5]/90 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#080B08]/90 transition-colors">
+      <header data-tour="story-header" className="sticky top-0 z-50 border-b border-black/[0.08] bg-[#F9F8F5]/90 backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#080B08]/90 transition-colors">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <Link
@@ -391,6 +398,7 @@ export default function MyStoryPage() {
                 </>
               )}
             </button>
+            <PageGuideButton labelClassName="hidden sm:inline" />
             <ThemeToggle size="sm" />
             <AccountMenu />
           </div>
@@ -403,7 +411,7 @@ export default function MyStoryPage() {
           {/* Table of Contents Sticky Rail on Desktop */}
           <aside className="hidden lg:col-span-4 lg:block">
             <div className="sticky top-24 space-y-6">
-              <nav
+              <nav data-tour="story-contents"
                 aria-label="Story contents"
                 className="rounded-2xl border border-black/[0.08] bg-white/80 p-5 shadow-sm backdrop-blur-md dark:border-white/[0.08] dark:bg-[#111611]/80"
               >
@@ -480,7 +488,7 @@ export default function MyStoryPage() {
 
           {/* Mobile / Tablet Horizontal Chapter Jump Bar */}
           <div className="mb-8 block lg:hidden">
-            <nav
+            <nav data-tour="story-contents"
               aria-label="Chapter quick jump bar"
               className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
             >
@@ -505,7 +513,7 @@ export default function MyStoryPage() {
               const currentPhoto = photos[section.id];
 
               return (
-                <article
+                <article data-tour="story-chapter"
                   key={section.id}
                   id={section.id}
                   className="scroll-mt-24 border-t border-black/10 pt-10 dark:border-white/10 sm:pt-14"
@@ -642,7 +650,7 @@ export default function MyStoryPage() {
             })}
 
             {/* Author Byline & Contact Card */}
-            <div className="mt-16 rounded-3xl border border-black/10 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-[#111611]">
+            <div data-tour="story-author" className="mt-16 rounded-3xl border border-black/10 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-[#111611]">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                 <div className="flex items-center gap-4">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E31837] to-[#8A0C1E] text-white font-bold text-lg shadow-md ring-4 ring-black/5 dark:ring-white/5">
@@ -685,7 +693,7 @@ export default function MyStoryPage() {
             </div>
 
             {/* Editorial Footer */}
-            <footer className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-black/10 pt-8 text-xs text-neutral-500 dark:border-white/10 dark:text-neutral-400 sm:flex-row">
+            <footer data-tour="story-footer" className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-black/10 pt-8 text-xs text-neutral-500 dark:border-white/10 dark:text-neutral-400 sm:flex-row">
               <div className="flex items-center gap-2">
                 <FlagOSLogo size="xs" />
                 <span>FlagOS · Built by Coaches for Community Athletics</span>
@@ -710,7 +718,7 @@ export default function MyStoryPage() {
           aria-labelledby="photo-modal-title"
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
         >
-          <div className="relative w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#141814] sm:p-7">
+          <div data-tour="story-photo-editor" className="relative w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl dark:border-white/10 dark:bg-[#141814] sm:p-7">
             {/* Close Button */}
             <button
               onClick={closePhotoModal}
@@ -725,7 +733,8 @@ export default function MyStoryPage() {
                 <Camera className="h-5 w-5" />
               </div>
               <div>
-                <h3 id="photo-modal-title" className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+                <PageGuideButton className="mb-2" />
+              <h3 id="photo-modal-title" className="text-base font-bold text-neutral-900 dark:text-neutral-100">
                   Add Photo to Chapter {activeModalSection.number}
                 </h3>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">

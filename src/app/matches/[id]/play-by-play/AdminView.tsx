@@ -40,7 +40,13 @@ import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
 import { sandboxHeartbeatWriter, useLiveGameHeartbeat } from "@/lib/gameLiveState";
-import { STAT_KEEPER_WALKTHROUGH } from "@/lib/walkthroughData";
+import {
+  STAT_KEEPER_WALKTHROUGH,
+  PLAY_LOG_DRAWER_WALKTHROUGH,
+  PENALTY_WIZARD_WALKTHROUGH,
+  RESET_GAME_MODAL_WALKTHROUGH,
+  ADD_SUB_MODAL_WALKTHROUGH,
+} from "@/lib/walkthroughs/league";
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
   usePageGuide(STAT_KEEPER_WALKTHROUGH);
@@ -85,6 +91,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
   const [loadingData, setLoadingData] = useState(true);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  usePageGuide(isResetModalOpen ? RESET_GAME_MODAL_WALKTHROUGH : null, 1);
   const [isResetting, setIsResetting] = useState(false);
   const [matchStatus, setMatchStatus] = useState<string>("scheduled");
   const [matchData, setMatchData] = useState<any>(null);
@@ -102,6 +109,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [homePlayers, setHomePlayers] = useState<string[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<string[]>([]);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  usePageGuide(isSubModalOpen ? ADD_SUB_MODAL_WALKTHROUGH : null, 1);
   const [subModalTeam, setSubModalTeam] = useState<"HOME" | "AWAY" | null>(null);
 
   const playerNumberMap = useMemo(() => {
@@ -159,6 +167,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [halftimeClock, setHalftimeClock] = useState(halftimeDurationSeconds);
   const [playType, setPlayType] = useState<"Pass" | "Run" | "Penalty" | null>(null);
   const [outcome, setOutcome] = useState<"Complete" | "Incomplete_Menu" | "PBU" | "Missed" | "Interception" | "Sack" | "Gain" | "FFL" | null>(null);
+  usePageGuide(step === "DETAILS" && playType === "Penalty" ? PENALTY_WIZARD_WALKTHROUGH : null, 1);
 
   const [qbRunner, setQbRunner] = useState<string>("");
   const [receiver, setReceiver] = useState<string>("");
@@ -195,6 +204,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   // Live Play Statement & Play Log Drawer State
   const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
   const [isPlayLogDrawerOpen, setIsPlayLogDrawerOpen] = useState(false);
+  usePageGuide(isPlayLogDrawerOpen ? PLAY_LOG_DRAWER_WALKTHROUGH : null, 1);
   const [matchPlaysList, setMatchPlaysList] = useState<any[]>([]);
   const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -1311,8 +1321,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
       {/* RESET GAME TO PRE-GAME MODAL */}
       {isResetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
           <div className="bg-[#0B0F19] border-2 border-red-500/50 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative overflow-hidden flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+            <div className="absolute top-3 right-3 z-10"><PageGuideButton /></div>
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" />
 
             <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-4 shadow-lg shadow-red-500/10">
@@ -1346,7 +1357,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <div data-tour="reset-game-actions" className="flex flex-col sm:flex-row gap-3 w-full">
               <button
                 type="button"
                 disabled={isResetting}
@@ -1399,9 +1410,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           <div className="bg-neutral-900 border border-white/10 rounded-2xl sm:rounded-3xl md:rounded-[3rem] p-4 sm:p-8 max-w-xl w-full flex flex-col max-h-[85vh]">
             <div className="flex justify-between items-center mb-4 sm:mb-6 shrink-0">
               <h2 className="text-xl sm:text-3xl font-black uppercase tracking-widest">Add Sub</h2>
+              <div className="flex items-center gap-2">
+              <PageGuideButton />
               <button onClick={() => { setIsSubModalOpen(false); setSubModalTeam(null); }} className="text-[var(--text-muted)] hover:text-white p-2 bg-white/5 rounded-full">
                 <X className="w-6 h-6" />
               </button>
+              </div>
             </div>
 
             {!subModalTeam ? (
@@ -1959,6 +1973,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         {step === 'DETAILS' && (
           <div className="flex flex-col flex-1 min-h-0 gap-2 md:gap-3 max-w-7xl mx-auto w-full animate-in slide-in-from-right-8 duration-200">
             {playType === 'Penalty' ? (
+              <div data-tour="penalty-wizard" className="flex flex-1 min-h-0 flex-col">
               <PlayEntryWizard
                 step="penalty"
                 variant="sync"
@@ -1973,6 +1988,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 onCancel={() => { setStep('PLAY_TYPE'); setPlayType(null); setOutcome(null); }}
                 onSavePenalty={handleSavePenalty}
               />
+              </div>
             ) : (
               <>
                 <div className="flex items-center justify-between gap-2 self-stretch mb-[-0.25rem] mt-[-0.25rem] z-10">
@@ -2618,6 +2634,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* WIZARD: CONVERSION */}
         {step === 'CONVERSION' && (
+          <div data-tour="conversion-controls" className="flex flex-1 min-h-0 flex-col">
           <PlayEntryWizard
             step="conversion"
             variant="sync"
@@ -2819,24 +2836,28 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               </div>
             )}
           </PlayEntryWizard>
+          </div>
         )}
       </div>
 
       {/* PLAY LOG DRAWER MODAL */}
       {isPlayLogDrawerOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end animate-in fade-in">
+        <div data-tour="scoreboard-drawers" className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex justify-end animate-in fade-in">
           <div className="bg-neutral-950 border-l border-white/10 w-full max-w-lg h-full p-6 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
             <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
               <div className="flex items-center gap-2">
                 <Flag className="w-5 h-5 text-amber-400" />
                 <h3 className="text-lg font-black uppercase text-white">Live Game Play Log</h3>
               </div>
+              <div className="flex items-center gap-2">
+              <PageGuideButton />
               <button
                 onClick={() => setIsPlayLogDrawerOpen(false)}
                 className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto py-4 space-y-2.5">

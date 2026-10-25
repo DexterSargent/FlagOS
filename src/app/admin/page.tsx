@@ -29,6 +29,9 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { usePageGuide } from "@/lib/pageGuide";
+import { ADMIN_CONSOLE_GUIDES, ADMIN_EDIT_LEAGUE_GUIDE, ADMIN_MANAGE_ADMINS_GUIDE, ADMIN_DELETE_LEAGUE_GUIDE, ADMIN_DELETE_TEAM_GUIDE } from "@/lib/walkthroughs/admin";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { useAuth } from "@/lib/authContext";
 import { db } from "@/lib/firebase";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
@@ -114,6 +117,8 @@ export default function PlatformAdminPage() {
   const [actionInProgress, setActionInProgress] = useState(false);
 
   const [tab, setTabState] = useState<ConsoleTab>("overview");
+  usePageGuide(isPlatformAdmin ? ADMIN_CONSOLE_GUIDES[tab] : null);
+  usePageGuide(isPlatformAdmin ? (editingLeague ? ADMIN_EDIT_LEAGUE_GUIDE : adminManagingLeague ? ADMIN_MANAGE_ADMINS_GUIDE : deletingLeague ? ADMIN_DELETE_LEAGUE_GUIDE : deletingTeam ? ADMIN_DELETE_TEAM_GUIDE : null) : null, 2);
   const [business, setBusiness] = useState<BusinessSnapshot | null>(null);
   const [businessLoading, setBusinessLoading] = useState(false);
   const [businessError, setBusinessError] = useState("");
@@ -703,7 +708,7 @@ export default function PlatformAdminPage() {
   return (
     <div className="min-h-screen bg-neutral-950 px-4 py-8 text-white sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div data-tour="admin-header" className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <Link href="/" className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-neutral-400 hover:text-white">
               <ArrowLeft className="h-4 w-4" /> FlagOS home
@@ -719,6 +724,7 @@ export default function PlatformAdminPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <PageGuideButton />
             <button
               type="button"
               onClick={() => {
@@ -831,7 +837,7 @@ export default function PlatformAdminPage() {
           </div>
         </div>
 
-        <label className="mt-7 flex max-w-xl items-center gap-3 rounded-xl border border-white/10 bg-neutral-900 px-4 py-3">
+        <label data-tour="admin-customer-search" className="mt-7 flex max-w-xl items-center gap-3 rounded-xl border border-white/10 bg-neutral-900 px-4 py-3">
           <Search className="h-4 w-4 text-neutral-500" />
           <input
             value={search}
@@ -848,7 +854,7 @@ export default function PlatformAdminPage() {
         ) : (
           <div className="mt-8 grid gap-8 xl:grid-cols-2">
             {/* LEAGUES COLUMN */}
-            <section>
+            <section data-tour="admin-leagues">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-lg font-black">
                   <Building2 className="h-5 w-5 text-cyan-300" /> Leagues ({filteredLeagues.length})
@@ -981,7 +987,7 @@ export default function PlatformAdminPage() {
 
                       {/* Cascading Member Teams Collapsible Dropdown Sublist */}
                       {!isCollapsed && (
-                        <div className="mt-4 border-t border-white/10 pt-3">
+                        <div data-tour="admin-member-teams" className="mt-4 border-t border-white/10 pt-3">
                           <div className="mb-2.5 flex items-center justify-between text-xs text-neutral-400">
                             <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-cyan-300">
                               <Layers className="h-3.5 w-3.5" />
@@ -1078,7 +1084,7 @@ export default function PlatformAdminPage() {
             </section>
 
             {/* TEAMS COLUMN */}
-            <section>
+            <section data-tour="admin-teams">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-lg font-black">
                   <Shield className="h-5 w-5 text-emerald-300" />
@@ -1237,6 +1243,7 @@ export default function PlatformAdminPage() {
           <div role="dialog" aria-modal="true" aria-labelledby="edit-league-title" className="w-full max-w-lg rounded-3xl border border-white/15 bg-neutral-900 p-6 sm:p-8 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <h2 id="edit-league-title" className="text-xl font-black">Edit League</h2>
+              <PageGuideButton />
               <button
                 type="button"
                 onClick={() => setEditingLeague(null)}
@@ -1246,7 +1253,7 @@ export default function PlatformAdminPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveLeague} className="mt-6 space-y-4">
+            <form data-tour="admin-edit-identity" onSubmit={handleSaveLeague} className="mt-6 space-y-4">
               <div>
                 <label htmlFor="edit-league-name" className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">League Name</label>
                 <input
@@ -1314,7 +1321,7 @@ export default function PlatformAdminPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div data-tour="admin-edit-colours" className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Primary Color</label>
                   <div className="flex items-center gap-2">
@@ -1352,7 +1359,7 @@ export default function PlatformAdminPage() {
               </div>
 
               {/* Cascade subscription option */}
-              <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3.5">
+              <div data-tour="admin-edit-cascade" className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-3.5">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -1369,7 +1376,7 @@ export default function PlatformAdminPage() {
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+              <div data-tour="admin-edit-save" className="flex justify-end gap-3 pt-4 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setEditingLeague(null)}
@@ -1399,6 +1406,7 @@ export default function PlatformAdminPage() {
                 <h2 id="manage-admins-title" className="text-xl font-black">Manage Admins</h2>
                 <p className="mt-1 text-xs text-neutral-400">{adminManagingLeague.name}</p>
               </div>
+              <PageGuideButton />
               <button
                 type="button"
                 onClick={() => setAdminManagingLeague(null)}
@@ -1409,7 +1417,7 @@ export default function PlatformAdminPage() {
             </div>
 
             {/* Existing Admins List */}
-            <div className="mt-6">
+            <div data-tour="admin-admins-list" className="mt-6">
               <label className="block text-xs font-bold uppercase text-neutral-400 mb-2">Current Admins ({adminManagingLeague.adminEmails.length})</label>
               <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
                 {adminManagingLeague.adminEmails.map((email) => (
@@ -1438,7 +1446,7 @@ export default function PlatformAdminPage() {
             </div>
 
             {/* Add New Admin Form */}
-            <form onSubmit={handleAddAdmin} className="mt-6 border-t border-white/10 pt-4">
+            <form data-tour="admin-admins-add" onSubmit={handleAddAdmin} className="mt-6 border-t border-white/10 pt-4">
               <label className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Add New Admin</label>
               <div className="flex gap-2">
                 <input
@@ -1481,7 +1489,7 @@ export default function PlatformAdminPage() {
       {/* DELETE CONFIRMATION MODAL */}
       {deletingLeague && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="delete-league-title" className="w-full max-w-md rounded-3xl border border-red-500/20 bg-neutral-900 p-6 sm:p-8 shadow-2xl">
+          <div data-tour="admin-delete-league" role="dialog" aria-modal="true" aria-labelledby="delete-league-title" className="w-full max-w-md rounded-3xl border border-red-500/20 bg-neutral-900 p-6 sm:p-8 shadow-2xl">
             <div className="flex items-center gap-3 text-red-400">
               <AlertCircle className="h-6 w-6 shrink-0" />
               <h2 id="delete-league-title" className="text-xl font-black text-white">Delete League</h2>
@@ -1499,6 +1507,7 @@ export default function PlatformAdminPage() {
             )}
 
             <div className="mt-6 flex justify-end gap-3">
+              <PageGuideButton />
               <button
                 type="button"
                 disabled={actionInProgress}
@@ -1523,7 +1532,7 @@ export default function PlatformAdminPage() {
 
       {deletingTeam && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="delete-team-title" className="w-full max-w-md rounded-3xl border border-red-500/20 bg-neutral-900 p-6 sm:p-8 shadow-2xl">
+          <div data-tour="admin-delete-team" role="dialog" aria-modal="true" aria-labelledby="delete-team-title" className="w-full max-w-md rounded-3xl border border-red-500/20 bg-neutral-900 p-6 sm:p-8 shadow-2xl">
             <div className="flex items-center gap-3 text-red-400">
               <AlertCircle className="h-6 w-6 shrink-0" />
               <h2 id="delete-team-title" className="text-xl font-black text-white">Delete Team</h2>
@@ -1536,6 +1545,7 @@ export default function PlatformAdminPage() {
               scrimmages/games with their play-by-play. League-scheduled games are kept. This cannot be undone.
             </div>
             <div className="mt-6 flex justify-end gap-3">
+              <PageGuideButton />
               <button
                 type="button"
                 disabled={actionInProgress}

@@ -1,5 +1,9 @@
 "use client";
 
+import { usePageGuide } from "@/lib/pageGuide";
+import { LANDING_WALKTHROUGH } from "@/lib/walkthroughs/public";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -50,6 +54,7 @@ export default function FlagOSPlatformLandingPage() {
   const router = useRouter();
   const { activeLeagueId, userLeagues, settings } = useLeague();
   const { user, isLeagueAdmin, isTeamAdmin, role, isAuthorized, isPlatformAdmin, loading: authLoading } = useAuth();
+  usePageGuide(user ? null : LANDING_WALKTHROUGH);
   const isMe =
     user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca" ||
     user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
@@ -226,7 +231,7 @@ export default function FlagOSPlatformLandingPage() {
       </div>
 
       {/* TOP PLATFORM HEADER */}
-      <header className="relative sticky top-0 z-50 border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl">
+      <header data-tour="public-nav" className="relative sticky top-0 z-50 border-b border-white/10 bg-[#07090E]/90 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 sm:gap-3 group min-w-0 shrink">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0">
@@ -290,7 +295,8 @@ export default function FlagOSPlatformLandingPage() {
           </nav>
 
           {/* Action CTAs */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div data-tour="public-controls" className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <PageGuideButton labelClassName="hidden sm:inline" />
             <ThemeToggle size="md" />
 
             {isPlatformAdmin && (
@@ -432,7 +438,7 @@ export default function FlagOSPlatformLandingPage() {
 
       {/* HERO SECTION */}
       <div className="flex-1 w-full relative z-10">
-        <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-5 md:pt-16 md:pb-5 text-center space-y-6 sm:space-y-8">
+        <section data-tour="landing-intro" className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 pb-5 md:pt-16 md:pb-5 text-center space-y-6 sm:space-y-8">
           {/* Official Logo */}
           <div className="flex flex-col items-center justify-center pt-1 pb-1">
             <div className="relative group">
@@ -497,7 +503,7 @@ export default function FlagOSPlatformLandingPage() {
         </section>
 
         {/* THE TEAM SIDE VS THE LEAGUE SIDE */}
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-5 border-t border-white/10 space-y-5">
+        <section data-tour="landing-plans" className="max-w-6xl mx-auto px-4 sm:px-6 py-5 border-t border-white/10 space-y-5">
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
               Choose Your Plan
@@ -734,7 +740,7 @@ export default function FlagOSPlatformLandingPage() {
           </div>
 
           {/* Feature selector tabs */}
-          <div role="tablist" aria-label="Feature demos" className="grid grid-cols-2 md:grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-3xl mx-auto text-xs font-bold">
+          <div data-tour="landing-demo-tabs" role="tablist" aria-label="Feature demos" className="grid grid-cols-2 md:grid-cols-4 gap-1.5 p-1.5 rounded-2xl bg-neutral-900 border border-white/10 max-w-3xl mx-auto text-xs font-bold">
             {featureTabs.map(({ id, label, shortLabel, icon: Icon }) => {
               const active = activeFeatureTab === id;
               return (
@@ -758,7 +764,7 @@ export default function FlagOSPlatformLandingPage() {
 
           {/* DYNAMIC PLAY-BY-PLAY WIZARD MODE SWITCHER (SYNCHRONOUS VS ASYNCHRONOUS) */}
           {activeFeatureTab === "stats" && (
-            <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 max-w-4xl mx-auto p-3 rounded-2xl bg-gradient-to-r from-neutral-900/90 via-neutral-950 to-neutral-900/90 border border-emerald-500/30 backdrop-blur-xl shadow-lg w-full">
+            <div data-tour="landing-scoring-modes" className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 max-w-4xl mx-auto p-3 rounded-2xl bg-gradient-to-r from-neutral-900/90 via-neutral-950 to-neutral-900/90 border border-emerald-500/30 backdrop-blur-xl shadow-lg w-full">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 w-full sm:w-auto">
                 <span className="text-xs font-bold text-neutral-300 whitespace-nowrap">
                   Scoring mode:
@@ -807,7 +813,7 @@ export default function FlagOSPlatformLandingPage() {
                 <Lock className="w-3 h-3 shrink-0 text-emerald-500" />
                 <span className="truncate">{getDisplayUrl()}</span>
               </div>
-              <button
+              <button data-tour="landing-demo-reset"
                 type="button"
                 onClick={() => setFrameKey((k) => k + 1)}
                 className="p-2.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
@@ -867,7 +873,7 @@ export default function FlagOSPlatformLandingPage() {
           <section id="league-directory" className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-20 border-t border-white/10 space-y-8 sm:space-y-10 scroll-mt-24">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div className="space-y-3 max-w-2xl">
-                <div className="flex items-center gap-2">
+                <div data-tour="landing-directory-search" className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
                     <Globe className="w-3.5 h-3.5" />
                     Public League Directory
@@ -961,7 +967,7 @@ export default function FlagOSPlatformLandingPage() {
 
             {/* Directory Grid */}
             {filteredDirectoryLeagues.length === 0 ? (
-              <div className="p-12 rounded-3xl bg-[#090D16] border border-white/10 text-center space-y-4">
+              <div data-tour="landing-directory-results" className="p-12 rounded-3xl bg-[#090D16] border border-white/10 text-center space-y-4">
                 <div className="w-14 h-14 mx-auto rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-neutral-400">
                   <Search className="w-6 h-6" />
                 </div>
@@ -1122,7 +1128,7 @@ export default function FlagOSPlatformLandingPage() {
         )}
       </div>
 
-      <footer className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400">
+      <footer data-tour="public-footer" className="relative z-10 border-t border-white/10 bg-black px-4 sm:px-6 py-8 sm:py-10 text-xs text-neutral-400">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="space-y-3">
             <span className="text-lg font-black uppercase tracking-wider text-white">

@@ -21,6 +21,9 @@ import { isRealTeam } from "@/components/TeamAssets";
 import { PlayoffFormat, getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 import { buildPlayoffFixtureTemplates } from "@/lib/standingsEngine";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { SCHEDULE_BUILDER_WALKTHROUGH } from "@/lib/walkthroughs/league";
 
 interface AutomatedScheduleBuilderModalProps {
   isOpen: boolean;
@@ -80,6 +83,7 @@ export default function AutomatedScheduleBuilderModal({
   initialPlayoffFormat,
   onApplySchedule,
 }: AutomatedScheduleBuilderModalProps) {
+  usePageGuide(isOpen ? SCHEDULE_BUILDER_WALKTHROUGH : null, 1);
   // Phase: "form" | "building" | "completed"
   const [phase, setPhase] = useState<"form" | "building" | "completed">("form");
 
@@ -340,10 +344,10 @@ export default function AutomatedScheduleBuilderModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
       <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10 bg-white/[0.02]">
+        <div data-tour="builder-header" className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center">
               <Zap className="w-5 h-5 fill-current" />
@@ -358,6 +362,8 @@ export default function AutomatedScheduleBuilderModal({
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+          <PageGuideButton />
           <button
             onClick={onClose}
             aria-label="Close schedule builder"
@@ -365,6 +371,7 @@ export default function AutomatedScheduleBuilderModal({
           >
             <X className="w-5 h-5" />
           </button>
+          </div>
         </div>
 
         {/* Modal Body Based on Phase */}
@@ -387,7 +394,7 @@ export default function AutomatedScheduleBuilderModal({
               </div>
 
               {/* Season Parameters Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div data-tour="builder-season-settings" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Regular Season Weeks */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -497,7 +504,7 @@ export default function AutomatedScheduleBuilderModal({
               </div>
 
               {/* Playoff Format Selection (Required by prompt) */}
-              <div className="space-y-3 p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30">
+              <div data-tour="builder-playoffs" className="space-y-3 p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Trophy className="w-4 h-4 text-cyan-400" />
@@ -631,6 +638,7 @@ export default function AutomatedScheduleBuilderModal({
                 )}
               </div>
 
+              <div data-tour="builder-venues-times" className="space-y-6">
               {/* Venues / Fields Manager */}
               <div className="space-y-2">
                 <label className="text-xs font-mono text-neutral-400 font-bold block flex items-center gap-1.5">
@@ -727,6 +735,8 @@ export default function AutomatedScheduleBuilderModal({
                     + Add Time
                   </button>
                 </div>
+              </div>
+
               </div>
 
               {/* Overwrite Existing Schedule Warning (if matches exist) */}
@@ -848,7 +858,7 @@ export default function AutomatedScheduleBuilderModal({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between gap-4">
+        <div data-tour="builder-actions" className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between gap-4">
           {phase === "form" ? (
             <>
               <button

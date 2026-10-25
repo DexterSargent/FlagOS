@@ -32,7 +32,7 @@ export function LeagueTeamsGrid({
   const filteredTeams = teams.filter(isRealTeam);
 
   return (
-    <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
+    <section data-tour="league-teams-grid" className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-3 border-b border-line-subtle">
         <div>
           <h2 className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">

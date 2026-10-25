@@ -19,8 +19,12 @@ import { isDemoMatchId } from "@/lib/demoSandboxRuntime";
 import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getTeamBadgeStyle } from "@/lib/teamColors";
 import { GAME_STATE_LABEL, getGameDisplayState, useNow } from "@/lib/gameLiveState";
+import { usePageGuide } from "@/lib/pageGuide";
+import { MATCH_BOX_SCORE_WALKTHROUGH, MATCH_EDIT_MODAL_WALKTHROUGH } from "@/lib/walkthroughs/league";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 export default function MatchDetails({ params }: { params: Promise<{ id: string }> }) {
+  usePageGuide(MATCH_BOX_SCORE_WALKTHROUGH);
   const router = useRouter();
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
@@ -44,6 +48,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   const { home: homeColors, away: awayColors } = useMatchTeamColors(matchData, isDemo);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  usePageGuide(isEditModalOpen ? MATCH_EDIT_MODAL_WALKTHROUGH : null, 1);
   const [editForm, setEditForm] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -214,7 +219,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
         </Link>
 
         {/* Match Header */}
-        <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
+        <div data-tour="match-header" className="bg-neutral-900 border border-white/5 rounded-3xl p-8 relative overflow-hidden">
           <div
             className="absolute top-0 left-0 w-full h-1"
             style={{
@@ -262,7 +267,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
         {/* Admin Controls (archived leagues are read-only) */}
         {!isMatchLeagueArchived && (isLeagueAdmin || isPlatformAdmin || (matchData?.managingTeamId && canManageTeam(matchData.managingTeamId)) || (matchData?.homeTeamId && canManageTeam(matchData.homeTeamId)) || (matchData?.awayTeamId && canManageTeam(matchData.awayTeamId))) && (
-          <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div data-tour="match-admin" className="bg-cyan-950/20 border border-cyan-500/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <ShieldAlert className="w-6 h-6 text-cyan-400 shrink-0 mt-0.5" />
               <div>
@@ -351,7 +356,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
           </div>
         )}
 
-        <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
+        <div data-tour="match-play-by-play" className="bg-neutral-900 border border-white/10 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
           <div>
             <h3 className="font-semibold text-lg text-white flex items-center gap-2">
               {gameState === 'final' ? 'Box Score & Play-by-Play' : 'Play-by-Play'}
@@ -388,15 +393,19 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 <h2 className="text-2xl font-bold text-white">Edit Game Details</h2>
                 <p className="text-xs text-neutral-400 mt-0.5">League Admin Game Management</p>
               </div>
+              <div className="flex items-center gap-2">
+              <PageGuideButton />
               <button
                 onClick={() => setIsEditModalOpen(false)}
+                aria-label="Close"
                 className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-neutral-400 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
+              </div>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-4">
+            <form data-tour="match-edit-fields" onSubmit={handleSaveEdit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-neutral-400 mb-1">Week / Round Label</label>
                 <input
@@ -514,7 +523,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 </label>
               </div>
 
-              <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3 mt-4">
+              <div data-tour="match-edit-actions" className="pt-4 border-t border-white/10 flex items-center justify-between gap-3 mt-4">
                 <button
                   type="button"
                   onClick={handleDeleteMatch}

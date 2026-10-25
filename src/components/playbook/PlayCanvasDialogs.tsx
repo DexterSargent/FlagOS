@@ -1,4 +1,7 @@
 "use client";
+import { usePageGuide } from "@/lib/pageGuide";
+import { SAVE_ROUTE_PRESET_WALKTHROUGH, POSITION_NOTES_WALKTHROUGH, PLAY_NOTES_WALKTHROUGH } from "@/lib/walkthroughData";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import { Bookmark, FileText, MessageSquare, X } from "lucide-react";
 import type { PlayerNode } from "@/lib/playbookTypes";
@@ -22,15 +25,17 @@ export function SaveRoutePresetDialog({
   onSave,
   onClose,
 }: SaveRoutePresetDialogProps) {
+  usePageGuide(SAVE_ROUTE_PRESET_WALKTHROUGH, 2);
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div className="bg-[#0B0F19] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+      <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div data-tour="save-route-preset-fields" className="bg-[#0B0F19] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
                 <Bookmark className="w-4 h-4" />
               </div>
               <div>
+                <PageGuideButton />
                 <h3 className="text-sm font-black uppercase text-white">Save Route Preset</h3>
                 <span className="text-[10px] text-neutral-400 font-mono">
                   {customPresetCount}/20 Custom Presets for this Franchise
@@ -118,15 +123,17 @@ export function PositionNotesDialog({
   onUpdatePlayerNotes,
   onClose,
 }: PositionNotesDialogProps) {
+  usePageGuide(POSITION_NOTES_WALKTHROUGH, 2);
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div className="bg-[#0B0F19] border border-cyan-500/40 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div data-tour="position-notes-fields" className="bg-[#0B0F19] border border-cyan-500/40 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] flex flex-col">
           <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
                 <FileText className="w-4 h-4" />
               </div>
               <div>
+                <PageGuideButton />
                 <h3 className="text-base font-black uppercase text-white tracking-wide">
                   {playName} • Position Notes & Read Progression
                 </h3>
@@ -202,15 +209,17 @@ interface PlayNotesDialogProps {
 }
 
 export function PlayNotesDialog({ notes, readOnly, onNotesChange, onClose }: PlayNotesDialogProps) {
+  usePageGuide(PLAY_NOTES_WALKTHROUGH, 2);
   return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div className="bg-[#0B0F19] border border-white/20 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+      <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div data-tour="play-notes-fields" className="bg-[#0B0F19] border border-white/20 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
                 <MessageSquare className="w-4 h-4" />
               </div>
               <div>
+                <PageGuideButton />
                 <h3 className="text-sm font-black uppercase text-white">Coach Playbook Scheme Notes</h3>
                 <span className="text-[10px] text-neutral-400 font-mono">
                   High-level concept, QB progression & situational rules

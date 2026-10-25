@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { usePageGuide } from "@/lib/pageGuide";
+import { PLAYER_DASHBOARD_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import Link from "next/link";
 import {
   Trophy,
@@ -95,6 +97,7 @@ export function PlayerView({
   isEffectiveDemo,
   setDevRole,
 }: PlayerViewProps) {
+  usePageGuide(PLAYER_DASHBOARD_WALKTHROUGH);
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* Athlete Cockpit Hero Banner */}
@@ -171,7 +174,7 @@ export function PlayerView({
           </div>
 
           {/* Player Quick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 relative z-10">
+          <div data-tour="player-dashboard-actions" className="flex flex-wrap items-center gap-3 relative z-10">
             {myPlayerTeam && (!isLeagueAdmin || isTeamAdmin(myPlayerTeam.id)) && (
               <Link
                 href={`/teams/${myPlayerTeam.id}/playbook`}
@@ -275,7 +278,7 @@ export function PlayerView({
 
       {/* ALL-STAR RECOGNITION RIBBON (If Player is a League Leader) */}
       {(isLeagueTopPasser || isLeagueTopReceiver || isLeagueTopScorer || isLeagueTopFlagger) && (
-        <div className="bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-yellow-950/40 border border-amber-500/40 rounded-3xl p-5 md:p-6 backdrop-blur-md shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div data-tour="player-league-recognition" className="bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-yellow-950/40 border border-amber-500/40 rounded-3xl p-5 md:p-6 backdrop-blur-md shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
               <Trophy className="w-5 h-5" />
@@ -454,17 +457,17 @@ export function PlayerView({
       )}
 
       {/* Section: Live & Upcoming Games */}
-      <LeagueScheduleWidget
+      <div data-tour="dashboard-schedule"><LeagueScheduleWidget
         games={liveAndUpcomingGames}
         liveCount={liveMatches.length}
         teams={teams}
         standingsMap={standingsMap}
         isLeagueAdmin={false}
         isDemo={isEffectiveDemo}
-      />
+      /></div>
 
       {/* ATHLETE STATS MATRIX (Individual Season Breakdown) */}
-      <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
+      <section data-tour="player-dashboard-stats" className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-line-subtle">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -615,7 +618,7 @@ export function PlayerView({
       {/* 2-COLUMN SECTION: Team CLUBHOUSE & PLAYBOOK ARMBAND */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Column 1 & 2: Team Locker Room & Squad Mates */}
-        <div className="lg:col-span-2 bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+        <div data-tour="player-dashboard-roster" className="lg:col-span-2 bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
               <div className="flex items-center gap-2">
@@ -786,7 +789,7 @@ export function PlayerView({
       </div>
 
       {/* Section: Standings with Highlighted Player Team Row */}
-      <section className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl">
+      <section data-tour="player-dashboard-standings" className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl">
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />

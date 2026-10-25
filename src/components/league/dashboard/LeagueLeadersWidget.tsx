@@ -23,7 +23,7 @@ export function LeagueLeadersWidget({
 }: LeagueLeadersWidgetProps) {
   return (
     <div
-      data-tour="league-stats-tab"
+      data-tour="league-leaders-section"
       className={`bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between ${className}`}
     >
       <div>

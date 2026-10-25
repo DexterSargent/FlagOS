@@ -886,7 +886,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
               <Shield className="w-8 h-8" />
             </div>
-            <div>
+            <div data-tour="playbook-access">
               <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
                 Opponent Playbook Confidential
               </span>
@@ -929,7 +929,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
               <Shield className="w-8 h-8" />
             </div>
-            <div>
+            <div data-tour="playbook-access">
               <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
                 Opponent Playbook Protected
               </span>
@@ -1240,7 +1240,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
             {/* Level 2: "+ Create Formation" */}
             {viewLevel === "formations" && hasEditAccess && (
-              <button
+              <button data-tour="create-formation-btn"
                 type="button"
                 onClick={() => {
                   setEditingFormation(null);
@@ -1677,7 +1677,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <button
                 type="button"
-                onClick={() => setViewLevel("formations")}
+                data-tour="plays-navigation"
+                  onClick={() => setViewLevel("formations")}
                 className="flex items-center gap-1.5 text-xs font-bold text-neutral-400 hover:text-white transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />

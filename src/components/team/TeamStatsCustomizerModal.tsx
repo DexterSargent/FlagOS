@@ -1,4 +1,8 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+
+import { TEAM_STATS_CUSTOMIZER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import { getReadableTextColor } from "@/lib/teamColors";
 import React, { useState, useEffect } from "react";
@@ -86,6 +90,7 @@ export default function TeamStatsCustomizerModal({
   primaryColor = "#06B6D4",
   secondaryColor = "#E2E8F0",
 }: TeamStatsCustomizerModalProps) {
+  usePageGuide(isOpen ? TEAM_STATS_CUSTOMIZER_WALKTHROUGH : null, 2);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialVisibleStats);
   const [saving, setSaving] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
@@ -166,6 +171,7 @@ export default function TeamStatsCustomizerModal({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
+                <PageGuideButton />
                 <h2 id="custom-stats-title" className="text-lg md:text-xl font-black uppercase tracking-wide">
                   Choose Team Stats
                 </h2>
@@ -188,7 +194,7 @@ export default function TeamStatsCustomizerModal({
         </div>
 
         {/* Action Bar: Presets & Filters */}
-        <div className="px-5 py-3 border-b border-white/10 bg-white/[0.02] flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div data-tour="team-stats-presets" className="px-5 py-3 border-b border-white/10 bg-white/[0.02] flex flex-wrap items-center justify-between gap-3 shrink-0">
           {/* Quick Presets */}
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -226,7 +232,7 @@ export default function TeamStatsCustomizerModal({
         </div>
 
         {/* Category Filter Pills */}
-        <div className="px-5 py-2.5 border-b border-white/5 bg-[var(--surface-inset)] flex items-center gap-2 overflow-x-auto text-xs shrink-0 no-scrollbar">
+        <div data-tour="team-stats-filters" className="px-5 py-2.5 border-b border-white/5 bg-[var(--surface-inset)] flex items-center gap-2 overflow-x-auto text-xs shrink-0 no-scrollbar">
           <button
             onClick={() => setFilterCategory("all")}
             className={`min-h-9 px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap ${
@@ -287,6 +293,7 @@ export default function TeamStatsCustomizerModal({
                       return (
                         <button
                           type="button"
+                          data-tour="team-stats-choices"
                           aria-pressed={isSelected}
                           aria-label={def.label}
                           key={def.id}
@@ -346,7 +353,7 @@ export default function TeamStatsCustomizerModal({
         </div>
 
         {/* Sticky Footer with Save / Cancel */}
-        <div className="p-4 md:p-5 gap-3 flex-wrap border-t border-white/10 bg-neutral-950/90 backdrop-blur-md flex items-center justify-between shrink-0">
+        <div data-tour="team-stats-customizer-save" className="p-4 md:p-5 gap-3 flex-wrap border-t border-white/10 bg-neutral-950/90 backdrop-blur-md flex items-center justify-between shrink-0">
           <div className="text-xs text-neutral-400 flex items-center gap-1.5">
             <Info className="w-4 h-4 text-[var(--team-ink)]" />
             <span>

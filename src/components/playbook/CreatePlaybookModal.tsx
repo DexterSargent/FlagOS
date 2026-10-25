@@ -1,4 +1,7 @@
 "use client";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { usePageGuide } from "@/lib/pageGuide";
+import { CREATE_PLAYBOOK_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import React, { useState, useEffect } from "react";
 import {
@@ -47,6 +50,7 @@ export default function CreatePlaybookModal({
     }
   }, [isOpen, defaultPlayersOnField, settings?.rules?.playersOnField]);
 
+  usePageGuide(isOpen ? CREATE_PLAYBOOK_WALKTHROUGH : null, 2);
   if (!isOpen) return null;
 
   const isAtLimit = currentPlaybookCount >= MAX_PLAYBOOKS_PER_TEAM;
@@ -86,8 +90,8 @@ export default function CreatePlaybookModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-2xl relative">
+    <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
@@ -99,6 +103,7 @@ export default function CreatePlaybookModal({
                 {currentPlaybookCount}/{MAX_PLAYBOOKS_PER_TEAM} Created
               </span>
             </div>
+            <PageGuideButton />
             <h2 className="text-xl font-black uppercase text-white mt-1">Create a Playbook</h2>
           </div>
           <button
@@ -120,7 +125,7 @@ export default function CreatePlaybookModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form data-tour="create-playbook-fields" onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="bg-red-500/15 border border-red-500/40 rounded-2xl p-3 text-xs text-red-300 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
@@ -276,7 +281,7 @@ export default function CreatePlaybookModal({
                 Cancel
               </button>
               <button
-                type="submit"
+                data-tour="create-playbook-save" type="submit"
                 className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center gap-2 ${
                   type === "offense"
                     ? "bg-cyan-500 hover:bg-cyan-400 text-black shadow-cyan-500/20"

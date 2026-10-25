@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { usePageGuide } from "@/lib/pageGuide";
+import { TEAM_ADMIN_DASHBOARD_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import Link from "next/link";
 import {
   Shield,
@@ -62,6 +64,7 @@ export function TeamAdminView({
   isEffectiveDemo,
   onOpenAddPlayer,
 }: TeamAdminViewProps) {
+  usePageGuide(TEAM_ADMIN_DASHBOARD_WALKTHROUGH);
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* Team Clubhouse Hero Banner */}
@@ -103,7 +106,7 @@ export function TeamAdminView({
           </div>
 
           {/* Team Admin Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div data-tour="team-dashboard-actions" className="flex flex-wrap items-center gap-3">
             <button
               onClick={onOpenAddPlayer}
               className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2 cursor-pointer"
@@ -143,7 +146,7 @@ export function TeamAdminView({
         </div>
 
         {/* Team Performance Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
+        <div data-tour="team-dashboard-stats" className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
             <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Season Record</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
@@ -272,19 +275,19 @@ export function TeamAdminView({
       )}
 
       {/* Section: Live & Upcoming Games */}
-      <LeagueScheduleWidget
+      <div data-tour="dashboard-schedule"><LeagueScheduleWidget
         games={liveAndUpcomingGames}
         liveCount={liveMatches.length}
         teams={teams}
         standingsMap={standingsMap}
         isLeagueAdmin={false}
         isDemo={isEffectiveDemo}
-      />
+      /></div>
 
       {/* 2-COLUMN SECTION: MY TEAM ROSTER & MY TEAM STAT LEADERS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Column 1 & 2: Active Roster Quick Management */}
-        <div className="lg:col-span-2 bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+        <div data-tour="team-dashboard-roster" className="lg:col-span-2 bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
               <div className="flex items-center gap-2">
@@ -372,7 +375,7 @@ export function TeamAdminView({
         </div>
 
         {/* Column 3: Team Stat Leaders */}
-        <div className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
+        <div data-tour="dashboard-leaders" className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
               <div className="flex items-center gap-2">
@@ -447,7 +450,7 @@ export function TeamAdminView({
       </div>
 
       {/* Section: Standings with Highlighted Team Row */}
-      <section className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl">
+      <section data-tour="dashboard-standings" className="bg-surface-raised border border-line rounded-3xl p-6 backdrop-blur-md shadow-xl">
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-line-subtle">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />

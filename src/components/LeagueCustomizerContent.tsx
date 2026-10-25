@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePageGuide } from "@/lib/pageGuide";
+import { LEAGUE_SETTINGS_GUIDES, LEAGUE_RULES_VIEW_GUIDE } from "@/lib/walkthroughs/admin";
+import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { useLeague, LeagueRules, DEFAULT_LEAGUE_RULES, IFAF_5V5_RULES } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import {
@@ -71,6 +74,7 @@ export default function LeagueCustomizerContent() {
   const [activeTab, setActiveTab] = useState<"branding" | "rules" | "subscription" | "season">(
     isLeagueAdmin ? "branding" : "rules"
   );
+  usePageGuide(isCustomizerOpen ? (!isLeagueAdmin && activeTab === "rules" ? LEAGUE_RULES_VIEW_GUIDE : LEAGUE_SETTINGS_GUIDES[activeTab]) : null, 2);
   const [showArchivePrompt, setShowArchivePrompt] = useState(false);
   const [archivingInProgress, setArchivingInProgress] = useState(false);
 
@@ -343,7 +347,7 @@ export default function LeagueCustomizerContent() {
     >
       <div role="dialog" aria-modal="true" aria-labelledby="league-settings-title" className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-3xl w-full shadow-2xl relative flex flex-col h-[90dvh] max-h-[90dvh] overflow-hidden my-auto animate-in zoom-in-95 duration-200">
         {/* Pinned Header & Tab Navigation */}
-        <div className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10 space-y-3 sm:space-y-4">
+        <div data-tour="settings-header" className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0B0F19] shrink-0 z-10 space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
@@ -373,6 +377,7 @@ export default function LeagueCustomizerContent() {
                 </p>
               </div>
             </div>
+            <PageGuideButton />
             <button
               onClick={closeCustomizer}
               className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer shrink-0"
@@ -461,7 +466,7 @@ export default function LeagueCustomizerContent() {
         {activeTab === "branding" && isLeagueAdmin && (
           <form onSubmit={handleSaveLeagueSettings} className="space-y-6">
             {/* Live Multi-Preview Showcase */}
-            <div className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-3">
+            <div data-tour="settings-preview" className="p-4 rounded-2xl bg-black/70 border border-white/10 space-y-3">
               <span className="text-[10px] font-mono uppercase font-bold text-neutral-400 tracking-wider block">
                 Official Site-Wide Branding Preview
               </span>
@@ -512,7 +517,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* League Privacy & Directory Access */}
-            <div className="p-5 rounded-2xl bg-black/70 border border-white/10 space-y-4">
+            <div data-tour="settings-privacy" className="p-5 rounded-2xl bg-black/70 border border-white/10 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-black uppercase text-white tracking-wide flex items-center gap-2">
@@ -658,7 +663,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Section 1: Core League Identity */}
-            <div className="border-b border-white/10 pb-5 space-y-4">
+            <div data-tour="settings-identity" className="border-b border-white/10 pb-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5" />
                 <span>1. League Identity & Details</span>
@@ -770,7 +775,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Section 2: Operations & Venue Details */}
-            <div className="border-b border-white/10 pb-5 space-y-4">
+            <div data-tour="settings-operations" className="border-b border-white/10 pb-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" />
                 <span>2. Operations & Venue Information</span>
@@ -865,7 +870,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Section 3: Official League Colours */}
-            <div className="space-y-4">
+            <div data-tour="settings-colours" className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
                   <Palette className="w-3.5 h-3.5" />
@@ -1008,7 +1013,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Section 4: Registration Fees & Features (Optional) */}
-            <div className="border-t border-white/10 pt-5 space-y-4">
+            <div data-tour="settings-registration" className="border-t border-white/10 pt-5 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                   <CreditCard className="w-3.5 h-3.5" />
@@ -1081,7 +1086,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Negative offsets cancel the scroll container's padding so the bar sits flush with the panel's bottom edge. */}
-            <div className="sticky -bottom-4 sm:-bottom-6 md:-bottom-8 -mx-4 sm:-mx-6 md:-mx-8 -mb-4 sm:-mb-6 md:-mb-8 px-4 sm:px-6 md:px-8 py-3 bg-[#0B0F19] border-t border-white/10 flex items-center justify-between gap-3 z-20 mt-6 shadow-[0_-6px_16px_rgba(0,0,0,0.18)]">
+            <div data-tour="settings-branding-save" className="sticky -bottom-4 sm:-bottom-6 md:-bottom-8 -mx-4 sm:-mx-6 md:-mx-8 -mb-4 sm:-mb-6 md:-mb-8 px-4 sm:px-6 md:px-8 py-3 bg-[#0B0F19] border-t border-white/10 flex items-center justify-between gap-3 z-20 mt-6 shadow-[0_-6px_16px_rgba(0,0,0,0.18)]">
               <button
                 type="button"
                 onClick={closeCustomizer}
@@ -1111,7 +1116,7 @@ export default function LeagueCustomizerContent() {
           <form onSubmit={handleSaveLeagueSettings} className="space-y-6">
 
             {/* Rule 1: Players on field */}
-            <div className="border-b border-white/10 pb-5 space-y-3">
+            <div data-tour="settings-players" className="border-b border-white/10 pb-5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" />
@@ -1157,7 +1162,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Rule 2: Periods & Clock */}
-            <div className="border-b border-white/10 pb-5 space-y-4">
+            <div data-tour="settings-clock" className="border-b border-white/10 pb-5 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
@@ -1287,7 +1292,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Rule 3: Timeouts */}
-            <div className="border-b border-white/10 pb-5 space-y-4">
+            <div data-tour="settings-timeouts" className="border-b border-white/10 pb-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Timer className="w-3.5 h-3.5" />
                 <span>3. Timeouts & Stoppages</span>
@@ -1375,7 +1380,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Rule 4: Downs & Scrimmage */}
-            <div className="border-b border-white/10 pb-5 space-y-4">
+            <div data-tour="settings-downs" className="border-b border-white/10 pb-5 space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Flame className="w-3.5 h-3.5" />
                 <span>4. Downs & Scrimmage Rules</span>
@@ -1481,7 +1486,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Rule 5: Roster Limits */}
-            <div className="space-y-4">
+            <div data-tour="settings-rosters" className="space-y-4">
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5" />
                 <span>5. Roster Size Limits & Compliance</span>
@@ -1553,7 +1558,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Rule 6: Free Agent Pool & Public Registration Form */}
-            <div className="space-y-4">
+            <div data-tour="settings-free-agents" className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
                   <UserPlus className="w-3.5 h-3.5" />
@@ -1699,7 +1704,7 @@ export default function LeagueCustomizerContent() {
             )}
 
             {/* Footer buttons */}
-            <div className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+            <div data-tour="settings-rules-save" className="pt-4 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 sm:gap-3">
               <div className="flex items-center gap-2 max-sm:order-last max-sm:w-full">
                 <button
                   type="button"
@@ -1758,7 +1763,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div data-tour="settings-rules-summary" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex flex-col">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Squad Format</span>
                 <span className="text-xl font-black font-mono text-cyan-400 mt-1">{rules.playersOnField} vs {rules.playersOnField}</span>
@@ -1784,7 +1789,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Detailed Rule Cards (Active Selections Only) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div data-tour="settings-rules-cards" className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Card 1: On-field Format */}
               <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-cyan-500/30 transition-all flex flex-col justify-between space-y-3">
                 <div className="flex items-start justify-between gap-3">
@@ -1933,7 +1938,7 @@ export default function LeagueCustomizerContent() {
               </div>
 
               {/* Card 8: Free Agent Draft Pool */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-pink-500/30 transition-all flex flex-col justify-between space-y-3">
+              <div data-tour="settings-rules-view-join" className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-pink-500/30 transition-all flex flex-col justify-between space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-pink-400 shrink-0">
@@ -2008,7 +2013,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Footer */}
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+            <div data-tour="settings-rules-view-close" className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
               <div className="text-[11px] text-neutral-400 flex items-center gap-2 font-mono">
                 <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>To propose changes to these rules, contact the League Commissioner.</span>
@@ -2030,7 +2035,7 @@ export default function LeagueCustomizerContent() {
         {activeTab === "subscription" && isLeagueAdmin && (
           <div className="space-y-6">
             {/* Header / Active Subscription Card */}
-            <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-4">
+            <div data-tour="settings-subscription-summary" className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
@@ -2110,7 +2115,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Adjust Team Capacity Section */}
-            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+            <div data-tour="settings-slots" className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
@@ -2190,7 +2195,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Quick Add Team to Subscription */}
-            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+            <div data-tour="settings-add-team" className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
               <div>
                 <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
                   <Plus className="w-4 h-4 text-cyan-400" />
@@ -2223,7 +2228,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Active Teams in League with Direct Removal */}
-            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+            <div data-tour="settings-current-teams" className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
@@ -2279,7 +2284,7 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Footer */}
-            <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+            <div data-tour="settings-subscription-close" className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
               <div className="text-[11px] text-neutral-400 flex items-center gap-2 font-mono">
                 <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>Adjusted fees apply at your next billing statement on {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.</span>
@@ -2301,7 +2306,7 @@ export default function LeagueCustomizerContent() {
         {activeTab === "season" && isLeagueAdmin && (
           <div className="space-y-6">
             {/* Header / Current Season Status Card */}
-            <div className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-4">
+            <div data-tour="settings-season-status" className="p-5 rounded-2xl bg-black/60 border border-white/10 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
@@ -2357,7 +2362,7 @@ export default function LeagueCustomizerContent() {
 
             {/* Archival Actions */}
             {!isLeagueArchived && !isSubscriptionPastDue && (
-              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
+              <div data-tour="settings-archive" className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
                     <Archive className="w-5 h-5" />
@@ -2453,7 +2458,7 @@ export default function LeagueCustomizerContent() {
 
             {/* If Archived */}
             {isLeagueArchived && !isSubscriptionPastDue && (
-              <div className="p-5 rounded-2xl bg-neutral-900 border border-white/10 space-y-4">
+              <div data-tour="settings-season-resume" className="p-5 rounded-2xl bg-neutral-900 border border-white/10 space-y-4">
                 <div className="flex items-center gap-3 text-cyan-400">
                   <Archive className="w-5 h-5 shrink-0" />
                   <span className="text-xs font-bold uppercase tracking-wider text-white">This League Is Currently Archived (Read-Only)</span>
@@ -2480,7 +2485,7 @@ export default function LeagueCustomizerContent() {
 
             {/* If Past Due */}
             {isSubscriptionPastDue && (
-              <div className="p-5 rounded-2xl bg-amber-950/30 border border-amber-500/30 space-y-4">
+              <div data-tour="settings-season-payment" className="p-5 rounded-2xl bg-amber-950/30 border border-amber-500/30 space-y-4">
                 <div className="flex items-center gap-3 text-amber-400">
                   <AlertTriangle className="w-5 h-5 shrink-0" />
                   <span className="text-xs font-bold uppercase tracking-wider text-white">Payment Declined / Past Due</span>
