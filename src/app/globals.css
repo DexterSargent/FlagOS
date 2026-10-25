@@ -192,6 +192,20 @@ body {
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   transition: background-color 180ms ease, color 180ms ease;
+  /* Avoid double-tap zoom while preserving scrolling and pinch-to-zoom. */
+  touch-action: manipulation;
+}
+
+/* iOS zooms focused controls below 16px, including in landscape and on tablets. */
+@media (max-width: 767px), (pointer: coarse) {
+  input,
+  textarea,
+  select,
+  [contenteditable="true"],
+  [contenteditable=""],
+  [contenteditable="plaintext-only"] {
+    font-size: max(16px, 1rem);
+  }
 }
 
 ::selection {
