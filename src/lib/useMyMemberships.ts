@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { requestPrivateData } from "@/lib/secureWrites";
+import { announceLeagueAccess } from "@/lib/leagueAccess";
 
 export type MembershipTeamRole = "coach" | "player";
 
@@ -71,6 +72,7 @@ function loadMemberships(uid: string): Promise<Memberships> {
   const pending = inflightMemberships.get(uid);
   if (pending) return pending;
   const request = requestPrivateData<Memberships>("memberships").finally(() => inflightMemberships.delete(uid));
+  request.then(announceLeagueAccess, () => {});
   inflightMemberships.set(uid, request);
   return request;
 }

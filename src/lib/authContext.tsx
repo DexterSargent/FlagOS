@@ -21,6 +21,7 @@ import { cleanFirebaseConfigValue } from "./firebaseConfig";
 import { DEMO_TEAM_IDS, subscribeDemoSandbox, notifySandboxChange } from "./demoSandboxRuntime";
 import { requestPrivateData } from "./secureWrites";
 import { resolveConnectedAccount } from "./accountEmails";
+import { announceLeagueAccess } from "./leagueAccess";
 import { useEmbedState } from "./embedState";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
@@ -43,6 +44,7 @@ function requestIdentityLookup(uid: string): Promise<IdentityLookup> {
     return recentIdentityLookup.request;
   }
   const request = requestPrivateData<IdentityLookup>("lookup");
+  request.then(announceLeagueAccess, () => {});
   const entry = { uid, at: Date.now(), request };
   recentIdentityLookup = entry;
   request.catch(() => { if (recentIdentityLookup === entry) recentIdentityLookup = null; });

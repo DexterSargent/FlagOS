@@ -79,7 +79,7 @@ service cloud.firestore {
     function isPublicLeaguePlay(data) {
       let matchPath = /databases/$(database)/documents/matches/$(data.get('matchId', ''));
       return data.get('isHidden', true) == false &&
-        isPublicLeague(data.get('leagueId', '')) &&
+        canViewLeague(data.get('leagueId', '')) &&
         exists(matchPath) && get(matchPath).data.get('isHidden', true) == false;
     }
 
@@ -141,6 +141,19 @@ service cloud.firestore {
       let leaguePath = /databases/$(database)/documents/leagues/$(leagueId);
       return leagueId is string && exists(leaguePath) &&
         get(leaguePath).data.visibility == 'public';
+    }
+
+    // Players and coaches of a league (public or private). The server keeps
+    // league_access/{uid} in sync with rosters whenever it resolves the account.
+    function isLeagueMember(leagueId) {
+      let accessPath = /databases/$(database)/documents/league_access/$(request.auth.uid);
+      return signedIn() && leagueId is string && leagueId != '' && exists(accessPath) &&
+        get(accessPath).data.get('leagueIds', []) is list &&
+        leagueId in get(accessPath).data.get('leagueIds', []);
+    }
+
+    function canViewLeague(leagueId) {
+      return isLeagueMember(leagueId) || isPublicLeague(leagueId);
     }
 
     function isPlayerOwner(playerId) {
@@ -313,13 +326,13 @@ service cloud.firestore {
     }
 
     // Public league discovery is intentionally limited to public settings.
-    // Admins retain access to private league documents.
+    // Members and admins can read private league documents.
     match /leagues/{leagueId} {
       allow get: if signedIn() && hasNoLeaguePii(resource.data) &&
-        (resource.data.visibility == 'public' || isLeagueAdmin(leagueId));
+        (resource.data.visibility == 'public' || isLeagueMember(leagueId) || isLeagueAdmin(leagueId));
       allow list: if hasBoundedListLimit(100) &&
         signedIn() && hasNoLeaguePii(resource.data) &&
-        (resource.data.visibility == 'public' || isLeagueAdmin(leagueId));
+        (resource.data.visibility == 'public' || isLeagueMember(leagueId) || isLeagueAdmin(leagueId));
       allow create: if false;
       allow update: if isLeagueAdmin(leagueId) &&
         isValidLeague(request.resource.data) &&
@@ -332,12 +345,12 @@ service cloud.firestore {
         (signedIn() && hasNoTeamPii(resource.data) &&
         (isPlatformAdmin() || isTeamAdmin(teamId) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
-          (resource.data.leagueId is string && isPublicLeague(resource.data.leagueId))));
+          (resource.data.leagueId is string && canViewLeague(resource.data.leagueId))));
       allow list: if hasBoundedListLimit(300) &&
         signedIn() && hasNoTeamPii(resource.data) &&
         (isPlatformAdmin() || isTeamAdmin(teamId) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
-          (resource.data.leagueId is string && isPublicLeague(resource.data.leagueId)));
+          (resource.data.leagueId is string && canViewLeague(resource.data.leagueId)));
       allow create: if false;
       allow update: if isLeagueWritable(resource.data.get('leagueId', '')) &&
         canManageTeam(resource.data.id == teamId ? resource.data.id : teamId, resource.data.leagueId) &&
@@ -360,7 +373,7 @@ service cloud.firestore {
           isPlayerOwner(playerId) ||
           isLeagueAdmin(resource.data.leagueId) ||
           (resource.data.teamId is string && resource.data.teamId != '' && isTeamAdmin(resource.data.teamId)) ||
-          isPublicLeague(resource.data.leagueId)));
+          canViewLeague(resource.data.leagueId)));
       allow list: if hasBoundedListLimit(1920) &&
         (isPublicTeamPlayer(resource.data) ||
         (signedIn() && hasNoPlayerPii(resource.data) &&
@@ -368,7 +381,7 @@ service cloud.firestore {
           isPlayerOwner(playerId) ||
           isLeagueAdmin(resource.data.leagueId) ||
           (resource.data.teamId is string && resource.data.teamId != '' && isTeamAdmin(resource.data.teamId)) ||
-          isPublicLeague(resource.data.leagueId))));
+          canViewLeague(resource.data.leagueId))));
       allow create: if false;
       allow update: if isValidPlayer(request.resource.data) &&
         isLeagueWritable(resource.data.get('leagueId', '')) &&
@@ -388,13 +401,13 @@ service cloud.firestore {
         (isPlatformAdmin() ||
           (resource.data.managingTeamId is string && isTeamAdmin(resource.data.managingTeamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
-          (resource.data.isHidden != true && isPublicLeague(resource.data.leagueId))));
+          (resource.data.isHidden != true && canViewLeague(resource.data.leagueId))));
       allow list: if hasBoundedListLimit(512) &&
         (isPublicTeamMatch(resource.data) || (signedIn() &&
         (isPlatformAdmin() ||
           (resource.data.managingTeamId is string && isTeamAdmin(resource.data.managingTeamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
-          (resource.data.isHidden != true && isPublicLeague(resource.data.leagueId)))));
+          (resource.data.isHidden != true && canViewLeague(resource.data.leagueId)))));
       allow create: if false;
       allow update: if isValidMatch(request.resource.data) &&
         isLeagueWritable(resource.data.get('leagueId', '')) &&
@@ -425,7 +438,7 @@ service cloud.firestore {
       allow list: if hasBoundedListLimit(10000) &&
         // Queries can't follow each play to its match, so league queries rely on the play's
         // own isHidden flag (copied from the match when the play is recorded).
-        ((signedIn() && resource.data.isHidden != true && isPublicLeague(resource.data.leagueId)) ||
+        ((signedIn() && resource.data.isHidden != true && canViewLeague(resource.data.leagueId)) ||
         isPublicTeamPlay(resource.data) || (signedIn() &&
         (isPlatformAdmin() ||
           (resource.data.teamId is string && isTeamAdmin(resource.data.teamId)) ||
@@ -497,10 +510,14 @@ service cloud.firestore {
     // Frozen standings and stat lines for completed seasons; written only by the server.
     match /league_seasons/{seasonDocId} {
       allow get: if signedIn() && resource.data.leagueId is string &&
-        (isPlatformAdmin() || isLeagueAdmin(resource.data.leagueId) || isPublicLeague(resource.data.leagueId));
+        (isPlatformAdmin() || isLeagueAdmin(resource.data.leagueId) || canViewLeague(resource.data.leagueId));
       allow list: if hasBoundedListLimit(50) && signedIn() && resource.data.leagueId is string &&
-        (isPlatformAdmin() || isLeagueAdmin(resource.data.leagueId) || isPublicLeague(resource.data.leagueId));
+        (isPlatformAdmin() || isLeagueAdmin(resource.data.leagueId) || canViewLeague(resource.data.leagueId));
       allow write: if false;
+    }
+
+    match /league_access/{userId} {
+      allow read, write: if false;
     }
 
     match /league_private/{leagueId} {

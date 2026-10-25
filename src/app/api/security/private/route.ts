@@ -91,9 +91,34 @@ async function enforceReadLimit(uid: string, action: PrivateAction): Promise<voi
   });
 }
 
+/**
+ * Mirrors the leagues this account plays or coaches in to league_access/{uid}, which Firestore
+ * rules use to open private leagues to their members. Returns private leagues newly granted by this call.
+ */
+async function syncLeagueAccess(uid: string, leagueIds: string[]): Promise<string[]> {
+  const next = [...new Set(leagueIds.filter(Boolean))].sort();
+  const ref = adminDb.doc(`league_access/${uid}`);
+  const snapshot = await ref.get();
+  const previous: string[] = snapshot.exists && Array.isArray(snapshot.get("leagueIds"))
+    ? snapshot.get("leagueIds").filter((id: unknown): id is string => typeof id === "string")
+    : [];
+  const unchanged = snapshot.exists && previous.length === next.length && previous.every((id, index) => id === next[index]);
+  if (!unchanged) {
+    if (next.length || snapshot.exists) await ref.set({ leagueIds: next, updatedAt: Date.now() });
+  }
+  const granted = next.filter((id) => !previous.includes(id));
+  if (!granted.length) return [];
+  // Public leagues were already readable, so only private grants change what the client can see.
+  const leagueDocs = await adminDb.getAll(...granted.map((id) => adminDb.doc(`leagues/${id}`)));
+  return leagueDocs.filter((doc) => doc.exists && doc.get("visibility") === "private").map((doc) => doc.id);
+}
+
 async function lookupByEmail(token: DecodedIdToken) {
   const emails = accountEmails(token);
-  if (!emails.length) return { teams: [], players: [] };
+  if (!emails.length) {
+    await syncLeagueAccess(token.uid, []).catch((error) => console.error(`League access sync failed for ${token.uid}:`, error));
+    return { grantedLeagueIds: [] as string[], teams: [], players: [] };
+  }
   const equals = (collection: string, field: string) =>
     adminDb.collection(collection).where(field, emails.length === 1 ? "==" : "in", emails.length === 1 ? emails[0] : emails).limit(20).get();
   const contains = (collection: string, field: string) =>
@@ -151,7 +176,23 @@ async function lookupByEmail(token: DecodedIdToken) {
   const teams = teamDocs
       .filter((snapshot) => snapshot.exists)
       .map((snapshot) => ({ id: snapshot.id, name: snapshot.get("name") || snapshot.get("teamName") || "" }));
+  const knownTeamIds = new Set(teamDocs.map((snapshot) => snapshot.id));
+  const rosterTeamIds = [...new Set(playerDocs
+    .filter((snapshot) => snapshot.exists && !stringField(snapshot.data()?.leagueId))
+    .map((snapshot) => stringField(snapshot.data()?.teamId))
+    .filter((teamId) => teamId && !knownTeamIds.has(teamId)))];
+  const rosterTeamDocs = rosterTeamIds.length
+    ? await adminDb.getAll(...rosterTeamIds.map((id) => adminDb.doc(`teams/${id}`)))
+    : [];
+  const memberLeagueIds = [...teamDocs, ...playerDocs, ...rosterTeamDocs]
+    .filter((snapshot) => snapshot.exists)
+    .map((snapshot) => stringField(snapshot.data()?.leagueId));
+  const grantedLeagueIds = await syncLeagueAccess(token.uid, memberLeagueIds).catch((error) => {
+    console.error(`League access sync failed for ${token.uid}:`, error);
+    return [] as string[];
+  });
   return {
+    grantedLeagueIds,
     teams,
     players: playerDocs
       .filter((snapshot) => snapshot.exists)
@@ -266,7 +307,7 @@ async function getTeamGames(teamId: string, leagueId: string) {
  */
 async function getMemberships(token: DecodedIdToken) {
   const emails = accountEmails(token);
-  if (!emails.length) return { leagues: [], independentTeams: [] };
+  if (!emails.length) return { leagues: [], independentTeams: [], grantedLeagueIds: [] as string[] };
   const containsAny = (field: string) => adminDb.collection("league_private")
     .where(field, emails.length === 1 ? "array-contains" : "array-contains-any", emails.length === 1 ? emails[0] : emails)
     .limit(25).get();
@@ -348,6 +389,7 @@ async function getMemberships(token: DecodedIdToken) {
   });
   const knownLeagueIds = new Set(leagues.map((league) => league.id));
   return {
+    grantedLeagueIds: lookup.grantedLeagueIds,
     leagues,
     independentTeams: teamsWithGames.filter((team) => !team.leagueId || !knownLeagueIds.has(team.leagueId)),
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
@@ -16,6 +16,7 @@ import { getCurrentSeasonId, getLeagueSeasons, type LeagueSeason } from "./leagu
 import { notifyDataChanged } from "./leagueDataCache";
 import { useAuth } from "./authContext";
 import { useMyMemberships, type LeagueMembership } from "./useMyMemberships";
+import { LEAGUE_ACCESS_GRANTED_EVENT } from "./leagueAccess";
 import {
   getCachedMatchTeamId,
   isDemoMatchId,
@@ -367,6 +368,8 @@ interface LeagueContextType {
   addTeamToSubscription: (customName?: string) => Promise<{ teamId: string; newSubscription: LeagueSubscriptionInfo }>;
   removeTeamFromSubscription: (teamId: string) => Promise<{ newSubscription: LeagueSubscriptionInfo }>;
   isDemoLeague: boolean;
+  /** Leagues the signed-in account plays, coaches or commissions in (server-verified); null until known. */
+  memberLeagueIds: string[] | null;
   resetDemoSession: () => void | Promise<void>;
   archiveLeague: (action: "pause_subscription" | "new_season") => Promise<void>;
   resumeSubscription: () => Promise<void>;
@@ -459,6 +462,7 @@ const LeagueContext = createContext<LeagueContextType>({
   addTeamToSubscription: async () => ({ teamId: "", newSubscription: DEFAULT_LEAGUE_SUBSCRIPTION }),
   removeTeamFromSubscription: async () => ({ newSubscription: DEFAULT_LEAGUE_SUBSCRIPTION }),
   isDemoLeague: true,
+  memberLeagueIds: null,
   resetDemoSession: () => { },
   archiveLeague: async () => { },
   resumeSubscription: async () => { },
@@ -535,11 +539,33 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   // The route always wins over the stored selection so league-owned pages never show another league.
   const activeLeagueId = routeLeagueId || selectedLeagueId;
 
+  const memberLeagueIds = useMemo(
+    () => (memberships ? memberships.leagues.map((league) => league.id) : null),
+    [memberships],
+  );
+
   const commissionsActiveLeague = !checkIsDemoLeague(activeLeagueId) &&
     !!memberships?.leagues.some((league) => league.id === activeLeagueId && league.isCommissioner);
   useEffect(() => {
     setActiveLeagueCommissioner?.(commissionsActiveLeague);
   }, [commissionsActiveLeague, setActiveLeagueCommissioner]);
+
+  // Reads made before the server opened a private league to this member were denied; reload once
+  // so every page re-reads with access. Sign-in pages navigate onward on their own.
+  useEffect(() => {
+    const onGranted = (event: Event) => {
+      const leagueIds = (event as CustomEvent<{ leagueIds?: string[] }>).detail?.leagueIds || [];
+      if (!leagueIds.length || /^\/(login|signup|register|verify)/.test(window.location.pathname)) return;
+      const guardKey = `flagos_access_reload_${leagueIds.slice().sort().join(",")}`;
+      try {
+        if (sessionStorage.getItem(guardKey)) return;
+        sessionStorage.setItem(guardKey, "1");
+      } catch {}
+      window.location.reload();
+    };
+    window.addEventListener(LEAGUE_ACCESS_GRANTED_EVENT, onGranted);
+    return () => window.removeEventListener(LEAGUE_ACCESS_GRANTED_EVENT, onGranted);
+  }, []);
 
   // Apply CSS color variables dynamically to root & update browser title
   const applyThemeColors = (primary: string, accent: string, leagueName?: string, seasonTitle?: string) => {
@@ -1208,6 +1234,7 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
         addTeamToSubscription,
         removeTeamFromSubscription,
         isDemoLeague: checkIsDemoLeague(activeLeagueId),
+        memberLeagueIds,
         resetDemoSession,
         archiveLeague,
         resumeSubscription,

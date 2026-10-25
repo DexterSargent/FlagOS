@@ -7,10 +7,8 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 
 export default function PrivateLeagueAccessDenied({
-  requiredEmail = "dextersargent@gmail.com",
   leagueName = "Private League",
 }: {
-  requiredEmail?: string;
   leagueName?: string;
 }) {
   const { user, logout } = useAuth();
@@ -36,13 +34,10 @@ export default function PrivateLeagueAccessDenied({
           {leagueName} is Private
         </h1>
 
-        <p className="text-neutral-400 text-xs sm:text-sm leading-relaxed mb-6">
-          This private environment has live database writes enabled and is strictly inaccessible without an authorized account. Access is restricted to:
+        <p className="text-neutral-300 text-xs sm:text-sm leading-relaxed mb-6">
+          Only this league&apos;s players, coaches and commissioners can view it. Sign in with the email your
+          coach or commissioner added to the roster.
         </p>
-
-        <div className="px-4 py-3 rounded-2xl bg-black/60 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs sm:text-sm mb-6 break-all">
-          {requiredEmail}
-        </div>
 
         {user ? (
           <div className="text-xs text-neutral-400 mb-6 p-3 rounded-xl bg-white/5 border border-white/10">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import PrivateLeagueAccessDenied from "@/components/PrivateLeagueAccessDenied";
@@ -12,8 +12,8 @@ export function usePrivateLeagueAccess(
     typeof contextLeagueIdOrOptions === "string"
       ? { contextLeagueId: contextLeagueIdOrOptions }
       : contextLeagueIdOrOptions || {};
-  const { activeLeagueId, settings, isDemoLeague } = useLeague();
-  const { user } = useAuth();
+  const { activeLeagueId, settings, isDemoLeague, memberLeagueIds } = useLeague();
+  const { user, isLeagueAdmin, loading: authLoading } = useAuth();
   const [isEmbedded] = useState(() => {
     if (typeof window !== "undefined") {
       const sp = new URLSearchParams(window.location.search);
@@ -30,28 +30,24 @@ export function usePrivateLeagueAccess(
     targetLeagueId === "league_private_live" ||
     (settings?.visibility === "private" && !isEffectiveDemo);
 
+  const email = user?.email?.trim().toLowerCase() || "";
+  const isMember = Boolean(targetLeagueId && memberLeagueIds?.includes(targetLeagueId));
   const isAuthorized =
     !isPrivate ||
-    user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca" ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
-    Boolean(
-      settings?.adminEmails &&
-        settings.adminEmails.some(
-          (e) => e.toLowerCase() === user?.email?.trim().toLowerCase()
-        )
-    );
+    isLeagueAdmin ||
+    isMember ||
+    Boolean(settings?.adminEmails?.some((e) => e.toLowerCase() === email));
+  // Memberships come from the server; never show the lock screen to a member before they arrive.
+  const isResolving = isPrivate && !isAuthorized && (authLoading || (Boolean(user) && memberLeagueIds === null));
 
-  const isDenied = isPrivate && !isAuthorized;
+  const isDenied = isPrivate && !isAuthorized && !isResolving;
 
   return {
     isPrivate,
     isAuthorized,
     isDenied,
     deniedElement: isDenied ? (
-      <PrivateLeagueAccessDenied
-        requiredEmail="dextersargent@gmail.com"
-        leagueName={settings?.leagueName || "Private League"}
-      />
+      <PrivateLeagueAccessDenied leagueName={settings?.leagueName || "Private League"} />
     ) : null,
   };
 }

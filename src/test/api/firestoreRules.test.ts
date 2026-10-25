@@ -168,6 +168,33 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
     expect((await query("plays", leagueQuery, 10_000, auth("viewer@example.com"))).status).toBe(403);
   });
 
+  it("opens a private league only to members listed in league_access", async () => {
+    const viewer = auth("viewer@example.com");
+    await write("leagues/rules-private", { visibility: "private", leagueName: "Private" });
+    await write("teams/private-team", { name: "Private Team", leagueId: "rules-private" });
+    await write("players/private-player", { teamId: "private-team", leagueId: "rules-private", playerName: "Member" });
+    await write("matches/private-match", { ...fixture, leagueId: "rules-private", managingTeamId: "private-team" });
+    await write("plays/private-play", { matchId: "private-match", isHidden: false, leagueId: "rules-private" });
+    const visibleOnly = [filter("leagueId", "rules-private"), filter("isHidden", true, "NOT_EQUAL")];
+    const checks = async () => [
+      (await read("leagues/rules-private", viewer)).status,
+      (await query("teams", [filter("leagueId", "rules-private")], 300, viewer)).status,
+      (await query("players", [filter("leagueId", "rules-private")], 1920, viewer)).status,
+      (await query("matches", visibleOnly, 512, viewer)).status,
+      (await query("plays", visibleOnly, 10_000, viewer)).status,
+    ];
+    try {
+      await write("league_access/rules-test-user", { leagueIds: ["some-other-league"] });
+      expect(await checks()).toEqual([403, 403, 403, 403, 403]);
+      await write("league_access/rules-test-user", { leagueIds: ["rules-private"] });
+      expect(await checks()).toEqual([200, 200, 200, 200, 200]);
+      expect((await read("league_access/rules-test-user", viewer)).status).toBe(403);
+      expect((await write("league_access/rules-test-user", { leagueIds: ["x"] }, viewer)).status).toBe(403);
+    } finally {
+      await write("league_access/rules-test-user", { leagueIds: [] });
+    }
+  });
+
   it("allows listed coaches to update scores", async () => {
     const response = await write(`matches/${matchId}`, { ...fixture, homeScore: 7 }, auth(coach));
     expect(response.status, await response.text()).toBe(200);

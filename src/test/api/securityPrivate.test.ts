@@ -7,6 +7,7 @@ const {
   runTransactionMock,
   collectionMock,
   documentGetMock,
+  documentSetMock,
   getAllMock,
   transaction,
 } = vi.hoisted(() => {
@@ -19,6 +20,7 @@ const {
     runTransactionMock: vi.fn(),
     collectionMock: vi.fn(),
     documentGetMock: vi.fn(),
+    documentSetMock: vi.fn(),
     getAllMock: vi.fn(),
     transaction,
   };
@@ -30,6 +32,7 @@ vi.mock("@/lib/firebaseAdmin", () => ({
     doc: vi.fn((path: string) => ({
       path,
       get: () => documentGetMock(path),
+      set: (data: unknown) => documentSetMock(path, data),
     })),
     collection: collectionMock,
     getAll: getAllMock,
@@ -342,6 +345,32 @@ describe("memberships", () => {
     } finally {
       store.matches.live.date = torontoDay(0);
       delete store.matches.upcoming;
+    }
+  });
+
+  it("mirrors league membership to league_access and reports newly opened private leagues", async () => {
+    let access: Record<string, unknown> | undefined;
+    documentGetMock.mockImplementation(async (path: string) => path === "league_access/user-1"
+      ? { exists: Boolean(access), get: (field: string) => access?.[field] }
+      : { exists: false, data: () => undefined, get: () => undefined });
+    documentSetMock.mockImplementation(async (_path: string, data: Record<string, unknown>) => { access = data; });
+    store.leagues.sunday.visibility = "private";
+    try {
+      let { data } = await (await POST(request({ action: "memberships" }))).json();
+      expect(documentSetMock).toHaveBeenCalledWith("league_access/user-1", expect.objectContaining({ leagueIds: ["sunday"] }));
+      expect(data.grantedLeagueIds).toEqual(["sunday"]);
+
+      documentSetMock.mockClear();
+      ({ data } = await (await POST(request({ action: "memberships" }))).json());
+      expect(documentSetMock).not.toHaveBeenCalled();
+      expect(data.grantedLeagueIds).toEqual([]);
+
+      delete store.player_private.p1;
+      ({ data } = await (await POST(request({ action: "memberships" }))).json());
+      expect(access).toMatchObject({ leagueIds: [] });
+    } finally {
+      delete store.leagues.sunday.visibility;
+      store.player_private.p1 = { email };
     }
   });
 

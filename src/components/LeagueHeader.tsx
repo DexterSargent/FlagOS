@@ -58,6 +58,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
     isLeagueArchived,
     isSubscriptionPastDue,
     resumeSubscription,
+    memberLeagueIds,
   } = useLeague();
   const { user, role, isLeagueAdmin, isPlayer, playerData, canRegisterAsPlayer, isAuthorized, playerTeamId, managedTeamId, logout } = useAuth();
 
@@ -273,6 +274,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                         return (
                           userEmail === "dextersargent@flagos.ca" ||
                           userEmail === "dextersargent@gmail.com" ||
+                          Boolean(memberLeagueIds?.includes(l.id)) ||
                           (l.adminEmails && l.adminEmails.some((e) => e.toLowerCase() === userEmail))
                         );
                       }
