@@ -195,7 +195,9 @@ export default function PlayCanvas({
   // receives the released result instead of one full playbook write per pointer move.
   const [dragDraft, setDragDraft] = useState<PlayDiagram | null>(null);
   const dragDraftRef = useRef<PlayDiagram | null>(null);
-  const play = dragDraft && dragDraft.id === committedPlay.id ? dragDraft : committedPlay;
+  const [opponentPreview, setOpponentPreview] = useState<{ source: PlayDiagram; play: PlayDiagram } | null>(null);
+  const displayedPlay = readOnly && opponentPreview?.source === committedPlay ? opponentPreview.play : committedPlay;
+  const play = dragDraft && dragDraft.id === committedPlay.id ? dragDraft : displayedPlay;
 
   const onChange = useCallback((updatedPlay: PlayDiagram) => {
     const previousZoneIds = new Set(committedPlay.players.map((player) => player.zoneId).filter(Boolean));
@@ -326,6 +328,12 @@ export default function PlayCanvas({
   const [isOpponentMenuOpen, setIsOpponentMenuOpen] = useState(false);
   const [selectedOpponentPlayTitle, setSelectedOpponentPlayTitle] = useState<string>("");
   const opponentMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setOpponentPreview(null);
+    setSelectedOpponentPlayTitle("");
+    setIsOpponentMenuOpen(false);
+  }, [committedPlay.id, readOnly]);
 
   // Close preset routes & opponent menu on outside click
   const inFlowDockRef = useRef(false);
@@ -2368,7 +2376,19 @@ export default function PlayCanvas({
 
   // Populate an opponent play into the opposing side of the field
   const handleSelectOpponentPlay = (opponentPlay: PlayDiagram, sourceBookTitle?: string) => {
-    if (readOnly) return;
+    const updateOpponent = (next: PlayDiagram) => {
+      if (readOnly) setOpponentPreview({ source: committedPlay, play: next });
+      else onChange(next);
+    };
+    const retargetDefenders = (defenders: PlayerNode[], previousOffense: PlayerNode[], nextOffense: PlayerNode[]) =>
+      defenders.map((defender) => {
+        if (defender.coverageType !== "man" || !defender.manTargetId) return defender;
+        const index = previousOffense.findIndex((player) => player.id === defender.manTargetId);
+        if (index < 0) return defender;
+        // Keep man locks connected when opponent imports replace receiver IDs.
+        const target = nextOffense.find((player) => player.label === previousOffense[index].label) || nextOffense[index];
+        return { ...defender, manTargetId: target?.id };
+      });
 
     if (play.type === "defense") {
       // Current play is defense: populate offense from opponent play
@@ -2381,9 +2401,12 @@ export default function PlayCanvas({
           side: "offense" as const,
         }));
 
-      onChange({
+      updateOpponent({
         ...play,
-        players: [...currentDefense, ...importedOffense],
+        players: [
+          ...retargetDefenders(currentDefense, play.players.filter((p) => p.side === "offense"), importedOffense),
+          ...importedOffense,
+        ],
       });
     } else {
       // Current play is offense: populate defense and zones from opponent play
@@ -2396,10 +2419,13 @@ export default function PlayCanvas({
           side: "defense" as const,
         }));
 
-      const nextZones = opponentPlay.zones && opponentPlay.zones.length > 0 ? opponentPlay.zones : (play.zones || []);
-      onChange({
+      const nextZones = opponentPlay.zones || [];
+      updateOpponent({
         ...play,
-        players: [...currentOffense, ...importedDefense],
+        players: [
+          ...currentOffense,
+          ...retargetDefenders(importedDefense, opponentPlay.players.filter((p) => p.side === "offense"), currentOffense),
+        ],
         zones: nextZones,
       });
     }
@@ -2410,17 +2436,20 @@ export default function PlayCanvas({
   };
 
   const handleResetOpponentAlignment = () => {
-    if (readOnly) return;
-    const sanitized = ensureSquadMatchup(
-      play.players.filter((p) => p.side === play.type),
-      losY,
-      activeSquadSize
-    );
-    onChange({
-      ...play,
-      players: sanitized,
-      zones: play.type === "defense" ? play.zones : [],
-    });
+    if (readOnly) {
+      setOpponentPreview(null);
+    } else {
+      const sanitized = ensureSquadMatchup(
+        play.players.filter((p) => p.side === play.type),
+        losY,
+        activeSquadSize
+      );
+      onChange({
+        ...play,
+        players: sanitized,
+        zones: play.type === "defense" ? play.zones : [],
+      });
+    }
     setSelectedOpponentPlayTitle("");
     setIsOpponentMenuOpen(false);
   };
@@ -2574,13 +2603,15 @@ export default function PlayCanvas({
           </button>
 
           {/* Opponent Scheme Selector Dropdown (When Opponent is ON) */}
-          {isShowingOpponent && !readOnly && (
+          {isShowingOpponent && (
             <div ref={opponentMenuRef} className="relative">
               <button
                 type="button"
                 data-tour="opponent-scheme-selector"
                 data-testid="opponent-play-selector-btn"
                 onClick={() => setIsOpponentMenuOpen((prev) => !prev)}
+                aria-expanded={isOpponentMenuOpen}
+                aria-controls="opponent-plays-menu"
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-xs font-bold transition-all border bg-amber-500/15 border-amber-500/35 text-amber-600 dark:text-amber-300 hover:bg-amber-500/25 hover:text-amber-900 dark:hover:text-white cursor-pointer"
                 title={`Select opposing ${play.type === "defense" ? "offensive" : "defensive"} play to populate and run simulation against`}
               >
@@ -2594,6 +2625,7 @@ export default function PlayCanvas({
               {isOpponentMenuOpen && (
                 <div
                   data-testid="opponent-plays-menu"
+                  id="opponent-plays-menu"
                   className="absolute left-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-5rem)] max-h-96 overflow-y-auto bg-white dark:bg-[#0B0F19] border border-amber-500/30 rounded-2xl shadow-2xl p-2 z-50 space-y-2 scrollbar-thin text-neutral-900 dark:text-white"
                 >
                   <div className="px-2 py-1 border-b border-neutral-200 dark:border-white/10 flex items-center justify-between">
@@ -2602,12 +2634,13 @@ export default function PlayCanvas({
                         Opposing {play.type === "defense" ? "Offense" : "Defense"} Scheme
                       </span>
                       <span className="text-[11px] text-neutral-500 dark:text-neutral-400 block">
-                        Populate into field &amp; run to test coverage reads
+                        {readOnly ? "Preview only — saved play stays unchanged" : "Populate into field & run to test coverage reads"}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsOpponentMenuOpen(false)}
+                      aria-label="Close opponent plays"
                       className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -2636,7 +2669,7 @@ export default function PlayCanvas({
                                 type="button"
                                 onClick={() => handleSelectOpponentPlay(oppPlay, book.title)}
                                 className={`text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
-                                  selectedOpponentPlayTitle === oppPlay.name
+                                  selectedOpponentPlayTitle === `${book.title}: ${oppPlay.name}`
                                     ? "bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold border border-amber-500/30"
                                     : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white"
                                 }`}
