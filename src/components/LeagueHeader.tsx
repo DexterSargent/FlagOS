@@ -164,7 +164,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   href="/"
                   title="FlagOS home"
                   aria-label="FlagOS home"
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/10 shrink-0 text-xs font-bold group"
+                  className="hidden sm:flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/10 shrink-0 text-xs font-bold group"
                 >
                   <ArrowLeft className="w-3.5 h-3.5 text-slate-400 dark:text-neutral-500 group-hover:text-emerald-500 group-hover:-translate-x-0.5 transition-all" />
                   <FlagOSLogo size="xs" />
@@ -219,7 +219,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               {/* League Identity Text */}
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1 sm:gap-1.5">
-                  <span className="text-xs sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white truncate max-w-[110px] xs:max-w-[140px] sm:max-w-[210px] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                  <span className="text-xs sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white truncate max-w-[170px] sm:max-w-[210px] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
                     {isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}
                   </span>
                   {settings.visibility === "private" ? (
@@ -235,8 +235,8 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   <span className="truncate max-w-[80px] xs:max-w-[120px]">{settings.seasonTitle || "Active Season"}</span>
                   {settings.shortcode && (
                     <>
-                      <span>•</span>
-                      <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400 shrink-0">{settings.shortcode}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline font-mono font-bold text-cyan-600 dark:text-cyan-400 shrink-0">{settings.shortcode}</span>
                     </>
                   )}
                   {isDemoLeague && (
@@ -448,7 +448,9 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
           {/* Right: Controls & Role Status */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             <PageGuideButton labelClassName="hidden 2xl:inline" />
-            <ThemeToggle size="md" />
+            <span className="hidden sm:contents">
+              <ThemeToggle size="md" />
+            </span>
 
             {/* League Settings Trigger for Commissioners */}
             {isAuthorized && isLeagueAdmin && (
@@ -473,7 +475,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               </Link>
             ) : isDemoLeague ? (
               <div className="flex items-center gap-1.5 shrink-0">
-                <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-neutral-300 text-xs font-bold border border-slate-200 dark:border-white/10 shrink-0">
+                <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-neutral-300 text-xs font-bold border border-slate-200 dark:border-white/10 shrink-0">
                   {isLeagueAdmin ? (
                     <>
                       <Crown className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
@@ -555,6 +557,10 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
           <div className="absolute top-full left-0 right-0 z-40 lg:hidden max-h-[calc(100dvh-3rem)] overflow-y-auto border-t border-slate-200/80 dark:border-white/10 bg-white/98 dark:bg-[#07090E]/98 px-6 py-4 space-y-2 animate-in slide-in-from-top-2 backdrop-blur-xl shadow-2xl">
+            <div className="sm:hidden flex items-center justify-between gap-3 px-3.5 pb-2 mb-1 border-b border-slate-200/80 dark:border-white/10">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">Appearance</span>
+              <ThemeToggle variant="segmented" />
+            </div>
             <Link
               href={`/league/${activeLeagueId || "default"}`}
               onClick={() => setIsMobileMenuOpen(false)}
@@ -650,7 +656,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             )}
 
             {/* Public Platform Navigation (Easy exit from Demo League to unlogged-in pages) */}
-            {!isCustomOrPaidLeague && isDemoLeague && (
+            {!isCustomOrPaidLeague && (
               <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 space-y-1.5">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-neutral-500 font-bold px-3.5">
                   <span className="normal-case">FlagOS</span> Platform Navigation
@@ -663,6 +669,8 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   <ArrowLeft className="w-4 h-4 text-emerald-500" />
                   <span><span className="normal-case">FlagOS</span> Platform Home</span>
                 </Link>
+                {isDemoLeague && (
+                <>
                 <Link
                   href="/pricing"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -679,6 +687,8 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   <LogIn className="w-4 h-4" />
                   <span>Sign In / Register</span>
                 </Link>
+                </>
+                )}
               </div>
             )}
           </div>

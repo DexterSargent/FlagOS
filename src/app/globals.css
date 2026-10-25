@@ -709,6 +709,13 @@ html.light .bg-slate-950 {
   border-color: #e2e8f0;
 }
 
+/* Solid dark action buttons/links keep their dark fill so white labels stay readable. */
+html.light a.text-white.bg-slate-900,
+html.light button.text-white.bg-slate-900 {
+  background-color: #0f172a !important;
+  border-color: #334155;
+}
+
 /* Container Dark Gradients Adaptation (Converts dark multi-stop container backgrounds into clean light cards) */
 html.light [class*="bg-gradient-to"].from-neutral-900\/90,
 html.light [class*="bg-gradient-to"].from-neutral-900\/50,

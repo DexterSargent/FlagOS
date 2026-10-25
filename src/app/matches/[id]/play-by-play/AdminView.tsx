@@ -1457,7 +1457,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 </span>
                 <button
                   type="button"
-                  onClick={() => setIsPlayClockRunning((prev) => !prev)}
+                  onClick={() => {
+                    if (!isPlayClockRunning && playClock <= 0) setPlayClock(playClockSeconds);
+                    setIsPlayClockRunning(!isPlayClockRunning);
+                  }}
                   aria-label={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
                   title={isPlayClockRunning ? "Pause play clock" : "Start play clock"}
                   className={`inline-flex items-center justify-center h-7 w-7 rounded-full cursor-pointer shrink-0 transition-colors ${isPlayClockRunning ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-neutral-300 hover:text-white"}`}
