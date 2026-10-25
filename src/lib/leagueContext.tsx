@@ -675,13 +675,14 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   }, []);
 
   // Visiting a league-owned route makes that league the selection for league-wide pages.
+  // Only route changes drive this, so an explicit switch is never reverted by the current URL.
   useEffect(() => {
-    if (!hydrated || suspended || !routeLeagueId || routeLeagueId === selectedLeagueId) return;
+    if (!hydrated || suspended || !routeLeagueId) return;
     setSelectedLeagueId(routeLeagueId);
     try {
       localStorage.setItem(ACTIVE_LEAGUE_KEY, routeLeagueId);
     } catch {}
-  }, [hydrated, suspended, routeLeagueId, selectedLeagueId]);
+  }, [hydrated, suspended, routeLeagueId]);
 
   // Load the active league's settings whenever it changes.
   useEffect(() => {
@@ -707,13 +708,14 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
         try {
           localStorage.removeItem(`league_settings_${leagueId}`);
         } catch {}
-        if (!routeLeagueRef.current) {
-          setSelectedLeagueId("default");
-          try {
-            localStorage.setItem(ACTIVE_LEAGUE_KEY, "default");
-          } catch {}
-          return;
-        }
+        setSelectedLeagueId("default");
+        try {
+          localStorage.setItem(ACTIVE_LEAGUE_KEY, "default");
+        } catch {}
+        if (!routeLeagueRef.current) return;
+        // The URL still names the missing league: never show another league's settings under it.
+        setSettings({ ...DEFAULT_LEAGUE_SETTINGS, leagueName: "League Not Found", tagline: "This league no longer exists." });
+        setSubscription(null);
       }
       loadedLeagueRef.current = leagueId;
       setLoadedLeagueId(leagueId);

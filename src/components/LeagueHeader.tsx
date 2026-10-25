@@ -288,8 +288,8 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                         onClick={() => {
                           void switchLeague(l.id);
                           setIsSwitcherOpen(false);
-                          // League dashboards and box scores are bound to their league by URL.
-                          if (pathname?.startsWith("/league/") || pathname?.startsWith("/matches/")) {
+                          // League dashboards, team pages and box scores are bound to their league by URL.
+                          if (pathname?.startsWith("/league/") || pathname?.startsWith("/matches/") || pathname?.startsWith("/teams/")) {
                             router.push(`/league/${encodeURIComponent(l.id)}`);
                           }
                         }}

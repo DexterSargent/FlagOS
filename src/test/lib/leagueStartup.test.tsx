@@ -119,6 +119,20 @@ describe("Route-scoped league startup", () => {
   });
 });
 
+describe("Deleted league URLs", () => {
+  it("does not keep a deleted league selected after visiting its dashboard URL", async () => {
+    localStorage.setItem("flagos_active_league_id", "default");
+    mocks.getDoc.mockImplementation(async ({ id }) => ({ id, exists: () => false, data: () => null }));
+    mocks.pathname = "/league/deleted-league";
+    const view = render(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "deleted-league", name: "League Not Found", loading: false }));
+    expect(localStorage.getItem("flagos_active_league_id")).toBe("default");
+    mocks.pathname = "/schedule";
+    view.rerender(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false }));
+  });
+});
+
 describe("reconcileUserLeagues", () => {
   it("keeps only the demo league plus leagues the account still belongs to", () => {
     const previous: UserLeagueSummary[] = [
