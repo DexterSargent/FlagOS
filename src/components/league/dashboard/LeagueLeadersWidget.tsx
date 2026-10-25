@@ -42,7 +42,7 @@ export function LeagueLeadersWidget({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Passing TDs</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Passing TDs</span>
             <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
               {topPasser.name !== "-" ? topPasser.name : "No stats"}
             </div>
@@ -53,7 +53,7 @@ export function LeagueLeadersWidget({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Receiving TDs</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Receiving TDs</span>
             <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
               {topReceiver.name !== "-" ? topReceiver.name : "No stats"}
             </div>
@@ -64,7 +64,7 @@ export function LeagueLeadersWidget({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Total Touchdowns</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Total Touchdowns</span>
             <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
               {topScorer.name !== "-" ? topScorer.name : "No stats"}
             </div>
@@ -75,7 +75,7 @@ export function LeagueLeadersWidget({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">Flags (Def)</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Flags (Def)</span>
             <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
               {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
             </div>

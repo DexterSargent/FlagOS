@@ -11,7 +11,7 @@ describe("FlagOS brand casing", () => {
     expect(brand).toHaveTextContent(/^FlagOS$/);
     expect(brand).toHaveStyle({ textTransform: "none" });
     expect(screen.getByText("Flag")).toHaveClass("text-white");
-    expect(screen.getByText("OS")).toHaveStyle({ color: "var(--league-primary, #3CA505)" });
+    expect(screen.getByText("OS")).toHaveStyle({ color: "var(--league-ink, #3CA505)" });
   });
 
   it("normalizes every brand occurrence without changing surrounding text", () => {

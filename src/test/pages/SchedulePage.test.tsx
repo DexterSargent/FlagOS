@@ -185,16 +185,16 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     });
   });
 
-  it("opens automated schedule builder modal when clicking Auto Schedule Builder", async () => {
+  it("opens automated schedule builder modal when clicking Build Schedule", async () => {
     await renderSchedule();
 
-    const autoGenBtn = await screen.findByRole("button", { name: /Auto Schedule Builder/i });
+    const autoGenBtn = await screen.findByRole("button", { name: /Build Schedule/i });
     fireEvent.click(autoGenBtn);
 
     await waitFor(() => {
       // Modal is visible
-      expect(screen.getByText(/Automated Schedule Builder/i)).toBeInTheDocument();
-      expect(screen.getByText(/Scheduling Matrix Engine/i)).toHaveTextContent("FlagOS Scheduling Matrix Engine");
+      expect(screen.getByRole("heading", { name: /^Build Schedule$/i })).toBeInTheDocument();
+      expect(screen.getByText(/Schedule Setup/i)).toHaveTextContent("FlagOS Schedule Setup");
       expect(screen.getByText("FlagOS")).toHaveClass("normal-case");
     });
   });
@@ -208,7 +208,7 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     });
 
     // None of the admin schedule actions should exist
-    expect(screen.queryByRole("button", { name: /Auto Schedule Builder/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Build Schedule/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Schedule Game/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Playoff Format/i })).toBeNull();
     expect(screen.queryByTitle("Clear Schedule (Admin Reset)")).toBeNull();
@@ -216,18 +216,18 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     expect(screen.queryByTitle("Delete Event")).toBeNull();
   });
 
-  it("renders Auto Schedule Builder and enables modal when embedded in the interactive demo frame (?embed=true)", async () => {
+  it("renders Build Schedule and enables modal when embedded in the interactive demo frame (?embed=true)", async () => {
     mockIsLeagueAdmin = false;
     window.location = new URL("http://localhost:3000/schedule?embed=true&demo=true") as any;
     await renderSchedule();
 
-    const autoGenBtn = await screen.findByRole("button", { name: /Auto Schedule Builder/i });
+    const autoGenBtn = await screen.findByRole("button", { name: /Build Schedule/i });
     expect(autoGenBtn).toBeInTheDocument();
 
     fireEvent.click(autoGenBtn);
     await waitFor(() => {
-      expect(screen.getByText(/Automated Schedule Builder/i)).toBeInTheDocument();
-      expect(screen.getByText(/Scheduling Matrix Engine/i)).toHaveTextContent("FlagOS Scheduling Matrix Engine");
+      expect(screen.getByRole("heading", { name: /^Build Schedule$/i })).toBeInTheDocument();
+      expect(screen.getByText(/Schedule Setup/i)).toHaveTextContent("FlagOS Schedule Setup");
       expect(screen.getByText("FlagOS")).toHaveClass("normal-case");
     });
   });

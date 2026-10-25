@@ -229,7 +229,7 @@ describe("LeagueHeader Component", () => {
 
     render(<LeagueHeader activePage="league" />);
 
-    expect(screen.getByText("Demo")).toHaveAttribute("title", "Interactive Demo Sandbox");
+    expect(screen.getByText("Demo")).toHaveAttribute("title", "Demo league: changes reset when you leave");
     expect(screen.queryByText("Demo League Sandbox")).not.toBeInTheDocument();
 
     // Links to unlogged-in pages exist

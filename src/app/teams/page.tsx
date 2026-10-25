@@ -256,7 +256,7 @@ export default function TeamsPage() {
 
   const handleAssignFreeAgent = async (playerId: string, targetTeamId: string) => {
     if (!isLeagueAdmin) {
-      alert("Only league administrators can assign players to a franchise.");
+      alert("Only league administrators can assign players to a team.");
       return;
     }
     if (!targetTeamId) return;
@@ -419,7 +419,7 @@ export default function TeamsPage() {
     }
 
     const deleteTeamOnly = window.confirm(
-      `Would you like to delete "${activeTeam?.name || "this team"}" but KEEP your ${currentPaid} paid team slots for a future franchise?`
+      `Would you like to delete "${activeTeam?.name || "this team"}" but KEEP your ${currentPaid} paid team slots for a future team?`
     );
     if (!deleteTeamOnly) return;
 
@@ -631,24 +631,24 @@ export default function TeamsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#07090E] text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col justify-between">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans selection:bg-blue-500/30 selection:text-blue-200 flex flex-col justify-between">
 
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-cyan-900/15 rounded-full blur-[160px]"></div>
-        <div className="absolute bottom-10 left-10 w-[35rem] h-[35rem] bg-blue-900/10 rounded-full blur-[170px]"></div>
+        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-cyan-900/5 dark:bg-cyan-900/15 rounded-full blur-[160px]"></div>
+        <div className="absolute bottom-10 left-10 w-[35rem] h-[35rem] bg-blue-900/5 dark:bg-blue-900/10 rounded-full blur-[170px]"></div>
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-8 relative z-10 w-full px-6 py-8 flex-1">
+      <div className="max-w-7xl mx-auto space-y-8 relative z-10 w-full px-4 sm:px-6 py-6 sm:py-8 flex-1">
         {/* Header */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/10 pb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
           <div>
             {!activeTeamId ? (
-              <div className="flex items-center gap-2 mb-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-300 uppercase tracking-widest">
-                  {settings.seasonTitle || "Active Season"} Franchises
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-widest">
+                  {settings.seasonTitle || "Current Season"} Teams
                 </span>
-                <span className="text-neutral-500 text-xs">•</span>
+                <span className="text-[var(--text-muted)] text-xs">•</span>
                 <span className="text-[11px] font-mono text-neutral-400">
                   {settings.tagline || "Official League Roster"}
                 </span>
@@ -687,7 +687,7 @@ export default function TeamsPage() {
                     {activeTeam.name}
                     {canManageTeam(activeTeam.id) && (
                       <div className="flex gap-2">
-                        <button onClick={() => { setEditTeamNameValue(activeTeam.name); setIsEditingTeamName(true); }} className="text-neutral-500 hover:text-white transition-colors text-xs font-normal px-2.5 py-1 bg-white/5 rounded-md cursor-pointer">Edit Name</button>
+                        <button onClick={() => { setEditTeamNameValue(activeTeam.name); setIsEditingTeamName(true); }} className="text-[var(--text-muted)] hover:text-white transition-colors text-xs font-normal px-2.5 py-1 bg-white/5 rounded-md cursor-pointer">Edit Name</button>
                         <button onClick={handleDeleteTeam} className="text-red-500/50 hover:text-red-500 transition-colors text-xs font-normal px-2.5 py-1 bg-red-500/10 rounded-md cursor-pointer">Delete Team</button>
                       </div>
                     )}
@@ -699,8 +699,8 @@ export default function TeamsPage() {
             </h1>
             <p className="text-neutral-400 text-xs md:text-sm mt-1 max-w-xl">
               {activeTeam
-                ? "Franchise roster, player numbers, positions, and stat leaders."
-                : `Official team registry competing in the ${settings.seasonTitle || "current season"}.`}
+                ? "Team roster, player numbers, positions, and stat leaders."
+                : `Teams competing in the ${settings.seasonTitle || "current season"}.`}
             </p>
           </div>
 
@@ -745,7 +745,7 @@ export default function TeamsPage() {
               <div className="space-y-0.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-black uppercase tracking-wider text-slate-100 dark:text-white">
-                    Franchise Subscription &amp; Capacity
+                    League Subscription &amp; Team Capacity
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
                     {competitiveTeams.length} of {subscription?.teamCount || 8} Slots Used
@@ -757,7 +757,7 @@ export default function TeamsPage() {
                   )}
                 </div>
                 <div className="text-xs text-slate-400 dark:text-neutral-400 flex flex-wrap items-center gap-2">
-                  <span>${subscription?.totalMonthlyFee || 160}/mo ($40 base + ${(subscription?.teamCount || 8)} × $15)</span>
+                  <span>${subscription?.totalMonthlyFee ?? (40 + (subscription?.teamCount ?? 8) * (subscription?.perTeamMonthlyFee ?? 20))}/mo ($40 base + {subscription?.teamCount ?? 8} × ${subscription?.perTeamMonthlyFee ?? 20})</span>
                   <span>•</span>
                   <span>
                     Renews on{" "}
@@ -807,7 +807,7 @@ export default function TeamsPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold uppercase tracking-wide text-neutral-300 flex items-center gap-2">
                   <Shield className="w-5 h-5 text-cyan-400" />
-                  <span>Official Franchises ({competitiveTeams.length})</span>
+                  <span>League Teams ({competitiveTeams.length})</span>
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -864,7 +864,7 @@ export default function TeamsPage() {
                               {teamRosterCount}/30 Players
                             </span>
                             {teamRosterCount < (settings.rules?.minRosterSize || 5) && (
-                              <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-300 rounded text-[9px] font-bold border border-amber-500/30">
+                              <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-300 rounded text-[10px] font-bold border border-amber-500/30">
                                 Below Min
                               </span>
                             )}
@@ -890,16 +890,16 @@ export default function TeamsPage() {
                       <div className="relative z-10 mt-auto w-full pt-4 border-t border-white/5">
                         <div className="flex justify-between items-end mb-2">
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-widest block mb-0.5">Record</span>
+                            <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-widest block mb-0.5">Record</span>
                             <span className="text-lg font-black text-white">{w}-{l}-{t}</span>
                           </div>
                           <div className="text-right">
-                            <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-widest block mb-0.5">Next Match</span>
+                            <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-widest block mb-0.5">Next Match</span>
                             <span className="text-xs font-semibold text-neutral-300">{upcomingStr}</span>
                           </div>
                         </div>
                         <div className="text-[11px] font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center gap-1 mt-1">
-                          <span>Enter Team Portal</span>
+                          <span>View Team</span>
                           <span>→</span>
                         </div>
                       </div>
@@ -917,10 +917,10 @@ export default function TeamsPage() {
                 <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-[10px] font-bold text-cyan-300 uppercase tracking-widest">
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-widest">
                         Draft Pool
                       </span>
-                      <span className="text-neutral-500 text-xs">•</span>
+                      <span className="text-[var(--text-muted)] text-xs">•</span>
                       <span className="text-xs text-neutral-400 font-mono">
                         {freeAgentPlayers.length} Unassigned Athlete{freeAgentPlayers.length === 1 ? "" : "s"}
                       </span>
@@ -930,7 +930,7 @@ export default function TeamsPage() {
                       <span>Free Agent Player Pool</span>
                     </h2>
                     <p className="text-neutral-400 text-xs md:text-sm max-w-2xl">
-                      Athletes awaiting assignment to an active franchise roster. Team admins can scout available talent; only league commissioners can assign athletes to a franchise.
+                      Players waiting for a team. Coaches can view available players; only league commissioners can assign them to teams.
                     </p>
                   </div>
 
@@ -989,9 +989,9 @@ export default function TeamsPage() {
                           ? "No free agents currently waiting in the draft pool."
                           : "No free agents match your current filters."}
                       </p>
-                      <p className="text-neutral-500 text-xs">
+                      <p className="text-[var(--text-muted)] text-xs">
                         {freeAgentPlayers.length === 0
-                          ? "Athletes who complete the registration form will appear here until assigned to an active franchise."
+                          ? "Registered players appear here until assigned to a team."
                           : "Try clearing your search query or position filter."}
                       </p>
                       {freeAgentPlayers.length === 0 && canRegisterAsPlayer && (
@@ -1013,7 +1013,7 @@ export default function TeamsPage() {
                           <th className="py-3 px-4">Experience</th>
                           <th className="py-3 px-4">Preferred Teammates</th>
                           {isLeagueAdmin && (
-                            <th className="py-3 px-4 text-right">Assign to Franchise</th>
+                            <th className="py-3 px-4 text-right">Assign to Team</th>
                           )}
                         </tr>
                       </thead>
@@ -1036,7 +1036,7 @@ export default function TeamsPage() {
                                   <span>{player.playerName}</span>
                                 </button>
                                 {player.email && (
-                                  <span className="text-[10px] text-neutral-500 font-mono block">
+                                  <span className="text-[10px] text-[var(--text-muted)] font-mono block">
                                     {player.email}
                                   </span>
                                 )}
@@ -1054,7 +1054,7 @@ export default function TeamsPage() {
                                 </div>
                               </td>
                               <td className="py-3.5 px-4 text-neutral-300">
-                                {player.experience || <span className="text-neutral-500 italic">Not stated</span>}
+                                {player.experience || <span className="text-[var(--text-muted)] italic">Not stated</span>}
                               </td>
                               <td className="py-3.5 px-4">
                                 {player.preferredTeammateNames && player.preferredTeammateNames.length > 0 ? (
@@ -1219,7 +1219,7 @@ export default function TeamsPage() {
                               ) : (
                                 <button
                                   onClick={() => { setEditingPlayerId(player.id); setEditTeamId(player.teamId); }}
-                                  className="flex items-center gap-2 px-2 py-1.5 text-[10px] font-bold uppercase text-neutral-500 hover:text-white bg-black border border-white/5 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                                  className="flex items-center gap-2 px-2 py-1.5 text-[10px] font-bold uppercase text-[var(--text-muted)] hover:text-white bg-black border border-white/5 rounded-md opacity-0 group-hover:opacity-100 transition-all"
                                 >
                                   <ArrowRightLeft className="w-3 h-3" /> Swap
                                 </button>
@@ -1230,7 +1230,7 @@ export default function TeamsPage() {
                       ))}
                       {teamPlayers.length === 0 && !isAddingPlayer && (
                         <tr>
-                          <td colSpan={2} className="py-12 text-center text-neutral-500 italic text-sm">
+                          <td colSpan={2} className="py-12 text-center text-[var(--text-muted)] italic text-sm">
                             No players found. Add one above.
                           </td>
                         </tr>
@@ -1280,19 +1280,19 @@ export default function TeamsPage() {
                     <div className="space-y-4">
                       <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-neutral-400">Passing TDs</span>
-                        <span className="font-bold">{topPasser.val > 0 ? `${topPasser.name} (${topPasser.val})` : <span className="text-sm text-neutral-500 italic">No data yet</span>}</span>
+                        <span className="font-bold">{topPasser.val > 0 ? `${topPasser.name} (${topPasser.val})` : <span className="text-sm text-[var(--text-muted)] italic">No data yet</span>}</span>
                       </div>
                       <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-neutral-400">Receiving TDs</span>
-                        <span className="font-bold">{topRec.val > 0 ? `${topRec.name} (${topRec.val})` : <span className="text-sm text-neutral-500 italic">No data yet</span>}</span>
+                        <span className="font-bold">{topRec.val > 0 ? `${topRec.name} (${topRec.val})` : <span className="text-sm text-[var(--text-muted)] italic">No data yet</span>}</span>
                       </div>
                       <div className="flex justify-between items-center border-b border-white/5 pb-2">
                         <span className="text-neutral-400">Flags</span>
-                        <span className="font-bold">{topFlags.val > 0 ? `${topFlags.name} (${topFlags.val})` : <span className="text-sm text-neutral-500 italic">No data yet</span>}</span>
+                        <span className="font-bold">{topFlags.val > 0 ? `${topFlags.name} (${topFlags.val})` : <span className="text-sm text-[var(--text-muted)] italic">No data yet</span>}</span>
                       </div>
                       <div className="flex justify-between items-center pb-2">
                         <span className="text-neutral-400">Interceptions</span>
-                        <span className="font-bold">{topInts.val > 0 ? `${topInts.name} (${topInts.val})` : <span className="text-sm text-neutral-500 italic">No data yet</span>}</span>
+                        <span className="font-bold">{topInts.val > 0 ? `${topInts.name} (${topInts.val})` : <span className="text-sm text-[var(--text-muted)] italic">No data yet</span>}</span>
                       </div>
                     </div>
                   </div>
@@ -1306,7 +1306,7 @@ export default function TeamsPage() {
                       <h3 className="text-xl font-bold">Past Results</h3>
                     </div>
                     {pastMatches.length === 0 ? (
-                      <div className="flex items-center justify-center py-12 text-neutral-500 italic text-sm">
+                      <div className="flex items-center justify-center py-12 text-[var(--text-muted)] italic text-sm">
                         No past games found.
                       </div>
                     ) : (
@@ -1321,7 +1321,7 @@ export default function TeamsPage() {
                           return (
                             <Link href={`/matches/${m.id}`} key={m.id} className="bg-neutral-950 border border-white/5 p-4 rounded-xl flex items-center justify-between hover:bg-white/5 transition-colors group">
                               <div>
-                                <span className="text-xs text-neutral-500 uppercase font-bold tracking-widest">{new Date(m.date).toLocaleDateString()}</span>
+                                <span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{new Date(m.date).toLocaleDateString()}</span>
                                 <p className="font-bold text-white mt-1 group-hover:text-blue-400 transition-colors">vs {opponent}</p>
                               </div>
                               <div className="flex items-center gap-3">
@@ -1343,7 +1343,7 @@ export default function TeamsPage() {
                       <h3 className="text-xl font-bold">Upcoming Games</h3>
                     </div>
                     {upcomingMatches.length === 0 ? (
-                      <div className="flex items-center justify-center py-12 text-neutral-500 italic text-sm">
+                      <div className="flex items-center justify-center py-12 text-[var(--text-muted)] italic text-sm">
                         No upcoming games scheduled.
                       </div>
                     ) : (
@@ -1355,12 +1355,12 @@ export default function TeamsPage() {
                           return (
                             <div key={m.id} className="bg-neutral-950 border border-white/5 p-4 rounded-xl flex items-center justify-between">
                               <div>
-                                <span className="text-xs text-neutral-500 uppercase font-bold tracking-widest">{dateObj.toLocaleDateString()}</span>
+                                <span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{dateObj.toLocaleDateString()}</span>
                                 <p className="font-bold text-white mt-1">vs {opponent}</p>
                               </div>
                               <div className="text-right">
                                 <span className="text-sm font-bold text-emerald-400">{dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                <p className="text-xs text-neutral-500 uppercase font-bold tracking-widest mt-1">{m.location || 'TBA'}</p>
+                                <p className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest mt-1">{m.location || 'TBA'}</p>
                               </div>
                             </div>
                           );
@@ -1499,7 +1499,7 @@ export default function TeamsPage() {
               </div>
             )}
 
-            <p className="text-xs text-neutral-500 text-center mt-8 italic">Stats will update automatically after games.</p>
+            <p className="text-xs text-[var(--text-muted)] text-center mt-8 italic">Stats will update automatically after games.</p>
           </div>
         </div>
       )}

@@ -343,23 +343,24 @@ export default function AutomatedScheduleBuilderModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
       <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center">
+            <div className="w-10 h-10 shrink-0 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center">
               <Zap className="w-5 h-5 fill-current" />
             </div>
             <div>
               <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
-                <span className="normal-case">FlagOS</span> Scheduling Matrix Engine
+                <span className="normal-case">FlagOS</span> Schedule Setup
               </span>
-              <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight">
-                Automated Schedule Builder
+              <h3 className="text-base sm:text-xl md:text-2xl font-black text-white uppercase tracking-tight">
+                Build Schedule
               </h3>
             </div>
           </div>
 
           <button
             onClick={onClose}
+            aria-label="Close schedule builder"
             className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -371,10 +372,10 @@ export default function AutomatedScheduleBuilderModal({
           {phase === "form" && (
             <div className="space-y-6">
               {/* Franchise Indicator */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Participating Franchises
+                    Participating Teams
                   </h4>
                   <p className="text-[11px] text-neutral-400">
                     Balanced round-robin rotation for all active teams in the league.
@@ -504,7 +505,7 @@ export default function AutomatedScheduleBuilderModal({
                       <span>Playoff Tournament Format</span>
                       <FieldHelpTooltip
                         title="Playoff Structure"
-                        content="Configure whether top seeded teams advance into single elimination or double elimination championship knockout brackets upon regular season conclusion."
+                        content="Choose whether teams are eliminated after one loss or two losses."
                       />
                     </h4>
                   </div>
@@ -514,7 +515,7 @@ export default function AutomatedScheduleBuilderModal({
                     className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold border transition-colors ${
                       includePlayoffs
                         ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
-                        : "bg-black border-white/10 text-neutral-500"
+                        : "bg-black border-white/10 text-[var(--text-muted)]"
                     }`}
                   >
                     {includePlayoffs ? "Playoffs Enabled ✓" : "Regular Season Only"}
@@ -526,7 +527,7 @@ export default function AutomatedScheduleBuilderModal({
                     <div className="flex items-center justify-between p-3.5 rounded-xl bg-black/60 border border-white/10">
                       <div>
                         <label className="text-xs font-mono font-bold text-white block">
-                          Playoff Qualifying Franchises
+                          Playoff Qualifying Teams
                         </label>
                         <span className="text-[10px] text-neutral-400">
                           Choose any amount from 2 up to league total ({eligibleTeams.length})
@@ -556,7 +557,7 @@ export default function AutomatedScheduleBuilderModal({
                         onClick={() => setPlayoffStructure("single_elimination")}
                         className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
                           playoffStructure === "single_elimination"
-                            ? "bg-cyan-500/15 border-cyan-500/50 text-white shadow-sm"
+                            ? "bg-cyan-500/15 border-cyan-500/50 text-[var(--text-primary)] shadow-sm"
                             : "bg-black/40 border-white/10 text-neutral-400 hover:text-white"
                         }`}
                       >
@@ -568,7 +569,7 @@ export default function AutomatedScheduleBuilderModal({
                         onClick={() => setPlayoffStructure("double_elimination")}
                         className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
                           playoffStructure === "double_elimination"
-                            ? "bg-amber-500/15 border-amber-500/50 text-white shadow-sm"
+                            ? "bg-amber-500/15 border-amber-500/50 text-[var(--text-primary)] shadow-sm"
                             : "bg-black/40 border-white/10 text-neutral-400 hover:text-white"
                         }`}
                       >
@@ -651,7 +652,8 @@ export default function AutomatedScheduleBuilderModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveVenue(i)}
-                          className="text-neutral-500 hover:text-rose-400 transition-colors"
+                          aria-label={`Remove field ${v}`}
+                          className="min-h-9 min-w-9 inline-flex items-center justify-center text-[var(--text-muted)] hover:text-rose-400 transition-colors"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -685,7 +687,7 @@ export default function AutomatedScheduleBuilderModal({
                   <span>Kickoff Time Slots ({timeSlots.length})</span>
                   <FieldHelpTooltip
                     title="Kickoff Times"
-                    content="Game start times on matchdays. Games will be sequentially slated into these available slots."
+                    content="Game start times on matchdays. Games are assigned to these available kickoff times."
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -699,7 +701,8 @@ export default function AutomatedScheduleBuilderModal({
                         <button
                           type="button"
                           onClick={() => handleRemoveTime(i)}
-                          className="text-neutral-500 hover:text-rose-400 transition-colors"
+                          aria-label={`Remove kickoff time ${ts}`}
+                          className="min-h-9 min-w-9 inline-flex items-center justify-center text-[var(--text-muted)] hover:text-rose-400 transition-colors"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -785,7 +788,7 @@ export default function AutomatedScheduleBuilderModal({
                           {m.week}
                         </span>
                         <span className="text-white font-bold truncate">
-                          {m.homeTeamName} <span className="text-neutral-500">vs</span> {m.awayTeamName}
+                          {m.homeTeamName} <span className="text-[var(--text-muted)]">vs</span> {m.awayTeamName}
                         </span>
                       </div>
                       <div className="shrink-0 text-right text-[10px] text-neutral-400">
@@ -795,7 +798,7 @@ export default function AutomatedScheduleBuilderModal({
                   ))}
 
                   {generatedStream.length === 0 && (
-                    <div className="flex items-center justify-center h-full text-neutral-500 italic text-xs">
+                    <div className="flex items-center justify-center h-full text-[var(--text-muted)] italic text-xs">
                       Initiating scheduling matrix...
                     </div>
                   )}
@@ -887,7 +890,7 @@ export default function AutomatedScheduleBuilderModal({
               </button>
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-cyan-500/30 flex items-center gap-2 cursor-pointer"
+                className="px-6 py-3 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-cyan-500/30 flex items-center gap-2 cursor-pointer"
               >
                 <span>View Full Schedule & Bracket</span>
                 <ArrowRight className="w-4 h-4" />

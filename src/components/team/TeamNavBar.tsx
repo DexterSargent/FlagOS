@@ -83,7 +83,7 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
           </span>
         </Link>
 
-        <ul className="flex flex-1 items-stretch justify-end gap-0.5 lg:gap-1 min-w-0">
+        <ul className="flex flex-1 items-stretch justify-end gap-0 lg:gap-1 min-w-0">
           {sections.map(({ key, label, mobileLabel, path, icon: Icon }) => {
             const isActive = active === key;
             return (
@@ -92,10 +92,10 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
                   href={`/teams/${teamId}${path}`}
                   aria-label={label}
                   aria-current={isActive ? "page" : undefined}
-                  className={`relative flex flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1.5 h-12 lg:h-10 px-0.5 lg:px-3 rounded-lg text-[9px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${
+                  className={`relative flex flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1.5 h-12 lg:h-10 px-0.5 lg:px-3 rounded-lg text-[10px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${
                     isActive ? "text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
                   }`}
-                  style={isActive ? { backgroundColor: `${accent}22`, color: accent } : undefined}
+                  style={isActive ? { backgroundColor: `${accent}22`, color: "var(--team-ink)" } : undefined}
                 >
                   <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                   <span className="lg:hidden">{mobileLabel}</span>

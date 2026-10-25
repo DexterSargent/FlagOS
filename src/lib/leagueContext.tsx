@@ -9,6 +9,7 @@ import {
   isDemoLeague as checkIsDemoLeague,
 } from "./demoSandboxRuntime";
 import { FLAGOS_LOGO } from "./brandTokens";
+import { INK_SURFACE_DARK, INK_SURFACE_LIGHT, readableInk } from "./teamColors";
 import { auth } from "./firebase";
 import { createSecureRecord } from "./secureWrites";
 import { useAuth } from "./authContext";
@@ -531,6 +532,8 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
       root.style.setProperty("--league-accent", a);
       root.style.setProperty("--league-primary-rgb", `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`);
       root.style.setProperty("--league-accent-rgb", `${aRgb.r}, ${aRgb.g}, ${aRgb.b}`);
+      root.style.setProperty("--league-ink-dark", readableInk(p, INK_SURFACE_DARK));
+      root.style.setProperty("--league-ink-light", readableInk(p, INK_SURFACE_LIGHT));
 
       // Inject full primary shade palette dynamically
       Object.entries(pShades).forEach(([shade, hex]) => {

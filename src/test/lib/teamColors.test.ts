@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, getTeamBadgeStyle, getTeamCssVariables } from "@/lib/teamColors";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, getTeamBadgeStyle, getTeamCssVariables, readableInk, INK_SURFACE_DARK, INK_SURFACE_LIGHT } from "@/lib/teamColors";
 
 describe("resolveTeamColorPalette", () => {
   it("uses legacy team colors and sensible defaults when newer palette fields are missing", () => {
@@ -53,4 +53,29 @@ describe("resolveTeamColorPalette", () => {
   });
 });
 
+describe("readableInk", () => {
+  const lum = (hex: string) => {
+    const v = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  };
+  const ratio = (a: string, b: string) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
 
+  it("lightens dark team colors until they are readable on dark surfaces", () => {
+    const ink = readableInk("#00338d", INK_SURFACE_DARK);
+    expect(ratio(ink, INK_SURFACE_DARK)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("darkens light team colors until they are readable on light surfaces", () => {
+    const ink = readableInk("#ffd700", INK_SURFACE_LIGHT);
+    expect(ratio(ink, INK_SURFACE_LIGHT)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("emits ink variables with team CSS variables", () => {
+    const vars = getTeamCssVariables(DEFAULT_TEAM_COLOR_PALETTE);
+    expect(vars["--team-ink-dark"]).toMatch(/^#|^rgb/);
+    expect(vars["--team-ink-light"]).toMatch(/^#|^rgb/);
+  });
+});

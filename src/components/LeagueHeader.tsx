@@ -161,7 +161,8 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <>
                 <Link
                   href="/"
-                  title="Return to FlagOS Platform Home"
+                  title="FlagOS home"
+                  aria-label="FlagOS home"
                   className="flex items-center gap-1 px-2 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/10 shrink-0 text-xs font-bold group"
                 >
                   <ArrowLeft className="w-3.5 h-3.5 text-slate-400 dark:text-neutral-500 group-hover:text-emerald-500 group-hover:-translate-x-0.5 transition-all" />
@@ -198,7 +199,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   />
                 ) : isCustomOrPaidLeague ? (
                   <div
-                    className={`w-full h-full rounded-xl flex items-center justify-center font-black uppercase shadow text-white tracking-tighter ${(settings.shortcode?.length ?? 0) > 3 ? "text-[9px]" : "text-xs"}`}
+                    className={`w-full h-full rounded-xl flex items-center justify-center font-black uppercase shadow text-white tracking-tighter ${(settings.shortcode?.length ?? 0) > 3 ? "text-[10px]" : "text-xs"}`}
                     style={{
                       background: `linear-gradient(135deg, var(--league-primary, #10b981), var(--league-accent, #06b6d4))`,
                     }}
@@ -221,11 +222,11 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                     {isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}
                   </span>
                   {settings.visibility === "private" ? (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[9px] font-bold text-amber-600 dark:text-amber-400 font-mono shrink-0" title="Private League: Accessible via Direct URL">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] font-bold text-amber-700 dark:text-amber-400 font-mono shrink-0" title="Private league: only people with the link can view it" aria-label="Private league">
                       <Lock className="w-2.5 h-2.5" />
                     </span>
                   ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-pulse" title="Active Circuit" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 animate-pulse" title="Active League" />
                   )}
                 </div>
 
@@ -239,8 +240,8 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   )}
                   {isDemoLeague && (
                     <span
-                      title="Interactive Demo Sandbox"
-                      className="rounded bg-emerald-500/10 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+                      title="Demo league: changes reset when you leave"
+                      className="rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
                     >
                       Demo
                     </span>
@@ -261,9 +262,6 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-neutral-400 flex items-center gap-1.5">
                     <Building2 className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                     <span>My Leagues</span>
-                  </span>
-                  <span className="text-[9px] font-mono text-cyan-700 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded font-bold">
-                    Multi-Tenant
                   </span>
                 </div>
 
@@ -421,7 +419,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                   resolvedActivePage === "playbook"
                     ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-white/10"
-                    : "text-emerald-600/90 dark:text-emerald-400/90 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
+                    : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
@@ -436,7 +434,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                   resolvedActivePage === "join"
                     ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-white/10"
-                    : "text-emerald-600/90 dark:text-emerald-400/90 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
+                    : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
                 }`}
               >
                 <UserPlus className="w-3.5 h-3.5" />
@@ -502,6 +500,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
                 <Link
                   href="/login"
+                  aria-label="Sign in"
                   className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
                 >
                   <LogIn className="w-3.5 h-3.5 shrink-0" />
@@ -511,6 +510,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             ) : (
               <Link
                 href={user ? "/profile" : "/login"}
+                aria-label={user ? "My account" : "Sign in"}
                 className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
               >
                 {isLeagueAdmin ? (

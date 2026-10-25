@@ -54,9 +54,7 @@ describe("LeagueFooter White-Labeling & Branding Specification", () => {
 
     // FlagOS Home link is present in demo league
     expect(screen.getByRole("link", { name: /← FlagOS Home/i })).toBeInTheDocument();
-
-    // System indicator is present in demo league
-    expect(screen.getByText(/System:/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Pricing" })).toBeInTheDocument();
   });
 
   it("STRICT WHITE-LABELING: custom or paid customer leagues ONLY have the Powered by FlagOS disclaimer", () => {
@@ -95,7 +93,7 @@ describe("LeagueFooter White-Labeling & Branding Specification", () => {
     // Extra FlagOS Home link MUST NOT be present on custom/paid leagues
     expect(screen.queryByRole("link", { name: /← FlagOS Home/i })).toBeNull();
 
-    // System Multi-Tenant indicator with extra FlagOS logo MUST NOT be present
-    expect(screen.queryByText(/System:/i)).toBeNull();
+    // Customer leagues get plan wording instead of FlagOS marketing links
+    expect(screen.getByRole("link", { name: "Plans" })).toBeInTheDocument();
   });
 });

@@ -188,7 +188,7 @@ export default function LoginPage() {
           <div className="w-full mb-6 p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs flex items-center gap-2.5">
             <Lock className="w-4 h-4 shrink-0 text-cyan-400" />
             <span>
-              <strong>Authentication Required:</strong> Access to FlagOS league portals, private playbooks, and schedules is restricted to authorized coaches, players, and commissioners.
+              <strong>Sign-In Required:</strong> Sign in to access your private league and team pages.
             </span>
           </div>
         )}
@@ -218,7 +218,7 @@ export default function LoginPage() {
           Sign In
         </h1>
         <p className="text-neutral-400 text-xs text-center mb-6">
-          Sign in with your authorized email or Google account to access your league portals.
+          Sign in with your email or Google account to access your teams and leagues.
         </p>
 
         {/* Email-only roster role simulation is intentionally limited to local development. */}
@@ -227,21 +227,21 @@ export default function LoginPage() {
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" />
-                <span>Athlete / Coach Email Sign-In</span>
+                <span>Local Email Preview</span>
               </span>
-              <span className="text-[10px] text-neutral-500 font-mono">Instant Verification</span>
+              <span className="text-[10px] text-slate-600 dark:text-neutral-400 font-mono">Preview only</span>
             </div>
             <p className="text-[11px] text-neutral-400">
-              Enter the email address registered with your rostered player account or team coaching staff to access private rosters, playbooks, and stats.
+              Preview a player or coach account using an email on the local roster. This tool is only available in local development.
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="email"
                 required
                 value={playerLoginEmail}
                 onChange={(e) => setPlayerLoginEmail(e.target.value)}
                 placeholder="e.g. athlete@flagos.ca"
-                className="flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 font-mono"
+                className="min-w-0 w-full flex-1 px-3.5 py-2.5 rounded-xl bg-neutral-900 border border-white/10 text-white text-xs outline-none focus:border-emerald-500 font-mono"
               />
               <button
                 type="submit"
@@ -449,10 +449,10 @@ export default function LoginPage() {
           <div className="w-full border-t border-white/10 pt-6">
             <div className="flex items-center justify-between mb-4">
               <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                Role Switcher (Localhost Simulation)
+                Preview a Role
               </span>
-              <span className="text-[10px] text-cyan-400/80 bg-cyan-400/10 px-2 py-0.5 rounded font-mono">
-                Local Dev Only
+              <span className="text-[10px] text-emerald-800 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">
+                Local preview only
               </span>
             </div>
 
@@ -492,11 +492,11 @@ export default function LoginPage() {
                   {isTeamAdmin() && <CheckCircle2 className="w-4 h-4 text-blue-400" />}
                 </div>
 
-                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 pt-2 border-t border-white/5">
                   <select
                     value={selectedTeamId}
                     onChange={(e) => setSelectedTeamId(e.target.value)}
-                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                    className="min-w-0 w-full min-h-10 flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
                   >
                     {teams.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -513,7 +513,7 @@ export default function LoginPage() {
                       }
                     }}
                     disabled={!selectedTeamId}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                    className="min-h-10 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                   >
                     Apply & Go
                   </button>
@@ -536,11 +536,11 @@ export default function LoginPage() {
                   {isPlayer && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                 </div>
 
-                <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mt-3 pt-2 border-t border-white/5">
                   <select
                     value={selectedPlayerId}
                     onChange={(e) => setSelectedPlayerId(e.target.value)}
-                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="min-w-0 w-full min-h-10 flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
                     {players.map((p) => {
                       const team = teams.find((t) => t.id === p.teamId);
@@ -561,7 +561,7 @@ export default function LoginPage() {
                       }
                     }}
                     disabled={!selectedPlayerId}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                    className="min-h-10 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                   >
                     Sign In As Player
                   </button>

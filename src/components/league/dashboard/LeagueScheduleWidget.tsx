@@ -55,7 +55,7 @@ export function LeagueScheduleWidget({
               Live & Upcoming Games
             </h2>
             {liveCount > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+              <span className="px-2.5 py-0.5 rounded-full bg-red-50 dark:bg-red-500/20 border border-red-500/40 text-red-700 dark:text-red-300 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
@@ -65,7 +65,7 @@ export function LeagueScheduleWidget({
             )}
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            Real-time live scores, active match clocks, and next scheduled games across the league.
+            Live scores, game clocks, and upcoming games.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export function LeagueScheduleWidget({
       </div>
 
       {games.length === 0 ? (
-        <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-line-subtle flex flex-col items-center justify-center gap-3">
+        <div className="p-8 text-center text-[var(--text-muted)] text-xs italic bg-black/40 rounded-2xl border border-line-subtle flex flex-col items-center justify-center gap-3">
           <CalendarDays className="w-8 h-8 text-neutral-600" />
           <p>No live or upcoming games scheduled at the moment.</p>
           <Link
@@ -145,7 +145,7 @@ export function LeagueScheduleWidget({
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
                         </span>
-                        <span className="font-black uppercase tracking-wider text-red-500 animate-pulse text-[11px]">
+                        <span className="font-black uppercase tracking-wider text-red-700 dark:text-red-300 text-[11px]">
                           LIVE
                         </span>
                         <span className="text-neutral-400 font-mono text-[10px]">
@@ -205,11 +205,11 @@ export function LeagueScheduleWidget({
                         </div>
                       </div>
                       {live ? (
-                        <span className={`text-2xl font-black font-mono tabular-nums pl-2 shrink-0 ${hScore >= aScore ? "text-white" : "text-neutral-500"}`}>
+                        <span className={`text-2xl font-black font-mono tabular-nums pl-2 shrink-0 ${hScore >= aScore ? "text-white" : "text-[var(--text-muted)]"}`}>
                           {hScore}
                         </span>
                       ) : (
-                        <span className="text-[10px] font-mono text-neutral-500 uppercase">HOME</span>
+                        <span className="text-[10px] font-mono text-neutral-400 uppercase">HOME</span>
                       )}
                     </div>
 
@@ -241,11 +241,11 @@ export function LeagueScheduleWidget({
                         </div>
                       </div>
                       {live ? (
-                        <span className={`text-2xl font-black font-mono tabular-nums pl-2 shrink-0 ${aScore >= hScore ? "text-white" : "text-neutral-500"}`}>
+                        <span className={`text-2xl font-black font-mono tabular-nums pl-2 shrink-0 ${aScore >= hScore ? "text-white" : "text-[var(--text-muted)]"}`}>
                           {aScore}
                         </span>
                       ) : (
-                        <span className="text-[10px] font-mono text-neutral-500 uppercase">AWAY</span>
+                        <span className="text-[10px] font-mono text-neutral-400 uppercase">AWAY</span>
                       )}
                     </div>
                   </div>
@@ -269,7 +269,7 @@ export function LeagueScheduleWidget({
 
                   {/* Venue and Date */}
                   <div className="text-[11px] text-neutral-400 flex items-center gap-1.5 mb-3 px-1 truncate">
-                    <MapPin className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                    <MapPin className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
                     <span className="truncate">{m.location || "Field 1"}</span>
                     <span>•</span>
                     <span className="truncate">{m.date}</span>

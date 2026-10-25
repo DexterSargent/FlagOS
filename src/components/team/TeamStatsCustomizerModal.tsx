@@ -1,5 +1,6 @@
 "use client";
 
+import { getReadableTextColor } from "@/lib/teamColors";
 import React, { useState, useEffect } from "react";
 import {
   X,
@@ -35,7 +36,7 @@ interface TeamStatsCustomizerModalProps {
 
 const CATEGORY_ICONS: Record<StatCategory, React.ReactNode> = {
   record: <Trophy className="w-4 h-4 text-amber-400" />,
-  downs: <Target className="w-4 h-4 text-cyan-400" />,
+  downs: <Target className="w-4 h-4 text-[var(--team-ink)]" />,
   pats: <Zap className="w-4 h-4 text-yellow-400" />,
   offense: <Flame className="w-4 h-4 text-red-400" />,
   defense: <Shield className="w-4 h-4 text-emerald-400" />,
@@ -46,7 +47,7 @@ const CATEGORIES: { id: StatCategory; label: string; description: string }[] = [
   {
     id: "record",
     label: "Record & Scoring Overview",
-    description: "Core franchise outcomes, point totals, differentials, and averages.",
+    description: "Wins, losses, points scored, and points allowed.",
   },
   {
     id: "downs",
@@ -146,34 +147,34 @@ export default function TeamStatsCustomizerModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="custom-stats-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
-        className="w-full max-w-4xl max-h-[90vh] bg-[#0c0d12] border border-white/15 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white"
+        className="w-full max-w-4xl max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] bg-[var(--surface)] border border-white/15 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white"
         style={{
           boxShadow: `0 0 50px ${primaryColor}20`,
         }}
       >
         {/* Sticky Header */}
         <div className="p-5 md:p-6 border-b border-white/10 flex items-center justify-between shrink-0 bg-neutral-950/80 backdrop-blur-md">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm"
+              className="hidden sm:flex shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center border shadow-sm"
               style={{ backgroundColor: secondaryColor, borderColor: `${primaryColor}40` }}
             >
-              <Sliders className="w-5 h-5" style={{ color: primaryColor }} />
+              <Sliders className="w-5 h-5" style={{ color: getReadableTextColor(secondaryColor, primaryColor) }} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 id="custom-stats-title" className="text-lg md:text-xl font-black uppercase tracking-wide">
-                  Customize Team Stats Display
+                  Choose Team Stats
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/10 text-neutral-300 border border-white/10 uppercase">
                   {teamName}
                 </span>
               </div>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Choose which stats appear on the team portal. Hidden stats remain safely calculated in the background.
+                Choose which stats appear on your team page. All other stats are still recorded.
               </p>
             </div>
           </div>
@@ -189,27 +190,27 @@ export default function TeamStatsCustomizerModal({
         {/* Action Bar: Presets & Filters */}
         <div className="px-5 py-3 border-b border-white/10 bg-white/[0.02] flex flex-wrap items-center justify-between gap-3 shrink-0">
           {/* Quick Presets */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleResetToDefault}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/15 text-white transition-colors border border-white/10"
+              className="inline-flex items-center gap-1.5 min-h-9 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/10 hover:bg-white/15 text-white transition-colors border border-white/10"
               title="Reset to default (Record, Points For, and Points Allowed only)"
             >
               <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-              <span>Reset to Default (Record, PF, PA)</span>
+              <span>Reset to Default</span>
             </button>
             <button
               type="button"
               onClick={handleSelectAll}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors border border-white/10"
+              className="min-h-9 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-colors border border-white/10"
             >
               Select All
             </button>
             <button
               type="button"
               onClick={handleClearAll}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-red-400 transition-colors border border-white/10"
+              className="min-h-9 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-red-400 transition-colors border border-white/10"
             >
               Clear All
             </button>
@@ -218,17 +219,17 @@ export default function TeamStatsCustomizerModal({
           {/* Selected Count Indicator */}
           <div className="flex items-center gap-2 text-xs">
             <span className="text-neutral-400">Selected:</span>
-            <span className="px-2 py-0.5 rounded-full font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            <span className="px-2 py-0.5 rounded-full font-mono font-bold bg-[var(--surface)] text-[var(--team-ink)] border border-cyan-500/30">
               {selectedIds.length} / {TEAM_STAT_DEFINITIONS.length}
             </span>
           </div>
         </div>
 
         {/* Category Filter Pills */}
-        <div className="px-5 py-2.5 border-b border-white/5 bg-neutral-950/40 flex items-center gap-2 overflow-x-auto text-xs shrink-0 no-scrollbar">
+        <div className="px-5 py-2.5 border-b border-white/5 bg-[var(--surface-inset)] flex items-center gap-2 overflow-x-auto text-xs shrink-0 no-scrollbar">
           <button
             onClick={() => setFilterCategory("all")}
-            className={`px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap ${
+            className={`min-h-9 px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap ${
               filterCategory === "all"
                 ? "bg-white text-black"
                 : "bg-white/5 text-neutral-400 hover:text-white border border-white/10"
@@ -245,7 +246,7 @@ export default function TeamStatsCustomizerModal({
               <button
                 key={cat.id}
                 onClick={() => setFilterCategory(cat.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap ${
+                className={`inline-flex items-center gap-1.5 min-h-9 px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap ${
                   filterCategory === cat.id
                     ? "bg-white text-black"
                     : "bg-white/5 text-neutral-400 hover:text-white border border-white/10"
@@ -269,7 +270,7 @@ export default function TeamStatsCustomizerModal({
 
               return (
                 <div key={cat.id} className="space-y-3">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {CATEGORY_ICONS[cat.id]}
                     <h3 className="text-sm font-black uppercase tracking-wider text-neutral-200">
                       {cat.label}
@@ -284,13 +285,16 @@ export default function TeamStatsCustomizerModal({
                       const value = def.getValue(teamStats);
 
                       return (
-                        <div
+                        <button
+                          type="button"
+                          aria-pressed={isSelected}
+                          aria-label={def.label}
                           key={def.id}
                           onClick={() => toggleStat(def.id)}
-                          className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                          className={`w-full text-left p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
                             isSelected
                               ? "bg-white/10 border-cyan-500/50 shadow-lg shadow-cyan-950/20"
-                              : "bg-white/[0.02] border-white/5 hover:border-white/15 opacity-70 hover:opacity-100"
+                              : "bg-white/[0.02] border-white/5 hover:border-white/15"
                           }`}
                         >
                           <div className="flex items-start gap-3 min-w-0">
@@ -298,7 +302,7 @@ export default function TeamStatsCustomizerModal({
                             <div
                               className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 border transition-all ${
                                 isSelected
-                                  ? "bg-cyan-500 border-cyan-400 text-black font-black"
+                                  ? "bg-white/10 border-cyan-400 text-[var(--team-ink)] font-black"
                                   : "border-white/20 bg-neutral-900"
                               }`}
                             >
@@ -306,17 +310,17 @@ export default function TeamStatsCustomizerModal({
                             </div>
 
                             <div className="min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-xs font-bold text-white tracking-tight">
                                   {def.label}
                                 </span>
                                 {isDefault && (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
                                     Default
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-neutral-400 line-clamp-1 mt-0.5">
+                              <p className="text-[11px] text-neutral-400 mt-0.5">
                                 {def.description}
                               </p>
                             </div>
@@ -324,14 +328,14 @@ export default function TeamStatsCustomizerModal({
 
                           {/* Live Preview Value */}
                           <div className="text-right shrink-0">
-                            <span className="text-xs font-mono font-black text-cyan-300">
+                            <span className="text-xs font-mono font-black text-[var(--team-ink)]">
                               {value}
                             </span>
-                            <div className="text-[9px] font-mono text-neutral-500 uppercase">
+                            <div className="text-[10px] font-mono text-neutral-500 uppercase">
                               {def.shortLabel}
                             </div>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -342,13 +346,13 @@ export default function TeamStatsCustomizerModal({
         </div>
 
         {/* Sticky Footer with Save / Cancel */}
-        <div className="p-4 md:p-5 border-t border-white/10 bg-neutral-950/90 backdrop-blur-md flex items-center justify-between shrink-0">
+        <div className="p-4 md:p-5 gap-3 flex-wrap border-t border-white/10 bg-neutral-950/90 backdrop-blur-md flex items-center justify-between shrink-0">
           <div className="text-xs text-neutral-400 flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-cyan-400" />
+            <Info className="w-4 h-4 text-[var(--team-ink)]" />
             <span>
               {selectedIds.length === 0
-                ? "No stats selected (portal stats banner will be hidden)"
-                : `${selectedIds.length} stats will be displayed on the team portal`}
+                ? "No stats selected ? the stats banner will be hidden"
+                : `${selectedIds.length} stats will appear on your team page`}
             </span>
           </div>
 
@@ -365,6 +369,7 @@ export default function TeamStatsCustomizerModal({
               type="button"
               onClick={handleSave}
               disabled={saving}
+              style={{ backgroundColor: primaryColor, color: getReadableTextColor(primaryColor, "#FFFFFF") }}
               className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-extrabold uppercase tracking-wider transition-all shadow-lg shadow-cyan-950/50 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {saving ? (
@@ -375,7 +380,7 @@ export default function TeamStatsCustomizerModal({
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Save Custom Stats</span>
+                  <span>Save Stats</span>
                 </>
               )}
             </button>

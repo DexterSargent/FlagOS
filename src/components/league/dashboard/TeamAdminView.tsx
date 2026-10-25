@@ -84,11 +84,11 @@ export function TeamAdminView({
                   <Shield className="w-3.5 h-3.5 text-cyan-400" />
                   Team Dashboard
                 </span>
-                <span className="text-neutral-500 text-xs">•</span>
+                <span className="text-[var(--text-muted)] text-xs">•</span>
                 <span className="text-[11px] font-mono text-cyan-300 uppercase font-bold">
                   {managedTeam?.shortcode || (managedTeam ? getTeamShortcode(managedTeam) : "TEAM")}
                 </span>
-                <span className="text-neutral-500 text-xs">•</span>
+                <span className="text-[var(--text-muted)] text-xs">•</span>
                 <span className="text-[11px] font-mono text-amber-400 font-bold">
                   Rank #{managedTeamStandingRank > 0 ? managedTeamStandingRank : "-"}
                 </span>
@@ -145,7 +145,7 @@ export function TeamAdminView({
         {/* Team Performance Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Season Record</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Season Record</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
               {managedTeamStanding ? `${managedTeamStanding.w}-${managedTeamStanding.l}-${managedTeamStanding.t}` : "0-0-0"}
             </div>
@@ -155,13 +155,13 @@ export function TeamAdminView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Active Roster</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Active Roster</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">{managedTeamPlayers.length}</div>
             <span className="text-[11px] text-cyan-400 mt-1 block">Athletes Signed</span>
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Point Differential</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Point Differential</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
               {managedTeamStanding
                 ? managedTeamStanding.pf - managedTeamStanding.pa > 0
@@ -175,7 +175,7 @@ export function TeamAdminView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Next Opponent</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Next Opponent</span>
             <div className="text-base font-black text-white mt-1 truncate">
               {nextOpponentName}
             </div>
@@ -314,14 +314,14 @@ export function TeamAdminView({
             </div>
 
             {managedTeamPlayers.length === 0 ? (
-              <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-line-subtle">
+              <div className="p-8 text-center text-[var(--text-muted)] text-xs italic bg-black/40 rounded-2xl border border-line-subtle">
                 No players signed to your roster yet. Click "Add Player" to register your athletes.
               </div>
             ) : (
               <div className="overflow-x-auto hide-scrollbar">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
+                    <tr className="text-[var(--text-muted)] border-b border-line-subtle font-mono uppercase">
                       <th className="pb-2 w-12">#</th>
                       <th className="pb-2">Athlete Name</th>
                       <th className="pb-2">Positions</th>
@@ -337,7 +337,7 @@ export function TeamAdminView({
                         <td className="py-2.5 font-bold text-white">
                           {p.playerName}
                           {p.isQB && (
-                            <span className="ml-2 text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            <span className="ml-2 text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                               QB
                             </span>
                           )}
@@ -391,7 +391,7 @@ export function TeamAdminView({
 
             <div className="space-y-3">
               <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                   Team Passing Leader
                 </span>
                 <div className="text-base font-black text-white mt-1 truncate">
@@ -401,7 +401,7 @@ export function TeamAdminView({
               </div>
 
               <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                   Team Receiving Leader
                 </span>
                 <div className="text-base font-black text-white mt-1 truncate">
@@ -411,7 +411,7 @@ export function TeamAdminView({
               </div>
 
               <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                   Team Touchdown Leader
                 </span>
                 <div className="text-base font-black text-white mt-1 truncate">
@@ -421,7 +421,7 @@ export function TeamAdminView({
               </div>
 
               <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                   Top Flagger (Defense)
                 </span>
                 <div className="text-base font-black text-white mt-1 truncate">
@@ -464,7 +464,7 @@ export function TeamAdminView({
         <div className="overflow-x-auto hide-scrollbar">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
+              <tr className="text-[var(--text-muted)] border-b border-line-subtle font-mono uppercase">
                 <th className="pb-2 w-8">#</th>
                 <th className="pb-2">Team</th>
                 <th className="pb-2 text-center">W</th>
@@ -508,7 +508,7 @@ export function TeamAdminView({
                         </div>
                         <span className="truncate">{row.name}</span>
                         {isMyTeam && (
-                          <span className="px-1.5 py-0.5 rounded bg-cyan-500 text-black text-[9px] font-black uppercase font-mono border border-cyan-400">
+                          <span className="px-1.5 py-0.5 rounded bg-cyan-500 text-black text-[10px] font-black uppercase font-mono border border-cyan-400">
                             YOU
                           </span>
                         )}

@@ -24,16 +24,16 @@ export function LeagueTeamsGrid({
   isEffectiveDemo,
   isEmbedded,
   isAdminView = false,
-  title = isAdminView ? "Team Registry & Admin Controls" : "Team Directory",
+  title = isAdminView ? "Manage Teams" : "Team Directory",
   subtitle = isAdminView
-    ? "Direct administrative authority over every team's roster, branding, and team settings."
-    : "Official registered franchises and athletic rosters.",
+    ? "Manage team rosters, branding, and settings."
+    : "Teams and player rosters.",
 }: LeagueTeamsGridProps) {
   const filteredTeams = teams.filter(isRealTeam);
 
   return (
     <section className="bg-surface-raised border border-line rounded-3xl p-6 md:p-8 backdrop-blur-md shadow-xl">
-      <div className="flex items-center justify-between mb-6 pb-3 border-b border-line-subtle">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-3 border-b border-line-subtle">
         <div>
           <h2 className="text-xl font-black uppercase tracking-tight text-white flex items-center gap-2">
             {isAdminView ? (
@@ -91,7 +91,7 @@ export function LeagueTeamsGrid({
                 </div>
 
                 <h4 className="text-lg font-black text-white truncate">{team.name}</h4>
-                <p className="text-xs text-neutral-400 mt-0.5">{teamRosterCount} Athletes Signed</p>
+                <p className="text-xs text-neutral-400 mt-0.5">{teamRosterCount} Players</p>
                 <div className="mt-2 text-xs font-mono text-neutral-300">
                   Record: <span className="font-bold text-white">{standing.w}-{standing.l}-{standing.t}</span>
                 </div>
@@ -101,19 +101,19 @@ export function LeagueTeamsGrid({
                 <div className="pt-4 mt-4 border-t border-line-subtle grid grid-cols-2 gap-2 text-xs">
                   <Link
                     href={`/teams/${team.id}/roster`}
-                    className="py-1.5 px-2.5 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white rounded-lg text-center font-semibold border border-line transition-colors"
+                    className="min-h-10 flex items-center justify-center py-1.5 px-2.5 bg-surface-muted hover:bg-white/10 text-neutral-300 hover:text-white rounded-lg text-center font-semibold border border-line transition-colors"
                   >
                     Roster
                   </Link>
                   <Link
                     href={isAdminView ? `/teams/${team.id}?edit=1` : `/teams/${team.id}`}
-                    className={`py-1.5 px-2.5 rounded-lg text-center font-semibold transition-colors ${
+                    className={`min-h-10 flex items-center justify-center py-1.5 px-2.5 rounded-lg text-center font-semibold transition-colors ${
                       isAdminView
                         ? "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-white border border-cyan-500/20"
                         : "bg-surface-muted hover:bg-white/10 text-cyan-400 hover:text-cyan-300 border border-line"
                     }`}
                   >
-                    {isAdminView ? "Edit Team" : "Team Portal"}
+                    {isAdminView ? "Edit Team" : "Team Page"}
                   </Link>
                 </div>
               )}

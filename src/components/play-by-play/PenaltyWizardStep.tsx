@@ -176,7 +176,7 @@ export default function PenaltyWizardStep({
                   <span className="flex min-w-0 items-center gap-2">
                     <Shield className="h-4 w-4 shrink-0 text-amber-500" />
                     <span className="min-w-0">
-                      <span className="block text-[9px] font-bold uppercase text-neutral-400">Defense</span>
+                      <span className="block text-[10px] font-bold uppercase text-neutral-400">Defense</span>
                       <span className="block truncate text-xs font-bold text-white">{defendingTeamName}</span>
                     </span>
                   </span>
@@ -194,7 +194,7 @@ export default function PenaltyWizardStep({
                   <span className="flex min-w-0 items-center gap-2">
                     <Flag className="h-4 w-4 shrink-0 text-amber-500" />
                     <span className="min-w-0">
-                      <span className="block text-[9px] font-bold uppercase text-neutral-400">Offense</span>
+                      <span className="block text-[10px] font-bold uppercase text-neutral-400">Offense</span>
                       <span className="block truncate text-xs font-bold text-white">{possessionTeamName}</span>
                     </span>
                   </span>
@@ -228,7 +228,7 @@ export default function PenaltyWizardStep({
                         <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-mono font-bold text-amber-700 dark:text-amber-300">
                           {pDef.defaultYards} YDS
                         </span>
-                        <span className="truncate text-[9px] font-mono uppercase text-neutral-400">
+                        <span className="truncate text-[10px] font-mono uppercase text-neutral-400">
                           {pDef.defaultDownResult === "automatic_first_down"
                             ? "Auto 1st"
                             : pDef.defaultDownResult === "loss_of_down"
@@ -409,7 +409,7 @@ export default function PenaltyWizardStep({
                     }`}
                   >
                     {pNum && (
-                      <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-[9px] font-bold ${
+                      <span className={`shrink-0 rounded px-1 py-0.5 font-mono text-[10px] font-bold ${
                         player === pName ? "bg-black/15 text-black" : "bg-amber-500/20 text-amber-700 dark:text-amber-300"
                       }`}>
                         #{pNum}

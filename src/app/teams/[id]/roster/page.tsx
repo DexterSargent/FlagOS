@@ -538,11 +538,12 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
         <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
         <p className="text-neutral-400 mb-6 max-w-md">
-          The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
+          This team could not be found. It may have been removed.
         </p>
         <Link
           href="/teams"
-          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500  font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
         >
           Back to Teams
         </Link>
@@ -553,10 +554,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-[var(--team-ink)] relative flex flex-col">
 
       {/* Dynamic Background styled to team colors */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-15">
         <div 
           className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-25 animate-pulse"
           style={{ backgroundColor: palette.primary }}
@@ -578,10 +579,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <div 
                 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest"
-                style={{ color: palette.primary }}
+                style={{ color: "var(--team-ink)" }}
               >
                 <Users className="w-4 h-4" />
-                <span>Official Roster</span>
+                <span>Roster</span>
               </div>
               <span className="text-white/20">•</span>
               <span className="text-xs font-mono font-bold text-neutral-400">
@@ -589,17 +590,13 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </span>
               {isRosterUnderMin ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                  ⚠️ Needs {minRosterSize - players.length} more to meet min ({minRosterSize})
+                  Needs {minRosterSize - players.length} more players
                 </span>
               ) : isRosterFull ? (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-purple-500/10 text-purple-300 border border-purple-500/30">
-                  🔒 At Maximum Capacity ({maxRosterSize})
+                  Roster full
                 </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                  ✓ Compliant
-                </span>
-              )}
+              ) : null}
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
               {teamName} <span className="text-neutral-500 font-normal">Team</span>
@@ -631,7 +628,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 style={
                   !isRosterFull
                     ? {
-                        background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+                        backgroundColor: palette.primary,
                         color: getReadableTextColor(palette.primary, "#FFFFFF"),
                       }
                     : undefined
@@ -660,7 +657,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             <div data-tour="roster-tabs" className="flex flex-wrap items-center gap-1 sm:gap-1.5 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold self-start sm:self-auto max-w-full [&_button]:min-h-10">
               <button
                 onClick={() => setActiveTab("roster")}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                className={`min-h-10 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "roster"
                     ? "font-black shadow-md"
                     : "text-neutral-400 hover:text-white"
@@ -678,7 +675,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </button>
               <button
                 onClick={() => setActiveTab("depth_chart")}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                className={`min-h-10 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === "depth_chart"
                     ? "font-black shadow-md"
                     : "text-neutral-400 hover:text-white"
@@ -697,7 +694,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               <button
                 type="button"
                 onClick={() => setShowStats(!showStats)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`min-h-10 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   showStats
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                     : "text-neutral-400 hover:text-white hover:bg-white/5"
@@ -752,11 +749,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                         <button
                           type="button"
                           onClick={() => setSelectedPlayerForStats(p)}
-                          className="font-bold text-base text-white hover:text-cyan-400 transition-colors flex items-center gap-2 text-left cursor-pointer group/player"
+                          className="min-h-10 font-bold text-base text-white hover:text-[var(--team-ink)] transition-colors flex items-center gap-2 text-left cursor-pointer group/player"
                           title={`Click to view stats for ${p.playerName}`}
                         >
                           <span className="group-hover/player:underline underline-offset-4 decoration-cyan-400/60 break-words">{p.playerName}</span>
-                          <span className="hidden sm:flex text-[10px] text-cyan-400/80 group-hover/player:text-cyan-300 items-center gap-1 font-mono font-normal">
+                          <span className="hidden sm:flex text-[10px] text-[var(--team-ink)] group-hover/player:text-[var(--team-ink)] items-center gap-1 font-mono font-normal">
                             <Activity className="w-3 h-3" />
                             <span>Stats</span>
                           </span>
@@ -766,7 +763,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                         </div>
                         {isTeamOrLeagueAdmin && ((p.emails && p.emails.length > 0) || p.email) && (
                           <div className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5 mt-0.5">
-                            <Mail className="w-3 h-3 text-cyan-400 shrink-0" />
+                            <Mail className="w-3 h-3 text-[var(--team-ink)] shrink-0" />
                             <span className="truncate max-w-[120px] sm:max-w-[240px]">
                               {p.emails ? p.emails.join(", ") : p.email}
                             </span>
@@ -878,13 +875,14 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
       </div>
-      <TeamPortalFooter section="Official Roster" />
+      <TeamPortalFooter section="Roster" />
 
       {/* Add Player Modal (Team Admin & League Admin) */}
       {isAddModalOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full max-h-full overflow-y-auto p-6 md:p-8 shadow-2xl relative">
             <button
+              aria-label="Close add player"
               onClick={() => setIsAddModalOpen(false)}
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5"
             >
@@ -892,7 +890,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             </button>
 
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 bg-cyan-500/10 rounded-2xl text-cyan-400">
+              <div className="p-3 bg-cyan-500/10 rounded-2xl text-[var(--team-ink)]">
                 <UserPlus className="w-6 h-6" />
               </div>
               <div>
@@ -932,7 +930,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
-                  <span>Attached Player Email(s)</span>
+                  <span>Player Emails</span>
                   <span className="text-[10px] text-neutral-500 font-mono">1 or more, comma-separated</span>
                 </label>
                 <input
@@ -943,7 +941,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   placeholder="athlete@domain.com, backup@email.com"
                 />
                 <span className="text-[10px] text-neutral-500 mt-1 block">
-                  When logging in with this email, the user logs in as this player with profile stats and view-only playbook access.
+                  These emails give the player access to their stats and team playbook.
                 </span>
               </div>
 
@@ -959,9 +957,9 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       aria-pressed={newPlayerPositions.includes(pos)}
                       disabled={!newPlayerPositions.includes(pos) && newPlayerPositions.length >= 10}
                       onClick={() => setNewPlayerPositions((current) => current.includes(pos) ? (current.length > 1 ? current.filter((item) => item !== pos) : current) : current.length < 10 ? [...current, pos] : current)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                      className={`min-h-9 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                         newPlayerPositions.includes(pos)
-                          ? "bg-cyan-500 text-black border-cyan-400 font-black"
+                          ? "bg-white/10 text-[var(--team-ink)] border-cyan-400 font-black"
                           : "bg-black/60 text-neutral-400 border-white/10 hover:text-white"
                       }`}
                     >
@@ -982,7 +980,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 <button
                   type="submit"
                   disabled={addingPlayer}
-                  className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] disabled:opacity-50 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500  text-xs font-bold transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] disabled:opacity-50 cursor-pointer"
+                  style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
                 >
                   {addingPlayer ? "Adding..." : "Add Player"}
                 </button>
@@ -994,8 +993,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Edit Player Modal (Team Admin & League Admin) */}
       {editingPlayer && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl relative">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full max-h-full overflow-y-auto p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setEditingPlayer(null)}
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5"
@@ -1041,7 +1040,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
-                  <span>Attached Player Email(s)</span>
+                  <span>Player Emails</span>
                   <span className="text-[10px] text-neutral-500 font-mono">1 or more, comma-separated</span>
                 </label>
                 <input
@@ -1052,7 +1051,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   placeholder="athlete@domain.com, backup@email.com"
                 />
                 <span className="text-[10px] text-neutral-500 mt-1 block">
-                  When logging in with this email, the user logs in as this player with profile stats and view-only playbook access.
+                  These emails give the player access to their stats and team playbook.
                 </span>
               </div>
 
@@ -1068,7 +1067,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       aria-pressed={editPlayerPositions.includes(pos)}
                       disabled={!editPlayerPositions.includes(pos) && editPlayerPositions.length >= 10}
                       onClick={() => setEditPlayerPositions((current) => current.includes(pos) ? (current.length > 1 ? current.filter((item) => item !== pos) : current) : current.length < 10 ? [...current, pos] : current)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                      className={`min-h-9 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                         editPlayerPositions.includes(pos)
                           ? "bg-blue-600 text-white border-blue-500 font-black"
                           : "bg-black/60 text-neutral-400 border-white/10 hover:text-white"
@@ -1103,7 +1102,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Individual Player Stats Modal */}
       {selectedPlayerForStats && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setSelectedPlayerForStats(null)}
@@ -1113,7 +1112,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             </button>
 
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 font-black text-xl">
+              <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-[var(--team-ink)] font-black text-xl">
                 {selectedPlayerForStats.number ? `#${selectedPlayerForStats.number}` : <User className="w-6 h-6" />}
               </div>
               <div>
@@ -1126,8 +1125,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                     </span>
                   )}
                   {isTeamOrLeagueAdmin && ((selectedPlayerForStats.emails && selectedPlayerForStats.emails.length > 0) || selectedPlayerForStats.email) && (
-                    <span className="text-[11px] text-cyan-300 font-mono flex items-center gap-1">
-                      • <Mail className="w-3 h-3 text-cyan-400" />
+                    <span className="text-[11px] text-[var(--team-ink)] font-mono flex items-center gap-1">
+                      • <Mail className="w-3 h-3 text-[var(--team-ink)]" />
                       <span>{selectedPlayerForStats.emails ? selectedPlayerForStats.emails.join(", ") : selectedPlayerForStats.email}</span>
                     </span>
                   )}

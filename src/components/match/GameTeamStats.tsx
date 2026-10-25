@@ -149,24 +149,24 @@ export default function GameTeamStats({ matchData, plays, isDemo = false }: Game
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <TeamLogo teamName={homeTeamName} className="h-8 w-8 sm:h-11 sm:w-11 shrink-0" isDemo={isDemo} primaryColor={homeText} />
             <div className="min-w-0">
-              <span className="block text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-neutral-500">Home</span>
+              <span className="block text-[10px] sm:text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Home</span>
               <span className="block truncate text-xs sm:text-base font-black" title={homeTeamName}>{homeTeamName}</span>
             </div>
           </div>
           <div className="flex flex-col items-center px-1">
             <div className="flex items-center gap-1.5 sm:gap-3 font-mono font-black tabular-nums text-2xl sm:text-4xl leading-none">
-              <span className={awayWon ? "text-neutral-500" : "text-white"}>{homeScore}</span>
+              <span className={awayWon ? "text-[var(--text-muted)]" : "text-white"}>{homeScore}</span>
               <span className="text-neutral-600 text-lg sm:text-2xl">&ndash;</span>
-              <span className={homeWon ? "text-neutral-500" : "text-white"}>{awayScore}</span>
+              <span className={homeWon ? "text-[var(--text-muted)]" : "text-white"}>{awayScore}</span>
             </div>
-            <span className="mt-1 whitespace-nowrap text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-neutral-500">
+            <span className="mt-1 whitespace-nowrap text-[10px] sm:text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">
               {isFinal ? "Final" : "Live"} &middot; {plays.length} plays
             </span>
           </div>
           <div className="flex min-w-0 flex-row-reverse items-center gap-2 sm:gap-3 text-right">
             <TeamLogo teamName={awayTeamName} className="h-8 w-8 sm:h-11 sm:w-11 shrink-0" isDemo={isDemo} primaryColor={awayText} />
             <div className="min-w-0">
-              <span className="block text-[9px] sm:text-[10px] font-mono uppercase tracking-widest text-neutral-500">Away</span>
+              <span className="block text-[10px] sm:text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)]">Away</span>
               <span className="block truncate text-xs sm:text-base font-black" title={awayTeamName}>{awayTeamName}</span>
             </div>
           </div>
@@ -258,7 +258,7 @@ export default function GameTeamStats({ matchData, plays, isDemo = false }: Game
                       <div className="flex items-baseline justify-between gap-2">
                         <span
                           className={`w-16 sm:w-24 shrink-0 font-mono tabular-nums text-sm sm:text-base ${
-                            lead === true ? "font-black text-white" : lead === false ? "font-semibold text-neutral-500" : "font-bold text-neutral-200"
+                            lead === true ? "font-black text-white" : lead === false ? "font-semibold text-[var(--text-muted)]" : "font-bold text-neutral-200"
                           }`}
                         >
                           {hVal}
@@ -268,7 +268,7 @@ export default function GameTeamStats({ matchData, plays, isDemo = false }: Game
                         </span>
                         <span
                           className={`w-16 sm:w-24 shrink-0 text-right font-mono tabular-nums text-sm sm:text-base ${
-                            lead === false ? "font-black text-white" : lead === true ? "font-semibold text-neutral-500" : "font-bold text-neutral-200"
+                            lead === false ? "font-black text-white" : lead === true ? "font-semibold text-[var(--text-muted)]" : "font-bold text-neutral-200"
                           }`}
                         >
                           {aVal}

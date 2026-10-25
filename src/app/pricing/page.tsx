@@ -400,11 +400,11 @@ export default function PricingPage() {
     },
     {
       q: "What sideline equipment or devices do I need on gameday?",
-      a: "Any smartphone, tablet, or laptop with a web browser works. No special hardware, proprietary timers, or app store downloads are required. The clockless stat wizard is built for a single coach to quickly log plays with one hand while holding a clipboard.",
+      a: "Any smartphone, tablet, or laptop with a web browser works. No special hardware, proprietary timers, or app store downloads are required. A coach can record plays without running a game clock.",
     },
     {
       q: "What if we play at a park with spotty or weak cell service?",
-      a: "You can download and print clean PDF call sheets and wristband inserts before heading to the field. For stat logging, our sideline interface is extremely lightweight and engineered for low-bandwidth cellular connections, ensuring games log quickly without waiting on heavy page reloads.",
+      a: "You can download and print clean PDF call sheets and wristband inserts before heading to the field. For live scoring, you need an internet connection. If service is unreliable, record plays on paper and enter them after the game.",
     },
     {
       q: "Can FlagOS accommodate custom rules like 5v5, 7v7, youth, or adult divisions?",
@@ -589,7 +589,7 @@ export default function PricingPage() {
             Plans Available for Teams &amp; Leagues
           </h1>
           <p className="text-neutral-600 dark:text-neutral-300 text-sm sm:text-base leading-relaxed">
-            Run an independent club with elite stats and up to 5 custom playbooks, or scale an entire league where <strong className="text-neutral-950 dark:text-white">every franchise gets full Team Plan access at 50% off</strong> alongside automated scheduling, player registration, and comprehensive league management tools.
+            Manage a team with game stats and up to 5 custom playbooks, or run a league where <strong className="text-neutral-950 dark:text-white">every team gets full Team Plan access at 50% off</strong> with scheduling, player registration, and league management included.
           </p>
 
           {/* Key Value Guarantee Pills */}
@@ -628,7 +628,7 @@ export default function PricingPage() {
 
               {/* Subtitle description (Equalized 3 lines on desktop) */}
               <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed sm:min-h-[52px]">
-                Dedicated digital headquarters for independent clubs, tournament travel teams, and coaches. Includes sideline stat-tracking, full roster management, and 5 custom playbooks with an interactive visual route designer.
+                Manage your roster, record game stats, and design up to 5 custom playbooks for your independent or travel team.
               </p>
 
               {/* Pricing & Capacity Section (Symmetrically aligned 4 rows) */}
@@ -645,7 +645,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Row 2: Capacity Metric */}
-                <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 pt-1">
+                <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400 pt-1 flex-wrap gap-2">
                   <span className="font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     Roster Capacity: <span className="font-mono font-bold">Unlimited Players</span>
@@ -654,7 +654,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Row 3: Height-matched Status Row (Matches the League slider bar height) */}
-                <div className="h-8 rounded-lg bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 px-3 flex items-center justify-between text-xs">
+                <div className="min-h-10 flex-wrap gap-2 py-2 rounded-lg bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 px-3 flex items-center justify-between text-xs">
                   <span className="text-neutral-700 dark:text-neutral-300 font-medium flex items-center gap-1.5 text-[11px]">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     Tournament &amp; Scrimmage Ready
@@ -665,7 +665,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Row 4: Value and Savings Callout */}
-                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] flex items-center justify-between text-emerald-800 dark:text-emerald-300">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] flex flex-wrap gap-2 items-center justify-between text-emerald-800 dark:text-emerald-300">
                   <span>Standalone Value: $100/mo</span>
                   <span className="font-mono font-bold bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-950 dark:text-white">
                     Save $60/mo ($720/yr) • 60% Off
@@ -702,11 +702,11 @@ export default function PricingPage() {
                   </li>
                   <li className="sm:min-h-[38px] flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <span><strong className="text-neutral-950 dark:text-white">Rapid Play-by-Play Wizard:</strong> Sideline clockless stat logger to track completions, TDs, INTs, and flag pulls.</span>
+                    <span><strong className="text-neutral-950 dark:text-white">Game Scoring:</strong> Record completions, touchdowns, interceptions, and flag pulls without running a game clock.</span>
                   </li>
                   <li className="sm:min-h-[38px] flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <span><strong className="text-neutral-950 dark:text-white">Live Public Box Scores:</strong> Real-time play-by-play links for parents and fans with zero login or paywall hurdles.</span>
+                    <span><strong className="text-neutral-950 dark:text-white">Live Public Box Scores:</strong> Real-time play-by-play links for parents and fans with no sign-in or subscription needed.</span>
                   </li>
                   <li className="sm:min-h-[38px] flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -714,7 +714,7 @@ export default function PricingPage() {
                   </li>
                   <li className="sm:min-h-[38px] flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                    <span><strong className="text-neutral-950 dark:text-white">Independent Autonomy:</strong> Track non-league tournaments, weekend invitationals, and team scrimmages anytime.</span>
+                    <span><strong className="text-neutral-950 dark:text-white">No League Required:</strong> Track non-league tournaments, weekend invitationals, and team scrimmages anytime.</span>
                   </li>
                 </ul>
               </div>
@@ -759,7 +759,7 @@ export default function PricingPage() {
 
               {/* Subtitle description (Equalized 3 lines on desktop) */}
               <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed sm:min-h-[52px]">
-                The complete flag football operating system for commissioners and league organizers. Centralizes automated scheduling, official live clocks, standings, and provisions full private Team Portals for every member club.
+                Manage schedules, game clocks, and standings in one place. Every team gets its own private team portal.
               </p>
 
               {/* Pricing Breakdown & Dynamic Slider (Symmetrically aligned 4 rows) */}
@@ -776,7 +776,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Row 2: Capacity Metric */}
-                <div className="flex justify-between items-center text-xs text-neutral-600 dark:text-neutral-400 pt-1">
+                <div className="flex justify-between items-center text-xs text-neutral-600 dark:text-neutral-400 pt-1 flex-wrap gap-2">
                   <span className="font-semibold text-neutral-900 dark:text-white flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5 text-blue-600 dark:text-[#60a5fa]" />
                     Active Teams: <span className="font-mono font-bold">{teamCount} Teams</span>
@@ -787,11 +787,11 @@ export default function PricingPage() {
                 </div>
 
                 {/* Row 3: Team Stepper & Slider */}
-                <div className="flex items-center gap-3 h-8">
+                <div className="flex items-center gap-3 min-h-10">
                   <button
                     onClick={() => setTeamCount((c) => Math.max(4, c - 1))}
                     aria-label="Decrease team count"
-                    className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-white/10 hover:bg-neutral-200 dark:hover:bg-white/20 text-neutral-900 dark:text-white font-bold text-sm flex items-center justify-center transition-colors cursor-pointer border border-neutral-200 dark:border-transparent shrink-0"
+                    className="w-10 h-10 rounded-lg bg-neutral-100 dark:bg-white/10 hover:bg-neutral-200 dark:hover:bg-white/20 text-neutral-900 dark:text-white font-bold text-sm flex items-center justify-center transition-colors cursor-pointer border border-neutral-200 dark:border-transparent shrink-0"
                   >
                     -
                   </button>
@@ -802,12 +802,12 @@ export default function PricingPage() {
                     value={teamCount}
                     onChange={(e) => setTeamCount(Number(e.target.value))}
                     aria-label="League team count slider"
-                    className="flex-1 accent-[#2563eb] cursor-pointer"
+                    className="min-w-0 min-h-10 flex-1 accent-[#2563eb] cursor-pointer"
                   />
                   <button
                     onClick={() => setTeamCount((c) => Math.min(64, c + 1))}
                     aria-label="Increase team count"
-                    className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-white/10 hover:bg-neutral-200 dark:hover:bg-white/20 text-neutral-900 dark:text-white font-bold text-sm flex items-center justify-center transition-colors cursor-pointer border border-neutral-200 dark:border-transparent shrink-0"
+                    className="w-10 h-10 rounded-lg bg-neutral-100 dark:bg-white/10 hover:bg-neutral-200 dark:hover:bg-white/20 text-neutral-900 dark:text-white font-bold text-sm flex items-center justify-center transition-colors cursor-pointer border border-neutral-200 dark:border-transparent shrink-0"
                   >
                     +
                   </button>
@@ -821,7 +821,7 @@ export default function PricingPage() {
                   const annualSavings = monthlySavings * 12;
                   const savingsPct = standaloneMonthly > 0 ? Math.round((monthlySavings / standaloneMonthly) * 100) : 0;
                   return (
-                    <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] flex items-center justify-between text-blue-800 dark:text-[#93c5fd]">
+                    <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] flex flex-wrap gap-2 items-center justify-between text-blue-800 dark:text-[#93c5fd]">
                       <span>Standalone Value: ${standaloneMonthly}/mo</span>
                       <span className="font-mono font-bold bg-blue-500/20 px-2 py-0.5 rounded text-blue-950 dark:text-white">
                         Save ${monthlySavings}/mo (${annualSavings.toLocaleString()}/yr) • {savingsPct}% Off
@@ -844,7 +844,7 @@ export default function PricingPage() {
                 <ul className="space-y-3 text-xs text-neutral-700 dark:text-neutral-300">
                   <li className="sm:min-h-[38px] flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-[#60a5fa] shrink-0 mt-0.5" />
-                    <span><strong className="text-neutral-950 dark:text-white">All Team Features Included:</strong> Every franchise gets their own private portal, roster manager, and 5 playbooks.</span>
+                    <span><strong className="text-neutral-950 dark:text-white">All Team Features Included:</strong> Every team gets its own private portal, roster manager, and 5 playbooks.</span>
                   </li>
                   <li className="sm:min-h-[38px] flex items-start gap-2.5">
                     <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-[#60a5fa] shrink-0 mt-0.5" />
@@ -901,13 +901,13 @@ export default function PricingPage() {
         <section className="space-y-8 pt-8 border-t border-neutral-200 dark:border-white/10">
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-400">
-              The Value of Complete Infrastructure
+              Everything in One Plan
             </span>
             <h2 className="text-2xl md:text-4xl font-black uppercase text-neutral-950 dark:text-white tracking-tight">
-              What It Would Cost To Build This Stack From Scratch
+              Compare the Cost of Separate Tools
             </h2>
             <p className="text-neutral-600 dark:text-neutral-400 text-xs md:text-sm">
-              Most coaches and commissioners don&apos;t pay for multiple software subscriptions—they get by on messy group chats, paper call sheets, and spreadsheets because fragmented sports software is too expensive. FlagOS puts over $600/month in dedicated flag football technology directly in your hands at a fraction of the cost.
+              Compare the estimated cost of separate tools with a FlagOS plan. Schedules, playbooks, rosters, and stats are included in one subscription.
             </p>
           </div>
 
@@ -1006,7 +1006,7 @@ export default function PricingPage() {
                       </div>
                     </div>
                     <div className="pt-2 border-t border-emerald-500/20 flex justify-between items-baseline">
-                      <span className="text-[11px] text-neutral-500">FlagOS Flat Rate:</span>
+                      <span className="text-[11px] text-slate-600 dark:text-neutral-400">FlagOS Flat Rate:</span>
                       <span className="text-sm font-black text-emerald-800 dark:text-emerald-400 font-mono">$40 / mo</span>
                     </div>
                   </div>
@@ -1116,7 +1116,7 @@ export default function PricingPage() {
                       </div>
                     </div>
                     <div className="pt-2 border-t border-[#3b82f6]/20 flex justify-between items-baseline">
-                      <span className="text-[11px] text-neutral-500">FlagOS All-In Rate:</span>
+                      <span className="text-[11px] text-slate-600 dark:text-neutral-400">FlagOS All-In Rate:</span>
                       <span className="text-sm font-black text-blue-800 dark:text-[#60a5fa] font-mono">$240 / mo</span>
                     </div>
                   </div>
@@ -1668,7 +1668,7 @@ export default function PricingPage() {
                 className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>{isSubmittingLeague ? "Provisioning League..." : `Confirm & Pay $${totalLeagueMonthly}/mo`}</span>
+                <span>{isSubmittingLeague ? "Creating League..." : `Confirm & Pay $${totalLeagueMonthly}/mo`}</span>
               </button>
               {checkoutError && (
                 <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">{checkoutError}</p>
@@ -1918,7 +1918,7 @@ export default function PricingPage() {
                 className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>{isSubmittingTeam ? "Provisioning Team..." : "Confirm & Pay $40/mo"}</span>
+                <span>{isSubmittingTeam ? "Creating Team..." : "Confirm & Pay $40/mo"}</span>
               </button>
               <p className="text-center text-[11px] text-neutral-500 dark:text-neutral-400">Owner account: payment is recorded as complimentary — no card is charged.</p>
               {checkoutError && (

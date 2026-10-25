@@ -489,11 +489,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               <div className="flex items-center gap-1.5">
                 <span className="font-black uppercase tracking-wider text-sm text-white">{renderFlagOS(settings.leagueName)}</span>
                 {settings.shortcode && (
-                  <span className="px-1.5 py-0.5 rounded bg-white/10 text-[9px] font-mono text-cyan-300 font-bold">
+                  <span className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] font-mono text-cyan-300 font-bold">
                     {settings.shortcode}
                   </span>
                 )}
-                <span className="text-[10px] text-neutral-500 font-bold hidden sm:inline">• Live Scoreboard</span>
+                <span className="text-[10px] text-[var(--text-muted)] font-bold hidden sm:inline">• Live Scoreboard</span>
               </div>
               <div className="flex items-center gap-2 text-[10px] text-neutral-400 font-mono">
                 <span>{settings.seasonTitle || "2026 Season"}</span>
@@ -580,7 +580,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               </span>
             )}
             {effectiveMatchData.status !== "completed" && <div className="mt-0.5 sm:mt-1 md:mt-2 bg-black border border-white/10 rounded-full px-2 py-0.5 sm:px-3 sm:py-1 md:px-4 md:py-1 flex gap-2 sm:gap-4 text-[10px] sm:text-xs md:text-sm font-bold">
-              <span className="text-neutral-500 whitespace-nowrap">{getOrdinal(s.currentDown)} Down</span>
+              <span className="text-[var(--text-muted)] whitespace-nowrap">{getOrdinal(s.currentDown)} Down</span>
             </div>}
           </div>
 
@@ -606,21 +606,21 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
           <button
             onClick={() => setActiveTab('play-by-play')}
             style={activeTab === "play-by-play" ? { color: homeAccent, borderColor: homeAccent } : undefined}
-            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'play-by-play' ? 'border-b-2' : 'text-neutral-500 hover:text-white'}`}
+            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'play-by-play' ? 'border-b-2' : 'text-[var(--text-muted)] hover:text-white'}`}
           >
             Play-by-Play
           </button>
           <button
             onClick={() => setActiveTab('box-score')}
             style={activeTab === "box-score" ? { color: homeAccent, borderColor: homeAccent } : undefined}
-            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'box-score' ? 'border-b-2' : 'text-neutral-500 hover:text-white'}`}
+            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'box-score' ? 'border-b-2' : 'text-[var(--text-muted)] hover:text-white'}`}
           >
             Live Box Score
           </button>
           <button
             onClick={() => setActiveTab('team-stats')}
             style={activeTab === "team-stats" ? { color: homeAccent, borderColor: homeAccent } : undefined}
-            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'team-stats' ? 'border-b-2' : 'text-neutral-500 hover:text-white'}`}
+            className={`flex-1 py-3 sm:py-4 font-bold tracking-widest uppercase text-xs sm:text-sm transition-colors ${activeTab === 'team-stats' ? 'border-b-2' : 'text-[var(--text-muted)] hover:text-white'}`}
           >
             Team Stats
           </button>
@@ -636,7 +636,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               )}
               {plays.map((play, idx) => (
                 <div key={idx} className="bg-neutral-900 border border-white/5 p-4 sm:p-6 rounded-2xl flex flex-col gap-2 shadow-lg">
-                  <div className="flex justify-between items-center text-xs sm:text-sm font-bold tracking-widest text-neutral-500 uppercase">
+                  <div className="flex justify-between items-center text-xs sm:text-sm font-bold tracking-widest text-[var(--text-muted)] uppercase">
                     <span>
                       {[
                         play.half
@@ -696,7 +696,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               <div className="bg-white dark:bg-neutral-900 border border-slate-200 dark:border-white/5 rounded-2xl p-3 sm:p-6 shadow-md overflow-x-auto scrollbar-thin">
                 <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
                   <thead>
-                    <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-neutral-400 font-bold uppercase tracking-wider text-[11px]">
+                    <tr className="border-b border-slate-200 dark:border-white/10 text-[var(--text-muted)] dark:text-neutral-400 font-bold uppercase tracking-wider text-[11px]">
                       <th className="pb-4 pr-4">Player</th>
                       <th className="pb-4 px-3 text-center">C/ATT</th>
                       <th className="pb-4 px-3 text-center">PASS TD</th>

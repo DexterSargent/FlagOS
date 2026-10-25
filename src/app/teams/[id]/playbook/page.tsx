@@ -811,7 +811,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         </p>
         <Link
           href="/teams"
-          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500  font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
         >
           Back to Teams
         </Link>
@@ -826,7 +827,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // League admins have NO access to team playbooks
   if (isBlockedLeagueAdmin) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-[var(--team-ink)]">
         <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-red-500/30 rounded-3xl shadow-2xl space-y-6 relative overflow-hidden">
@@ -836,7 +837,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             </div>
             <div className="relative z-10">
               <span className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-mono font-bold uppercase tracking-wider">
-                Confidentiality Policy Protected
+                Private Team Playbook
               </span>
               <h2 className="text-2xl font-black uppercase text-white mt-3">
                 League Admin Access Restricted
@@ -845,10 +846,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 To safeguard competitive integrity and prevent tactical advantages, League Administrators do not have access to franchise playbooks. Team playbooks, route diagrams, and schemes are strictly private to verified team coaching staff and rostered players.
               </p>
               {isDemoLeague && (
-                <div className="mt-4 p-3 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-cyan-300 text-left">
-                  <p className="font-bold text-cyan-200 mb-1">Active Role: League Commissioner</p>
+                <div className="mt-4 p-3 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-[var(--team-ink)] text-left">
+                  <p className="font-bold text-[var(--team-ink)] mb-1">Active Role: League Commissioner</p>
                   <p className="text-neutral-300">
-                    To access the Playbook Studio for {teamName}, select <strong>Team Coach ({teamName})</strong> or <strong>Rostered Athlete ({teamName})</strong> in the role bar.
+                    To access the Playbook for {teamName}, select <strong>Team Coach ({teamName})</strong> or <strong>Rostered Athlete ({teamName})</strong> in the role bar.
                   </p>
                 </div>
               )}
@@ -863,6 +864,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <Link
                 href="/"
                 className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20"
+                style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
               >
                 League Home
               </Link>
@@ -877,7 +879,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // RESTRICTION 1: Opponent Coach trying to access another team's playbook
   if (!isEmbedded && isOpponentCoach) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-[var(--team-ink)]">
         <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-amber-500/30 rounded-3xl shadow-2xl space-y-6">
@@ -898,6 +900,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 <Link
                   href={`/teams/${managedTeamId}/playbook`}
                   className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20"
+                  style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
                 >
                   Go to My Team&apos;s Playbook
                 </Link>
@@ -919,7 +922,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // RESTRICTION 2: Rostered player trying to view opponent's playbook
   if (!isEmbedded && isOpponentPlayer) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-[var(--team-ink)]">
         <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-amber-500/30 rounded-3xl shadow-2xl space-y-6">
@@ -930,7 +933,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
                 Opponent Playbook Protected
               </span>
-              <h2 className="text-2xl font-black uppercase text-white mt-3">Tactical Playbook Confidential</h2>
+              <h2 className="text-2xl font-black uppercase text-white mt-3">This Playbook Is Private</h2>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
                 As a rostered player, you only have view access to the playbooks of your own team. Opponent team playbooks and strategic formations are strictly restricted.
               </p>
@@ -939,6 +942,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <Link
                 href={`/teams/${playerTeamId}/playbook`}
                 className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/20"
+                style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
               >
                 Go to My Team&apos;s Playbook
               </Link>
@@ -959,15 +963,15 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // RESTRICTION 3: Guest or general user without team admin/player role
   if (!isEmbedded && !canViewPlaybook) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-cyan-500/30 selection:text-[var(--team-ink)]">
         <TeamNavBar teamId={teamId} />
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full p-8 text-center bg-[#0B0F19] border border-cyan-500/30 rounded-3xl shadow-2xl space-y-6">
-            <div className="w-16 h-16 mx-auto rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/10">
+            <div className="w-16 h-16 mx-auto rounded-3xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-[var(--team-ink)] shadow-lg shadow-cyan-500/10">
               <BookOpen className="w-8 h-8" />
             </div>
             <div>
-              <span className="px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-[var(--surface)] border border-cyan-500/30 text-[var(--team-ink)] text-xs font-mono font-bold uppercase tracking-wider">
                 Protected Playbook
               </span>
               <h2 className="text-2xl font-black uppercase text-white mt-3">{teamName} Playbook Confidential</h2>
@@ -978,7 +982,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
               <Link
                 href="/login"
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg"
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500  font-black text-xs uppercase tracking-wider transition-all shadow-lg"
+                style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
               >
                 Sign In as Player / Coach
               </Link>
@@ -999,11 +1004,11 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // Dedicated Embedded Layout for Showcase (Directly renders PlayCanvas with compact controls)
   if (isEmbedded) {
     return (
-      <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 bg-black text-white font-sans p-2 sm:p-3 flex flex-col gap-2 selection:bg-cyan-500/30 selection:text-cyan-200 w-full max-w-full overflow-hidden">
+      <div className="h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 bg-black text-white font-sans p-2 sm:p-3 flex flex-col gap-2 selection:bg-cyan-500/30 selection:text-[var(--team-ink)] w-full max-w-full overflow-hidden">
         {/* Compact Header for Embedded Showcase */}
         <div className="flex items-center gap-1.5 bg-[#0B0F19] p-1.5 rounded-xl border border-white/10 shrink-0">
           <div className="flex items-center gap-2 min-w-0 shrink-0">
-            <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+            <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-[var(--team-ink)] border border-cyan-500/30 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5" />
               <span className="hidden lg:inline">{teamName} Playbook </span><span>Studio</span>
             </span>
@@ -1057,7 +1062,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           ) : (
             <div className="bg-[#0B0F19] border border-white/10 rounded-3xl p-12 text-center text-neutral-400">
               <BookOpen className="w-12 h-12 mx-auto text-neutral-600 mb-4" />
-              <h3 className="text-xl font-bold uppercase text-white mb-2">Loading Playbook Studio...</h3>
+              <h3 className="text-xl font-bold uppercase text-white mb-2">Loading Playbook...</h3>
             </div>
           )}
         </div>
@@ -1066,10 +1071,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className={`${viewLevel === "editor" ? "h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col`}>
+    <div className={`${viewLevel === "editor" ? "h-[calc(100dvh-var(--role-switcher-height,0px))] min-h-0 overflow-hidden" : "min-h-screen"} bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-[var(--team-ink)] relative flex flex-col`}>
 
       {/* Dynamic Background Glows */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-15">
         <div className="absolute -top-40 -left-40 w-[40rem] h-[40rem] rounded-full mix-blend-screen filter blur-[160px] opacity-25 animate-pulse" style={{ backgroundColor: palette.primary }} />
         <div className="absolute bottom-20 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[160px] opacity-20 animate-pulse delay-1000" style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }} />
       </div>
@@ -1102,8 +1107,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   <span>{teamName} Portal</span>
                 </Link>
               ) : (
-                <span className="inline-flex items-center text-cyan-300 bg-cyan-950/40 px-3 py-1 rounded-full border border-cyan-500/30 text-xs font-semibold">
-                  <BookOpen className="w-3.5 h-3.5 mr-1 text-cyan-400" />
+                <span className="inline-flex items-center text-[var(--team-ink)] bg-cyan-950/40 px-3 py-1 rounded-full border border-cyan-500/30 text-xs font-semibold">
+                  <BookOpen className="w-3.5 h-3.5 mr-1 text-[var(--team-ink)]" />
                   <span>{teamName} Studio</span>
                 </span>
               )}
@@ -1122,7 +1127,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
               <span className="text-xs text-neutral-500">•</span>
 
-              <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono font-bold uppercase text-cyan-300">
+              <span className="px-2 py-0.5 rounded-full bg-[var(--surface)] border border-cyan-500/30 text-[10px] font-mono font-bold uppercase text-[var(--team-ink)]">
                 {(activePlaybook?.playersOnField || playersPerSide)}v{(activePlaybook?.playersOnField || playersPerSide)} Flag Format
               </span>
 
@@ -1134,7 +1139,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               )}
             </div>
 
-            {/* Level 1 Title: "{Team Name}'s PlayBooks" */}
+            {/* Level 1 Title: "{Team Name}'s Playbooks" */}
             {viewLevel === "playbooks" && (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[var(--league-primary)] to-[var(--league-accent)] flex items-center justify-center text-white shadow-lg p-1.5">
@@ -1142,7 +1147,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
-                    {teamName}&apos;s <span style={{ color: palette.primary }}>PlayBooks</span>
+                    {teamName}&apos;s <span style={{ color: "var(--team-ink)" }}>Playbooks</span>
                   </h1>
                   <p className="text-xs text-neutral-400 mt-0.5">
                     Select a playbook to manage custom formations and design plays. Up to {MAX_PLAYBOOKS_PER_TEAM} playbooks.
@@ -1175,7 +1180,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     <span
                       className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full border ${
                         activePlaybook.type === "offense"
-                          ? "bg-cyan-500/15 text-cyan-300 border-cyan-500/30"
+                          ? "bg-cyan-500/15 text-[var(--team-ink)] border-cyan-500/30"
                           : "bg-purple-500/15 text-purple-300 border-purple-500/30"
                       }`}
                     >
@@ -1191,7 +1196,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
             {viewLevel === "plays" && (
               <div>
                 <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white">
-                  {effectiveFormationName} <span className="text-cyan-400">Plays</span>
+                  {effectiveFormationName} <span className="text-[var(--team-ink)]">Plays</span>
                 </h1>
                 <p className="text-xs text-neutral-400 mt-0.5">
                   Preview each play, then select a card to {hasEditAccess ? "edit" : "view"} its routes and assignments.
@@ -1226,7 +1231,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     ? "hover:opacity-90 shadow-lg cursor-pointer"
                     : "bg-white/5 text-neutral-500 border border-white/10 cursor-not-allowed"
                 }`}
-                style={playbooks.length < MAX_PLAYBOOKS_PER_TEAM ? { background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`, color: getReadableTextColor(palette.primary, "#000000") } : undefined}
+                style={playbooks.length < MAX_PLAYBOOKS_PER_TEAM ? { backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#000000") } : undefined}
               >
                 <Plus className="w-4 h-4" />
                 <span>Create a Playbook</span>
@@ -1242,7 +1247,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   setIsFormationModalOpen(true);
                 }}
                 className="px-5 py-2.5 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg cursor-pointer"
-                style={{ background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`, color: getReadableTextColor(palette.primary, "#000000") }}
+                style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#000000") }}
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Formation</span>
@@ -1256,7 +1261,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 onClick={() => setIsPrintModalOpen(true)}
                 className="px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2 cursor-pointer"
               >
-                <Printer className="w-4 h-4 text-cyan-400" />
+                <Printer className="w-4 h-4 text-[var(--team-ink)]" />
                 <span>Print Armbands</span>
               </button>
             )}
@@ -1267,16 +1272,16 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 type="button"
                 data-tour="autosave-status"
                 onClick={flushAutoSave}
-                aria-label="Save to Cloud (Auto-save)"
+                aria-label="Auto-save status"
                 title={autoSaveStatus === "unsaved" ? "Unsaved changes: click to sync immediately" : "Auto-saving to cloud is active"}
                 className="px-3.5 py-2 max-sm:px-2 max-sm:py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono flex items-center gap-2 transition-all hover:bg-white/10 cursor-pointer"
                 data-testid="autosave-status-badge"
               >
                 {autoSaveStatus === "saving" ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
-                    <span className="text-cyan-300 font-semibold max-sm:hidden">Saving to Cloud...</span>
-                    <span className="text-cyan-300 font-semibold sm:hidden">Saving...</span>
+                    <RefreshCw className="w-3.5 h-3.5 text-[var(--team-ink)] animate-spin" />
+                    <span className="text-[var(--team-ink)] font-semibold max-sm:hidden">Saving...</span>
+                    <span className="text-[var(--team-ink)] font-semibold sm:hidden">Saving...</span>
                   </>
                 ) : autoSaveStatus === "unsaved" ? (
                   <>
@@ -1293,7 +1298,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 ) : (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-neutral-300 max-sm:hidden">Saved to Cloud</span>
+                    <span className="text-neutral-300 max-sm:hidden">Saved</span>
                     <span className="text-neutral-300 sm:hidden">Saved</span>
                   </>
                 )}
@@ -1322,7 +1327,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 <h3 className="text-xl font-black uppercase text-white mb-2">No Playbooks Created Yet</h3>
                 <p className="text-xs sm:text-sm text-neutral-400 max-w-md mx-auto mb-6 leading-relaxed">
                   {hasEditAccess
-                    ? "New teams start with an empty playbook canvas. Create your first offensive or defensive playbook to start designing custom formations and plays."
+                    ? "Create a playbook to organize your formations and plays."
                     : "Your coaching staff has not created any playbooks for this team yet."}
                 </p>
                 {hasEditAccess && (
@@ -1332,7 +1337,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     onClick={() => setIsCreatePlaybookOpen(true)}
                     className="px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg hover:opacity-90 inline-flex items-center gap-2 cursor-pointer"
                     style={{
-                      background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+                      backgroundColor: palette.primary,
                       color: getReadableTextColor(palette.primary, "#000000"),
                     }}
                   >
@@ -1364,7 +1369,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                             <span
                               className={`px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 border ${
                                 isOffense
-                                  ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/30"
+                                  ? "bg-cyan-500/10 text-[var(--team-ink)] border-cyan-500/30"
                                   : "bg-purple-500/10 text-purple-300 border-purple-500/30"
                               }`}
                             >
@@ -1388,7 +1393,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                                   setEditingPlaybook(book);
                                   setIsEditPlaybookOpen(true);
                                 }}
-                                className="p-1.5 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors"
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-[var(--team-ink)] hover:bg-white/10 transition-colors"
                                 title="Edit playbook details"
                               >
                                 <Edit2 className="w-4 h-4" />
@@ -1408,7 +1413,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                           )}
                         </div>
 
-                      <h3 className="text-xl font-black uppercase text-white group-hover:text-cyan-400 transition-colors">
+                      <h3 className="text-xl font-black uppercase text-white group-hover:text-[var(--team-ink)] transition-colors">
                         {book.title}
                       </h3>
 
@@ -1453,7 +1458,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                         <span><strong>{book.plays.length}</strong> Plays</span>
                       </div>
 
-                      <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      <span className="text-xs font-black uppercase tracking-wider text-[var(--team-ink)] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                         <span>Open</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </span>
@@ -1491,7 +1496,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                         setEditingPlaybook(activePlaybook);
                         setIsEditPlaybookOpen(true);
                       }}
-                      className="p-1 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors cursor-pointer"
+                      className="p-1 rounded-lg text-neutral-400 hover:text-[var(--team-ink)] hover:bg-white/10 transition-colors cursor-pointer"
                       title="Edit playbook details"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -1542,6 +1547,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       setIsFormationModalOpen(true);
                     }}
                     className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-md"
+                    style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add Formation</span>
@@ -1564,6 +1570,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       setIsFormationModalOpen(true);
                     }}
                     className="px-6 py-3 rounded-2xl bg-cyan-500 text-black font-bold text-xs uppercase tracking-wider"
+                    style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
                   >
                     Place Players in Formation
                   </button>
@@ -1603,7 +1610,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       {/* Formation Card Header */}
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-lg font-black uppercase text-white group-hover:text-cyan-400 transition-colors">
+                          <h3 className="text-lg font-black uppercase text-white group-hover:text-[var(--team-ink)] transition-colors">
                             {formation.name}
                           </h3>
                           <span className="text-[11px] font-mono text-neutral-400">
@@ -1649,7 +1656,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                           Pre-Snap Alignment
                         </span>
 
-                        <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                        <span className="text-xs font-black uppercase tracking-wider text-[var(--team-ink)] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                           <span>See Plays ({playsCount})</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </span>
@@ -1689,7 +1696,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       setEditingPlaybook(activePlaybook);
                       setIsEditPlaybookOpen(true);
                     }}
-                    className="p-1 rounded-lg text-neutral-400 hover:text-cyan-400 hover:bg-white/10 transition-colors cursor-pointer"
+                    className="p-1 rounded-lg text-neutral-400 hover:text-[var(--team-ink)] hover:bg-white/10 transition-colors cursor-pointer"
                     title="Edit playbook details"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -1723,7 +1730,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       className="w-full text-left space-y-4 cursor-pointer rounded-2xl focus-visible:outline-2 focus-visible:outline-cyan-400 focus-visible:outline-offset-4"
                     >
                       <div>
-                        <h3 className="text-lg font-black uppercase text-white group-hover:text-cyan-400 transition-colors">
+                        <h3 className="text-lg font-black uppercase text-white group-hover:text-[var(--team-ink)] transition-colors">
                           {play.name.replace(/^\d+v\d+\s+/, "")}
                         </h3>
                         <span className="text-[11px] font-mono text-neutral-400">{play.situation}</span>
@@ -1737,7 +1744,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                       </div>
                       <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-2">
                         <span className="text-xs font-mono text-neutral-400">{play.formation}</span>
-                        <span className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                        <span className="text-xs font-black uppercase tracking-wider text-[var(--team-ink)] flex items-center gap-1">
                           {hasEditAccess ? "Edit Play" : "View Play"}
                           <ArrowRight className="w-3.5 h-3.5" />
                         </span>
@@ -1751,7 +1758,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                             aria-label={`Category for ${play.name}`}
                             value={play.formation}
                             onChange={(event) => handleUpdateActivePlay({ ...play, formation: event.target.value })}
-                            className="block w-full min-w-0 rounded-lg border border-white/10 bg-black/40 px-2 py-2 text-xs text-cyan-300 outline-none focus:border-cyan-400"
+                            className="block w-full min-w-0 rounded-lg border border-white/10 bg-black/40 px-2 py-2 text-xs text-[var(--team-ink)] outline-none focus:border-cyan-400"
                           >
                             {activePlaybook.formations.map((formation) => (
                               <option key={formation.id} value={formation.name}>{formation.name}</option>
@@ -1809,6 +1816,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     <button
                       onClick={handleCreatePlayInFormationClick}
                       className="px-5 py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-xs uppercase cursor-pointer"
+                      style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
                     >
                       Create Play in {selectedFormationName}
                     </button>
@@ -1878,15 +1886,15 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         />
       )}
 
-      {/* Playbook Studio Footer with Powered by FlagOS Disclaimer */}
+      {/* Playbook Footer with Powered by FlagOS Disclaimer */}
       {viewLevel !== "editor" && <footer className="relative z-10 w-full border-t border-white/10 bg-black/80 backdrop-blur-md py-6 px-6 text-xs text-neutral-400 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white uppercase">{teamName}</span>
             <span>•</span>
-            <span>Playbook Studio</span>
+            <span>Playbook</span>
             <span>•</span>
-            <span>Tactical Confidentiality Guard Active</span>
+            <span>Coaches and players only</span>
           </div>
           <div className="flex items-center gap-2 text-neutral-400 font-medium">
             <span>Powered by</span>

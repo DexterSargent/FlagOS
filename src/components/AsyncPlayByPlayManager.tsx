@@ -1253,7 +1253,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
 
           {/* PERIOD BADGE (FIRST HALF / SECOND HALF ONLY - NO TIMERS) */}
           <div className="flex flex-col items-center justify-center gap-0.5 px-2 md:px-5 py-1.5 rounded-xl bg-black/60 border border-white/10 shadow-inner shrink-0">
-            <span className="text-[8px] md:text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-emerald-400">
               {matchStatus === "completed" ? "Game Complete" : "Current Period"}
             </span>
             <span className="text-sm md:text-lg font-black tracking-wider uppercase text-white">
@@ -1445,7 +1445,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl }: AsyncPlayBy
                   <div className="max-w-md mx-auto p-4 rounded-2xl bg-black/60 border border-amber-500/30 text-left space-y-1.5 shadow-md">
                     <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-amber-400 uppercase tracking-wider">
                       <Sparkles className="w-3 h-3" />
-                      <span>Last Play Statement:</span>
+                      <span>Last Play</span>
                     </div>
                     <p className="text-xs font-bold text-neutral-200 font-sans leading-snug">
                       {lastLoggedPlayStatement}

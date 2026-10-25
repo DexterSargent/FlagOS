@@ -50,6 +50,26 @@ export function getReadableTextColor(background: string, preferred: string): str
   return contrastRatio(bg, 0) >= contrastRatio(bg, 1) ? "#000000" : "#FFFFFF";
 }
 
+/** Surfaces the ink colours are tuned against: the lightest dark-mode panel and the darkest light-mode panel. */
+export const INK_SURFACE_DARK = "#171e28";
+export const INK_SURFACE_LIGHT = "#e7edf4";
+
+/** Lightens or darkens a brand colour just enough to read as text (4.5:1) on the given surface. */
+export function readableInk(color: string, surface: string, minRatio = 4.5): string {
+  const bg = luminance(surface);
+  const base = /^#?[0-9a-f]{6}$/i.test(color.trim()) ? parseHexColor(color) : null;
+  if (bg === null || !base) return color;
+  const target = bg < 0.2 ? 255 : 0;
+  for (let step = 0; step <= 20; step += 1) {
+    const w = step / 20;
+    const mixed = [base.r, base.g, base.b].map((v) => Math.round(v * (1 - w) + target * w));
+    const hex = `#${mixed.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+    const lum = luminance(hex);
+    if (lum !== null && contrastRatio(bg, lum) >= minRatio) return hex;
+  }
+  return target ? "#ffffff" : "#000000";
+}
+
 /** First team colour that stays legible on a near-black surface, for accents, bars and highlights. */
 export function getAccentOnDark(palette: TeamColorPalette, surface = "#0A0A0A"): string {
   const bg = luminance(surface) ?? 0;
@@ -133,6 +153,10 @@ export function getTeamCssVariables(palette: TeamColorPalette): Record<string, s
     "--league-accent": palette.secondary,
     "--league-primary-rgb": `${pRgb.r}, ${pRgb.g}, ${pRgb.b}`,
     "--league-accent-rgb": `${sRgb.r}, ${sRgb.g}, ${sRgb.b}`,
+    "--team-ink-dark": readableInk(palette.primary, INK_SURFACE_DARK),
+    "--team-ink-light": readableInk(palette.primary, INK_SURFACE_LIGHT),
+    "--league-ink-dark": readableInk(palette.primary, INK_SURFACE_DARK),
+    "--league-ink-light": readableInk(palette.primary, INK_SURFACE_LIGHT),
   };
 
   Object.entries(pShades).forEach(([shade, hex]) => {

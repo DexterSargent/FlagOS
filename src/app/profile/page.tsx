@@ -430,7 +430,7 @@ export default function PlayerProfilePage() {
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>Study Team Playbook</span>
-                  <span className="px-1.5 py-0.2 rounded bg-black/20 text-[9px] font-mono">View Only</span>
+                  <span className="px-1.5 py-0.2 rounded bg-black/20 text-[10px] font-mono">View Only</span>
                 </Link>
               )}
 

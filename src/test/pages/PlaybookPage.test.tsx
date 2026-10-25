@@ -313,7 +313,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
 
     await waitFor(() => {
       expect(screen.getByText("League Admin Access Restricted")).toBeInTheDocument();
-      expect(screen.getByText("Confidentiality Policy Protected")).toBeInTheDocument();
+      expect(screen.getByText("Private Team Playbook")).toBeInTheDocument();
       expect(
         screen.getByText(/To safeguard competitive integrity and prevent tactical advantages/i)
       ).toBeInTheDocument();
@@ -351,7 +351,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     await renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Tactical Playbook Confidential")).toBeInTheDocument();
+      expect(screen.getByText("This Playbook Is Private")).toBeInTheDocument();
       expect(screen.getByText("Opponent Playbook Protected")).toBeInTheDocument();
       expect(
         screen.getByText(/As a rostered player, you only have view access to the playbooks of your own team/i)
@@ -388,7 +388,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.getByText("Player View Only")).toBeInTheDocument();
       // Should NOT have edit buttons
       expect(screen.queryByRole("button", { name: /Create a Playbook/i })).toBeNull();
-      expect(screen.queryByRole("button", { name: /Save to Cloud/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Auto-save status/i })).toBeNull();
     });
   });
 
@@ -405,7 +405,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.getAllByText(/Apex Predators/i).length).toBeGreaterThan(0);
       // Coach should see "Create a Playbook" and "Save to Cloud" buttons
       expect(screen.getByRole("button", { name: /Create a Playbook/i })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Save to Cloud/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Auto-save status/i })).toBeInTheDocument();
     });
   });
 
@@ -440,7 +440,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.getByText("Player View Only")).toBeInTheDocument();
       // Player should NOT have edit controls on an independent team
       expect(screen.queryByRole("button", { name: /Create a Playbook/i })).toBeNull();
-      expect(screen.queryByRole("button", { name: /Save to Cloud/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Auto-save status/i })).toBeNull();
     });
 
   });
@@ -491,7 +491,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     await waitFor(() => {
       expect(screen.getByText("Existing Playbooks (0/5):")).toBeInTheDocument();
       expect(screen.getByText("No Playbooks Created Yet")).toBeInTheDocument();
-      expect(screen.getByText(/New teams start with an empty playbook canvas/i)).toBeInTheDocument();
+      expect(screen.getByText(/Create a playbook to organize your formations and plays/i)).toBeInTheDocument();
       expect(screen.getByTestId("create-first-playbook-btn")).toBeInTheDocument();
     });
   });

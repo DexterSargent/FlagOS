@@ -77,7 +77,7 @@ export function LeagueAdminView({
                 <Crown className="w-3.5 h-3.5 text-amber-400" />
                 League Commissioner Hub
               </span>
-              <span className="hidden sm:inline text-neutral-500 text-xs">•</span>
+              <span className="hidden sm:inline text-[var(--text-muted)] text-xs">•</span>
               <span className="hidden sm:inline text-[11px] font-mono text-neutral-400 uppercase">
                 Full Administrative Access
               </span>
@@ -149,9 +149,9 @@ export function LeagueAdminView({
         <div data-tour="league-kpis" className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 pt-4 sm:pt-6 [&>div]:min-w-0 [&>div]:p-3 sm:[&>div]:p-4">
           <div className="bg-black/50 border border-line-subtle rounded-2xl">
             <div className="flex flex-wrap items-center justify-between gap-1">
-              <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Teams &amp; Slots</span>
+              <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Teams &amp; Slots</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
-                {isEffectiveDemo ? "Sandbox" : isLeagueArchived ? "Archived" : `$${subscription?.totalMonthlyFee || 160}/mo`}
+                {isEffectiveDemo ? "Sandbox" : isLeagueArchived ? "Archived" : `$${subscription?.totalMonthlyFee ?? (40 + (subscription?.teamCount ?? 8) * (subscription?.perTeamMonthlyFee ?? 20))}/mo`}
               </span>
             </div>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
@@ -168,7 +168,7 @@ export function LeagueAdminView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Season Schedule Progress</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Season Schedule Progress</span>
             <div className="text-xl sm:text-3xl font-black text-white mt-1 tabular-nums whitespace-nowrap">
               {completedMatches.length} / {matches.length}
             </div>
@@ -183,13 +183,13 @@ export function LeagueAdminView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Total Roster Athletes</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Total Roster Athletes</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">{players.length}</div>
             <span className="text-[11px] text-emerald-400 mt-1 block">Active Competitors</span>
           </div>
 
           <div className="bg-black/50 border border-line-subtle rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">League Scoring Leader</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">League Scoring Leader</span>
             <div className="text-base sm:text-2xl font-black text-white mt-1 break-words">
               {topScorer?.name !== "-" ? topScorer?.name : "No stats recorded"}
             </div>

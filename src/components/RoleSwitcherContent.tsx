@@ -211,7 +211,7 @@ export default function RoleSwitcherContent() {
       <div className="w-full max-w-[1700px] mx-auto flex flex-wrap sm:flex-nowrap items-center justify-between gap-1 sm:gap-2 xl:gap-3 min-w-0">
         {/* Left: Indicator & Role Badge */}
         <div className="order-1 flex items-center gap-1 sm:gap-2 shrink-0">
-          <div className="hidden sm:flex items-center gap-1 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-mono text-[9px] sm:text-[10px] font-bold shrink-0">
+          <div className="hidden sm:flex items-center gap-1 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 font-mono text-[10px] font-bold shrink-0">
             <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-400 animate-pulse" />
             <span className="hidden sm:inline tracking-wide">ROLE SWITCHER</span>
           </div>
@@ -368,7 +368,7 @@ export default function RoleSwitcherContent() {
             className={`flex items-center gap-0.5 sm:gap-1 px-0.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] font-bold transition-all shadow-sm cursor-pointer border shrink-0 whitespace-nowrap ${
               resetConfirm
                 ? "bg-red-600 text-white border-red-500 animate-pulse font-black"
-                : "bg-red-500/10 hover:bg-red-500/20 text-red-300 border-red-500/30"
+                : "bg-red-500/10 hover:bg-red-500/20 text-red-700 dark:text-red-200 border-red-500/30"
             }`}
             title="Reset current session to original defaults"
           >

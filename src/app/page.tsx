@@ -89,7 +89,7 @@ export default function FlagOSPlatformLandingPage() {
   }, [frameId]);
 
   const featureTabs = [
-    { id: "stats", label: "Play-by-Play Wizard", shortLabel: "Play-by-Play", icon: Activity },
+    { id: "stats", label: "Game scoring", shortLabel: "Scoring", icon: Activity },
     { id: "playbook", label: "Playbook Studio", shortLabel: "Playbook", icon: BookOpen },
     { id: "live-clock", label: "Schedule Builder", shortLabel: "Schedule", icon: Calendar },
     { id: "infrastructure", label: "League Dashboard", shortLabel: "Dashboard", icon: LayoutDashboard },
@@ -125,8 +125,8 @@ export default function FlagOSPlatformLandingPage() {
     switch (activeFeatureTab) {
       case "stats":
         return {
-          title: "Dynamic Play-by-Play Wizard",
-          desc: "Full gameday stat tracker with dual operating modes for live clocks or clockless fast-logging.",
+          title: "Game scoring",
+          desc: "Track scores and stats live, or enter plays after the game.",
         };
       case "playbook":
         return {
@@ -135,13 +135,13 @@ export default function FlagOSPlatformLandingPage() {
         };
       case "live-clock":
         return {
-          title: "Automated Seasonal Scheduler",
-          desc: "Round-robin matchmaking engine, drag-and-drop game slot ordering, field assignments & playoff brackets.",
+          title: "Season schedule builder",
+          desc: "Build a round-robin schedule, reorder games, assign fields, and set up playoffs.",
         };
       case "infrastructure":
         return {
           title: "FlagOS League Dashboard",
-          desc: "Real-time standings, cumulative statistics, live match tickers, and public spectator portal.",
+          desc: "Standings, season stats, and live scores for your league and its fans.",
         };
     }
   };
@@ -478,20 +478,20 @@ export default function FlagOSPlatformLandingPage() {
           {/* Social Proof metrics */}
           <div className="pt-5 grid grid-cols-2 gap-3 max-w-3xl mx-auto border-t border-white/10">
             <div>
-              <div className="text-lg sm:text-xl md:text-3xl font-black text-cyan-500 font-mono">Season Long <br /> Statistics</div>
-              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Cumulative Team and Individual Stats</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-cyan-500 font-mono">Season <br /> Statistics</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-neutral-400 font-bold uppercase mt-0.5">Cumulative Team and Individual Stats</div>
             </div>
             <div>
               <div className="text-lg sm:text-xl md:text-3xl font-black text-cyan-500 font-mono">Custom <br /> Playbooks</div>
-              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Up to 5 Per Team</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-neutral-400 font-bold uppercase mt-0.5">Up to 5 Per Team</div>
             </div>
             <div>
-              <div className="text-lg sm:text-xl md:text-3xl font-black text-[#3b82f6] font-mono">Customizable <br /> League Rules</div>
-              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">5v5 IFAF Rules Pre-loaded</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-blue-600 dark:text-blue-400 font-mono">Customizable <br /> League Rules</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-neutral-400 font-bold uppercase mt-0.5">5v5 IFAF Rules Pre-loaded</div>
             </div>
             <div>
-              <div className="text-lg sm:text-xl md:text-3xl font-black text-[#3b82f6] font-mono">Automatic <br /> Schedule Builder</div>
-              <div className="text-[11px] sm:text-xs text-neutral-500 font-bold uppercase mt-0.5">Plan your entire season in seconds</div>
+              <div className="text-lg sm:text-xl md:text-3xl font-black text-blue-600 dark:text-blue-400 font-mono">Automatic <br /> Schedule Builder</div>
+              <div className="text-[11px] sm:text-xs text-slate-600 dark:text-neutral-400 font-bold uppercase mt-0.5">Build your season schedule</div>
             </div>
           </div>
         </section>
@@ -500,7 +500,7 @@ export default function FlagOSPlatformLandingPage() {
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-5 border-t border-white/10 space-y-5">
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-400">
-              Subscription Breakdown
+              Choose Your Plan
             </span>
             <h2 className="text-2xl md:text-5xl font-black uppercase text-white tracking-tight">
               Plans Available for Teams &amp; Leagues
@@ -523,7 +523,7 @@ export default function FlagOSPlatformLandingPage() {
 
                 <div>
                   <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                    A dedicated private headquarters for travel teams, tournament squads, and coaches, complete with roster management, highly efficent stat tracking, and up to 5 custom playbooks.
+                    Manage your roster, track game stats, and build up to 5 custom playbooks in one private space for your team.
                   </p>
                 </div>
 
@@ -531,7 +531,7 @@ export default function FlagOSPlatformLandingPage() {
                   <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <ListChecks className="w-3.5 h-3.5" />
-                      What You Get With a Team Subscription
+                      Included With Your Team
                     </span>
                     <span className="text-neutral-500 text-[10px]">Key Features</span>
                   </div>
@@ -540,39 +540,39 @@ export default function FlagOSPlatformLandingPage() {
                     {[
                       {
                         icon: Play,
-                        badge: "Dynamic Play-by-Play Wizard",
-                        title: "Asynchronous Game Logging",
-                        description: "Log games and scrimmages with access to a dynamic play-by-play wizard built specifically for streamlining flag football stat-tracking during or after the game.",
+                        badge: "Game scoring",
+                        title: "Log During or After the Game",
+                        description: "Record plays and stats as they happen, or enter them later for games and scrimmages.",
                       },
                       {
                         icon: Activity,
                         badge: "Live Updating",
                         title: "Full Play-by-Play & Box Scores",
-                        description: "Live updating play-by-play and box scores for every game. Parents and fans can follow along from anywhere with service, no log-in needed.",
+                        description: "Parents and fans can follow live plays and box scores from any connected device. No sign-in needed.",
                       },
                       {
                         icon: BookOpen,
                         badge: "Playbook Studio",
                         title: "Build & Share Up to 5 Custom Playbooks",
-                        description: "Intuitive play design interface for offensive and defensive playbooks. Interactive visual route designer with route presets and custom routes. Defensive zone presets and man coverage tools.",
+                        description: "Design offensive and defensive plays with preset or custom routes, defensive zones, and man coverage tools.",
                       },
                       {
                         icon: Users,
                         badge: "Roster Hub",
                         title: "Private Team Portal",
-                        description: "Dedicated team portal with depth charts, customizable team statistics & trends dashboard,  contact information, and your teams playbooks. Unauthorized users will see only your teams roster, schedule, and individual player statistics when viewing your portal",
+                        description: "Keep depth charts, team stats, contact details, and playbooks private. Visitors can see your roster, schedule, and player stats.",
                       },
                       {
                         icon: Trophy,
                         badge: "Career Records",
                         title: "Athlete Career Profiles & Game Logs",
-                        description: "Individual player stats from every game follow athletes across all FlagOS seasons, teams, and leagues building comprehensive career histories.",
+                        description: "Keep a player's game stats together across FlagOS seasons, teams, and leagues.",
                       },
                       {
                         icon: Sliders,
-                        badge: "100% Autonomy",
-                        title: "Full Independence",
-                        description: "Full club autonomy for travel squads, intramural clubs, and tournament teams without needing a parent league.",
+                        badge: "No league needed",
+                        title: "Run Your Own Team",
+                        description: "Manage a travel, intramural, or tournament team without joining a league.",
                       },
                     ].map((feat, idx) => (
                       <div
@@ -583,11 +583,11 @@ export default function FlagOSPlatformLandingPage() {
                           <feat.icon className="w-4 h-4" />
                         </div>
                         <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1.5 sm:gap-2">
+                          <div className="flex flex-col lg:flex-row lg:justify-between items-start gap-1.5 sm:gap-2">
                             <span className="text-xs font-bold text-white tracking-wide group-hover:text-emerald-300 transition-colors leading-snug min-w-0 break-words">
                               {feat.title}
                             </span>
-                            <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
+                            <span className="text-[10px] sm:text-[11px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
                               {feat.badge}
                             </span>
                           </div>
@@ -627,7 +627,7 @@ export default function FlagOSPlatformLandingPage() {
 
                 <div>
                   <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-                    A complete league management system for commissioners and organizers, complete with role-based access control for commissioners, coaches, and players, and a public-facing league portal for spectators and fans.
+                    Manage schedules, scores, and teams in one place. Give commissioners, coaches, and players the access they need, with public pages for fans.
                   </p>
                 </div>
 
@@ -635,7 +635,7 @@ export default function FlagOSPlatformLandingPage() {
                   <div className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#1d4ed8] dark:text-[#60a5fa] flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <ListChecks className="w-3.5 h-3.5" />
-                      What you get with a league subscription
+                      Included With Your League
                     </span>
                     <span className="text-neutral-500 text-[10px]">Key Features</span>
                   </div>
@@ -658,12 +658,12 @@ export default function FlagOSPlatformLandingPage() {
                         icon: Building2,
                         badge: "Branding",
                         title: "Customizable League Portal",
-                        description: "Make the league your own with custom branding, themes, and league information. The only FlagOS branding on your league is a brief \"Powered by FlagOS\" disclaimer in the footer.",
+                        description: "Make the league your own with custom branding, themes, and league information. Your league pages include a small \"Powered by FlagOS\" credit in the footer.",
                       },
                       {
                         icon: Calendar,
                         badge: "Automation",
-                        title: "Automated Seasonal Scheduler",
+                        title: "Season schedule builder",
                         description: "Generate a full season schedule, drag-and-drop to reorder game slots, and assign fields automatically. Playoff brackets are automatically generated based on your league's playoff structure and seeding rules.",
                       },
                       {
@@ -676,7 +676,7 @@ export default function FlagOSPlatformLandingPage() {
                         icon: Flame,
                         badge: "Recruitment",
                         title: "Registration Portal & Free Agent Board (Optional)",
-                        description: "Public registration pipeline for incoming players. Players who complete the form are added to the free-agent pool viewable by league and team admins.",
+                        description: "Let players register online. League and team admins can find registered players in the free-agent pool.",
                       },
                     ].map((feat, idx) => (
                       <div
@@ -687,11 +687,11 @@ export default function FlagOSPlatformLandingPage() {
                           <feat.icon className="w-4 h-4" />
                         </div>
                         <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-1.5 sm:gap-2">
+                          <div className="flex flex-col lg:flex-row lg:justify-between items-start gap-1.5 sm:gap-2">
                             <span className="text-xs font-bold text-white tracking-wide group-hover:text-[#1d4ed8] dark:group-hover:text-[#93c5fd] transition-colors leading-snug min-w-0 break-words">
                               {feat.title}
                             </span>
-                            <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-[#3b82f6]/10 text-[#1d4ed8] dark:text-[#93c5fd] border border-[#3b82f6]/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
+                            <span className="text-[10px] sm:text-[11px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-[#3b82f6]/10 text-[#1d4ed8] dark:text-[#93c5fd] border border-[#3b82f6]/20 font-bold shrink-0 text-center whitespace-normal leading-tight self-start max-w-[125px] sm:max-w-none">
                               {feat.badge}
                             </span>
                           </div>
@@ -708,7 +708,7 @@ export default function FlagOSPlatformLandingPage() {
               <div className="pt-6 border-t border-white/10 mt-6">
                 <Link
                   href="/pricing"
-                  className="w-full py-4 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <span>View Pricing</span>
                   <ArrowRight className="w-4 h-4" />
@@ -723,13 +723,13 @@ export default function FlagOSPlatformLandingPage() {
           <div id="interactive-demo" className="absolute -top-24 left-0" />
           <div className="text-center space-y-3">
             <span className="text-xs font-mono font-bold uppercase tracking-widest text-cyan-400">
-              Interactive Capabilities
+              Try It Yourself
             </span>
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase text-white tracking-tight">
-              <FlagOSText /> Powerhouse Features
+              <FlagOSText /> in Action
             </h2>
             <p className="text-neutral-400 text-xs sm:text-sm max-w-3xl mx-auto text-balance">
-              Test drive the actual system features directly in the sandboxed interactive frame below. Zero database writes.
+              Try scoring a game, designing a play, or building a schedule. Nothing you do here is saved.
             </p>
           </div>
 
@@ -761,34 +761,34 @@ export default function FlagOSPlatformLandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 max-w-4xl mx-auto p-3 rounded-2xl bg-gradient-to-r from-neutral-900/90 via-neutral-950 to-neutral-900/90 border border-emerald-500/30 backdrop-blur-xl shadow-lg w-full">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 w-full sm:w-auto">
                 <span className="text-xs font-bold text-neutral-300 whitespace-nowrap">
-                  Wizard Operating Mode:
+                  Scoring mode:
                 </span>
                 <div className="flex flex-wrap sm:flex-nowrap items-center justify-center gap-1.5 p-1 rounded-xl bg-black/80 border border-white/10 text-xs font-bold w-full sm:w-auto">
                   <button
                     onClick={() => setWizardMode("async")}
-                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${wizardMode === "async"
+                    className={`flex-1 sm:flex-initial min-h-10 px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${wizardMode === "async"
                       ? "bg-emerald-500 text-black font-black shadow-md"
                       : "text-neutral-400 hover:text-white"
                       }`}
                   >
                     <Play className="w-3.5 h-3.5 shrink-0" />
-                    <span className="leading-tight">Asynchronous <span className="hidden xs:inline">(Clockless)</span></span>
+                    <span className="leading-tight">Log after the game</span>
                   </button>
                   <button
                     onClick={() => setWizardMode("sync")}
-                    className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${wizardMode === "sync"
+                    className={`flex-1 sm:flex-initial min-h-10 px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${wizardMode === "sync"
                       ? "bg-cyan-500 text-black font-black shadow-md"
                       : "text-neutral-400 hover:text-white"
                       }`}
                   >
                     <Timer className="w-3.5 h-3.5 shrink-0" />
-                    <span className="leading-tight">Synchronous <span className="hidden xs:inline">(Live Clocks)</span></span>
+                    <span className="leading-tight">Live scoring</span>
                   </button>
                 </div>
                 <span className="text-[11px] font-mono text-neutral-400 hidden lg:inline">
                   {wizardMode === "sync"
-                    ? "Official live clock, play clock, spot ball & down counter"
-                    : "Rapid clockless stat keeper for high-tempo post-game or sideline logging"}
+                    ? "Game and play clocks, ball position, and downs"
+                    : "Enter plays and stats without running a clock"}
                 </span>
               </div>
             </div>
@@ -810,7 +810,7 @@ export default function FlagOSPlatformLandingPage() {
               <button
                 type="button"
                 onClick={() => setFrameKey((k) => k + 1)}
-                className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                className="p-2.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                 aria-label="Reset demo"
                 title="Reset demo"
               >
@@ -820,7 +820,7 @@ export default function FlagOSPlatformLandingPage() {
                 href={getFeatureUrl().replace("embed=true&", "")}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
+                className="p-2.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
                 aria-label="Open demo in a new tab"
                 title="Open in new tab"
               >
@@ -834,14 +834,14 @@ export default function FlagOSPlatformLandingPage() {
                 key={frameId}
                 ref={frameRef}
                 src={getFeatureUrl()}
-                title="FlagOS Real Feature Live Sandbox"
+                title="FlagOS interactive demo"
                 loading="lazy"
                 onLoad={() => setLoadedFrameId(frameId)}
                 className="w-full h-full border-0 bg-black block"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
               />
               {isFrameLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#05070C] text-neutral-400 pointer-events-none">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-[#05070C] text-slate-600 dark:text-neutral-300 pointer-events-none">
                   <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
                   <span className="text-[11px] font-mono uppercase tracking-widest">Loading {getFeatureBadge().title}</span>
                 </div>
@@ -856,7 +856,7 @@ export default function FlagOSPlatformLandingPage() {
                 <span className="hidden md:inline truncate">{getFeatureBadge().desc}</span>
               </div>
               <span className="font-mono text-[10px] text-neutral-500 shrink-0 whitespace-nowrap">
-                <span className="hidden sm:inline">Isolated Client </span>Sandbox
+                Practice demo
               </span>
             </div>
           </div>

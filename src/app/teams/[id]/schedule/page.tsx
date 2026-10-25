@@ -323,11 +323,12 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
         <h2 className="text-3xl font-black mb-4">{scheduleError ? "Schedule Unavailable" : "Team Not Found"}</h2>
         <p role={scheduleError ? "alert" : undefined} className="text-neutral-400 mb-6 max-w-md">
-          {scheduleError || "The requested franchise does not exist. Free agents are an unassigned draft pool, not a schedulable team."}
+          {scheduleError || "This team could not be found. It may have been removed."}
         </p>
         <Link
           href="/teams"
-          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500  font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)]"
+          style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
         >
           Back to Teams
         </Link>
@@ -350,10 +351,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const hasManagementAccess = canManageTeam(teamId) || isLeagueAdmin;
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative flex flex-col">
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-[var(--team-ink)] relative flex flex-col">
 
       {/* Dynamic Background styled to team colors */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-15">
         <div 
           className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-25 animate-pulse"
           style={{ backgroundColor: palette.primary }}
@@ -373,10 +374,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           <div>
             <div 
               className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest mb-2"
-              style={{ color: palette.primary }}
+              style={{ color: "var(--team-ink)" }}
             >
               <Calendar className="w-4 h-4" />
-              <span>Official Schedule</span>
+              <span>Schedule</span>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
               {teamName} <span className="text-neutral-500 font-normal">Schedule</span>
@@ -395,12 +396,12 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               onClick={() => setIsScheduleModalOpen(true)}
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-3 rounded-2xl hover:opacity-90 font-black text-xs uppercase tracking-wider whitespace-nowrap transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
               style={{
-                background: `linear-gradient(135deg, ${palette.primary}, ${palette.secondary !== "#FFFFFF" ? palette.secondary : palette.tertiary})`,
+                backgroundColor: palette.primary,
                 color: getReadableTextColor(palette.primary, "#000000"),
               }}
             >
               <Plus className="w-4 h-4 shrink-0" />
-              <span>Schedule Game<span className="hidden sm:inline"> (Named Opponent)</span></span>
+              <span>Schedule Game</span>
             </button>
           )}
         </div>
@@ -411,7 +412,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           <div className="space-y-4">
             <div 
               className="flex items-center gap-2.5 text-lg font-black uppercase tracking-wider"
-              style={{ color: palette.primary }}
+              style={{ color: "var(--team-ink)" }}
             >
               <Clock className="w-5 h-5" />
               <span>Upcoming Games</span>
@@ -453,12 +454,12 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             </span>
                             {isAsyncMatch && (
                               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                                <Sparkles className="w-3 h-3" /> <span className="sm:hidden">Async</span><span className="hidden sm:inline">Clockless Async</span>
+                                <Sparkles className="w-3 h-3" /> <span>Untimed</span>
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest whitespace-nowrap ${m.status === "in_progress" ? (getGameDisplayState(m, now) === "live" ? "text-red-400 animate-pulse" : "text-amber-400") : "text-emerald-400"}`}>
+                            <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest whitespace-nowrap ${m.status === "in_progress" ? (getGameDisplayState(m, now) === "live" ? "text-red-600 dark:text-red-300" : "text-amber-400") : "text-emerald-400"}`}>
                               {m.status === "in_progress" ? (getGameDisplayState(m, now) === "live" ? "● LIVE NOW" : "Ⅱ PAUSED") : "Upcoming"}
                             </span>
                             {canDeleteMatch && (
@@ -466,7 +467,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                                 type="button"
                                 onClick={(e) => handleDeleteMatch(e, m.id)}
                                 title="Delete Event"
-                                className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-lg transition-colors cursor-pointer"
+                                className="min-h-9 min-w-9 inline-flex items-center justify-center p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 rounded-lg transition-colors cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -522,11 +523,11 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                           className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm border ${
                             canScheduleMatches && isAsyncMatch
                               ? "bg-emerald-500/10 hover:bg-emerald-500 text-emerald-300 hover:text-black border-emerald-500/30 hover:border-emerald-500"
-                              : "bg-white/5 hover:bg-cyan-600 text-slate-700 dark:text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
+                              : "bg-white/5 hover:bg-white/10 text-slate-700 dark:text-neutral-300 hover:text-white border-white/10 hover:border-cyan-500"
                           }`}
                         >
                           <PlayCircle className="w-4 h-4 shrink-0" />
-                          <span className="whitespace-nowrap">{!canScheduleMatches ? "Watch Game" : isAsyncMatch ? <>Open Async Stat Keeper<span className="hidden sm:inline"> (Clockless)</span></> : "Track Game / Play-by-Play"}</span>
+                          <span className="whitespace-nowrap">{!canScheduleMatches ? "Watch Game" : isAsyncMatch ? <>Record Stats</> : "Track Game"}</span>
                         </Link>
                       </div>
                     </div>
@@ -572,17 +573,17 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             {localMatchDate(m.date).toLocaleDateString()}
                           </span>
                           {isAsyncMatch && (
-                            <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                              Async
+                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                              Untimed
                             </span>
                           )}
                           {m.isPlayoff && (
-                            <span className="text-[9px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">
                               {m.playoffRound || "Playoffs"}
                             </span>
                           )}
                         </div>
-                        <div className="font-bold text-sm sm:text-base leading-snug text-white group-hover:text-cyan-400 transition-colors break-words">
+                        <div className="font-bold text-sm sm:text-base leading-snug text-white group-hover:text-[var(--team-ink)] transition-colors break-words">
                           {isHome ? "vs" : "@"} {opponentName}
                         </div>
                         <div className="text-xs text-neutral-400 whitespace-nowrap">Box Score & Plays →</div>
@@ -622,7 +623,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </div>
-      <TeamPortalFooter section="Official Schedule" />
+      <TeamPortalFooter section="Schedule" />
 
       {/* SCHEDULE MATCH MODAL */}
       {isScheduleModalOpen && canScheduleMatches && (
@@ -741,7 +742,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-3.5 text-xs text-neutral-300 space-y-1">
                 <div className="font-bold text-emerald-400 flex items-center gap-1.5">
                   <Timer className="w-3.5 h-3.5" />
-                  <span>Asynchronous Clockless Stat Keeping</span>
+                  <span>Untimed Game</span>
                 </div>
                 <p className="text-[11px] text-neutral-400 leading-relaxed">
                   All timing, play clocks, and timeout features are automatically disabled. Stat keeping is tracked simply by First Half and Second Half with Start Play and Halftime controls.

@@ -61,17 +61,17 @@ export function SpectatorView({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 {settings?.seasonTitle || "Active Season"}
               </span>
-              <span className="hidden sm:inline text-neutral-500 text-xs">•</span>
+              <span className="hidden sm:inline text-[var(--text-muted)] text-xs">•</span>
               <span className="hidden sm:inline text-[11px] font-mono text-neutral-400 uppercase">
-                Official Gameday Central
+                League Overview
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase tracking-tight text-white leading-tight">
-              {renderFlagOS(settings?.leagueName)} Gameday Central
+              {renderFlagOS(settings?.leagueName)} Overview
             </h1>
             <p className="text-neutral-400 text-xs md:text-sm mt-1 max-w-2xl">
               {settings?.tagline ||
-                "Follow real-time play-by-play, live game box scores, official standings, and individual stat leaderboards across the league."}
+                "Follow live games, scores, standings, and player stats."}
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export function SpectatorView({
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href="/schedule"
-                className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
+                className="px-5 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
               >
                 <CalendarDays className="w-4 h-4" />
                 <span>Game Schedule</span>
@@ -110,19 +110,19 @@ export function SpectatorView({
         {/* Spectator Snapshot Tiles */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Active Teams</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Active Teams</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">{teams.length}</div>
-            <span className="text-[11px] text-cyan-400 mt-1 block">Competing Teams</span>
+            <span className="text-[11px] text-cyan-400 mt-1 block">This season</span>
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Upcoming Games</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Upcoming Games</span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">{upcomingMatches.length}</div>
-            <span className="text-[11px] text-neutral-400 mt-1 block">Scheduled on Calendar</span>
+            <span className="text-[11px] text-neutral-400 mt-1 block">On the schedule</span>
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">League Top Scorer</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Scoring Leader</span>
             <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
               {topScorer?.name !== "-" ? topScorer?.name : "None yet"}
             </div>
@@ -130,7 +130,7 @@ export function SpectatorView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">Passing Leader</span>
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Passing Leader</span>
             <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
               {topPasser?.name !== "-" ? topPasser?.name : "None yet"}
             </div>

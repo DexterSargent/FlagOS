@@ -358,7 +358,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     const exploreHubLinks = screen.getAllByRole("link", { name: /Explore Hub/i });
     expect(exploreHubLinks.length).toBeGreaterThan(0);
-    expect(exploreHubLinks[0]).toHaveStyle({ backgroundColor: "rgb(60, 165, 5)" });
+    expect(exploreHubLinks[0]).toHaveStyle({ backgroundColor: "rgb(43, 125, 4)" });
     expect(exploreHubLinks[0]).toHaveStyle({ color: "rgb(255, 255, 255)" });
   });
 });

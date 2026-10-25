@@ -1399,7 +1399,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           <div className="bg-neutral-900 border border-white/10 rounded-2xl sm:rounded-3xl md:rounded-[3rem] p-4 sm:p-8 max-w-xl w-full flex flex-col max-h-[85vh]">
             <div className="flex justify-between items-center mb-4 sm:mb-6 shrink-0">
               <h2 className="text-xl sm:text-3xl font-black uppercase tracking-widest">Add Sub</h2>
-              <button onClick={() => { setIsSubModalOpen(false); setSubModalTeam(null); }} className="text-neutral-500 hover:text-white p-2 bg-white/5 rounded-full">
+              <button onClick={() => { setIsSubModalOpen(false); setSubModalTeam(null); }} className="text-[var(--text-muted)] hover:text-white p-2 bg-white/5 rounded-full">
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -1458,10 +1458,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {/* SINGLE-ROW SYNC SCOREBOARD & GAME CONTROLS */}
-      <header data-tour="score-header" className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full overflow-hidden" style={{ top: "var(--role-switcher-height, 0px)" }}>
-        <div className="flex flex-nowrap items-center justify-between gap-1 sm:gap-1.5 md:gap-3 w-full min-w-0">
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+      {/* SYNC SCOREBOARD & GAME CONTROLS */}
+      <header data-tour="score-header" className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full [&_button]:min-h-9 [&_button]:min-w-9 [&_button]:items-center [&_button]:justify-center [&_a]:min-h-9 [&_a]:min-w-9 [&_a]:justify-center" style={{ top: "var(--role-switcher-height, 0px)" }}>
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto] lg:flex lg:flex-nowrap items-center justify-between gap-1 sm:gap-1.5 md:gap-3 w-full min-w-0">
+          <div className="order-1 lg:order-none flex flex-col lg:flex-row items-center gap-0.5 sm:gap-1 shrink-0">
             {!isEmbedded && (
               <Link href={`/matches/${matchId}`} aria-label="Back to match" className="flex items-center text-neutral-400 hover:text-white bg-black p-1 md:p-2 rounded-md sm:rounded-lg border border-white/10">
                 <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -1473,13 +1473,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           <div 
-            className="flex flex-col items-center flex-1 min-w-0 max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
+            className="order-2 lg:order-none flex flex-col items-center flex-1 min-w-0 lg:max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
             style={{
               backgroundColor: homeTeamColors.secondary,
               borderColor: `${homeTeamColors.primary}40`,
             }}
           >
-            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: homeText }}>
+            <span className="flex items-center gap-0.5 text-[10px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: homeText }}>
               {homeTeamName}
               <FootballIcon active={possession === homeTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: homeText }} />
             </span>
@@ -1488,8 +1488,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <button
                 disabled={homeTimeouts === 0}
                 onClick={() => callTimeout("home")}
-                className="px-1 py-0.5 rounded text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
-                style={{ backgroundColor: `${homeTeamColors.primary}20`, color: homeText }}
+                className="px-1 py-0.5 rounded text-[10px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
+                style={{ backgroundColor: homeTeamColors.secondary, color: homeText }}
                 title="Call home team timeout"
               >
                 TO {homeTimeouts}
@@ -1503,15 +1503,15 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           {/* GAME CLOCK & DOWN ADJUSTER */}
-          <div data-tour="game-clock-controls" className="flex flex-col items-center bg-black/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
+          <div data-tour="game-clock-controls" className="order-3 lg:order-none flex flex-col items-center bg-black/40 px-1 sm:px-2 py-0.5 sm:py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
             {/* TOP: PERIOD & GAME CLOCK */}
             <div className="flex items-center gap-0.5 sm:gap-1.5">
-              <span className="hidden sm:block text-[8px] md:text-[10px] font-bold uppercase text-neutral-500">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
-              <button onPointerDown={() => startAdjustingClock(-10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Remove 10 seconds">
+              <span className="hidden sm:block text-[10px] font-bold uppercase text-[var(--text-muted)]">{getOrdinal(half)} {periodType === "quarters" ? "Q" : "H"}</span>
+              <button onPointerDown={() => startAdjustingClock(-10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-[var(--text-muted)] hover:text-white p-0.5" title="Remove 10 seconds">
                 <Minus className="w-3 h-3" />
               </button>
               <span className="text-sm sm:text-lg md:text-xl font-black tabular-nums text-white text-center leading-none">{formatTime(gameClock)}</span>
-              <button onPointerDown={() => startAdjustingClock(10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-neutral-500 hover:text-white p-0.5" title="Add 10 seconds">
+              <button onPointerDown={() => startAdjustingClock(10)} onPointerUp={stopAdjustingClock} onPointerLeave={stopAdjustingClock} className="hidden sm:block text-[var(--text-muted)] hover:text-white p-0.5" title="Add 10 seconds">
                 <Plus className="w-3 h-3" />
               </button>
               <button onClick={() => setIsGameClockRunning(!isGameClockRunning)} aria-label={isGameClockRunning ? "Pause game clock" : "Start game clock"} className={`p-0.5 sm:p-1 rounded-full cursor-pointer shrink-0 ${isGameClockRunning ? "bg-red-500/20 text-red-500" : "bg-emerald-500/20 text-emerald-500"}`}>
@@ -1548,10 +1548,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           {/* IFAF PLAY CLOCK CONTAINER WITH CONTROLS */}
-          <div data-tour="play-clock-controls" className="flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
+          <div data-tour="play-clock-controls" className="order-6 lg:order-none col-span-3 justify-self-center flex items-center gap-1 bg-black/40 px-1.5 sm:px-2 py-1 rounded-lg sm:rounded-xl border border-white/10 shrink-0">
             <div className="flex flex-col items-center leading-none" title="IFAF Play Clock">
-              <span className="text-[7px] md:text-[8px] uppercase tracking-wider text-neutral-500 font-bold">Play</span>
-              <span className={`text-sm md:text-base font-black tabular-nums ${playClock <= 0 ? "text-red-500 animate-pulse" : playClock <= 5 ? "text-amber-400 animate-pulse" : "text-amber-500"
+              <span className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-bold">Play</span>
+              <span className={`text-sm md:text-base font-black tabular-nums ${playClock <= 0 ? "text-red-700 dark:text-red-300" : playClock <= 5 ? "text-amber-700 dark:text-amber-300" : "text-amber-700 dark:text-amber-400"
                 }`}>
                 {playClock}
               </span>
@@ -1584,13 +1584,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           </div>
 
           <div 
-            className="flex flex-col items-center flex-1 min-w-0 max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
+            className="order-4 lg:order-none flex flex-col items-center flex-1 min-w-0 lg:max-w-[7.5rem] px-1.5 py-0.5 rounded-xl border shadow-sm"
             style={{
               backgroundColor: awayTeamColors.secondary,
               borderColor: `${awayTeamColors.primary}40`,
             }}
           >
-            <span className="flex items-center gap-0.5 text-[7px] sm:text-[9px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: awayText }}>
+            <span className="flex items-center gap-0.5 text-[10px] md:text-xs font-black uppercase truncate max-w-full" style={{ color: awayText }}>
               <FootballIcon active={possession === awayTeamName} className="w-2 h-2 sm:w-3 sm:h-3 shrink-0" style={{ color: awayText }} />
               {awayTeamName}
             </span>
@@ -1599,8 +1599,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
               <button
                 disabled={awayTimeouts === 0}
                 onClick={() => callTimeout("away")}
-                className="px-1 py-0.5 rounded text-[7px] sm:text-[8px] md:text-[9px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
-                style={{ backgroundColor: `${awayTeamColors.primary}20`, color: awayText }}
+                className="px-1 py-0.5 rounded text-[10px] font-bold disabled:opacity-30 disabled:line-through transition-colors"
+                style={{ backgroundColor: awayTeamColors.secondary, color: awayText }}
                 title="Call away team timeout"
               >
                 TO {awayTimeouts}
@@ -1613,7 +1613,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <div className="order-5 lg:order-none flex flex-col lg:flex-row items-center gap-0.5 sm:gap-1 shrink-0">
             <button onClick={() => setIsScoreboardFullscreen(true)} aria-label="Fullscreen scoreboard" className="bg-white/10 p-1 sm:p-1.5 md:p-2 rounded-md sm:rounded-lg hover:bg-white/20 text-neutral-300" title="Fullscreen Scoreboard">
               <Maximize className="w-3 h-3 sm:w-4 sm:h-4" />
             </button>
@@ -1629,13 +1629,13 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           {!isEmbedded ? (
             <>
               {/* SiteControls (with the Guide) only fit from md up; phones keep the Guide in the same top-right spot. */}
-              <PageGuideButton className="md:hidden" />
-              <div className="hidden md:block shrink-0">
+              <PageGuideButton className="order-7 col-span-2 justify-self-center lg:order-none md:hidden" />
+              <div className="order-7 col-span-2 justify-self-center lg:order-none hidden md:block shrink-0">
                 <SiteControls />
               </div>
             </>
           ) : (
-            <PageGuideButton />
+            <PageGuideButton className="order-7 col-span-2 justify-self-center lg:order-none" />
           )}
         </div>
       </header>
@@ -1644,7 +1644,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       <div className="bg-neutral-900/90 border-b border-white/10 px-4 py-2.5 flex items-center justify-between text-xs font-mono shadow-sm">
         <div className="flex items-center gap-2 overflow-hidden truncate">
           <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold uppercase tracking-wider text-[10px] shrink-0 flex items-center gap-1">
-            <Zap className="w-3 h-3" /> Live Statement
+            <Zap className="w-3 h-3" /> Latest Play
           </span>
           <span className="text-white truncate font-medium">
             {lastLoggedPlayStatement || "Game in progress • Select play type to begin tracking."}
@@ -1854,7 +1854,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 <span className="text-xl sm:text-3xl font-black uppercase" style={{ color: homeText }}>{homeTeamName}</span>
                 <span className="text-4xl sm:text-6xl md:text-[6rem] font-black leading-none" style={{ color: homeText }}>{homeScore}</span>
               </div>
-              <div className="text-neutral-500 font-bold text-lg sm:text-2xl tracking-widest">FINAL</div>
+              <div className="text-[var(--text-muted)] font-bold text-lg sm:text-2xl tracking-widest">FINAL</div>
               <div 
                 className="flex flex-col items-center gap-2 sm:gap-4 px-8 py-5 rounded-3xl border shadow-xl"
                 style={{ backgroundColor: awayTeamColors.secondary, borderColor: `${awayTeamColors.primary}40` }}
@@ -2841,7 +2841,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
             <div className="flex-1 overflow-y-auto py-4 space-y-2.5">
               {matchPlaysList.length === 0 ? (
-                <div className="text-center py-12 text-neutral-500 text-sm italic">
+                <div className="text-center py-12 text-[var(--text-muted)] text-sm italic">
                   No plays logged yet.
                 </div>
               ) : (

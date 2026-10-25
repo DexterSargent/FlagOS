@@ -46,7 +46,7 @@ export function LeagueStandingsWidget({
         <div className="overflow-x-auto hide-scrollbar">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
+              <tr className="text-[var(--text-muted)] border-b border-line-subtle font-mono uppercase">
                 <th className="pb-2 w-8">#</th>
                 <th className="pb-2">Team</th>
                 <th className="pb-2 text-center">W</th>
@@ -78,7 +78,7 @@ export function LeagueStandingsWidget({
                           />
                         </div>
                         <span>{row.name}</span>
-                        <span className="text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono">({row.shortcode})</span>
                       </Link>
                     </td>
                     <td className="py-3 text-center font-bold text-emerald-400">{row.w}</td>
@@ -93,7 +93,7 @@ export function LeagueStandingsWidget({
               })}
               {displayRows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-neutral-500 italic">
+                  <td colSpan={7} className="py-6 text-center text-[var(--text-muted)] italic">
                     No standings recorded yet.
                   </td>
                 </tr>

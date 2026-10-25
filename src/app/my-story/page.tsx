@@ -330,11 +330,11 @@ export default function MyStoryPage() {
             Private Founder Story
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-            This personal documentary memoir is restricted to Dexter Sargent and FlagOS team administrators.
+            This story is available to Dexter Sargent and FlagOS team administrators.
           </p>
           <Link
             href="/"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#3CA505] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#3CA505]/25 transition hover:bg-[#328b04]"
+            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#3CA505]/25 transition hover:bg-emerald-800"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to FlagOS
@@ -844,7 +844,7 @@ export default function MyStoryPage() {
                 <button
                   type="button"
                   onClick={handleSaveModalPhoto}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#3CA505] px-5 py-2 text-xs font-bold text-white shadow-md shadow-[#3CA505]/20 transition hover:bg-[#328b04]"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-md shadow-[#3CA505]/20 transition hover:bg-emerald-800"
                 >
                   <Check className="h-3.5 w-3.5" />
                   Save Photo

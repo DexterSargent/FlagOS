@@ -166,14 +166,14 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
 
     // Default tab is stats (verified by its unique description)
     expect(
-      screen.getByText("Full gameday stat tracker with dual operating modes for live clocks or clockless fast-logging.")
+      screen.getByText("Track scores and stats live, or enter plays after the game.")
     ).toBeInTheDocument();
 
     // Switch to Playbook Studio
     const playbookButton = screen.getByRole("tab", { name: /Playbook Studio/ });
     fireEvent.click(playbookButton);
     expect(playbookButton).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTitle("FlagOS Real Feature Live Sandbox")).toHaveAttribute(
+    expect(screen.getByTitle("FlagOS interactive demo")).toHaveAttribute(
       "src",
       "/teams/team_kc/playbook?embed=true&demo=true"
     );
@@ -185,34 +185,34 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     const scheduleButton = screen.getByRole("tab", { name: /Schedule Builder/ });
     fireEvent.click(scheduleButton);
     expect(
-      screen.getByText("Round-robin matchmaking engine, drag-and-drop game slot ordering, field assignments & playoff brackets.")
+      screen.getByText("Build a round-robin schedule, reorder games, assign fields, and set up playoffs.")
     ).toBeInTheDocument();
 
     // Switch to League Dashboard
     const dashboardButton = screen.getByRole("tab", { name: /League Dashboard/ });
     fireEvent.click(dashboardButton);
     expect(
-      screen.getByText("Real-time standings, cumulative statistics, live match tickers, and public spectator portal.")
+      screen.getByText("Standings, season stats, and live scores for your league and its fans.")
     ).toBeInTheDocument();
   });
 
-  it("toggles synchronous vs asynchronous operating modes for stat wizard preview", () => {
+  it("switches between live scoring and after-game logging", () => {
     render(<FlagOSPlatformLandingPage />);
 
-    // Click asynchronous mode button
-    const asyncButton = screen.getByRole("button", { name: /asynchronous/i });
+    // Choose after-game logging
+    const asyncButton = screen.getByRole("button", { name: /Log after the game/i });
     fireEvent.click(asyncButton);
     expect(
-      screen.getByText("Rapid clockless stat keeper for high-tempo post-game or sideline logging")
+      screen.getByText("Enter plays and stats without running a clock")
     ).toBeInTheDocument();
 
-    // Click synchronous mode button (specifically excluding Asynchronous)
+    // Choose live scoring
     const syncButton = screen.getByRole("button", {
-      name: (content) => content.includes("Synchronous") && !content.includes("Asynchronous"),
+      name: /Live scoring/i,
     });
     fireEvent.click(syncButton);
     expect(
-      screen.getByText("Official live clock, play clock, spot ball & down counter")
+      screen.getByText("Game and play clocks, ball position, and downs")
     ).toBeInTheDocument();
   });
 

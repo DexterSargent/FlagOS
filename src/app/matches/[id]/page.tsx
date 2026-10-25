@@ -202,7 +202,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col">
 
-      <div className="max-w-4xl mx-auto space-y-8 flex-1 w-full p-6 md:p-12">
+      <div className="max-w-4xl mx-auto space-y-8 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
 
         {/* Navigation */}
         <Link
@@ -224,7 +224,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="text-center md:text-left">
-              <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
+              <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start mb-1">
                 <span className="text-xs font-bold tracking-widest text-cyan-400 uppercase">
                   {isIndependentMatch ? "Independent Game" : renderFlagOS(settings.leagueName)} • {/^\d+$/.test(String(matchData.week ?? "")) ? `Week ${matchData.week}` : matchData.week || "Game"}
                 </span>
@@ -239,19 +239,19 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   <Clock className="w-4 h-4" />
                   <span>{matchData.date} • {formatMatchTime(matchData.time)}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-neutral-500">
+                <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
                   <MapPin className="w-4 h-4" />
                   <span>{matchData.location || settings.defaultLocation}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-8 bg-black/50 px-8 py-4 rounded-2xl border border-white/5">
+            <div className="flex items-center gap-3 sm:gap-8 bg-black/50 px-4 sm:px-8 py-4 rounded-2xl border border-white/5">
               <div className="text-center w-24 rounded-xl border p-2" style={getTeamBadgeStyle({ primaryColor: homeColors.primary, secondaryColor: homeColors.secondary })}>
                 <span className="text-sm block mb-1 truncate">{matchData.homeTeamName}</span>
                 <span className="text-4xl font-bold">{matchData.homeScore || 0}</span>
               </div>
-              <span className="text-neutral-600 font-light text-2xl">-</span>
+              <span className="text-neutral-400 font-light text-2xl">-</span>
               <div className="text-center w-24 rounded-xl border p-2" style={getTeamBadgeStyle({ primaryColor: awayColors.primary, secondaryColor: awayColors.secondary })}>
                 <span className="text-sm block mb-1 truncate">{matchData.awayTeamName}</span>
                 <span className="text-4xl font-bold">{matchData.awayScore || 0}</span>
@@ -269,8 +269,8 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 <h3 className="font-semibold text-lg text-white">Game Administration</h3>
                 <p className="text-sm text-neutral-400">
                   {matchData.isAsyncStatKeeping
-                    ? "Asynchronous clockless game tracking with First & Second Half scoring."
-                    : "Official live game tracking with game clock and play clock."}
+                    ? "Record plays and scores by half without a running clock."
+                    : "Record plays and scores with the game clock and play clock."}
                 </p>
               </div>
             </div>
@@ -313,9 +313,9 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
               ) : matchData.status !== 'completed' ? (
                 <Link
                   href={`/matches/${matchId}/play-by-play`}
-                  className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
+                  className="px-6 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                 >
-                  {matchData.isAsyncStatKeeping ? "Async Stat Keeper" : "Play-by-Play Manager"}
+                  {matchData.isAsyncStatKeeping ? "Stat Keeper" : "Stat Keeper"}
                 </Link>
               ) : isDemoLeague && isLeagueAdmin ? (
                 <div className="flex items-center gap-2">
@@ -324,7 +324,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                       updateSandboxMatch(matchId, { status: "in_progress" });
                       window.location.href = `/matches/${matchId}/play-by-play`;
                     }}
-                    className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
+                    className="px-5 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                   >
                     Reopen Play-by-Play
                   </button>
@@ -534,7 +534,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
+                    className="px-5 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
                   >
                     Save Changes
                   </button>

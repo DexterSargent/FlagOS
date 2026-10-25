@@ -293,6 +293,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
               setReloadKey((k) => k + 1);
             }}
             className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider"
+            style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
           >
             Retry
           </button>
@@ -325,14 +326,14 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         <header className="flex flex-col items-center text-center gap-2">
           <span
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest border"
-            style={{ backgroundColor: `${accent}1A`, borderColor: `${accent}55`, color: accent }}
+            style={{ backgroundColor: `${accent}1A`, borderColor: `${accent}55`, color: "var(--team-ink)" }}
           >
             <Activity className="w-3.5 h-3.5" />
             Season Leaderboards
           </span>
           <h1 className="text-2xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight leading-tight">
             <span className="text-white">{teamName}</span>{" "}
-            <span style={{ color: accent }}>Stat Leaders</span>
+            <span style={{ color: "var(--team-ink)" }}>Stat Leaders</span>
           </h1>
           {teamStats && teamStats.gp > 0 && (
             <p className="text-xs sm:text-sm text-neutral-400 font-medium">
@@ -358,7 +359,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           sections.map((section) => (
             <section key={section.title} aria-label={`${section.title} leaders`} className="space-y-3">
               <h2 className="flex items-center gap-2 text-sm sm:text-base font-black uppercase tracking-widest text-white">
-                <section.icon className="h-4 w-4" style={{ color: accent }} />
+                <section.icon className="h-4 w-4" style={{ color: "var(--team-ink)" }} />
                 {section.title}
                 <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
               </h2>
@@ -413,7 +414,7 @@ function LeaderCard({
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/80 shadow-lg">
       <div className="flex items-center gap-2 border-b border-white/5 px-4 py-2.5">
-        <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} />
+        <Icon className="h-4 w-4 shrink-0" style={{ color: "var(--team-ink)" }} />
         <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-white truncate">{category.title}</h3>
       </div>
 
@@ -428,7 +429,7 @@ function LeaderCard({
               {leader.number ? `#${leader.number}` : initials(leader.name)}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>Leader</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--team-ink)" }}>Leader</div>
               <div className="truncate font-black text-white" title={leader.name}>{leader.name}</div>
             </div>
             <div className="shrink-0 font-mono text-3xl font-black tabular-nums text-white">{leader[category.key]}</div>

@@ -113,7 +113,7 @@ export function PlayerView({
               <span className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none mt-0.5">
                 #{pNumber}
               </span>
-              <div className="absolute -bottom-1 px-1.5 py-0.2 bg-emerald-500 text-black text-[9px] font-black rounded uppercase tracking-wider">
+              <div className="absolute -bottom-1 px-1.5 py-0.2 bg-emerald-500 text-black text-[10px] font-black rounded uppercase tracking-wider">
                 {pPositions[0] || "ATH"}
               </div>
             </div>
@@ -124,13 +124,13 @@ export function PlayerView({
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   Athlete Gameday Cockpit
                 </span>
-                <span className="text-neutral-500 text-xs">•</span>
+                <span className="text-[var(--text-muted)] text-xs">•</span>
                 <span className="text-[11px] font-mono text-cyan-300 uppercase font-bold">
                   {pExperience}
                 </span>
                 {myPlayerTeam && (
                   <>
-                    <span className="text-neutral-500 text-xs">•</span>
+                    <span className="text-[var(--text-muted)] text-xs">•</span>
                     <span className="text-[11px] font-mono text-amber-400 font-bold">
                       {myPlayerTeam.name} (#{myPlayerStandingRank > 0 ? myPlayerStandingRank : "-"})
                     </span>
@@ -145,14 +145,13 @@ export function PlayerView({
               <p className="text-neutral-400 text-xs md:text-sm mt-1 max-w-xl">
                 {myPlayerTeam ? (
                   <>
-                    Rostered Athlete on{" "}
+                    Player on{" "}
                     <span className="text-emerald-400 font-bold">{myPlayerTeam.name}</span>. Review upcoming
-                    games, study team route diagrams, track personal statistics, and prepare for kickoff.
+                    games, review plays, and track your stats.
                   </>
                 ) : (
                   <>
-                    Active Free Agent athlete in the league pool. You are eligible for team signing and waiver
-                    draft. Explore rosters and game day schedules.
+                    You are registered as a free agent and can join a team. Explore rosters and upcoming games.
                   </>
                 )}
               </p>
@@ -223,7 +222,7 @@ export function PlayerView({
         {/* Athlete Performance Quick Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 relative z-10">
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-emerald-500/30 transition-all">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">
               Season Touchdowns
             </span>
             <div className="text-3xl font-black text-emerald-400 mt-1 tabular-nums">
@@ -235,7 +234,7 @@ export function PlayerView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-cyan-500/30 transition-all">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">
               Defensive Impact
             </span>
             <div className="text-3xl font-black text-cyan-300 mt-1 tabular-nums">
@@ -247,7 +246,7 @@ export function PlayerView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-amber-500/30 transition-all">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">
               Team Standing
             </span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
@@ -261,7 +260,7 @@ export function PlayerView({
           </div>
 
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl hover:border-white/20 transition-all">
-            <span className="text-[11px] uppercase font-bold text-neutral-500 tracking-wider block">
+            <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">
               Games Played
             </span>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
@@ -502,13 +501,13 @@ export function PlayerView({
           {/* Card 1: Touchdowns & Scoring */}
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Touchdown Production
               </span>
               <Flame className="w-3.5 h-3.5 text-amber-400" />
             </div>
             <div className="text-3xl font-black text-amber-300 tabular-nums">
-              {myStats.totalTDs} <span className="text-xs font-normal text-neutral-500">Total TDs</span>
+              {myStats.totalTDs} <span className="text-xs font-normal text-[var(--text-muted)]">Total TDs</span>
             </div>
             <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
               <div className="flex justify-between text-neutral-400">
@@ -529,13 +528,13 @@ export function PlayerView({
           {/* Card 2: Passing */}
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Air Attack (Passing)
               </span>
               <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
             </div>
             <div className="text-3xl font-black text-cyan-300 tabular-nums">
-              {myStats.passComp} <span className="text-xs font-normal text-neutral-500">/ {myStats.passAtt} Comp</span>
+              {myStats.passComp} <span className="text-xs font-normal text-[var(--text-muted)]">/ {myStats.passAtt} Comp</span>
             </div>
             <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
               <div className="flex justify-between text-neutral-400">
@@ -560,13 +559,13 @@ export function PlayerView({
           {/* Card 3: Receiving & Rushing */}
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Target Share & Carries
               </span>
               <Zap className="w-3.5 h-3.5 text-blue-400" />
             </div>
             <div className="text-3xl font-black text-blue-300 tabular-nums">
-              {myStats.receptions} <span className="text-xs font-normal text-neutral-500">Receptions</span>
+              {myStats.receptions} <span className="text-xs font-normal text-[var(--text-muted)]">Receptions</span>
             </div>
             <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
               <div className="flex justify-between text-neutral-400">
@@ -587,13 +586,13 @@ export function PlayerView({
           {/* Card 4: Defense */}
           <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 Defensive Stops
               </span>
               <Shield className="w-3.5 h-3.5 text-emerald-400" />
             </div>
             <div className="text-3xl font-black text-emerald-400 tabular-nums">
-              {myStats.flagPulls} <span className="text-xs font-normal text-neutral-500">Flags</span>
+              {myStats.flagPulls} <span className="text-xs font-normal text-[var(--text-muted)]">Flags</span>
             </div>
             <div className="space-y-1.5 mt-3 pt-3 border-t border-line-subtle text-xs">
               <div className="flex justify-between text-neutral-400">
@@ -638,7 +637,7 @@ export function PlayerView({
             </div>
 
             {myPlayerTeammates.length === 0 ? (
-              <div className="p-8 text-center text-neutral-500 text-xs italic bg-black/40 rounded-2xl border border-line-subtle">
+              <div className="p-8 text-center text-[var(--text-muted)] text-xs italic bg-black/40 rounded-2xl border border-line-subtle">
                 {myPlayerTeam
                   ? "No other players rostered on this team yet."
                   : "You are currently unassigned to a team. Join a team or await commissioner draft assignment."}
@@ -647,7 +646,7 @@ export function PlayerView({
               <div className="overflow-x-auto hide-scrollbar">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
+                    <tr className="text-[var(--text-muted)] border-b border-line-subtle font-mono uppercase">
                       <th className="pb-2 w-12">#</th>
                       <th className="pb-2">Athlete Name</th>
                       <th className="pb-2">Positions</th>
@@ -672,7 +671,7 @@ export function PlayerView({
                           <td className="py-2.5 font-bold text-white flex items-center gap-1.5">
                             <span>{p.playerName}</span>
                             {isCurrentActivePlayer && (
-                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500 text-black border border-emerald-400">
+                              <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-500 text-black border border-emerald-400">
                                 YOU
                               </span>
                             )}
@@ -739,7 +738,7 @@ export function PlayerView({
 
             <div className="space-y-3">
               <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                   Field Configuration
                 </span>
                 <div className="text-sm font-black text-white mt-1">
@@ -751,7 +750,7 @@ export function PlayerView({
               </div>
 
               <div className="bg-black/50 border border-line-subtle p-3.5 rounded-2xl">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                   Gameday Wristband
                 </span>
                 <div className="text-sm font-black text-white mt-1">
@@ -804,7 +803,7 @@ export function PlayerView({
         <div className="overflow-x-auto hide-scrollbar">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="text-neutral-500 border-b border-line-subtle font-mono uppercase">
+              <tr className="text-[var(--text-muted)] border-b border-line-subtle font-mono uppercase">
                 <th className="pb-2 w-8">#</th>
                 <th className="pb-2">Team</th>
                 <th className="pb-2 text-center">W</th>
@@ -845,9 +844,9 @@ export function PlayerView({
                           />
                         </div>
                         <span className={isMyTeam ? "text-emerald-300 font-black text-sm" : ""}>{row.name}</span>
-                        <span className="text-[10px] text-neutral-500 font-mono">({row.shortcode})</span>
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono">({row.shortcode})</span>
                         {isMyTeam && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/40">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/40">
                             Your Team
                           </span>
                         )}
@@ -879,7 +878,7 @@ export function PlayerView({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-neutral-500">Switch Player:</span>
+            <span className="text-[11px] text-[var(--text-muted)]">Switch Player:</span>
             <select
               value={activePlayer?.id || ""}
               onChange={(e) => {

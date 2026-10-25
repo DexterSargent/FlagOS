@@ -1143,7 +1143,7 @@ export default function LeagueCustomizerContent() {
                       <span className="text-base font-black font-mono tracking-tight text-white">
                         {count}v{count}
                       </span>
-                      <span className="text-[9px] uppercase font-bold text-neutral-400">
+                      <span className="text-[10px] uppercase font-bold text-neutral-400">
                         {count === 4 && "4v4"}
                         {count === 5 && "5v5"}
                         {count === 6 && "6v6"}
@@ -1405,7 +1405,7 @@ export default function LeagueCustomizerContent() {
                         } ${isLeagueAdmin ? "cursor-pointer hover:text-white" : "cursor-default"}`}
                     >
                       <span className="text-sm font-black block">3 Downs</span>
-                      <span className="text-[9px] text-neutral-400">Canadian Standard</span>
+                      <span className="text-[10px] text-neutral-400">Canadian Standard</span>
                     </button>
 
                     <button
@@ -1418,7 +1418,7 @@ export default function LeagueCustomizerContent() {
                         } ${isLeagueAdmin ? "cursor-pointer hover:text-white" : "cursor-default"}`}
                     >
                       <span className="text-sm font-black block">4 Downs</span>
-                      <span className="text-[9px] text-neutral-400">American Standard</span>
+                      <span className="text-[10px] text-neutral-400">American Standard</span>
                     </button>
                   </div>
                 </div>
@@ -1608,7 +1608,7 @@ export default function LeagueCustomizerContent() {
                         {customJoinUrl}
                       </Link>
                       {!isFreeAgentRegistrationEnabled && isLeagueAdmin && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold shrink-0">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold shrink-0">
                           Admin Preview (Disabled to Public)
                         </span>
                       )}
@@ -2249,7 +2249,7 @@ export default function LeagueCustomizerContent() {
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-black font-mono text-white shrink-0 tracking-tighter ${(t.shortcode?.length ?? 0) > 3 ? "text-[9px]" : "text-xs"}`}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-black font-mono text-white shrink-0 tracking-tighter ${(t.shortcode?.length ?? 0) > 3 ? "text-[10px]" : "text-xs"}`}
                           style={{ backgroundColor: t.primaryColor || "#3ca505" }}
                         >
                           {t.shortcode ? t.shortcode.slice(0, 4) : t.name.slice(0, 2).toUpperCase()}

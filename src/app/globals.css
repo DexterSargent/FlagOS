@@ -18,7 +18,7 @@ html.dark {
   --surface-hover: #222b38;
   --text-primary: #f4f7fb;
   --text-secondary: #a7b1c0;
-  --text-muted: #778397;
+  --text-muted: #8792a5;
   --text-brand: #6bbb41;
   --text-success: #63d297;
   --text-warning: #f2c66d;
@@ -83,7 +83,7 @@ html.light {
   --surface-hover: #e7edf4;
   --text-primary: #17212e;
   --text-secondary: #475569;
-  --text-muted: #64748b;
+  --text-muted: #556274;
   --text-brand: #286d03;
   --text-success: #047857;
   --text-warning: #a16207;
@@ -159,6 +159,13 @@ html.light {
   --color-league-primary: var(--league-primary);
   --color-league-accent: var(--league-accent);
 
+  /* Text-safe shades of the stock palette (the defaults miss 4.5:1 on light surfaces). */
+  --color-slate-500: #556274;
+  --color-neutral-500: #8b8b8b;
+  --color-emerald-600: #047857;
+  --color-emerald-700: #065f46;
+  --color-red-600: #c42020;
+
   /* Theme-aware surface and border tokens (values set per theme below) */
   --color-surface-base: var(--surface-base);
   --color-surface-raised: var(--surface-raised);
@@ -169,6 +176,32 @@ html.light {
 
 * {
   border-color: var(--border);
+}
+
+/* Brand colours tuned for legibility as text; league and team contexts publish the -dark/-light pair. */
+html,
+html.dark {
+  --league-ink: var(--league-ink-dark, #4fb81a);
+  --team-ink: var(--team-ink-dark, var(--league-ink-dark, #4fb81a));
+}
+
+html.light {
+  --league-ink: var(--league-ink-light, #2b7d04);
+  --team-ink: var(--team-ink-light, var(--league-ink-light, #2b7d04));
+}
+
+.text-league-ink {
+  color: var(--league-ink) !important;
+}
+
+html.light .text-cyan-500,
+html.light .text-cyan-600 {
+  color: var(--league-ink) !important;
+}
+
+html.light .text-blue-500,
+html.light .text-blue-600 {
+  color: var(--league-accent-700) !important;
 }
 
 html,
@@ -339,6 +372,10 @@ body {
 }
 
 button.text-white[class*="bg-cyan-"],
+button.text-white[class*="bg-slate-800"],
+button.text-white[class*="bg-slate-900"],
+a.text-white[class*="bg-slate-800"],
+a.text-white[class*="bg-slate-900"],
 button.text-white[class*="bg-emerald-"],
 button.text-white[class*="bg-blue-"],
 button.text-white[class*="bg-red-"],
