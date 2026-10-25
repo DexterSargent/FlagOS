@@ -112,6 +112,52 @@ describe("PlayCanvas - Opponent Schemes & Rush Toggle", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("keeps man-coverage targets connected during a player opponent preview", () => {
+    const onChange = vi.fn();
+    const play: PlayDiagram = {
+      ...mockDefensePlaybook.plays[0],
+      players: [
+        ...mockDefensePlaybook.plays[0].players.map((player) => player.label === "CB1"
+          ? { ...player, coverageType: "man" as const, manTargetId: "off-wr1" }
+          : player),
+        ...mockOffensePlaybook.plays[0].players,
+      ],
+    };
+    render(<PlayCanvas play={play} onChange={onChange} readOnly allPlaybooks={[mockOffensePlaybook]} />);
+    fireEvent.click(screen.getByTestId("opponent-play-selector-btn"));
+    fireEvent.click(screen.getByRole("button", { name: /Spread 2x1 - Verticals/ }));
+    fireEvent.pointerDown(screen.getAllByText("CB1")[0]);
+    expect(screen.getByText(/Cover WR1 ·/)).toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(play.players.find((player) => player.label === "CB1")?.manTargetId).toBe("off-wr1");
+  });
+
+  it("retargets imported man defenders to the current offense and clears previous opponent zones", () => {
+    const onChange = vi.fn();
+    const play = { ...mockOffensePlaybook.plays[0], zones: mockDefensePlaybook.plays[0].zones };
+    const opponent: Playbook = {
+      ...mockDefensePlaybook,
+      plays: [{
+        ...mockDefensePlaybook.plays[0],
+        zones: [],
+        players: [
+          { ...mockOffensePlaybook.plays[0].players[1], id: "source-receiver" },
+          ...mockDefensePlaybook.plays[0].players.map((player) => player.label === "CB1"
+            ? { ...player, coverageType: "man" as const, manTargetId: "source-receiver" }
+            : player),
+        ],
+      }],
+    };
+    render(<PlayCanvas play={play} onChange={onChange} allPlaybooks={[opponent]} />);
+    fireEvent.click(screen.getByTestId("toggle-opponent-btn"));
+    fireEvent.click(screen.getByTestId("opponent-play-selector-btn"));
+    fireEvent.click(screen.getByRole("button", { name: /^Cover 2 Zone\s*Cover 2$/ }));
+    const updated = onChange.mock.lastCall![0] as PlayDiagram;
+    expect(updated.players.find((player) => player.label === "CB1")?.manTargetId).toBe("off-wr1");
+    expect(updated.zones).toEqual([]);
+    expect(updated.players.filter((player) => player.side === "offense")).toEqual(play.players);
+  });
+
   it("does not automatically turn on show opponent when rush is selected for defender", () => {
     const handleChange = vi.fn();
     const defensePlay: PlayDiagram = {

@@ -2380,6 +2380,15 @@ export default function PlayCanvas({
       if (readOnly) setOpponentPreview({ source: committedPlay, play: next });
       else onChange(next);
     };
+    const retargetDefenders = (defenders: PlayerNode[], previousOffense: PlayerNode[], nextOffense: PlayerNode[]) =>
+      defenders.map((defender) => {
+        if (defender.coverageType !== "man" || !defender.manTargetId) return defender;
+        const index = previousOffense.findIndex((player) => player.id === defender.manTargetId);
+        if (index < 0) return defender;
+        // Keep man locks connected when opponent imports replace receiver IDs.
+        const target = nextOffense.find((player) => player.label === previousOffense[index].label) || nextOffense[index];
+        return { ...defender, manTargetId: target?.id };
+      });
 
     if (play.type === "defense") {
       // Current play is defense: populate offense from opponent play
@@ -2394,7 +2403,10 @@ export default function PlayCanvas({
 
       updateOpponent({
         ...play,
-        players: [...currentDefense, ...importedOffense],
+        players: [
+          ...retargetDefenders(currentDefense, play.players.filter((p) => p.side === "offense"), importedOffense),
+          ...importedOffense,
+        ],
       });
     } else {
       // Current play is offense: populate defense and zones from opponent play
@@ -2410,7 +2422,10 @@ export default function PlayCanvas({
       const nextZones = opponentPlay.zones || [];
       updateOpponent({
         ...play,
-        players: [...currentOffense, ...importedDefense],
+        players: [
+          ...currentOffense,
+          ...retargetDefenders(importedDefense, opponentPlay.players.filter((p) => p.side === "offense"), currentOffense),
+        ],
         zones: nextZones,
       });
     }
