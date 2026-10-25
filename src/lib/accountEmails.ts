@@ -58,6 +58,8 @@ export async function connectAccountEmail(user: User, credentials?: { email: str
       : await signInWithPopup(secondaryAuth, provider);
     if (!proof.user.emailVerified) throw new Error("Verify the additional email before connecting it.");
     await accountEmailRequest(user, "connect", { proofToken: await proof.user.getIdToken() });
+    // Pick up the refreshed linkedEmails claim used by Firestore rules.
+    await user.getIdToken(true);
   } finally {
     try {
       await signOut(secondaryAuth);

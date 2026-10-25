@@ -5,6 +5,11 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email_verified == true;
     }
 
+    // Primary email plus verified emails connected to this account (mirrored as a custom claim).
+    function authEmails() {
+      return [request.auth.token.email.lower()].concat(request.auth.token.get('linkedEmails', []));
+    }
+
     function hasBoundedListLimit(maximum) {
       return request.query.limit != null && request.query.limit <= maximum;
     }
@@ -57,10 +62,10 @@ service cloud.firestore {
             (get(privateTeamPath).data.get('adminEmails', []) is list &&
               get(privateTeamPath).data.get('adminEmails', []).size() > 0 &&
               get(privateTeamPath).data.adminEmails[0] is string &&
-              get(privateTeamPath).data.adminEmails[0].lower() == request.auth.token.email.lower()) ||
+              get(privateTeamPath).data.adminEmails[0].lower() in authEmails()) ||
             (get(privateTeamPath).data.get('adminEmails', []).size() == 0 &&
               get(privateTeamPath).data.get('coachEmail', '') is string &&
-              get(privateTeamPath).data.get('coachEmail', '').lower() == request.auth.token.email.lower())
+              get(privateTeamPath).data.get('coachEmail', '').lower() in authEmails())
           ));
     }
 
@@ -88,20 +93,20 @@ service cloud.firestore {
             (exists(privateTeamPath) &&
               (
                 (get(privateTeamPath).data.adminEmails is list &&
-                  request.auth.token.email.lower() in get(privateTeamPath).data.adminEmails) ||
+                  get(privateTeamPath).data.adminEmails.hasAny(authEmails())) ||
                 (get(privateTeamPath).data.coachEmail is string &&
-                  get(privateTeamPath).data.coachEmail.lower() == request.auth.token.email.lower()) ||
+                  get(privateTeamPath).data.coachEmail.lower() in authEmails()) ||
                 (get(privateTeamPath).data.adminEmail is string &&
-                  get(privateTeamPath).data.adminEmail.lower() == request.auth.token.email.lower())
+                  get(privateTeamPath).data.adminEmail.lower() in authEmails())
               )) ||
             (exists(teamPath) &&
           (
             (get(teamPath).data.adminEmails is list &&
-              request.auth.token.email.lower() in get(teamPath).data.adminEmails) ||
+              get(teamPath).data.adminEmails.hasAny(authEmails())) ||
             (get(teamPath).data.coachEmail is string &&
-              get(teamPath).data.coachEmail.lower() == request.auth.token.email.lower()) ||
+              get(teamPath).data.coachEmail.lower() in authEmails()) ||
             (get(teamPath).data.adminEmail is string &&
-              get(teamPath).data.adminEmail.lower() == request.auth.token.email.lower())
+              get(teamPath).data.adminEmail.lower() in authEmails())
           ))
           ));
     }
@@ -118,16 +123,16 @@ service cloud.firestore {
                 (get(privateLeaguePath).data.ownerUid is string &&
                   get(privateLeaguePath).data.ownerUid == request.auth.uid) ||
                 (get(privateLeaguePath).data.adminEmails is list &&
-                  request.auth.token.email.lower() in get(privateLeaguePath).data.adminEmails) ||
+                  get(privateLeaguePath).data.adminEmails.hasAny(authEmails())) ||
                 (get(privateLeaguePath).data.subscriptionAdminEmails is list &&
-                  request.auth.token.email.lower() in get(privateLeaguePath).data.subscriptionAdminEmails)
+                  get(privateLeaguePath).data.subscriptionAdminEmails.hasAny(authEmails()))
               )) ||
             (exists(leaguePath) &&
           (
             (get(leaguePath).data.ownerUid is string &&
               get(leaguePath).data.ownerUid == request.auth.uid) ||
             (get(leaguePath).data.adminEmails is list &&
-              request.auth.token.email.lower() in get(leaguePath).data.adminEmails)
+              get(leaguePath).data.adminEmails.hasAny(authEmails()))
           ))
           ));
     }
@@ -145,9 +150,9 @@ service cloud.firestore {
         exists(privatePlayerPath) &&
         (
           (get(privatePlayerPath).data.email is string &&
-            get(privatePlayerPath).data.email.lower() == request.auth.token.email.lower()) ||
+            get(privatePlayerPath).data.email.lower() in authEmails()) ||
           (get(privatePlayerPath).data.emails is list &&
-            request.auth.token.email.lower() in get(privatePlayerPath).data.emails)
+            get(privatePlayerPath).data.emails.hasAny(authEmails()))
         );
     }
 
@@ -179,6 +184,15 @@ service cloud.firestore {
     // Independent teams archive their own season on the team document.
     function isTeamSeasonWritable(teamId) {
       return !(teamId is string) || teamId == '' || isDocUnarchived(/databases/$(database)/documents/teams/$(teamId));
+    }
+
+    // Only the league's current season accepts game and play edits; earlier seasons are frozen.
+    // Records without a seasonId belong to the league's first season.
+    function isSeasonWritable(data) {
+      return !(data.get('leagueId', '') is string) || data.get('leagueId', '') == '' ||
+        !exists(/databases/$(database)/documents/leagues/$(data.get('leagueId', ''))) ||
+        get(/databases/$(database)/documents/leagues/$(data.get('leagueId', ''))).data.get('currentSeasonId', 'season-1') ==
+          data.get('seasonId', 'season-1');
     }
 
     function isDocUnarchived(path) {
@@ -385,8 +399,9 @@ service cloud.firestore {
       allow update: if isValidMatch(request.resource.data) &&
         isLeagueWritable(resource.data.get('leagueId', '')) &&
         isTeamSeasonWritable(resource.data.get('managingTeamId', '')) &&
+        isSeasonWritable(resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'createdAt', 'isStandalone', 'leagueId', 'homeTeamId', 'awayTeamId', 'managingTeamId'
+          'createdAt', 'isStandalone', 'leagueId', 'homeTeamId', 'awayTeamId', 'managingTeamId', 'seasonId'
         ]) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isHidden']) ||
           isPrimaryTeamAdmin(resource.data.get('managingTeamId', '')) ||
@@ -394,6 +409,7 @@ service cloud.firestore {
         canManageMatch(matchId);
       allow delete: if canManageMatch(matchId) &&
         isLeagueWritable(resource.data.get('leagueId', '')) &&
+        isSeasonWritable(resource.data) &&
         isTeamSeasonWritable(resource.data.get('managingTeamId', '')) &&
         (isPrimaryTeamAdmin(resource.data.get('managingTeamId', '')) ||
           (resource.data.get('leagueId', '') != '' && isLeagueAdmin(resource.data.get('leagueId', ''))));
@@ -407,7 +423,10 @@ service cloud.firestore {
           (resource.data.matchId is string && canManageMatch(resource.data.matchId)) ||
           isPublicLeaguePlay(resource.data)));
       allow list: if hasBoundedListLimit(10000) &&
-        (isPublicTeamPlay(resource.data) || (signedIn() &&
+        // Queries can't follow each play to its match, so league queries rely on the play's
+        // own isHidden flag (copied from the match when the play is recorded).
+        ((signedIn() && resource.data.isHidden != true && isPublicLeague(resource.data.leagueId)) ||
+        isPublicTeamPlay(resource.data) || (signedIn() &&
         (isPlatformAdmin() ||
           (resource.data.teamId is string && isTeamAdmin(resource.data.teamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
@@ -416,14 +435,16 @@ service cloud.firestore {
       allow create: if false;
       allow update: if isValidPlay(request.resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'createdAt', 'matchId', 'leagueId', 'teamId', 'managingTeamId', 'isHidden'
+          'createdAt', 'matchId', 'leagueId', 'teamId', 'managingTeamId', 'isHidden', 'seasonId'
         ]) &&
         isLeagueWritable(resource.data.get('leagueId', '')) &&
+        isSeasonWritable(resource.data) &&
         isTeamSeasonWritable(resource.data.get('managingTeamId', '')) &&
         (canManageTeam(resource.data.teamId, resource.data.leagueId) ||
           canManageMatch(resource.data.matchId));
       allow delete: if isLeagueWritable(resource.data.get('leagueId', '')) &&
         isTeamSeasonWritable(resource.data.get('managingTeamId', '')) &&
+        isSeasonWritable(resource.data) &&
         (canManageTeam(resource.data.teamId, resource.data.leagueId) ||
         canManageMatch(resource.data.matchId));
     }
@@ -471,6 +492,15 @@ service cloud.firestore {
     // server-mediated endpoint with rate limiting and data retention controls.
     match /registration_submissions/{submissionId} {
       allow read, write: if false;
+    }
+
+    // Frozen standings and stat lines for completed seasons; written only by the server.
+    match /league_seasons/{seasonDocId} {
+      allow get: if signedIn() && resource.data.leagueId is string &&
+        (isPlatformAdmin() || isLeagueAdmin(resource.data.leagueId) || isPublicLeague(resource.data.leagueId));
+      allow list: if hasBoundedListLimit(50) && signedIn() && resource.data.leagueId is string &&
+        (isPlatformAdmin() || isLeagueAdmin(resource.data.leagueId) || isPublicLeague(resource.data.leagueId));
+      allow write: if false;
     }
 
     match /league_private/{leagueId} {

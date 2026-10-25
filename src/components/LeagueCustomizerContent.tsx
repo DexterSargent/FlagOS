@@ -68,6 +68,8 @@ export default function LeagueCustomizerContent() {
     addTeamToSubscription,
     removeTeamFromSubscription,
     isDemoLeague,
+    seasons,
+    startNewSeason,
   } = useLeague();
   const { isLeagueAdmin, isPlayer, playerData } = useAuth();
 
@@ -77,6 +79,8 @@ export default function LeagueCustomizerContent() {
   usePageGuide(isCustomizerOpen ? (!isLeagueAdmin && activeTab === "rules" ? LEAGUE_RULES_VIEW_GUIDE : LEAGUE_SETTINGS_GUIDES[activeTab]) : null, 2);
   const [showArchivePrompt, setShowArchivePrompt] = useState(false);
   const [archivingInProgress, setArchivingInProgress] = useState(false);
+  const [newSeasonTitle, setNewSeasonTitle] = useState<string | null>(null);
+  const [seasonStartedMsg, setSeasonStartedMsg] = useState("");
 
   // Subscription team management states
   const [targetTeamCount, setTargetTeamCount] = useState<number>(subscription?.teamCount ?? 8);
@@ -2361,6 +2365,11 @@ export default function LeagueCustomizerContent() {
             </div>
 
             {/* Archival Actions */}
+            {seasonStartedMsg && (
+              <p role="status" className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-300">
+                {seasonStartedMsg}
+              </p>
+            )}
             {!isLeagueArchived && !isSubscriptionPastDue && (
               <div data-tour="settings-archive" className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
                 <div className="flex items-start gap-3">
@@ -2368,9 +2377,9 @@ export default function LeagueCustomizerContent() {
                     <Archive className="w-5 h-5" />
                   </div>
                   <div className="space-y-1">
-                    <h4 className="text-sm font-black uppercase tracking-wider text-white">Conclude Season &amp; Archive League</h4>
+                    <h4 className="text-sm font-black uppercase tracking-wider text-white">End the Season</h4>
                     <p className="text-xs text-neutral-400 leading-relaxed">
-                      When your playoff championship game ends and the season is officially over, conclude the circuit. All game box scores, standings, player career statistics, and team histories will remain preserved permanently for your coaches, players, and spectators in read-only mode.
+                      When the championship game is final, end the season. Final standings, box scores, player stats and the champion are saved permanently, and everyone in the league can browse them later under Stats &gt; History and on player profiles.
                     </p>
                   </div>
                 </div>
@@ -2378,19 +2387,19 @@ export default function LeagueCustomizerContent() {
                 {!showArchivePrompt ? (
                   <button
                     type="button"
-                    onClick={() => setShowArchivePrompt(true)}
+                    onClick={() => { setShowArchivePrompt(true); setSeasonStartedMsg(""); }}
                     className="w-full py-3 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
                   >
-                    Mark Season Concluded &amp; Archive Circuit
+                    End Season
                   </button>
                 ) : (
                   <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-4 animate-in fade-in">
                     <div className="space-y-1">
                       <div className="text-xs font-black uppercase text-purple-200">
-                        Season Concluded! What would you like to do with your subscription?
+                        What happens next?
                       </div>
                       <p className="text-xs text-neutral-300">
-                        Select whether you want to conclude and pause billing or start your next league circuit:
+                        Pause the league until you&apos;re ready, or start the next season right away.
                       </p>
                     </div>
 
@@ -2412,41 +2421,94 @@ export default function LeagueCustomizerContent() {
                         className="p-3.5 rounded-xl bg-black/60 border border-white/10 hover:border-purple-400 text-left transition-all cursor-pointer group"
                       >
                         <div className="text-xs font-black uppercase text-white group-hover:text-purple-300">
-                          1. End / Pause Subscription
+                          1. Pause the League
                         </div>
                         <div className="text-[11px] text-neutral-400 mt-1">
-                          Archives this league into permanent historical read-only mode. No further monthly charges. All player career stats &amp; box scores remain intact for free.
+                          Makes the league read-only and stops monthly charges. Everything stays viewable. When you resume, you can start the next season from here.
                         </div>
                       </button>
 
                       <button
                         type="button"
                         disabled={archivingInProgress}
-                        onClick={async () => {
+                        onClick={() => {
+                          setSaveError("");
+                          setNewSeasonTitle(`Season ${seasons.length + 1}`);
+                        }}
+                        aria-expanded={newSeasonTitle !== null}
+                        className={`p-3.5 rounded-xl bg-black/60 border text-left transition-all cursor-pointer group ${
+                          newSeasonTitle !== null ? "border-cyan-400" : "border-cyan-500/30 hover:border-cyan-400"
+                        }`}
+                      >
+                        <div className="text-xs font-black uppercase text-white group-hover:text-cyan-300">
+                          2. Start the Next Season
+                        </div>
+                        <div className="text-[11px] text-neutral-400 mt-1">
+                          Saves this season&apos;s final standings, stats and champion to League History, then starts a fresh season with the same teams and rosters. Your subscription stays active.
+                        </div>
+                      </button>
+                    </div>
+
+                    {newSeasonTitle !== null && (
+                      <form
+                        data-tour="settings-new-season"
+                        className="p-4 rounded-xl bg-black/40 border border-cyan-500/30 space-y-3"
+                        onSubmit={async (event) => {
+                          event.preventDefault();
+                          const title = newSeasonTitle.trim();
+                          if (!title) {
+                            setSaveError("Give the new season a name.");
+                            return;
+                          }
                           setArchivingInProgress(true);
                           setSaveError("");
                           try {
-                            await archiveLeague("new_season");
+                            await startNewSeason(title);
+                            setNewSeasonTitle(null);
                             setShowArchivePrompt(false);
+                            setSeasonStartedMsg(`${title} has started. Past seasons are in Stats > History.`);
                           } catch (err) {
                             setSaveError(describeSaveError(err));
                           }
                           setArchivingInProgress(false);
                         }}
-                        className="p-3.5 rounded-xl bg-black/60 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer group"
                       >
-                        <div className="text-xs font-black uppercase text-white group-hover:text-cyan-300">
-                          2. Begin Another League / New Season
+                        <label className="block space-y-1.5">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-300">New season name</span>
+                          <input
+                            type="text"
+                            value={newSeasonTitle}
+                            maxLength={80}
+                            onChange={(event) => setNewSeasonTitle(event.target.value)}
+                            placeholder="e.g. Spring 2027"
+                            className="w-full rounded-lg bg-neutral-950 border border-white/15 px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
+                          />
+                        </label>
+                        <p className="text-[11px] text-neutral-400">
+                          The current schedule and play-by-play are locked once the new season starts. Schedule the new season&apos;s games from the Schedule page.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="submit"
+                            disabled={archivingInProgress}
+                            className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-xs font-black uppercase tracking-wider cursor-pointer"
+                          >
+                            {archivingInProgress ? "Starting..." : "Start season"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewSeasonTitle(null)}
+                            className="px-4 py-2 rounded-lg border border-white/15 text-xs font-bold text-neutral-300 hover:text-white cursor-pointer"
+                          >
+                            Back
+                          </button>
                         </div>
-                        <div className="text-[11px] text-neutral-400 mt-1">
-                          Conclude this season's results into history, and roll existing rosters into a brand new season schedule while keeping your subscription active.
-                        </div>
-                      </button>
-                    </div>
+                      </form>
+                    )}
 
                     <button
                       type="button"
-                      onClick={() => setShowArchivePrompt(false)}
+                      onClick={() => { setShowArchivePrompt(false); setNewSeasonTitle(null); }}
                       className="text-xs text-neutral-400 hover:text-white underline cursor-pointer"
                     >
                       Cancel

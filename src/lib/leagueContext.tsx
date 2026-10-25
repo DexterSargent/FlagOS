@@ -12,6 +12,8 @@ import { FLAGOS_LOGO } from "./brandTokens";
 import { INK_SURFACE_DARK, INK_SURFACE_LIGHT, readableInk } from "./teamColors";
 import { auth } from "./firebase";
 import { createSecureRecord } from "./secureWrites";
+import { getCurrentSeasonId, getLeagueSeasons, type LeagueSeason } from "./leagueSeasons";
+import { notifyDataChanged } from "./leagueDataCache";
 import { useAuth } from "./authContext";
 import { useMyMemberships, type LeagueMembership } from "./useMyMemberships";
 import {
@@ -97,6 +99,9 @@ export interface LeagueSettings {
   seasonStatus?: "active" | "completed" | "archived";
   isArchived?: boolean;
   archivedAt?: string;
+  /** Season history; written only by the server when a new season starts. */
+  seasons?: LeagueSeason[];
+  currentSeasonId?: string;
   visibility?: "public" | "private"; // public = indexed in public directory, private = direct URL access only
   ownerUid?: string;
   createdAt?: string;
@@ -368,6 +373,15 @@ interface LeagueContextType {
   isLeagueArchived: boolean;
   isSubscriptionPastDue: boolean;
   isLeagueReadOnly: boolean;
+  /** Every season of the league, oldest first; always contains at least the live season. */
+  seasons: LeagueSeason[];
+  currentSeasonId: string;
+  /** Season being browsed in stats and history; defaults to the live season. */
+  viewingSeasonId: string;
+  setViewingSeasonId: (seasonId: string) => void;
+  isViewingArchivedSeason: boolean;
+  /** Archives the live season (standings, stats, champion) and opens a new one. */
+  startNewSeason: (title: string) => Promise<void>;
 }
 
 interface RgbColor {
@@ -451,6 +465,12 @@ const LeagueContext = createContext<LeagueContextType>({
   isLeagueArchived: false,
   isSubscriptionPastDue: false,
   isLeagueReadOnly: false,
+  seasons: getLeagueSeasons(DEFAULT_LEAGUE_SETTINGS),
+  currentSeasonId: getCurrentSeasonId(DEFAULT_LEAGUE_SETTINGS),
+  viewingSeasonId: getCurrentSeasonId(DEFAULT_LEAGUE_SETTINGS),
+  setViewingSeasonId: () => { },
+  isViewingArchivedSeason: false,
+  startNewSeason: async () => { },
 });
 
 const LEAGUE_NOT_FOUND = "not_found" as const;
@@ -505,7 +525,7 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
     routeLeagueRef.current = routeLeagueId;
     userLeaguesRef.current = userLeagues;
   }, [routeLeagueId, userLeagues]);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, setActiveLeagueCommissioner } = useAuth();
   const { data: memberships } = useMyMemberships(user?.emailVerified ? user.uid : null);
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
@@ -514,6 +534,12 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
 
   // The route always wins over the stored selection so league-owned pages never show another league.
   const activeLeagueId = routeLeagueId || selectedLeagueId;
+
+  const commissionsActiveLeague = !checkIsDemoLeague(activeLeagueId) &&
+    !!memberships?.leagues.some((league) => league.id === activeLeagueId && league.isCommissioner);
+  useEffect(() => {
+    setActiveLeagueCommissioner?.(commissionsActiveLeague);
+  }, [commissionsActiveLeague, setActiveLeagueCommissioner]);
 
   // Apply CSS color variables dynamically to root & update browser title
   const applyThemeColors = (primary: string, accent: string, leagueName?: string, seasonTitle?: string) => {
@@ -983,6 +1009,35 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   const isSubscriptionPastDue = subscription?.status === "past_due";
   const isLeagueReadOnly = isLeagueArchived || isSubscriptionPastDue;
 
+  const seasons = getLeagueSeasons(settings);
+  const currentSeasonId = getCurrentSeasonId(settings);
+  const [viewingSeasonState, setViewingSeasonState] = useState<{ leagueId: string; seasonId: string } | null>(null);
+  const viewingSeasonId = viewingSeasonState?.leagueId === activeLeagueId &&
+    seasons.some((season) => season.id === viewingSeasonState.seasonId)
+    ? viewingSeasonState.seasonId
+    : currentSeasonId;
+  const setViewingSeasonId = (seasonId: string) => {
+    setViewingSeasonState({ leagueId: activeLeagueId, seasonId });
+  };
+
+  const startNewSeason = async (title: string) => {
+    if (checkIsDemoLeague(activeLeagueId)) {
+      throw new Error("Seasons can't be rolled over in the demo league.");
+    }
+    await createSecureRecord("start_season", { leagueId: activeLeagueId, title: title.trim() });
+    notifyDataChanged();
+    const refreshed = await fetchSettingsForLeague(activeLeagueId);
+    if (refreshed && refreshed !== LEAGUE_NOT_FOUND) {
+      setSubscription(refreshed.subscription || subscription);
+      setUserLeagues((prev) => {
+        const updated = prev.map((l) => l.id === activeLeagueId ? { ...l, seasonTitle: refreshed.seasonTitle } : l);
+        persistUserLeagues(updated);
+        return updated;
+      });
+    }
+    setViewingSeasonState(null);
+  };
+
   const archiveLeague = async (action: "pause_subscription" | "new_season") => {
     const isPaused = action === "pause_subscription";
     const updatedSub: LeagueSubscriptionInfo = {
@@ -1159,6 +1214,12 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
         isLeagueArchived,
         isSubscriptionPastDue,
         isLeagueReadOnly,
+        seasons,
+        currentSeasonId,
+        viewingSeasonId,
+        setViewingSeasonId,
+        isViewingArchivedSeason: viewingSeasonId !== currentSeasonId,
+        startNewSeason,
       }}
     >
       {children}
@@ -1210,6 +1271,12 @@ function IndependentTeamLeague({ teamId, team, loading, enabled = true, children
       isLeagueArchived: false,
       isSubscriptionPastDue: false,
       isLeagueReadOnly: false,
+      seasons: getLeagueSeasons(null),
+      currentSeasonId: getCurrentSeasonId(null),
+      viewingSeasonId: getCurrentSeasonId(null),
+      setViewingSeasonId: () => { },
+      isViewingArchivedSeason: false,
+      startNewSeason: async () => rejectIndependentLeagueMutation(),
       isCustomizerOpen: false,
       updateSettings: async () => rejectIndependentLeagueMutation(),
       updateRules: async () => rejectIndependentLeagueMutation(),

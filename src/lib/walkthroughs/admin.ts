@@ -104,12 +104,17 @@ export const LEAGUE_SUBSCRIPTION_GUIDE = guide("league-settings-subscription", "
 ]);
 
 export const LEAGUE_SEASON_GUIDE = guide("league-settings-season", "Season & Archival", [
-  overview("season-overview", "Manage the season lifecycle", "Archival preserves historical results in read-only mode. Review every action carefully before confirming."), settingsNavigation,
+  overview("season-overview", "Manage the season lifecycle", "End a season to save its results to League History, then pause the league or start the next season with the same teams and rosters."), settingsNavigation,
   step("settings-season-status", "Season access and cost", "Read the season status, Subscription Status, Monthly Licensing and Access Mode. Archived or past-due leagues show read-only access."),
-  step("settings-archive", "Conclude a season", "Use the archive choices only when this season is finished.", [
-    ["Mark Season Concluded & Archive Circuit", "Open the subscription choices; it does not archive immediately."],
-    ["1. End / Pause Subscription", "Archive the league and pause future monthly charges while preserving historical records."],
-    ["2. Begin Another League / New Season", "Archive this circuit and begin the next-season flow."], ["Cancel", "Back out of the archive choices."],
+  step("settings-archive", "End the season", "Use these choices only when the season's games are finished.", [
+    ["End Season", "Open the choices below; nothing changes until you pick one."],
+    ["1. Pause the League", "Make the league read-only and stop monthly charges while keeping everything viewable."],
+    ["2. Start the Next Season", "Open the new-season form. Final standings, stats and the champion are saved to History first."], ["Cancel", "Back out without changing anything."],
+  ]),
+  step("settings-new-season", "Name the new season", "Appears after choosing Start the Next Season.", [
+    ["New season name", "The name players see on standings, schedules and history, such as Spring 2027."],
+    ["Start season", "Archive the current season and start the new one. The old schedule and play-by-play become read-only; schedule new games from the Schedule page."],
+    ["Back", "Close the form without starting a season."],
   ]),
   step("settings-season-resume", "Resume an archived season", "This option appears only when the league is archived.", [["Reactivate League / Start Next Season", "Resume the subscription and restore league editing."]]),
   step("settings-season-payment", "Restore past-due access", "This option appears only when payment is past due.", [["Update Payment & Resume Subscription", "Run the resume-subscription action to restore access."]]),

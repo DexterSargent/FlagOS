@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthProvider, useAuth } from "@/lib/authContext";
+import { AuthProvider, clearIdentityLookupCache, useAuth } from "@/lib/authContext";
 
 const mocks = vi.hoisted(() => ({
   callback: null as null | ((user: unknown) => Promise<void>),
@@ -37,6 +37,7 @@ describe("Parallel auth startup", () => {
     Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
   });
   beforeEach(() => {
+    clearIdentityLookupCache();
     mocks.callback = null;
     mocks.getDoc.mockResolvedValue(profile());
     mocks.lookup.mockResolvedValue({ teams: [], players: [] });

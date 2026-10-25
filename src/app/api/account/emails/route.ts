@@ -40,6 +40,19 @@ const membershipRef = (uid: string) => adminDb.doc(`account_email_members/${uid}
 const accountRef = (uid: string) => adminDb.doc(`account_email_connections/${uid}`);
 const addressRef = (email: string) => adminDb.doc(`account_email_addresses/${accountEmailKey(email)}`);
 
+/** Mirrors connected emails onto the primary account so Firestore rules can match them. */
+async function syncLinkedEmailsClaim(accountUid: string) {
+  const [account, user] = await Promise.all([accountRef(accountUid).get(), adminAuth.getUser(accountUid)]);
+  const primary = (user.email || "").toLowerCase();
+  const emails: AccountEmail[] = account.get("emails") || [];
+  const linkedEmails = [...new Set(emails.map((entry) => entry.email.toLowerCase()).filter((email) => email && email !== primary))];
+  const claims = { ...(user.customClaims || {}) };
+  if (linkedEmails.length) claims.linkedEmails = linkedEmails;
+  else delete claims.linkedEmails;
+  await adminAuth.setCustomUserClaims(accountUid, claims);
+  return linkedEmails;
+}
+
 export async function POST(request: Request) {
   try {
     const bearer = request.headers.get("authorization") || "";
@@ -75,7 +88,8 @@ export async function POST(request: Request) {
       if (primary.disabled || !primary.emailVerified || !emails.some((entry) => entry.uid === primary.uid && entry.email === primary.email?.toLowerCase())) {
         fail("The connected account is unavailable. Contact its owner.", 409);
       }
-      return Response.json({ data: { customToken: await adminAuth.createCustomToken(accountUid) } }, {
+      const linkedEmails = await syncLinkedEmailsClaim(accountUid);
+      return Response.json({ data: { customToken: await adminAuth.createCustomToken(accountUid, { linkedEmails }) } }, {
         headers: { "Cache-Control": "no-store" },
       });
     }
@@ -129,6 +143,7 @@ export async function POST(request: Request) {
       // Connected-email sessions run as the primary account; invalidate all of them on removal.
       await adminAuth.revokeRefreshTokens(token.uid);
     }
+    await syncLinkedEmailsClaim(token.uid);
     return Response.json({ data: { success: true } }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof AccountError) return Response.json({ error: error.message }, { status: error.status });

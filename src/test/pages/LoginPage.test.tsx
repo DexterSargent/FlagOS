@@ -69,8 +69,8 @@ describe("LoginPage email/password sign-in", () => {
     expect(sendPasswordResetMock).toHaveBeenCalledWith("coach@example.com");
   });
 
-  it("submits email/password credentials and redirects on success", async () => {
-    loginWithEmailAndPasswordMock.mockResolvedValue({ success: true });
+  it("submits email/password credentials and redirects to the account's portal", async () => {
+    loginWithEmailAndPasswordMock.mockResolvedValue({ success: true, defaultPath: "/teams/team_1" });
     render(<LoginPage />);
 
     fireEvent.change(screen.getByLabelText("Email and password"), {
@@ -86,8 +86,24 @@ describe("LoginPage email/password sign-in", () => {
         "player@example.com",
         "example-password"
       );
-      expect(routerPushMock).toHaveBeenCalledWith("/league/default");
+      expect(routerPushMock).toHaveBeenCalledWith("/teams/team_1");
     });
+  });
+
+  it("does not send accounts without a league to the demo league", async () => {
+    loginWithEmailAndPasswordMock.mockResolvedValue({ success: true });
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email and password"), {
+      target: { value: "player@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Password"), {
+      target: { value: "example-password" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in with email" }));
+
+    await waitFor(() => expect(loginWithEmailAndPasswordMock).toHaveBeenCalled());
+    expect(routerPushMock).not.toHaveBeenCalled();
   });
 
   it("shows Firebase sign-in errors to the user", async () => {

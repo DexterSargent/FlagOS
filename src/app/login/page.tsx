@@ -12,6 +12,7 @@ import { isRealTeam } from "@/components/TeamAssets";
 import { getSandboxTeams, getSandboxPlayers } from "@/lib/demoSandbox";
 import { useTheme } from "@/lib/themeContext";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
+import EmailVerificationNotice from "@/components/EmailVerificationNotice";
 
 export default function LoginPage() {
   usePageGuide(LOGIN_WALKTHROUGH);
@@ -34,8 +35,11 @@ export default function LoginPage() {
     loginWithPlayerEmail,
     logout,
     setDevRole,
+    needsEmailVerification,
   } = useAuth();
   const router = useRouter();
+  const portalTeamId = userProfile?.managedTeamId || userProfile?.playerTeamId;
+  const portalPath = portalTeamId && portalTeamId !== "team_free_agents" ? `/teams/${portalTeamId}` : "/";
 
   const [teams, setTeams] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
@@ -113,8 +117,8 @@ export default function LoginPage() {
       if (result.success) {
         if (isCreatingAccount) {
           setEmailPasswordSuccess(result.message || "Account created. Verify your email, then sign in.");
-        } else {
-          router.push(redirectUrl || result.defaultPath || "/league/default");
+        } else if (redirectUrl || result.defaultPath) {
+          router.push(redirectUrl || result.defaultPath!);
         }
       } else {
         setEmailPasswordError(result.message);
@@ -149,7 +153,7 @@ export default function LoginPage() {
     try {
       const result = await login();
       if (result.success) {
-        router.push(redirectUrl || result.defaultPath || "/league/default");
+        if (redirectUrl || result.defaultPath) router.push(redirectUrl || result.defaultPath!);
       } else {
         setGoogleLoginError(result.message);
       }
@@ -362,10 +366,12 @@ export default function LoginPage() {
               Manage connected emails
             </Link>
 
-            {isAuthorized ? (
+            {needsEmailVerification ? (
+              <EmailVerificationNotice />
+            ) : isAuthorized ? (
               <div className="w-full space-y-2">
                 <button
-                  onClick={() => router.push(redirectUrl || `/league/default`)}
+                  onClick={() => router.push(redirectUrl || portalPath)}
                   className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>CONTINUE TO LEAGUE PORTAL</span>

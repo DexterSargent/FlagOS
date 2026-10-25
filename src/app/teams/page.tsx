@@ -157,16 +157,12 @@ export default function TeamsPage() {
 
       setPlays(rawPlays);
     } catch (e) {
-      console.warn("Unable to fetch live teams data, falling back to sandbox:", e);
-      const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-      const t = [...baseTeams].sort((a, b) => a.name.localeCompare(b.name));
-      const p = getSandboxPlayers() as unknown as Player[];
-      const m = getSandboxMatches();
-      const pl = getSandboxPlays();
-      setTeams(t);
-      setPlayers(p);
-      setMatches(m);
-      setPlays(pl);
+      // Never substitute demo data for a real league; show it empty instead.
+      console.warn("Unable to load league teams:", e);
+      setTeams([]);
+      setPlayers([]);
+      setMatches([]);
+      setPlays([]);
     }
     setLoading(false);
   };

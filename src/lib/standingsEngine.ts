@@ -1,4 +1,6 @@
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
+import { compareStandingRows, isPlayoffMatch, type StandingSortRow } from "./standingsCore";
+export { compareStandingRows, isPlayoffMatch, type StandingSortRow };
 import {
   PlayoffFormat,
   getNearestSimplePlayoffBracket,
@@ -81,25 +83,12 @@ export interface BracketRound {
   bracketType?: "winners" | "losers" | "finals";
 }
 
-export interface StandingSortRow {
-  winPct: number;
-  diff: number;
-  pointsFor: number;
-  pointsAgainst: number;
-  name: string;
-}
+
 
 /**
  * Single standings tiebreak order used by every standings view and playoff seeding:
  * win %, point differential, points for, fewest points against, then team name.
  */
-export function compareStandingRows(a: StandingSortRow, b: StandingSortRow): number {
-  if (b.winPct !== a.winPct) return b.winPct - a.winPct;
-  if (b.diff !== a.diff) return b.diff - a.diff;
-  if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
-  if (a.pointsAgainst !== b.pointsAgainst) return a.pointsAgainst - b.pointsAgainst;
-  return (a.name || "").localeCompare(b.name || "");
-}
 
 /**
  * Calculates current seasonal standings based on completed regular season games.
@@ -375,9 +364,6 @@ export function isPlayoffActive(matches: any[]): boolean {
   return false;
 }
 
-export function isPlayoffMatch(m: any): boolean {
-  return Boolean(m?.isPlayoff || m?.week?.toString().toLowerCase().includes("playoff"));
-}
 
 function isStartedMatch(m: any): boolean {
   return m?.status === "in_progress" || m?.status === "completed" || m?.status === "Final";

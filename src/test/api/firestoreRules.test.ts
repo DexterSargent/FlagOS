@@ -155,6 +155,19 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
     expect((await read("plays/indie-play", auth("viewer@example.com"))).status).toBe(403);
   });
 
+  it("lets signed-in members list a public league's visible plays", async () => {
+    await write("leagues/rules-public", { visibility: "public" });
+    await write("plays/league-play", { matchId: "league-match", isHidden: false, leagueId: "rules-public" });
+    const leagueQuery = [filter("leagueId", "rules-public"), filter("isHidden", true, "NOT_EQUAL")];
+    const listed = await query("plays", leagueQuery, 10_000, auth("viewer@example.com"));
+    const body = await listed.text();
+    expect(listed.status, body).toBe(200);
+    expect(body).toContain("league-play");
+    expect((await query("plays", [filter("leagueId", "rules-public")], 10_000, auth("viewer@example.com"))).status).toBe(403);
+    await write("leagues/rules-public", { visibility: "private" });
+    expect((await query("plays", leagueQuery, 10_000, auth("viewer@example.com"))).status).toBe(403);
+  });
+
   it("allows listed coaches to update scores", async () => {
     const response = await write(`matches/${matchId}`, { ...fixture, homeScore: 7 }, auth(coach));
     expect(response.status, await response.text()).toBe(200);

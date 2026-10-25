@@ -173,7 +173,7 @@ describe("private-data API", () => {
     });
     transaction.get.mockResolvedValue({
       exists: true,
-      get: (field: string) => field === "minuteStart" ? Date.now() : 1_900,
+      get: (field: string) => field === "minuteStart" ? Date.now() : 3_900,
     });
 
     const response = await POST(request({ action: "lookup", data: {} }));

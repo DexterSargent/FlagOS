@@ -4,6 +4,7 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { accountEmailKey } from "@/lib/accountEmailKey";
 import { getDepthFormations } from "@/lib/depthChart";
+import { accountEmails, listHasAccountEmail, loadAccountEmails, matchesAccountEmail } from "@/lib/accountEmailsServer";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ type PrivateAction = "lookup" | "memberships" | "team" | "league" | "admin_overv
 
 import { PLATFORM_ADMIN_EMAIL, isPlatformAdminEmail } from "@/lib/platformAdmin";
 const MAX_REQUEST_BYTES = 8_000;
-const MAX_READ_UNITS_PER_MINUTE = 2_000;
+const MAX_READ_UNITS_PER_MINUTE = 4_000;
 const ACTION_READ_UNITS: Record<PrivateAction, number> = {
   lookup: 250,
   memberships: 500,
@@ -31,29 +32,23 @@ function fail(message: string, status = 400): never {
   throw new RequestError(message, status);
 }
 
-function normalizedEmail(token: DecodedIdToken): string {
-  return typeof token.email === "string" ? token.email.trim().toLowerCase() : "";
-}
-
 function isPlatformAdmin(token: DecodedIdToken): boolean {
   return isPlatformAdminEmail(token.email);
 }
 
 function isLeagueAdmin(data: FirebaseFirestore.DocumentData, token: DecodedIdToken): boolean {
-  const email = normalizedEmail(token);
   return isPlatformAdmin(token) ||
     data.ownerUid === token.uid ||
-    (Array.isArray(data.adminEmails) && data.adminEmails.includes(email)) ||
-    (Array.isArray(data.subscriptionAdminEmails) && data.subscriptionAdminEmails.includes(email));
+    listHasAccountEmail(token, data.adminEmails) ||
+    listHasAccountEmail(token, data.subscriptionAdminEmails);
 }
 
 function isTeamAdmin(data: FirebaseFirestore.DocumentData, token: DecodedIdToken): boolean {
-  const email = normalizedEmail(token);
   return isPlatformAdmin(token) ||
-    (Array.isArray(data.adminEmails) && data.adminEmails.includes(email)) ||
-    data.coachEmail === email ||
-    data.adminEmail === email ||
-    data.email === email;
+    listHasAccountEmail(token, data.adminEmails) ||
+    matchesAccountEmail(token, data.coachEmail) ||
+    matchesAccountEmail(token, data.adminEmail) ||
+    matchesAccountEmail(token, data.email);
 }
 
 function parsePayload(value: unknown): { action: PrivateAction; data: Record<string, unknown> } {
@@ -97,26 +92,30 @@ async function enforceReadLimit(uid: string, action: PrivateAction): Promise<voi
 }
 
 async function lookupByEmail(token: DecodedIdToken) {
-  const email = normalizedEmail(token);
-  if (!email) return { teams: [], players: [] };
+  const emails = accountEmails(token);
+  if (!emails.length) return { teams: [], players: [] };
+  const equals = (collection: string, field: string) =>
+    adminDb.collection(collection).where(field, emails.length === 1 ? "==" : "in", emails.length === 1 ? emails[0] : emails).limit(20).get();
+  const contains = (collection: string, field: string) =>
+    adminDb.collection(collection).where(field, emails.length === 1 ? "array-contains" : "array-contains-any", emails.length === 1 ? emails[0] : emails).limit(20).get();
   const [
     teamByAdmins, teamByCoach, teamByAdmin, teamByEmail,
     playersByEmail, playersByEmails,
     legacyTeamByAdmins, legacyTeamByCoach, legacyTeamByAdmin, legacyTeamByEmail,
     legacyPlayersByEmail, legacyPlayersByEmails,
   ] = await Promise.all([
-      adminDb.collection("team_private").where("adminEmails", "array-contains", email).limit(10).get(),
-      adminDb.collection("team_private").where("coachEmail", "==", email).limit(10).get(),
-      adminDb.collection("team_private").where("adminEmail", "==", email).limit(10).get(),
-      adminDb.collection("team_private").where("email", "==", email).limit(10).get(),
-      adminDb.collection("player_private").where("email", "==", email).limit(10).get(),
-      adminDb.collection("player_private").where("emails", "array-contains", email).limit(10).get(),
-      adminDb.collection("teams").where("adminEmails", "array-contains", email).limit(10).get(),
-      adminDb.collection("teams").where("coachEmail", "==", email).limit(10).get(),
-      adminDb.collection("teams").where("adminEmail", "==", email).limit(10).get(),
-      adminDb.collection("teams").where("email", "==", email).limit(10).get(),
-      adminDb.collection("players").where("email", "==", email).limit(10).get(),
-      adminDb.collection("players").where("emails", "array-contains", email).limit(10).get(),
+      contains("team_private", "adminEmails"),
+      equals("team_private", "coachEmail"),
+      equals("team_private", "adminEmail"),
+      equals("team_private", "email"),
+      equals("player_private", "email"),
+      contains("player_private", "emails"),
+      contains("teams", "adminEmails"),
+      equals("teams", "coachEmail"),
+      equals("teams", "adminEmail"),
+      equals("teams", "email"),
+      equals("players", "email"),
+      contains("players", "emails"),
   ]);
   const teamPrivate = new Map(
     [...teamByAdmins.docs, ...teamByCoach.docs, ...teamByAdmin.docs, ...teamByEmail.docs]
@@ -266,13 +265,16 @@ async function getTeamGames(teamId: string, leagueId: string) {
  * Teams without a league are returned separately as independent teams.
  */
 async function getMemberships(token: DecodedIdToken) {
-  const email = normalizedEmail(token);
-  if (!email) return { leagues: [], independentTeams: [] };
+  const emails = accountEmails(token);
+  if (!emails.length) return { leagues: [], independentTeams: [] };
+  const containsAny = (field: string) => adminDb.collection("league_private")
+    .where(field, emails.length === 1 ? "array-contains" : "array-contains-any", emails.length === 1 ? emails[0] : emails)
+    .limit(25).get();
 
   const [lookup, adminLeagues, subscriptionLeagues, ownedPrivateLeagues, ownedLeagues] = await Promise.all([
     lookupByEmail(token),
-    adminDb.collection("league_private").where("adminEmails", "array-contains", email).limit(25).get(),
-    adminDb.collection("league_private").where("subscriptionAdminEmails", "array-contains", email).limit(25).get(),
+    containsAny("adminEmails"),
+    containsAny("subscriptionAdminEmails"),
     adminDb.collection("league_private").where("ownerUid", "==", token.uid).limit(25).get(),
     adminDb.collection("leagues").where("ownerUid", "==", token.uid).limit(25).get(),
   ]);
@@ -530,6 +532,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Verify your email before accessing private data." }, { status: 403 });
     }
     const { action, data } = parsePayload(JSON.parse(rawBody) as unknown);
+    await loadAccountEmails(token);
     try {
       // The platform admin's own overview/refresh must never be throttled by the per-user budget.
       if (!isPlatformAdmin(token)) await enforceReadLimit(token.uid, action);

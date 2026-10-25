@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, onSnapshot, query, where, limit } from "firebase/firestore";
-import { getCachedLeagueTeams, getCachedLeaguePlayers, getCachedLeaguePlays } from "@/lib/leagueDataCache";
+import { getCachedLeagueTeams, getCachedLeaguePlayers, getCachedLeaguePlays, subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
@@ -26,7 +24,7 @@ const readEmbeddedFlag = () => {
 };
 
 export function useLeagueDashboardData(leagueIdParam?: string) {
-  const { settings, activeLeagueId, switchLeague, isDemoLeague, subscription } = useLeague();
+  const { settings, activeLeagueId, switchLeague, isDemoLeague, subscription, currentSeasonId } = useLeague();
 
   const isEmbedded = useSyncExternalStore(
     noopSubscribe,
@@ -105,12 +103,7 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
         console.warn("Non-critical: permission or network error loading dashboard data:", e);
       });
 
-      const unsubMatches = onSnapshot(query(
-        collection(db, "matches"),
-        where("leagueId", "==", targetLeagueId),
-        where("isHidden", "!=", true),
-        limit(512),
-      ), (snap) => {
+      const unsubMatches = subscribeLeagueSeasonMatches(targetLeagueId, (snap) => {
         const mList = snap.docs
           .map((d) => ({ id: d.id, ...(d.data() as any) }))
           .filter((m) => !m.isHidden && (!m.leagueId || m.leagueId === targetLeagueId));
@@ -127,7 +120,7 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
     } catch (e) {
       console.warn("Non-critical: permission or network error loading dashboard data:", e);
     }
-  }, [isEffectiveDemo, leagueIdParam, activeLeagueId]);
+  }, [isEffectiveDemo, leagueIdParam, activeLeagueId, currentSeasonId]);
 
   // Compute Standings (strictly competitive teams only; free agents are not a team)
   const { standingsMap, completedMatches, sortedStandings } = useMemo(() => {

@@ -157,6 +157,15 @@ export const STATS_WALKTHROUGH: ToolWalkthrough = {
       { label: "Flags / INT / Def TD / Sacks / FFL / PBU / Safeties", text: "In Defense, compare defensive production and turnovers." },
       { label: "Stat headings", text: "Select a stat column to sort the table by that statistic." },
     ] },
+    { id: "stats-season", targetSelector: '[data-tour="stats-season"]', title: "Switch Seasons", category: "Seasons", description: "Appears once the league has more than one season. Pick a past season to see its final standings and player stats, frozen exactly as they ended.", details: [
+      { label: "Season", text: "Choose any season. The current season is marked (current) and updates live." },
+      { label: "Back to current season", text: "Shown on the amber banner while you browse a past season; returns to the live standings." },
+    ] },
+    { id: "stats-history", targetSelector: '[data-tour="stats-tabs"]', title: "League History", category: "Seasons", description: "The History tab appears once a season has ended. It collects every season, champion, all-time leaders and career stats in one place.", details: [
+      { label: "Seasons", text: "Each card shows the season's dates and champion. View final standings & stats opens that season." },
+      { label: "All-time leaders", text: "Top three career totals in touchdowns, passing TDs, receptions, flag pulls and interceptions, including the live season." },
+      { label: "Career stats", text: "Search for a player and select their name to see each season they played, which team they were on, and championships won." },
+    ] },
   ],
 };
 

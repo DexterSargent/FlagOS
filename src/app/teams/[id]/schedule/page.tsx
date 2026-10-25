@@ -19,6 +19,7 @@ import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadTeamManagedMatches } from "@/lib/teamSeasonData";
+import { subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
@@ -278,12 +279,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         setAllTeams(teamsMap);
 
         // Fetch matches involving this team
-        const unsub = onSnapshot(query(
-          collection(db, "matches"),
-          where("leagueId", "==", leagueId),
-          where("isHidden", "!=", true),
-          limit(512),
-        ), (snap) => {
+        const unsub = subscribeLeagueSeasonMatches(leagueId, (snap) => {
           if (cancelled) return;
           const mList = snap.docs
             .map((d) => ({ id: d.id, ...(d.data() as any) }))

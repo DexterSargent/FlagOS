@@ -19,10 +19,11 @@ import {
   ChevronUp,
   ChevronDown,
   LayoutGrid,
-  Table as TableIcon
+  Table as TableIcon,
+  History,
+  Crown,
+  Archive,
 } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import {
   getCachedLeagueTeams,
   getCachedLeaguePlayers,
@@ -33,8 +34,9 @@ import { getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { usePageGuide } from "@/lib/pageGuide";
 import { STATS_WALKTHROUGH } from "@/lib/walkthroughs/league";
-import { compareStandingRows, isPlayoffMatch } from "@/lib/standingsEngine";
-import { useAuth } from "@/lib/authContext";
+import { computeLeagueSeasonStats, type PlayerStatLine } from "@/lib/leagueSeasons";
+import { useLeagueSeasonHistory } from "@/lib/useLeagueSeasonHistory";
+import SeasonHistoryPanel from "@/components/league/SeasonHistoryPanel";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
@@ -47,10 +49,12 @@ import {
 
 export default function StatsAndStandings() {
   usePageGuide(STATS_WALKTHROUGH);
-  const { user } = useAuth();
-  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const {
+    settings, isDemoLeague, activeLeagueId,
+    seasons, currentSeasonId, viewingSeasonId, setViewingSeasonId, isViewingArchivedSeason,
+  } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
-  const [activeTab, setActiveTab] = useState<"team" | "individual">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "individual" | "history">("team");
   const [indivViewMode, setIndivViewMode] = useState<"leaders" | "table">("leaders");
   const [individualTab, setIndividualTab] = useState<"passing" | "receiving" | "defense">("passing");
 
@@ -59,8 +63,15 @@ export default function StatsAndStandings() {
 
   const [standings, setStandings] = useState<any[]>([]);
   const [individualStats, setIndividualStats] = useState<any[]>([]);
-  const [teamsData, setTeamsData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const hasArchivedSeasons = !isDemoLeague && seasons.some((season) => season.status === "archived");
+  const seasonHistory = useLeagueSeasonHistory(activeLeagueId, hasArchivedSeasons);
+  const archivedSnapshot = isViewingArchivedSeason
+    ? seasonHistory.snapshots.find((snapshot) => snapshot.seasonId === viewingSeasonId) || null
+    : null;
+  const viewingSeason = seasons.find((season) => season.id === viewingSeasonId);
+  const displayStandings: any[] = archivedSnapshot ? archivedSnapshot.standings : standings;
+  const displayPlayerStats: any[] = archivedSnapshot ? archivedSnapshot.playerStats : individualStats;
 
 
 
@@ -90,8 +101,8 @@ export default function StatsAndStandings() {
             const [rawTeams, rawPlayers, rawMatches, rawPlays] = await Promise.all([
               getCachedLeagueTeams(activeLeagueId),
               getCachedLeaguePlayers(activeLeagueId),
-              getCachedLeagueMatches(activeLeagueId),
-              getCachedLeaguePlays(activeLeagueId),
+              getCachedLeagueMatches(activeLeagueId, currentSeasonId),
+              getCachedLeaguePlays(activeLeagueId, currentSeasonId),
             ]);
 
             teams = rawTeams
@@ -102,260 +113,18 @@ export default function StatsAndStandings() {
               .filter((m) => !m.leagueId || m.leagueId === activeLeagueId);
             plays = rawPlays;
           } catch (err) {
-            console.warn("Unable to fetch stats from Firestore, falling back to sandbox:", err);
-            teams = getSandboxTeams().filter(isRealTeam);
-            players = getSandboxPlayers();
-            matches = getSandboxMatches().filter(
-              (m: any) => m.homeTeamId !== "team_free_agents" && m.awayTeamId !== "team_free_agents"
-            );
-            plays = getSandboxPlays();
+            // Never substitute demo data for a real league; show it empty instead.
+            console.warn("Unable to load league stats:", err);
+            teams = [];
+            players = [];
+            matches = [];
+            plays = [];
           }
         }
 
-        // === TEAM STANDINGS ===
-        const teamsMap: Record<string, any> = {};
-        teams.forEach((t) => {
-          teamsMap[t.id] = {
-            id: t.id,
-            name: t.name,
-            shortcode: t.shortcode || getTeamShortcode(t),
-            played: 0,
-            won: 0,
-            lost: 0,
-            tied: 0,
-            pf: 0,
-            pa: 0,
-            diff: 0,
-            pts: 0,
-          };
-        });
-        setTeamsData(teamsMap);
-
-        // === INDIVIDUAL STATS ===
-        const statsMap: Record<string, any> = {};
-        players.forEach((p) => {
-          statsMap[p.playerName] = {
-            name: p.playerName,
-            number: p.number || p.jerseyNumber || "",
-            teamId: p.teamId,
-            teamName: teamsMap[p.teamId]?.name || "Unknown",
-            teamShortcode: teamsMap[p.teamId]?.shortcode || getTeamShortcode(null, teamsMap[p.teamId]?.name),
-            gamesPlayed: 0,
-            passAtt: 0,
-            passComp: 0,
-            passTD: 0,
-            passInt: 0,
-            receptions: 0,
-            recTD: 0,
-            rushAtt: 0,
-            rushTD: 0,
-            flagPulls: 0,
-            sacks: 0,
-            int: 0,
-            defTD: 0,
-            convPass: 0,
-            convRec: 0,
-            pbu: 0,
-            safeties: 0,
-            ffl: 0,
-            totalTDs: 0,
-          };
-        });
-
-        // Pre-group players by teamId for O(1) roster lookups
-        const playersByTeam = new Map<string, any[]>();
-        players.forEach((p) => {
-          if (p.teamId) {
-            const arr = playersByTeam.get(p.teamId);
-            if (arr) arr.push(p);
-            else playersByTeam.set(p.teamId, [p]);
-          }
-        });
-
-        // Matches calculation
-        matches.forEach((m) => {
-          if (m.status === "completed" && typeof m.homeScore === "number" && typeof m.awayScore === "number" && !m.isHidden) {
-            const h = teamsMap[m.homeTeamId];
-            const a = teamsMap[m.awayTeamId];
-            if (h && a) {
-              if (!m.isPreseason && !isPlayoffMatch(m)) {
-                h.played += 1;
-                a.played += 1;
-                h.pf += m.homeScore;
-                h.pa += m.awayScore;
-                a.pf += m.awayScore;
-                a.pa += m.homeScore;
-
-                if (m.homeScore > m.awayScore) {
-                  h.won += 1;
-                  h.pts += 2;
-                  a.lost += 1;
-                } else if (m.homeScore < m.awayScore) {
-                  a.won += 1;
-                  a.pts += 2;
-                  h.lost += 1;
-                } else {
-                  h.tied += 1;
-                  h.pts += 1;
-                  a.tied += 1;
-                  a.pts += 1;
-                }
-
-                const dnpSet = new Set(m.didNotPlay || []);
-                let matchPlayerNames: string[] = [];
-                if (m.roster && m.roster.home && m.roster.away) {
-                  matchPlayerNames = [...m.roster.home, ...m.roster.away];
-                } else {
-                  const homeP = playersByTeam.get(m.homeTeamId) || [];
-                  const awayP = playersByTeam.get(m.awayTeamId) || [];
-                  matchPlayerNames = [...homeP, ...awayP].map((p) => p.playerName);
-                }
-
-                matchPlayerNames.forEach((playerName) => {
-                  if (statsMap[playerName] && !dnpSet.has(playerName)) {
-                    statsMap[playerName].gamesPlayed += 1;
-                  }
-                });
-              }
-            }
-          }
-        });
-
-        const computedStandings = Object.values(teamsMap)
-          .filter(isRealTeam)
-          .map((t) => {
-            t.diff = t.pf - t.pa;
-            return t;
-          });
-
-        const sortedForRank = [...computedStandings].sort((a, b) => compareStandingRows(
-          { winPct: a.played > 0 ? (a.won + 0.5 * a.tied) / a.played : 0, diff: a.diff, pointsFor: a.pf, pointsAgainst: a.pa, name: a.name },
-          { winPct: b.played > 0 ? (b.won + 0.5 * b.tied) / b.played : 0, diff: b.diff, pointsFor: b.pf, pointsAgainst: b.pa, name: b.name },
-        ));
-
-        sortedForRank.forEach((team, idx) => {
-          (team as any).rank = idx + 1;
-        });
-
-        // Completed matches set (only stats from completed games are tracked)
-        const completedMatchIds = new Set(
-          matches
-            .filter((m) => (m.status === "completed" || m.status === "Final") && !m.isHidden)
-            .map((m) => m.id)
-        );
-
-        // Plays aggregation (strictly for completed matches)
-        plays.forEach((play) => {
-          if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
-          const isEligible = (name: string) => name && statsMap[name];
-
-          // Check if this play is a conversion attempt (special try play)
-          const isConversionPlay = Boolean(
-            play.isConversion === true ||
-            play.playType === "Conversion" ||
-            (!play.isTouchdown && (
-              (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
-              play.conversionSuccess === true
-            ))
-          );
-
-          // Passing
-          if (play.playType === "Pass" && isEligible(play.qbPlayerId) && !isConversionPlay) {
-            statsMap[play.qbPlayerId].passAtt += 1;
-            if (play.passOutcome === "Complete") {
-              statsMap[play.qbPlayerId].passComp += 1;
-            } else if (play.passOutcome === "Interception") {
-              statsMap[play.qbPlayerId].passInt += 1;
-            }
-
-            if (play.isTouchdown) {
-              statsMap[play.qbPlayerId].passTD += 1;
-            }
-          }
-
-          // Receiving
-          if (play.playType === "Pass" && play.passOutcome === "Complete" && isEligible(play.receiverPlayerId) && !isConversionPlay) {
-            statsMap[play.receiverPlayerId].receptions += 1;
-            if (play.isTouchdown) {
-              statsMap[play.receiverPlayerId].recTD += 1;
-              statsMap[play.receiverPlayerId].totalTDs += 1;
-            }
-          }
-
-          // Rushing
-          if (play.playType === "Run" && isEligible(play.runnerPlayerId) && !isConversionPlay) {
-            statsMap[play.runnerPlayerId].rushAtt += 1;
-            if (play.isTouchdown) {
-              statsMap[play.runnerPlayerId].rushTD += 1;
-              statsMap[play.runnerPlayerId].totalTDs += 1;
-            }
-          }
-
-          // Conversions (PAT)
-          if (isConversionPlay) {
-            if (play.conversionSuccess || play.passOutcome === "Complete" || (play.points && play.points > 0)) {
-              const passer = play.conversionPasser || play.qbPlayerId;
-              const receiver = play.conversionReceiver || play.receiverPlayerId;
-              const runner = play.conversionRunner || play.runnerPlayerId;
-              if (play.playType === "Pass") {
-                if (passer && isEligible(passer)) statsMap[passer].convPass += 1;
-                if (receiver && isEligible(receiver)) statsMap[receiver].convRec += 1;
-              } else if (play.playType === "Run") {
-                if (runner && isEligible(runner)) statsMap[runner].convRec += 1;
-              }
-            }
-          } else if (play.conversionSuccess) {
-            if (play.conversionPasser && isEligible(play.conversionPasser)) {
-              statsMap[play.conversionPasser].convPass += 1;
-            }
-            if (play.conversionReceiver && isEligible(play.conversionReceiver)) {
-              statsMap[play.conversionReceiver].convRec += 1;
-            }
-            if (play.conversionRunner && isEligible(play.conversionRunner)) {
-              statsMap[play.conversionRunner].convRec += 1;
-            }
-          }
-
-          // Defense
-          if (play.defenders && Array.isArray(play.defenders)) {
-            play.defenders.forEach((defenderName: string) => {
-              if (!isEligible(defenderName)) return;
-
-              if (play.passOutcome === "Interception") {
-                statsMap[defenderName].int += 1;
-                if (play.isPick6) {
-                  statsMap[defenderName].defTD += 1;
-                  statsMap[defenderName].totalTDs += 1;
-                }
-              } else if (play.passOutcome === "PBU") {
-                statsMap[defenderName].pbu += 1;
-              } else if (play.passOutcome === "Sack") {
-                statsMap[defenderName].sacks += 1;
-                statsMap[defenderName].flagPulls += 1;
-                if (play.isSafety) statsMap[defenderName].safeties += 1;
-              } else if (play.passOutcome === "FFL") {
-                statsMap[defenderName].ffl += 1;
-                statsMap[defenderName].flagPulls += 1;
-                if (play.isSafety) statsMap[defenderName].safeties += 1;
-              } else {
-                statsMap[defenderName].flagPulls += 1;
-                if (play.isSafety) statsMap[defenderName].safeties += 1;
-              }
-            });
-          }
-
-          // Interception Flaggers
-          if (play.passOutcome === "Interception" && play.flaggers && Array.isArray(play.flaggers)) {
-            play.flaggers.forEach((flaggerName: string) => {
-              if (isEligible(flaggerName)) {
-                statsMap[flaggerName].flagPulls += 1;
-              }
-            });
-          }
-        });
-
+        const { standings: computedStandings, playerStats } = computeLeagueSeasonStats({ teams, players, matches, plays });
         setStandings(computedStandings);
-        setIndividualStats(Object.values(statsMap));
+        setIndividualStats(playerStats);
       } catch (error) {
         console.error("Error fetching stats:", error);
       }
@@ -367,11 +136,11 @@ export default function StatsAndStandings() {
       const unsub = subscribeDemoSandbox(() => fetchAllData());
       return () => unsub();
     }
-  }, [isDemoLeague, activeLeagueId]);
+  }, [isDemoLeague, activeLeagueId, currentSeasonId]);
 
   // Helper for Top 3 in any category
   const getTop3 = (key: string) => {
-    const sorted = [...individualStats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
+    const sorted = [...displayPlayerStats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
     return sorted.slice(0, 3);
   };
 
@@ -396,7 +165,7 @@ export default function StatsAndStandings() {
   };
 
   const getSortedStandings = () => {
-    return [...standings].sort((a, b) => {
+    return [...displayStandings].sort((a, b) => {
       const valA = a[sortTeam.key];
       const valB = b[sortTeam.key];
       if (valA < valB) return sortTeam.direction === "asc" ? -1 : 1;
@@ -406,7 +175,7 @@ export default function StatsAndStandings() {
   };
 
   const getSortedIndividualStats = () => {
-    let sorted = [...individualStats];
+    let sorted = [...displayPlayerStats];
 
     let key = sortIndiv.key;
     if (!key) {
@@ -510,7 +279,7 @@ export default function StatsAndStandings() {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-widest">
-                {settings.seasonTitle || "Active Season"} Leaderboards
+                {(viewingSeason?.title || settings.seasonTitle || "Active Season")} {isViewingArchivedSeason ? "Final" : "Leaderboards"}
               </span>
               <span className="text-[var(--text-muted)] text-xs">•</span>
               <span className="text-[11px] font-mono text-[var(--text-muted)] dark:text-neutral-400">
@@ -525,7 +294,50 @@ export default function StatsAndStandings() {
               Team standings and player stats for the season.
             </p>
           </div>
+          {seasons.length > 1 && (
+            <label data-tour="stats-season" className="flex flex-col gap-1 w-full md:w-auto">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Season</span>
+              <select
+                value={viewingSeasonId}
+                onChange={(event) => setViewingSeasonId(event.target.value)}
+                className="w-full md:w-60 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              >
+                {[...seasons].sort((a, b) => b.number - a.number).map((season) => (
+                  <option key={season.id} value={season.id}>
+                    {season.title}{season.id === currentSeasonId ? " (current)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
+
+        {isViewingArchivedSeason && (
+          <div role="status" className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <Archive className="w-5 h-5 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="min-w-0 text-sm">
+                <p className="font-bold text-amber-900 dark:text-amber-200">
+                  Viewing {viewingSeason?.title || "a past season"} (final)
+                </p>
+                <p className="text-amber-800/80 dark:text-amber-200/70">
+                  {seasonHistory.loading
+                    ? "Loading archived results..."
+                    : archivedSnapshot?.championTeamName
+                      ? <span className="inline-flex items-center gap-1"><Crown className="w-3.5 h-3.5" /> Champion: <strong>{archivedSnapshot.championTeamName}</strong></span>
+                      : seasonHistory.error || (!archivedSnapshot ? "This season's archive could not be found." : "No champion was recorded for this season.")}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewingSeasonId(currentSeasonId)}
+              className="shrink-0 rounded-xl bg-amber-600 hover:bg-amber-700 text-[#fff] px-4 py-2 text-sm font-bold transition-colors"
+            >
+              Back to current season
+            </button>
+          </div>
+        )}
 
         {/* Main Tab Switcher */}
         <div data-tour="stats-tabs" className="flex p-1.5 bg-slate-100 dark:bg-neutral-900/80 rounded-2xl w-full max-w-md mx-auto backdrop-blur-md border border-slate-200 dark:border-white/10">
@@ -545,6 +357,16 @@ export default function StatsAndStandings() {
           >
             <Users className="w-4 h-4" /> Individual Stats
           </button>
+          {hasArchivedSeasons && (
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`flex-1 flex items-center justify-center gap-2 min-w-0 py-3 px-2 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                activeTab === "history" ? "bg-cyan-700 text-[#fff] shadow-lg shadow-cyan-500/20" : "text-[var(--text-muted)] dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <History className="w-4 h-4" /> History
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -617,7 +439,7 @@ export default function StatsAndStandings() {
                         <td className="py-4 px-6 text-center font-black text-xl text-white">{row.pts}</td>
                       </tr>
                     ))}
-                    {standings.length === 0 && (
+                    {displayStandings.length === 0 && (
                       <tr>
                         <td colSpan={10} className="py-12 text-center text-[var(--text-muted)]">
                           No completed matches found.
@@ -961,6 +783,22 @@ export default function StatsAndStandings() {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === "history" && hasArchivedSeasons && (
+            <SeasonHistoryPanel
+              seasons={seasons}
+              snapshots={seasonHistory.snapshots}
+              currentSeasonId={currentSeasonId}
+              livePlayerStats={individualStats as PlayerStatLine[]}
+              loading={seasonHistory.loading}
+              error={seasonHistory.error}
+              onViewSeason={(seasonId) => {
+                setViewingSeasonId(seasonId);
+                setActiveTab("team");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
           )}
         </div>
       </div>

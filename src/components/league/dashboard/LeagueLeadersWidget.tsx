@@ -13,6 +13,25 @@ export interface LeagueLeadersWidgetProps {
   className?: string;
 }
 
+function LeaderCard({ label, name, team, value, unit, tone }: {
+  label: string; name: string; team?: string; value: number; unit: string; tone: string;
+}) {
+  // A fresh season has no leaders yet; don't crown whoever sorts first with 0.
+  const hasLeader = name !== "-" && value > 0;
+  return (
+    <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">{label}</span>
+      <div className={`text-base sm:text-lg font-black mt-1 leading-tight line-clamp-2 break-words ${hasLeader ? "text-white" : "text-neutral-400"}`}>
+        {hasLeader ? name : "No stats yet"}
+      </div>
+      <div className={`flex items-center justify-between text-xs mt-2 font-bold ${tone}`}>
+        <span className="text-neutral-400 font-normal truncate">{hasLeader ? team || "Team" : "\u2014"}</span>
+        <span className="text-base">{hasLeader ? value : 0} {unit}</span>
+      </div>
+    </div>
+  );
+}
+
 export function LeagueLeadersWidget({
   topPasser,
   topReceiver,
@@ -41,49 +60,10 @@ export function LeagueLeadersWidget({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Passing TDs</span>
-            <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
-              {topPasser.name !== "-" ? topPasser.name : "No stats"}
-            </div>
-            <div className="flex items-center justify-between text-xs mt-2 text-cyan-400 font-bold">
-              <span className="text-neutral-400 font-normal truncate">{topPasser.team || "Team"}</span>
-              <span className="text-base">{topPasser.passTD} TDs</span>
-            </div>
-          </div>
-
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Receiving TDs</span>
-            <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
-              {topReceiver.name !== "-" ? topReceiver.name : "No stats"}
-            </div>
-            <div className="flex items-center justify-between text-xs mt-2 text-blue-400 font-bold">
-              <span className="text-neutral-400 font-normal truncate">{topReceiver.team || "Team"}</span>
-              <span className="text-base">{topReceiver.recTD} TDs</span>
-            </div>
-          </div>
-
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Total Touchdowns</span>
-            <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
-              {topScorer.name !== "-" ? topScorer.name : "No stats"}
-            </div>
-            <div className="flex items-center justify-between text-xs mt-2 text-yellow-400 font-bold">
-              <span className="text-neutral-400 font-normal truncate">{topScorer.team || "Team"}</span>
-              <span className="text-base">{topScorer.totalTD} TDs</span>
-            </div>
-          </div>
-
-          <div className="bg-black/50 border border-line-subtle p-4 rounded-2xl">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">Flags (Def)</span>
-            <div className="text-base sm:text-lg font-black text-white mt-1 leading-tight line-clamp-2 break-words">
-              {topFlagger.name !== "-" ? topFlagger.name : "No stats"}
-            </div>
-            <div className="flex items-center justify-between text-xs mt-2 text-emerald-400 font-bold">
-              <span className="text-neutral-400 font-normal truncate">{topFlagger.team || "Team"}</span>
-              <span className="text-base">{topFlagger.flagPulls} Flags</span>
-            </div>
-          </div>
+          <LeaderCard label="Passing TDs" name={topPasser.name} team={topPasser.team} value={topPasser.passTD} unit="TDs" tone="text-cyan-400" />
+          <LeaderCard label="Receiving TDs" name={topReceiver.name} team={topReceiver.team} value={topReceiver.recTD} unit="TDs" tone="text-blue-400" />
+          <LeaderCard label="Total Touchdowns" name={topScorer.name} team={topScorer.team} value={topScorer.totalTD} unit="TDs" tone="text-yellow-400" />
+          <LeaderCard label="Flags (Def)" name={topFlagger.name} team={topFlagger.team} value={topFlagger.flagPulls} unit="Flags" tone="text-emerald-400" />
         </div>
       </div>
 

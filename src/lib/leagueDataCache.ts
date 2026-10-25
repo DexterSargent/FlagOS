@@ -1,5 +1,9 @@
-import { collection, getDocs, limit, query, where } from "firebase/firestore";
+import {
+  collection, doc, getDoc, getDocs, limit, onSnapshot, query, where,
+  type DocumentData, type FirestoreError, type QueryConstraint, type QuerySnapshot,
+} from "firebase/firestore";
 import { db } from "./firebase";
+import { getCurrentSeasonId, INITIAL_SEASON_ID } from "./leagueSeasons";
 
 type CacheEntry<T> = {
   promise: Promise<T>;
@@ -27,7 +31,7 @@ export function invalidateLeagueData(leagueId?: string): void {
     return;
   }
   for (const key of Array.from(leagueCache.keys())) {
-    if (key.startsWith(`${leagueId}:`)) {
+    if (key.split(":")[1] === leagueId) {
       leagueCache.delete(key);
     }
   }
@@ -102,12 +106,72 @@ export async function getCachedLeaguePlayers(leagueId: string): Promise<any[]> {
   });
 }
 
-export async function getCachedLeagueMatches(leagueId: string): Promise<any[]> {
-  return cachedLeagueRequest(`matches:${leagueId}`, async () => {
+/** The league's live season, read from the league document (falls back to the first season). */
+export async function getCachedLeagueSeasonId(leagueId: string): Promise<string> {
+  return cachedLeagueRequest(`season:${leagueId}`, async () => {
+    try {
+      const snap = await getDoc(doc(db, "leagues", leagueId));
+      return getCurrentSeasonId(snap.exists() ? snap.data() : null);
+    } catch {
+      return INITIAL_SEASON_ID;
+    }
+  });
+}
+
+/**
+ * Query filter for one season's games and plays. First-season records predate season IDs,
+ * and while the first season is live every record belongs to it, so it needs no filter.
+ */
+export function seasonConstraints(seasonId: string): QueryConstraint[] {
+  return seasonId && seasonId !== INITIAL_SEASON_ID ? [where("seasonId", "==", seasonId)] : [];
+}
+
+/** Live listener for a league's visible current-season games. Returns an unsubscribe function. */
+export function subscribeLeagueSeasonMatches(
+  leagueId: string,
+  onData: (snap: QuerySnapshot<DocumentData>) => void,
+  onError: (error: FirestoreError) => void,
+  seasonId?: string,
+): () => void {
+  let unsubscribe: (() => void) | null = null;
+  let cancelled = false;
+  Promise.resolve(seasonId || getCachedLeagueSeasonId(leagueId)).then((season) => {
+    if (cancelled) return;
+    unsubscribe = onSnapshot(query(
+      collection(db, "matches"),
+      where("leagueId", "==", leagueId),
+      ...seasonConstraints(season),
+      where("isHidden", "!=", true),
+      limit(512),
+    ), onData, onError);
+  });
+  return () => {
+    cancelled = true;
+    unsubscribe?.();
+  };
+}
+
+/** Every current-season game document (including hidden ones) for schedule replacement. */
+export async function getLeagueSeasonMatchDocs(leagueId: string) {
+  const season = await getCachedLeagueSeasonId(leagueId);
+  const snap = await getDocs(query(
+    collection(db, "matches"),
+    where("leagueId", "==", leagueId),
+    ...seasonConstraints(season),
+    limit(512),
+  ));
+  return snap.docs;
+}
+
+/** Current-season games for a league (pass seasonId to skip the league lookup). */
+export async function getCachedLeagueMatches(leagueId: string, seasonId?: string): Promise<any[]> {
+  const season = seasonId || await getCachedLeagueSeasonId(leagueId);
+  return cachedLeagueRequest(`matches:${leagueId}:${season}`, async () => {
     const snap = await getDocs(
       query(
         collection(db, "matches"),
         where("leagueId", "==", leagueId),
+        ...seasonConstraints(season),
         where("isHidden", "!=", true),
         limit(512)
       )
@@ -116,12 +180,15 @@ export async function getCachedLeagueMatches(leagueId: string): Promise<any[]> {
   });
 }
 
-export async function getCachedLeaguePlays(leagueId: string): Promise<any[]> {
-  return cachedLeagueRequest(`plays:${leagueId}`, async () => {
+/** Current-season plays for a league (pass seasonId to skip the league lookup). */
+export async function getCachedLeaguePlays(leagueId: string, seasonId?: string): Promise<any[]> {
+  const season = seasonId || await getCachedLeagueSeasonId(leagueId);
+  return cachedLeagueRequest(`plays:${leagueId}:${season}`, async () => {
     const snap = await getDocs(
       query(
         collection(db, "plays"),
         where("leagueId", "==", leagueId),
+        ...seasonConstraints(season),
         where("isHidden", "!=", true),
         limit(10_000)
       )

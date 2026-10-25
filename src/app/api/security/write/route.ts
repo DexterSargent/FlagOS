@@ -6,6 +6,12 @@ import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedR
 import { accountEmailKey } from "@/lib/accountEmailKey";
 import { validateDepthCharts } from "@/lib/depthChart";
 import { PLATFORM_ADMIN_EMAIL, isPlatformAdminEmail } from "@/lib/platformAdmin";
+import { listHasAccountEmail, loadAccountEmails, matchesAccountEmail } from "@/lib/accountEmailsServer";
+import {
+  buildSeasonSnapshot, createSeasonId, getCurrentSeasonId, getLeagueSeasons, INITIAL_SEASON_ID, matchSeasonId,
+  SEASON_SNAPSHOT_COLLECTION, seasonSnapshotDocId,
+} from "@/lib/leagueSeasons";
+import { isRealTeam } from "@/components/TeamAssets";
 
 export const runtime = "nodejs";
 
@@ -43,7 +49,8 @@ type Entity =
   | "play_batch"
   | "red_play"
   | "playbook"
-  | "depth_chart";
+  | "depth_chart"
+  | "start_season";
 type Scope = { kind: string; id: string; collection: string; field: string; limit: number };
 
 const ENTITY_LIMITS = {
@@ -71,6 +78,21 @@ const ARCHIVE_GUARDED_ENTITIES = new Set<Entity>([
 const TEAM_ARCHIVE_GUARDED_ENTITIES = new Set<Entity>([
   "player", "player_update", "delete_player", "match", "play", "play_batch",
 ]);
+
+/** League games and plays are editable only while their season is the league's current season. */
+async function assertCurrentSeason(
+  transaction: Transaction,
+  leagueId: unknown,
+  matchData: FirebaseFirestore.DocumentData,
+): Promise<string> {
+  if (!isDocumentId(leagueId)) return matchSeasonId(matchData);
+  const league = await transaction.get(adminDb.doc(`leagues/${leagueId}`));
+  const seasonId = matchSeasonId(matchData);
+  if (league.exists && getCurrentSeasonId(league.data()) !== seasonId) {
+    fail("This game belongs to a completed season and is read-only.", 409);
+  }
+  return seasonId;
+}
 
 function isArchivedLeagueData(data: FirebaseFirestore.DocumentData | undefined): boolean {
   return !!data && (data.isArchived === true || data.seasonStatus === "archived");
@@ -190,21 +212,17 @@ function isPlatformAdmin(token: DecodedIdToken): boolean {
 }
 
 function isLeagueAdminData(data: FirebaseFirestore.DocumentData, token: DecodedIdToken): boolean {
-  const email = normalizeEmail(token.email);
   return isPlatformAdmin(token) ||
     data.ownerUid === token.uid ||
-    (Array.isArray(data.adminEmails) &&
-      data.adminEmails.map((value: unknown) => String(value).trim().toLowerCase()).includes(email)) ||
-    (Array.isArray(data.subscriptionAdminEmails) &&
-      data.subscriptionAdminEmails.map((value: unknown) => String(value).trim().toLowerCase()).includes(email));
+    listHasAccountEmail(token, data.adminEmails) ||
+    listHasAccountEmail(token, data.subscriptionAdminEmails);
 }
 
 function isTeamAdminData(data: FirebaseFirestore.DocumentData, token: DecodedIdToken): boolean {
-  const email = normalizeEmail(token.email);
   return isPlatformAdmin(token) ||
-    (Array.isArray(data.adminEmails) && data.adminEmails.map((value: unknown) => String(value).toLowerCase()).includes(email)) ||
-    (typeof data.coachEmail === "string" && data.coachEmail.toLowerCase() === email) ||
-    (typeof data.adminEmail === "string" && data.adminEmail.toLowerCase() === email);
+    listHasAccountEmail(token, data.adminEmails) ||
+    matchesAccountEmail(token, data.coachEmail) ||
+    matchesAccountEmail(token, data.adminEmail);
 }
 
 async function isLeagueAdmin(
@@ -322,6 +340,12 @@ async function authorizeWrite(
         }
         data.leagueId = manager.leagueId;
         data.isStandalone = true;
+        if (isDocumentId(manager.leagueId)) {
+          const league = await transaction.get(adminDb.doc(`leagues/${manager.leagueId}`));
+          data.seasonId = getCurrentSeasonId(league.data());
+        } else {
+          delete data.seasonId;
+        }
         return;
       }
     }
@@ -336,6 +360,8 @@ async function authorizeWrite(
     const teamIds = [data.homeTeamId, data.awayTeamId, data.managingTeamId]
       .filter((value): value is string => typeof value === "string" && value.length > 0);
     const leagueAdmin = await isLeagueAdmin(transaction, leagueId, token);
+    const league = await transaction.get(adminDb.doc(`leagues/${leagueId}`));
+    data.seasonId = getCurrentSeasonId(league.data());
     let teamAdmin = false;
     for (const teamId of new Set(teamIds)) {
       const team = await isTeamAdmin(transaction, teamId, token);
@@ -492,6 +518,7 @@ async function authorizeWrite(
     if (matchData.status === "completed" || matchData.status === "Final" || matchData.status === "in_progress") {
       fail("Teams cannot be changed once a game has started.", 409);
     }
+    await assertCurrentSeason(transaction, leagueId, matchData);
     for (const key of ["homeTeamId", "awayTeamId"]) {
       const teamId = data[key];
       if (teamId === "") continue;
@@ -514,6 +541,7 @@ async function authorizeWrite(
       ? matchData.managingTeamId
       : typeof matchData.homeTeamId === "string" ? matchData.homeTeamId : "";
     data.isHidden = matchData.isHidden === true;
+    data.seasonId = await assertCurrentSeason(transaction, matchData.leagueId, matchData);
     if (typeof matchData.leagueId === "string" && matchData.leagueId &&
       await isLeagueAdmin(transaction, matchData.leagueId, token)) return;
     const teamIds = [matchData.homeTeamId, matchData.awayTeamId, matchData.managingTeamId]
@@ -606,6 +634,13 @@ function resolveScopes(entity: Entity, data: Record<string, unknown>, token: Dec
         collection: "matches", field: "managingTeamId", limit: ENTITY_LIMITS.match.limit,
       }];
     }
+    // Later seasons get their own game quota; the first season keeps the legacy league-wide counter.
+    if (typeof data.seasonId === "string" && data.seasonId !== INITIAL_SEASON_ID) {
+      return [{
+        kind: "match-season", id: data.seasonId,
+        collection: "matches", field: "seasonId", limit: ENTITY_LIMITS.match.limit,
+      }];
+    }
     return [{
       kind: entity,
       id: String(data.leagueId),
@@ -622,7 +657,9 @@ function resolveScopes(entity: Entity, data: Record<string, unknown>, token: Dec
   if (entity === "play") {
     return [
       { kind: entity, id: String(data.matchId), ...ENTITY_LIMITS.play },
-      data.leagueId
+      typeof data.seasonId === "string" && data.seasonId !== INITIAL_SEASON_ID
+        ? { kind: "play-season", id: data.seasonId, ...ENTITY_LIMITS.playLeague, field: "seasonId" }
+        : data.leagueId
         ? { kind: "play-league", id: String(data.leagueId), ...ENTITY_LIMITS.playLeague }
         : { kind: "play-team", id: String(data.managingTeamId), ...ENTITY_LIMITS.playLeague, field: "managingTeamId" },
     ];
@@ -651,6 +688,7 @@ function getRecordCollection(entity: Entity): string {
     case "delete_player":
     case "delete_team":
     case "delete_league":
+    case "start_season":
       return "";
     case "assign_player":
     case "player":
@@ -706,7 +744,89 @@ function buildRecord(entity: Entity, data: Record<string, unknown>): Record<stri
   return record;
 }
 
-const AUDITED_ENTITIES = new Set<Entity>(["league", "team", "league_update", "delete_team", "delete_league"]);
+const AUDITED_ENTITIES = new Set<Entity>(["league", "team", "league_update", "delete_team", "delete_league", "start_season"]);
+
+function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
+}
+
+/**
+ * Closes the league's current season: freezes its standings, stat lines and results into a
+ * snapshot document, marks it archived with its champion, and opens a new active season.
+ * Teams and rosters carry over; new games are stamped with the new season ID.
+ */
+async function startLeagueSeason(token: DecodedIdToken, data: Record<string, unknown>): Promise<string> {
+  if (Object.keys(data).some((key) => !["leagueId", "title"].includes(key))) fail("Invalid season fields.");
+  const leagueId = data.leagueId;
+  if (!isDocumentId(leagueId)) fail("A valid league ID is required.");
+  const title = typeof data.title === "string" ? data.title.trim() : "";
+  if (!title || title.length > 80) fail("Season names must be between 1 and 80 characters.");
+
+  const leagueRef = adminDb.doc(`leagues/${leagueId}`);
+  const [leagueSnap, privateSnap] = await Promise.all([
+    leagueRef.get(),
+    adminDb.doc(`league_private/${leagueId}`).get(),
+  ]);
+  const league = leagueSnap.data();
+  if (!league) fail("The league was not found.", 404);
+  if (!isLeagueAdminData(privateSnap.data() || {}, token) && !isLeagueAdminData(league, token)) {
+    fail("Only the league administrator can start a new season.", 403);
+  }
+  if (isArchivedLeagueData(league)) fail("Reactivate this league before starting a new season.", 409);
+
+  const seasons = getLeagueSeasons(league);
+  if (seasons.length >= 100) fail("This league has reached the maximum number of seasons.", 409);
+  const currentId = getCurrentSeasonId(league);
+  const current = seasons.find((season) => season.id === currentId) || seasons[seasons.length - 1];
+  const seasonFilter = (query: Query) => currentId === INITIAL_SEASON_ID ? query : query.where("seasonId", "==", currentId);
+  const [teams, players, matches, plays] = await Promise.all([
+    adminDb.collection("teams").where("leagueId", "==", leagueId).limit(64).get(),
+    adminDb.collection("players").where("leagueId", "==", leagueId).limit(1920).get(),
+    seasonFilter(adminDb.collection("matches").where("leagueId", "==", leagueId)).limit(2_000).get(),
+    seasonFilter(adminDb.collection("plays").where("leagueId", "==", leagueId)).limit(50_000).get(),
+  ]);
+  const toRecords = (snap: FirebaseFirestore.QuerySnapshot): Record<string, unknown>[] =>
+    snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  const endedAt = new Date().toISOString();
+  const snapshot = buildSeasonSnapshot({
+    leagueId,
+    season: current,
+    teams: toRecords(teams).filter((team) => isRealTeam(team as { id?: string; name?: string })),
+    players: toRecords(players),
+    matches: toRecords(matches),
+    plays: toRecords(plays),
+    endedAt,
+  });
+  const nextNumber = Math.max(...seasons.map((season) => season.number)) + 1;
+  const nextId = createSeasonId(nextNumber);
+
+  await adminDb.runTransaction(async (transaction) => {
+    const fresh = await transaction.get(leagueRef);
+    if (getCurrentSeasonId(fresh.data()) !== currentId) {
+      fail("The season was already changed. Refresh the page and try again.", 409);
+    }
+    const archivedSeasons = seasons.map((season) => withoutUndefined(season.id === currentId ? {
+      ...season,
+      status: "archived" as const,
+      endedAt,
+      championTeamId: snapshot.championTeamId,
+      championTeamName: snapshot.championTeamName,
+    } : { ...season }));
+    transaction.create(adminDb.doc(`${SEASON_SNAPSHOT_COLLECTION}/${seasonSnapshotDocId(leagueId, currentId)}`), {
+      ...withoutUndefined({ ...snapshot }),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    transaction.set(leagueRef, {
+      seasons: [...archivedSeasons, { id: nextId, title, status: "active", number: nextNumber, startedAt: endedAt }],
+      currentSeasonId: nextId,
+      seasonTitle: title,
+      seasonStatus: "active",
+      isArchived: false,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+  return nextId;
+}
 
 /** Best-effort record of platform-owner changes for the admin console activity log. */
 async function recordPlatformAudit(
@@ -722,6 +842,7 @@ async function recordPlatformAudit(
     league_update: `Updated league ${name}${data.subscription ? " (incl. subscription)" : ""}`,
     delete_team: `Deleted team ${targetId}${data.purge === true ? " and purged its data" : ""}`,
     delete_league: `Deleted league ${targetId}`,
+    start_season: `Started ${String(data.title || "a new season").slice(0, 80)} in league ${String(data.leagueId)}`,
   };
   try {
     await adminDb.collection("platform_audit").add({
@@ -777,6 +898,7 @@ export async function POST(request: Request) {
     if (token.email_verified !== true) {
       return Response.json({ error: "Verify your email before creating data." }, { status: 403 });
     }
+    await loadAccountEmails(token);
 
     let body: unknown;
     try {
@@ -789,13 +911,18 @@ export async function POST(request: Request) {
     if (![
       "league", "team", "player", "assign_player", "team_private_update", "player_private_update",
       "league_private_update", "league_update", "match_update", "player_update", "match", "play", "play_batch", "red_play", "playbook",
-      "delete_player", "delete_team", "delete_league", "depth_chart",
+      "delete_player", "delete_team", "delete_league", "depth_chart", "start_season",
     ].includes(String(entity))) {
       fail("Unsupported record type.");
     }
     // Playbook route and motion coordinates are nine levels below the record.
     validatePayload(data, entity === "playbook" ? 9 : 8);
     const requestedEntity = entity as Entity;
+    if (requestedEntity === "start_season") {
+      const seasonId = await startLeagueSeason(token, data);
+      if (isPlatformAdmin(token)) await recordPlatformAudit(token, requestedEntity, data, seasonId);
+      return Response.json({ id: seasonId }, { status: 201 });
+    }
     if (requestedEntity === "depth_chart" &&
       (Object.keys(data).some((key) => !["teamId", "charts", "visibleToPlayers"].includes(key)) || !validateDepthCharts(data))) {
       fail("Depth chart data is invalid or exceeds its limits.");
@@ -1136,6 +1263,7 @@ export async function POST(request: Request) {
             ...play,
             matchId: data.matchId,
             leagueId: data.leagueId,
+            seasonId: data.seasonId,
             isHidden: data.isHidden === true,
             managingTeamId: data.managingTeamId,
             timestamp: FieldValue.serverTimestamp(),

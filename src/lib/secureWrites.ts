@@ -4,6 +4,7 @@ import { auth } from "@/lib/firebase";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 
 export type SecureEntity =
+  | "start_season"
   | "league"
   | "team"
   | "player"

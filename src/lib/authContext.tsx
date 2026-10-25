@@ -30,12 +30,35 @@ type IdentityLookup = {
   players: Array<{ id: string; email?: string; emails?: string[]; [key: string]: any }>;
 };
 
+const IDENTITY_LOOKUP_TTL_MS = 30_000;
+let recentIdentityLookup: { uid: string; at: number; request: Promise<IdentityLookup> } | null = null;
+
+export function clearIdentityLookupCache() {
+  recentIdentityLookup = null;
+}
+
+/** Sign-in and the auth listener both need the lookup; share one request per account. */
+function requestIdentityLookup(uid: string): Promise<IdentityLookup> {
+  if (recentIdentityLookup && recentIdentityLookup.uid === uid && Date.now() - recentIdentityLookup.at < IDENTITY_LOOKUP_TTL_MS) {
+    return recentIdentityLookup.request;
+  }
+  const request = requestPrivateData<IdentityLookup>("lookup");
+  const entry = { uid, at: Date.now(), request };
+  recentIdentityLookup = entry;
+  request.catch(() => { if (recentIdentityLookup === entry) recentIdentityLookup = null; });
+  return request;
+}
+
 async function getSuccessfulLoginResult(user: User): Promise<LoginResult> {
   if (!user.emailVerified || !user.email) return { success: true };
   try {
-    const { teams } = await requestPrivateData<IdentityLookup>("lookup");
+    const { teams, players } = await requestIdentityLookup(user.uid);
     const team = teams.find((entry) => entry.id !== "team_free_agents");
-    return { success: true, defaultPath: team ? `/teams/${team.id}` : undefined };
+    if (team) return { success: true, defaultPath: `/teams/${team.id}` };
+    const player = players.find((entry) => typeof entry.teamId === "string" && entry.teamId && entry.teamId !== "team_free_agents");
+    if (player) return { success: true, defaultPath: `/teams/${player.teamId}` };
+    const freeAgent = players.find((entry) => typeof entry.leagueId === "string" && entry.leagueId);
+    return { success: true, defaultPath: freeAgent ? `/league/${freeAgent.leagueId}` : "/" };
   } catch {
     return { success: true };
   }
@@ -147,8 +170,15 @@ interface AuthContextType {
   sendPasswordReset: (email: string) => Promise<LoginResult>;
   loginWithPlayerEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
+  /** Signed in with a password account whose email has not been verified yet. */
+  needsEmailVerification: boolean;
+  resendVerificationEmail: () => Promise<LoginResult>;
+  /** Reloads the Firebase user; reloads the app when the email is now verified. */
+  confirmEmailVerified: () => Promise<boolean>;
   bypassLogin: (role?: UserRole, teamId?: string, playerId?: string) => void;
   setDevRole: (role: UserRole, teamId?: string, playerId?: string) => void;
+  /** Set by the league provider when the account commissions the active league (server-verified membership). */
+  setActiveLeagueCommissioner: (isCommissioner: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -176,8 +206,12 @@ const AuthContext = createContext<AuthContextType>({
   sendPasswordReset: async () => ({ success: false, message: "Password reset is unavailable." }),
   loginWithPlayerEmail: async () => ({ success: false }),
   logout: async () => { },
+  needsEmailVerification: false,
+  resendVerificationEmail: async () => ({ success: false, message: "Verification is unavailable." }),
+  confirmEmailVerified: async () => false,
   bypassLogin: () => { },
   setDevRole: () => { },
+  setActiveLeagueCommissioner: () => { },
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -185,6 +219,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const embedState = useEmbedState();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [devRole, setDevRoleState] = useState<UserRole | null>(null);
+  const [activeLeagueCommissioner, setActiveLeagueCommissioner] = useState(false);
   const [devTeamId, setDevTeamId] = useState<string | null>(null);
   const [devPlayerId, setDevPlayerId] = useState<string | null>(null);
   const [devPlayerData, setDevPlayerData] = useState<any | null>(null);
@@ -220,13 +255,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const cleanEmail = email.trim().toLowerCase();
     try {
       const results = await (lookup || requestPrivateData<IdentityLookup>("lookup"));
+      // The server scopes results to this account's verified (and connected) emails.
       const match = results.players.find((player) => {
         const playerEmails = [
           ...(Array.isArray(player.emails) ? player.emails : []),
           ...(player.email ? [player.email] : []),
         ].map((value) => value.trim().toLowerCase());
         return playerEmails.includes(cleanEmail);
-      });
+      }) || results.players.find((player) => player.teamId && player.teamId !== "team_free_agents") || results.players[0];
       if (match) return match;
     } catch (e) {
       console.error("Error looking up player by email:", e);
@@ -316,7 +352,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           // Look up if this email is attached to any player or team
           const lookup = u.email && u.emailVerified
-            ? requestPrivateData<IdentityLookup>("lookup")
+            ? requestIdentityLookup(u.uid)
             : undefined;
           const [snap, [matchingPlayer, matchingTeam]] = await Promise.all([
             getDoc(userDocRef),
@@ -395,6 +431,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
       } else {
+        clearIdentityLookupCache();
         setUserProfile(null);
       }
       setLoading(false);
@@ -641,6 +678,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setDevRole(role, teamId, playerId);
   };
 
+  const needsEmailVerification = !!user && !!user.email && !user.emailVerified;
+
+  const resendVerificationEmail = async (): Promise<LoginResult> => {
+    if (!auth.currentUser) return { success: false, message: "Sign in again first." };
+    try {
+      await sendEmailVerification(auth.currentUser, { url: `${window.location.origin}/login` });
+      return { success: true, message: `Verification link sent to ${auth.currentUser.email}. Check your inbox and spam folder.` };
+    } catch (error: unknown) {
+      console.error("Verification email error:", error);
+      return { success: false, message: getAuthErrorMessage(error) };
+    }
+  };
+
+  const confirmEmailVerified = async (): Promise<boolean> => {
+    if (!auth.currentUser) return false;
+    await auth.currentUser.reload();
+    if (!auth.currentUser.emailVerified) return false;
+    // Fresh token carries email_verified=true for the server and Firestore rules.
+    await auth.currentUser.getIdToken(true);
+    window.location.reload();
+    return true;
+  };
+
   // Check if inside embedded interactive demo frame
   const isEmbed = embedState.embedQuery;
   const isEmbedPlaybook = isEmbed && embedState.playbookPath;
@@ -669,7 +729,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const isLeagueAdmin = lockedEmbedRole
     ? lockedEmbedRole === "league_admin"
-    : (devRole ? devRole === "league_admin" : (isDexter || effectiveRole === "league_admin"));
+    : (devRole ? devRole === "league_admin" : (isDexter || effectiveRole === "league_admin" || (!!user && activeLeagueCommissioner)));
   const isPlayer = effectiveRole === "player";
 
   const isTeamAdmin = (teamId?: string) => {
@@ -738,9 +798,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         createAccount,
         sendPasswordReset,
         loginWithPlayerEmail,
+        needsEmailVerification,
+        resendVerificationEmail,
+        confirmEmailVerified,
         logout,
         bypassLogin,
         setDevRole,
+        setActiveLeagueCommissioner,
       }}
     >
       {children}

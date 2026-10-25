@@ -35,6 +35,8 @@ import {
 } from "@/lib/leagueDataCache";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
+import { useLeagueSeasonHistory } from "@/lib/useLeagueSeasonHistory";
+import PlayerCareerCard from "@/components/league/PlayerCareerCard";
 import { getTeamShortcode } from "@/components/TeamAssets";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -73,7 +75,12 @@ export default function PlayerProfilePage() {
     settings,
     openCustomizer,
     activeLeagueId,
+    isDemoLeague,
+    seasons,
+    currentSeasonId,
   } = useLeague();
+  const hasArchivedSeasons = !isDemoLeague && seasons.some((season) => season.status === "archived");
+  const seasonHistory = useLeagueSeasonHistory(activeLeagueId, hasArchivedSeasons);
 
   const [activeTab, setActiveTab] = useState<"stats" | "settings" | "rules" | "account">("stats");
   const [loading, setLoading] = useState(true);
@@ -494,6 +501,12 @@ export default function PlayerProfilePage() {
         {/* ============================================================== */}
         {activeTab === "stats" && (
           <div className="space-y-8">
+            <div className="space-y-2">
+            {hasArchivedSeasons && (
+              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+                {seasons.find((season) => season.id === currentSeasonId)?.title || "Current season"} stats
+              </p>
+            )}
             {/* Top Quick Stats Grid */}
             <div data-tour="profile-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-4 space-y-1">
@@ -550,6 +563,7 @@ export default function PlayerProfilePage() {
                   {playerStats.int} INT • {playerStats.sacks} Sacks
                 </span>
               </div>
+            </div>
             </div>
 
             {/* Categorized Statistical Breakdown Cards */}
@@ -648,6 +662,18 @@ export default function PlayerProfilePage() {
                 </div>
               </div>
             </div>
+
+            {hasArchivedSeasons && effectivePlayer && (
+              <PlayerCareerCard
+                player={{ id: effectivePlayer.id || selectedPlayerId, name: playerName, teamId: effectiveTeamId || "", teamName }}
+                seasons={seasons}
+                currentSeasonId={currentSeasonId}
+                snapshots={seasonHistory.snapshots}
+                liveStats={playerStats}
+                loading={seasonHistory.loading}
+                error={seasonHistory.error}
+              />
+            )}
 
             {/* Playbook Quick Access Reminder for Rostered Player */}
             {effectiveTeamId && (!isLeagueAdmin || isTeamAdmin(effectiveTeamId)) && (

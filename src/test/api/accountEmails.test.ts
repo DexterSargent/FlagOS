@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/account/emails/route";
 
-const { records, verifyToken, getUser, createToken, revokeTokens, transaction } = vi.hoisted(() => {
+const { records, verifyToken, getUser, createToken, revokeTokens, setClaims, transaction } = vi.hoisted(() => {
   const records = new Map<string, Record<string, unknown>>();
   const snapshot = (path: string) => ({
     exists: records.has(path),
@@ -14,11 +14,11 @@ const { records, verifyToken, getUser, createToken, revokeTokens, transaction } 
     set: vi.fn((ref: { path: string }, data: Record<string, unknown>) => records.set(ref.path, data)),
     delete: vi.fn((ref: { path: string }) => records.delete(ref.path)),
   };
-  return { records, transaction, verifyToken: vi.fn(), getUser: vi.fn(), createToken: vi.fn(), revokeTokens: vi.fn() };
+  return { records, transaction, verifyToken: vi.fn(), getUser: vi.fn(), createToken: vi.fn(), revokeTokens: vi.fn(), setClaims: vi.fn() };
 });
 
 vi.mock("@/lib/firebaseAdmin", () => ({
-  adminAuth: { verifyIdToken: verifyToken, getUser, createCustomToken: createToken, revokeRefreshTokens: revokeTokens },
+  adminAuth: { verifyIdToken: verifyToken, getUser, createCustomToken: createToken, revokeRefreshTokens: revokeTokens, setCustomUserClaims: setClaims },
   adminDb: {
     doc: (path: string) => ({ path, get: () => transaction.get({ path }) }),
     runTransaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction),
@@ -47,6 +47,7 @@ describe("verified account email connections", () => {
     }));
     createToken.mockResolvedValue("canonical-custom-token");
     revokeTokens.mockResolvedValue(undefined);
+    setClaims.mockResolvedValue(undefined);
   });
 
   it("lists the current identity without exposing another user's connections", async () => {
@@ -86,7 +87,8 @@ describe("verified account email connections", () => {
     ]);
     const response = await POST(request("resolve", {}, "secondary-token"));
     expect(await response.json()).toEqual({ data: { customToken: "canonical-custom-token" } });
-    expect(createToken).toHaveBeenCalledWith(primary.uid);
+    expect(createToken).toHaveBeenCalledWith(primary.uid, { linkedEmails: [secondary.email] });
+    expect(setClaims).toHaveBeenCalledWith(primary.uid, { linkedEmails: [secondary.email] });
     expect(verifyToken).toHaveBeenCalledWith("secondary-token", true);
   });
 

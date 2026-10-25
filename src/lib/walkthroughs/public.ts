@@ -1439,6 +1439,22 @@ export const PROFILE_WALKTHROUGH: ToolWalkthrough = {
       ]
     },
     {
+      "id": "player-profile-career",
+      "targetSelector": "[data-tour=\"profile-career\"]",
+      "title": "Career history",
+      "description": "Appears once the league has finished at least one season. The cards above show the current season; this table shows every season.",
+      "details": [
+        {
+          "label": "Season rows",
+          "text": "Each season you played, with your team and key stats. A crown marks a championship season."
+        },
+        {
+          "label": "Career total",
+          "text": "Your totals across every season in this league."
+        }
+      ]
+    },
+    {
       "id": "player-profile-playbook",
       "targetSelector": "[data-tour=\"profile-playbook\"]",
       "title": "Study the team's plays",

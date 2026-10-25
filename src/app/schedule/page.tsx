@@ -47,6 +47,7 @@ import {
   clearSandboxScheduleBackup,
   ScheduleBackup,
 } from "@/lib/demoSandbox";
+import { getLeagueSeasonMatchDocs, subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
 import {
   calculateStandings,
   isPlayoffActive,
@@ -89,7 +90,7 @@ interface Match {
 export default function Calendar() {
   usePageGuide(SCHEDULE_WALKTHROUGH);
   const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
-  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived } = useLeague();
+  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId } = useLeague();
   const [matches, setMatches] = useState<Match[]>([]);
   const [simulatingMatchId, setSimulatingMatchId] = useState<string | null>(null);
 
@@ -269,16 +270,11 @@ export default function Calendar() {
     });
 
     // Listen to matches in real-time
-    const unsub = onSnapshot(
-      query(
-        collection(db, "matches"),
-        where("leagueId", "==", activeLeagueId),
-        where("isHidden", "!=", true),
-        limit(512),
-      ),
+    const unsub = subscribeLeagueSeasonMatches(
+      activeLeagueId,
       (snap) => {
         const mData = snap.docs
-          .map((d) => ({ ...d.data(), id: d.id } as Match))
+          .map((d) => ({ ...d.data(), id: d.id } as unknown as Match))
           .filter((m: any) => !m.isHidden && (!m.leagueId || m.leagueId === activeLeagueId));
 
         setMatches(sortMatches(mData));
@@ -287,11 +283,12 @@ export default function Calendar() {
       (error) => {
         console.warn("Schedule onSnapshot warning:", error);
         setLoading(false);
-      }
+      },
+      currentSeasonId,
     );
 
     return () => unsub();
-  }, [isDemoLeague, isEmbedded, activeLeagueId]);
+  }, [isDemoLeague, isEmbedded, activeLeagueId, currentSeasonId]);
 
   // Standings & Playoff Calculations
   const playoffActive = useMemo(() => isPlayoffActive(matches), [matches]);
@@ -543,12 +540,7 @@ export default function Calendar() {
     }
 
     try {
-      const snap = await getDocs(query(
-        collection(db, "matches"),
-        where("leagueId", "==", activeLeagueId),
-        limit(512),
-      ));
-      for (const d of snap.docs) {
+      for (const d of await getLeagueSeasonMatchDocs(activeLeagueId)) {
         await deleteDoc(d.ref);
       }
       setMatches([]);
@@ -597,12 +589,7 @@ export default function Calendar() {
 
     try {
       if (clearExisting) {
-        const existingSnap = await getDocs(query(
-          collection(db, "matches"),
-          where("leagueId", "==", activeLeagueId),
-          limit(512),
-        ));
-        for (const d of existingSnap.docs) {
+        for (const d of await getLeagueSeasonMatchDocs(activeLeagueId)) {
           await deleteDoc(d.ref);
         }
       }
@@ -625,12 +612,7 @@ export default function Calendar() {
     }
 
     try {
-      const existingSnap = await getDocs(query(
-        collection(db, "matches"),
-        where("leagueId", "==", activeLeagueId),
-        limit(512),
-      ));
-      for (const d of existingSnap.docs) {
+      for (const d of await getLeagueSeasonMatchDocs(activeLeagueId)) {
         await deleteDoc(d.ref);
       }
       for (const m of scheduleBackup.matches) {

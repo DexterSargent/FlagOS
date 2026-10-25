@@ -21,6 +21,11 @@ vi.mock("@/lib/leagueContext", () => ({
       announcement: "",
     },
     isDemoLeague: true,
+    seasons: [{ id: "season-1", title: "Season 1", status: "active", number: 1 }],
+    currentSeasonId: "season-1",
+    viewingSeasonId: "season-1",
+    setViewingSeasonId: vi.fn(),
+    isViewingArchivedSeason: false,
   }),
 }));
 

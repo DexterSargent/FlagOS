@@ -9,6 +9,7 @@ import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield, PlayCircle } from "
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import { isDemoTeamId, useTeamRecord } from "@/lib/teamRecord";
 import { useEmbedState } from "@/lib/embedState";
+import EmailVerificationNotice from "@/components/EmailVerificationNotice";
 
 // The only pages publicly accessible without being logged in to an authorized email
 const PUBLIC_ROUTES = ["/", "/pricing", "/login"];
@@ -25,7 +26,7 @@ function isShowcaseRoute(path: string): boolean {
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, userProfile, isPlayer, isAuthorized, loading, logout } = useAuth();
+  const { user, userProfile, isPlayer, isAuthorized, loading, logout, needsEmailVerification } = useAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
   const { demoFlag, inIframe, embedQuery } = useEmbedState();
   const routeTeamId = pathname.startsWith("/teams/") ? pathname.split("/")[2] || null : null;
@@ -149,6 +150,19 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
               <span>Explore Demo League Sandbox</span>
             </Link>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Case 2a: Password account that hasn't clicked its verification link yet. Identity lookup
+  // requires a verified email, so explain that instead of claiming the email isn't registered.
+  if (!isAuthorized && needsEmailVerification) {
+    return (
+      <div className="dark min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 md:p-12 font-sans">
+        <div className="bg-neutral-900/90 border border-amber-500/30 p-8 md:p-10 rounded-[2rem] shadow-2xl flex flex-col items-center max-w-md w-full text-center space-y-5">
+          <h1 className="text-2xl font-black uppercase tracking-tight">One more step</h1>
+          <EmailVerificationNotice />
         </div>
       </div>
     );
