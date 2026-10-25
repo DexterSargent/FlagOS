@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import {
@@ -45,6 +45,7 @@ interface LeagueHeaderProps {
 
 export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { resolvedTheme } = useTheme();
   const {
     settings,
@@ -285,8 +286,12 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                       <button
                         key={l.id}
                         onClick={() => {
-                          switchLeague(l.id);
+                          void switchLeague(l.id);
                           setIsSwitcherOpen(false);
+                          // League dashboards and box scores are bound to their league by URL.
+                          if (pathname?.startsWith("/league/") || pathname?.startsWith("/matches/")) {
+                            router.push(`/league/${encodeURIComponent(l.id)}`);
+                          }
                         }}
                         className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
                           isActive
@@ -309,7 +314,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                               )}
                             </div>
                             <div className="text-[10px] text-slate-500 dark:text-neutral-500 font-mono flex items-center gap-1">
-                              <span>{l.role === "owner" ? "Owner" : "Admin"}</span>
+                              <span>{l.role === "owner" ? "Owner" : l.role === "admin" ? "Admin" : "Member"}</span>
                               <span>•</span>
                               <span className={l.visibility === "private" ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-emerald-600 dark:text-emerald-400 font-semibold"}>
                                 {l.visibility === "private" ? "Private" : "Public"}

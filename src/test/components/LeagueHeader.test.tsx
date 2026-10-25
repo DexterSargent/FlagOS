@@ -5,6 +5,12 @@ import LeagueHeader from "@/components/LeagueHeader";
 // Mock contexts
 const mockUseLeague = vi.fn();
 const mockUseAuth = vi.fn();
+const navigation = vi.hoisted(() => ({ pathname: "/schedule", push: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigation.pathname,
+  useRouter: () => ({ push: navigation.push, replace: vi.fn() }),
+}));
 
 vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => mockUseLeague(),
@@ -36,7 +42,41 @@ describe("LeagueHeader Component", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    navigation.pathname = "/schedule";
     mockUseLeague.mockReturnValue(defaultLeagueSettings);
+  });
+
+  const switcherLeagues = [
+    { id: "default", name: "FlagOS Demo League", shortcode: "FLAG", role: "owner", visibility: "public" },
+    { id: "york", name: "York Region", shortcode: "YRK", role: "member", visibility: "public" },
+  ];
+  const signedOutAuth = {
+    role: null, isLeagueAdmin: false, isPlayer: false, playerData: null, canRegisterAsPlayer: false,
+    isAuthorized: false, playerTeamId: null, managedTeamId: null,
+  };
+
+  it("switches leagues in place on league-wide pages", () => {
+    const switchLeague = vi.fn();
+    mockUseLeague.mockReturnValue({ ...defaultLeagueSettings, userLeagues: switcherLeagues, switchLeague });
+    mockUseAuth.mockReturnValue(signedOutAuth);
+    render(<LeagueHeader activePage="schedule" />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch League" }));
+    expect(screen.getByText("Member")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("York Region"));
+    expect(switchLeague).toHaveBeenCalledWith("york");
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
+  it("navigates to the chosen league from a league-bound dashboard URL", () => {
+    navigation.pathname = "/league/default";
+    const switchLeague = vi.fn();
+    mockUseLeague.mockReturnValue({ ...defaultLeagueSettings, userLeagues: switcherLeagues, switchLeague });
+    mockUseAuth.mockReturnValue(signedOutAuth);
+    render(<LeagueHeader activePage="league" />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch League" }));
+    fireEvent.click(screen.getByText("York Region"));
+    expect(switchLeague).toHaveBeenCalledWith("york");
+    expect(navigation.push).toHaveBeenCalledWith("/league/york");
   });
 
   it("renders the league name and brand emblem", () => {

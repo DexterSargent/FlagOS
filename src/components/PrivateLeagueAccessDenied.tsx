@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Lock, ShieldAlert, ArrowLeft, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
@@ -14,6 +15,7 @@ export default function PrivateLeagueAccessDenied({
 }) {
   const { user, logout } = useAuth();
   const { switchLeague } = useLeague();
+  const router = useRouter();
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-12 relative overflow-hidden">
@@ -64,7 +66,10 @@ export default function PrivateLeagueAccessDenied({
           </Link>
 
           <button
-            onClick={() => switchLeague("default")}
+            onClick={() => {
+              void switchLeague("default");
+              router.push("/league/default");
+            }}
             className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />

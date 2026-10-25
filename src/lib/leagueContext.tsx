@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
@@ -11,6 +11,8 @@ import {
 import { FLAGOS_LOGO } from "./brandTokens";
 import { auth } from "./firebase";
 import { createSecureRecord } from "./secureWrites";
+import { useAuth } from "./authContext";
+import { useMyMemberships, type LeagueMembership } from "./useMyMemberships";
 import {
   getCachedMatchTeamId,
   isDemoMatchId,
@@ -449,15 +451,67 @@ const LeagueContext = createContext<LeagueContextType>({
   isLeagueReadOnly: false,
 });
 
-const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => {
+const LEAGUE_NOT_FOUND = "not_found" as const;
+const ACTIVE_LEAGUE_KEY = "flagos_active_league_id";
+const USER_LEAGUES_KEY = "flagos_user_leagues";
+
+function persistUserLeagues(leagues: UserLeagueSummary[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(USER_LEAGUES_KEY, JSON.stringify(leagues));
+  } catch {}
+}
+
+/** Rebuilds the switcher list from server-verified memberships so deleted or revoked leagues drop out. */
+export function reconcileUserLeagues(previous: UserLeagueSummary[], memberships: LeagueMembership[]): UserLeagueSummary[] {
+  const demo = previous.find((l) => l.id === "default") || DEFAULT_USER_LEAGUES[0];
+  const leagues = memberships.map((m): UserLeagueSummary => {
+    const prior = previous.find((l) => l.id === m.id);
+    return {
+      ...prior,
+      id: m.id,
+      name: m.name || prior?.name || "League",
+      shortcode: m.shortcode || prior?.shortcode || "",
+      seasonTitle: m.seasonTitle || prior?.seasonTitle,
+      logoUrl: m.logoUrl || prior?.logoUrl,
+      primaryColor: m.primaryColor || prior?.primaryColor,
+      accentColor: m.accentColor || prior?.accentColor,
+      visibility: m.visibility,
+      role: m.isCommissioner ? (prior?.role === "owner" ? "owner" : "admin") : "member",
+    };
+  });
+  return [demo, ...leagues];
+}
+
+const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
+  /** League required by the current route (league dashboard, league-owned team or match). */
+  routeLeagueId: string | null;
+  /** True while the route belongs to an independent team or is still resolving its owner. */
+  suspended: boolean;
+  children: React.ReactNode;
+}) => {
   const settingsRequest = useRef(0);
+  const loadedLeagueRef = useRef<string | null>(null);
+  const routeLeagueRef = useRef(routeLeagueId);
   const [settings, setSettings] = useState<LeagueSettings>(DEFAULT_LEAGUE_SETTINGS);
-  const [activeLeagueId, setActiveLeagueId] = useState<string>("default");
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string>("default");
+  const [hydrated, setHydrated] = useState(false);
   const [userLeagues, setUserLeagues] = useState<UserLeagueSummary[]>(DEFAULT_USER_LEAGUES);
   const [subscription, setSubscription] = useState<LeagueSubscriptionInfo | null>(DEFAULT_LEAGUE_SUBSCRIPTION);
+  const userLeaguesRef = useRef(userLeagues);
+  useEffect(() => {
+    routeLeagueRef.current = routeLeagueId;
+    userLeaguesRef.current = userLeagues;
+  }, [routeLeagueId, userLeagues]);
+  const { user, loading: authLoading } = useAuth();
+  const { data: memberships } = useMyMemberships(user?.emailVerified ? user.uid : null);
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadedLeagueId, setLoadedLeagueId] = useState<string | null>(null);
+
+  // The route always wins over the stored selection so league-owned pages never show another league.
+  const activeLeagueId = routeLeagueId || selectedLeagueId;
 
   // Apply CSS color variables dynamically to root & update browser title
   const applyThemeColors = (primary: string, accent: string, leagueName?: string, seasonTitle?: string) => {
@@ -496,7 +550,7 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   // Helper to load settings for a given league id
-  const fetchSettingsForLeague = async (leagueId: string) => {
+  const fetchSettingsForLeague = async (leagueId: string): Promise<LeagueSettings | null | typeof LEAGUE_NOT_FOUND> => {
     const request = ++settingsRequest.current;
     const isCurrent = () => request === settingsRequest.current;
     if (checkIsDemoLeague(leagueId)) {
@@ -555,15 +609,15 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
           rules: { ...DEFAULT_LEAGUE_RULES, ...(remoteData.rules || {}) },
         };
         setSettings(merged);
-        if (remoteData.subscription) {
-          setSubscription(remoteData.subscription);
-        }
+        // Never carry the previous league's subscription (e.g. archived status) into this league.
+        setSubscription(remoteData.subscription || userLeaguesRef.current.find((l) => l.id === leagueId)?.subscription || null);
         applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
         if (typeof window !== "undefined") {
           localStorage.setItem(`league_settings_${leagueId}`, JSON.stringify(merged));
         }
         return merged;
       }
+      return LEAGUE_NOT_FOUND;
     } catch (err) {
       if (!isCurrent()) return null;
       console.error(`Failed to load settings for league ${leagueId}:`, err);
@@ -571,18 +625,35 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
     return null;
   };
 
+  // Paints the last cached copy of a league's settings while the live copy loads.
+  const applyCachedSettings = (leagueId: string) => {
+    if (typeof window === "undefined" || checkIsDemoLeague(leagueId)) return;
+    try {
+      const cached = localStorage.getItem(`league_settings_${leagueId}`);
+      const summary = userLeaguesRef.current.find((l) => l.id === leagueId);
+      if (summary?.subscription) setSubscription(summary.subscription);
+      if (!cached) return;
+      const parsed = JSON.parse(cached) as Partial<LeagueSettings>;
+      const merged: LeagueSettings = {
+        ...DEFAULT_LEAGUE_SETTINGS,
+        ...parsed,
+        rules: { ...DEFAULT_LEAGUE_RULES, ...(parsed.rules || {}) },
+      };
+      setSettings(merged);
+      applyThemeColors(merged.primaryColor, merged.accentColor, merged.leagueName, merged.seasonTitle);
+    } catch (err) {
+      console.error("Failed to read league settings from cache:", err);
+    }
+  };
+
   useEffect(() => {
-    // Restore cached league settings and active league.
-    let initialLeagueId = "default";
+    // Restore the stored league selection and switcher list.
     if (typeof window !== "undefined") {
       try {
-        const savedLeagueId = localStorage.getItem("flagos_active_league_id");
-        if (savedLeagueId) {
-          initialLeagueId = savedLeagueId;
-          setActiveLeagueId(savedLeagueId);
-        }
+        const savedLeagueId = localStorage.getItem(ACTIVE_LEAGUE_KEY);
+        if (savedLeagueId) setSelectedLeagueId(savedLeagueId);
 
-        const savedUserLeagues = localStorage.getItem("flagos_user_leagues");
+        const savedUserLeagues = localStorage.getItem(USER_LEAGUES_KEY);
         if (savedUserLeagues) {
           const parsedLeagues = JSON.parse(savedUserLeagues);
           if (Array.isArray(parsedLeagues) && parsedLeagues.length > 0) {
@@ -593,62 +664,92 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
               return l;
             });
             setUserLeagues(sanitized);
-            const activeSummary = sanitized.find((l: UserLeagueSummary) => l.id === initialLeagueId);
-            if (activeSummary?.subscription) {
-              setSubscription(activeSummary.subscription);
-            }
           }
-        }
-
-        const cached = localStorage.getItem(`league_settings_${initialLeagueId}`) || localStorage.getItem("league_settings");
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed.primaryColor === "#06B6D4") {
-            parsed.primaryColor = DEFAULT_LEAGUE_SETTINGS.primaryColor;
-            parsed.accentColor = DEFAULT_LEAGUE_SETTINGS.accentColor;
-            parsed.themePreset = DEFAULT_LEAGUE_SETTINGS.themePreset;
-            localStorage.setItem(`league_settings_${initialLeagueId}`, JSON.stringify(parsed));
-          }
-          setSettings((prev) => ({
-            ...DEFAULT_LEAGUE_SETTINGS,
-            ...prev,
-            ...parsed,
-            rules: { ...DEFAULT_LEAGUE_RULES, ...(prev.rules || {}), ...(parsed.rules || {}) },
-          }));
         }
         localStorage.removeItem("flagos_user_colors");
       } catch (err) {
         console.error("Failed to read league settings from cache:", err);
       }
     }
-
-    applyThemeColors(settings.primaryColor || DEFAULT_LEAGUE_SETTINGS.primaryColor, settings.accentColor || DEFAULT_LEAGUE_SETTINGS.accentColor, settings.leagueName, settings.seasonTitle);
-
-    const pending = fetchSettingsForLeague(initialLeagueId);
-    const request = settingsRequest.current;
-    void pending.then(() => {
-      if (request === settingsRequest.current) setLoading(false);
-    });
-    return () => { settingsRequest.current++; };
+    setHydrated(true);
   }, []);
 
-  const switchLeague = async (leagueId: string) => {
+  // Visiting a league-owned route makes that league the selection for league-wide pages.
+  useEffect(() => {
+    if (!hydrated || suspended || !routeLeagueId || routeLeagueId === selectedLeagueId) return;
+    setSelectedLeagueId(routeLeagueId);
+    try {
+      localStorage.setItem(ACTIVE_LEAGUE_KEY, routeLeagueId);
+    } catch {}
+  }, [hydrated, suspended, routeLeagueId, selectedLeagueId]);
+
+  // Load the active league's settings whenever it changes.
+  useEffect(() => {
+    if (!hydrated || suspended) return;
+    const leagueId = activeLeagueId;
+    if (loadedLeagueRef.current === leagueId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    setActiveLeagueId(leagueId);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("flagos_active_league_id", leagueId);
-    }
-
-    const matchingLeague = userLeagues.find((l) => l.id === leagueId);
-    if (matchingLeague?.subscription) {
-      setSubscription(matchingLeague.subscription);
-    }
-
+    applyCachedSettings(leagueId);
     const pending = fetchSettingsForLeague(leagueId);
     const request = settingsRequest.current;
-    await pending;
-    if (request === settingsRequest.current) setLoading(false);
-  };
+    void pending.then((result) => {
+      if (request !== settingsRequest.current) return;
+      if (result === LEAGUE_NOT_FOUND) {
+        // The league was deleted: drop it from the switcher and stop selecting it.
+        setUserLeagues((prev) => {
+          const updated = prev.filter((l) => l.id !== leagueId);
+          persistUserLeagues(updated);
+          return updated;
+        });
+        try {
+          localStorage.removeItem(`league_settings_${leagueId}`);
+        } catch {}
+        if (!routeLeagueRef.current) {
+          setSelectedLeagueId("default");
+          try {
+            localStorage.setItem(ACTIVE_LEAGUE_KEY, "default");
+          } catch {}
+          return;
+        }
+      }
+      loadedLeagueRef.current = leagueId;
+      setLoadedLeagueId(leagueId);
+      setLoading(false);
+    });
+    return () => { settingsRequest.current++; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, suspended, activeLeagueId]);
+
+  // Keep the switcher list in sync with the signed-in account's real leagues.
+  useEffect(() => {
+    if (!hydrated || authLoading) return;
+    if (!user) {
+      setUserLeagues((prev) => {
+        if (prev.every((l) => checkIsDemoLeague(l.id))) return prev;
+        const updated = prev.filter((l) => checkIsDemoLeague(l.id));
+        persistUserLeagues(updated.length ? updated : DEFAULT_USER_LEAGUES);
+        return updated.length ? updated : DEFAULT_USER_LEAGUES;
+      });
+      return;
+    }
+    if (!memberships) return;
+    setUserLeagues((prev) => {
+      const updated = reconcileUserLeagues(prev, memberships.leagues);
+      persistUserLeagues(updated);
+      return updated;
+    });
+  }, [hydrated, authLoading, user, memberships]);
+
+  const switchLeague = useCallback(async (leagueId: string) => {
+    if (!leagueId) return;
+    setSelectedLeagueId(leagueId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ACTIVE_LEAGUE_KEY, leagueId);
+    }
+  }, []);
 
   const createLeague = async (data: {
     name: string;
@@ -753,15 +854,17 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
       subscription: newSub,
     };
 
-    const updatedUserLeagues = [...userLeagues, newSummary];
+    const updatedUserLeagues = [...userLeagues.filter((l) => l.id !== newLeagueId), newSummary];
     setUserLeagues(updatedUserLeagues);
     setSubscription(newSub);
     setSettings(newLeagueSettings);
-    setActiveLeagueId(newLeagueId);
+    loadedLeagueRef.current = newLeagueId;
+    setLoadedLeagueId(newLeagueId);
+    setSelectedLeagueId(newLeagueId);
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("flagos_active_league_id", newLeagueId);
-      localStorage.setItem("flagos_user_leagues", JSON.stringify(updatedUserLeagues));
+      localStorage.setItem(ACTIVE_LEAGUE_KEY, newLeagueId);
+      localStorage.setItem(USER_LEAGUES_KEY, JSON.stringify(updatedUserLeagues));
       localStorage.setItem(`league_settings_${newLeagueId}`, JSON.stringify(newLeagueSettings));
     }
 
@@ -822,7 +925,7 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
           : l
       );
       if (typeof window !== "undefined") {
-        localStorage.setItem("flagos_user_leagues", JSON.stringify(updated));
+        localStorage.setItem(USER_LEAGUES_KEY, JSON.stringify(updated));
       }
       return updated;
     });
@@ -944,7 +1047,7 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
           : l
       );
       if (typeof window !== "undefined") {
-        localStorage.setItem("flagos_user_leagues", JSON.stringify(updated));
+        localStorage.setItem(USER_LEAGUES_KEY, JSON.stringify(updated));
       }
       return updated;
     });
@@ -1031,7 +1134,7 @@ const SelectedLeagueProvider = ({ children }: { children: React.ReactNode }) => 
         isCustomizerOpen,
         openCustomizer,
         closeCustomizer,
-        loading,
+        loading: loading || loadedLeagueId !== activeLeagueId,
         activeLeagueId,
         userLeagues,
         publicLeagues: userLeagues.filter((l) => l.visibility !== "private"),
@@ -1079,15 +1182,17 @@ function rejectIndependentLeagueMutation(): never {
   throw new Error("This is an independent team. League settings and demo actions do not apply to this team.");
 }
 
-function IndependentTeamLeague({ teamId, team, loading, children }: {
+function IndependentTeamLeague({ teamId, team, loading, enabled = true, children }: {
   teamId: string;
   team: TeamRecord | null;
   loading: boolean;
+  /** When false the parent league context passes through unchanged (keeps the tree shape stable). */
+  enabled?: boolean;
   children: React.ReactNode;
 }) {
   const league = useContext(LeagueContext);
   return (
-    <LeagueContext.Provider value={{
+    <LeagueContext.Provider value={!enabled ? league : {
       ...league,
       settings: independentTeamSettings(team, teamId),
       activeLeagueId: "",
@@ -1124,13 +1229,16 @@ export function TeamLeagueScope({ teamId, children }: { teamId: string; children
   return <IndependentTeamLeague teamId={teamId} team={team} loading={!resolved && !team}>{children}</IndependentTeamLeague>;
 }
 
-// Real team and match routes resolve their owning team before choosing a league
-// context so the persisted demo league never initializes on customer routes.
-function CustomerRouteLeague({ teamId: routeTeamId, matchId, children }: {
-  teamId: string | null;
-  matchId: string | null;
-  children: React.ReactNode;
-}) {
+type CustomerRouteScope =
+  | { kind: "none" }
+  | { kind: "league"; leagueId: string }
+  | { kind: "selected" }
+  | { kind: "independent"; teamId: string; team: TeamRecord | null; loading: boolean };
+
+// Real team and match routes resolve their owning team before choosing a league context so
+// league-owned pages always show their own league and the persisted demo league never
+// initializes on independent-team routes.
+function useCustomerRouteScope(routeTeamId: string | null, matchId: string | null): CustomerRouteScope {
   const canReadCache = useCanReadBrowserCache();
   const [matchTeam, setMatchTeam] = useState<{ matchId: string | null; teamId: string | null; resolved: boolean }>(() => ({
     matchId,
@@ -1154,24 +1262,58 @@ function CustomerRouteLeague({ teamId: routeTeamId, matchId, children }: {
   const teamId = routeTeamId || currentMatchTeam.teamId;
   const customerTeam = !!teamId && !isDemoTeamId(teamId);
   const { team, resolved } = useTeamRecord(teamId, customerTeam);
-  const isLeagueTeam = !!team && !isStandaloneTeam(team);
-  const unresolvedMatch = !!matchId && currentMatchTeam.resolved && !customerTeam;
-  if (isLeagueTeam || unresolvedMatch) return <SelectedLeagueProvider>{children}</SelectedLeagueProvider>;
-  return (
-    <IndependentTeamLeague teamId={teamId || ""} team={team} loading={!team && (!resolved || !currentMatchTeam.resolved)}>
-      {children}
-    </IndependentTeamLeague>
-  );
+  if (!routeTeamId && !matchId) return { kind: "none" };
+  if (team && !isStandaloneTeam(team) && typeof team.leagueId === "string" && team.leagueId) {
+    return { kind: "league", leagueId: team.leagueId };
+  }
+  if (!!matchId && currentMatchTeam.resolved && !customerTeam) return { kind: "selected" };
+  return {
+    kind: "independent",
+    teamId: teamId || "",
+    team,
+    loading: !team && (!resolved || !currentMatchTeam.resolved),
+  };
+}
+
+function routeSegment(pathname: string | null, prefix: string): string | null {
+  if (!pathname?.startsWith(prefix)) return null;
+  const segment = pathname.slice(prefix.length).split("/")[0];
+  if (!segment) return null;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }
 
 export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const teamId = pathname?.startsWith("/teams/") ? pathname.split("/")[2] || null : null;
-  const matchId = pathname?.startsWith("/matches/") ? pathname.split("/")[2] || null : null;
-  if ((teamId && !isDemoTeamId(teamId)) || (matchId && !isDemoMatchId(matchId))) {
-    return <CustomerRouteLeague teamId={teamId} matchId={teamId ? null : matchId}>{children}</CustomerRouteLeague>;
-  }
-  return <SelectedLeagueProvider>{children}</SelectedLeagueProvider>;
+  const teamId = routeSegment(pathname, "/teams/");
+  const matchId = routeSegment(pathname, "/matches/");
+  const leagueRouteId = routeSegment(pathname, "/league/");
+  const customerTeamId = teamId && !isDemoTeamId(teamId) ? teamId : null;
+  const customerMatchId = !teamId && matchId && !isDemoMatchId(matchId) ? matchId : null;
+  const scope = useCustomerRouteScope(customerTeamId, customerMatchId);
+
+  let routeLeagueId: string | null = null;
+  if (leagueRouteId) routeLeagueId = leagueRouteId;
+  else if (teamId && !customerTeamId) routeLeagueId = "default";
+  else if (scope.kind === "league") routeLeagueId = scope.leagueId;
+  const independent = scope.kind === "independent" ? scope : null;
+
+  // A single provider stays mounted across navigation so the selection never resets mid-session.
+  return (
+    <SelectedLeagueProvider routeLeagueId={routeLeagueId} suspended={Boolean(independent)}>
+      <IndependentTeamLeague
+        enabled={Boolean(independent)}
+        teamId={independent?.teamId || ""}
+        team={independent?.team || null}
+        loading={independent?.loading ?? false}
+      >
+        {children}
+      </IndependentTeamLeague>
+    </SelectedLeagueProvider>
+  );
 }
 
 export const useLeague = () => useContext(LeagueContext);

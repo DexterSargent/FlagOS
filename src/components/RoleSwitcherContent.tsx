@@ -7,13 +7,12 @@ import { useAuth, UserRole } from "@/lib/authContext";
 import { Crown, Whistle, BicepsFlexed, X, RotateCcw, Sparkles, Eye, ArrowLeft } from "lucide-react";
 import { useLeague } from "@/lib/leagueContext";
 import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/demoSandbox";
-import { DEMO_TEAM_IDS, isDemoMatchId, isDemoTeamId } from "@/lib/demoSandboxRuntime";
-import { isDexterUser } from "@/lib/teamAdminRbac";
+import { DEMO_TEAM_IDS, isDemoLeaguePagePath, isDemoMatchId, isDemoTeamId } from "@/lib/demoSandboxRuntime";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RoleSwitcherContent() {
   const pathname = usePathname();
-  const { user, role, managedTeamId, playerId, setDevRole, isLeagueAdmin, isPlayer } = useAuth();
+  const { role, managedTeamId, playerId, setDevRole, isLeagueAdmin, isPlayer } = useAuth();
   const { isDemoLeague, resetDemoSession } = useLeague();
   const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
   const [players, setPlayers] = useState<Array<{ id: string; teamId: string; playerName: string; number?: string }>>([]);
@@ -25,24 +24,6 @@ export default function RoleSwitcherContent() {
     (window.self !== window.top && window.location.search.includes("embed=true")) ||
     new URLSearchParams(window.location.search).get("embed") === "true"
   );
-
-  const [isLocalOrEmbed] = useState(() => {
-    if (typeof window !== "undefined") {
-      const isLocal =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1" ||
-        window.location.hostname.endsWith(".local") ||
-        window.location.hostname.startsWith("192.168.") ||
-        window.location.hostname.startsWith("10.");
-      const isDemo =
-        window.location.search.includes("demo=true") ||
-        sessionStorage.getItem("flagos_demo_active") === "true";
-      return isLocal || isDemo;
-    }
-    return false;
-  });
-
-  const isPlatformOwner = isDexterUser(user?.email);
 
   // Check if current page is a team page that is NOT part of the demo league
   const isTeamPage = Boolean(pathname && pathname.startsWith("/teams/"));
@@ -64,19 +45,12 @@ export default function RoleSwitcherContent() {
 
   const isPageRoleSwitcherAllowed = !isCustomerPage && !isNonDemoTeamPage;
 
-  const isEligibleHost = !isEmbed && (isLocalOrEmbed || isPlatformOwner || isDemoLeague);
-  const isChromeLessPage =
-    pathname === "/my-story" || Boolean(pathname?.includes("/play-by-play"));
+  // The persona simulator is demo-league chrome only.
   const isEligiblePage =
     !isEmbed &&
-    isEligibleHost &&
+    isDemoLeague &&
     isPageRoleSwitcherAllowed &&
-    !isChromeLessPage &&
-    !(pathname === "/admin" || (pathname?.startsWith("/admin/") && !pathname.startsWith("/admin/sandbox"))) &&
-    pathname !== "/" &&
-    pathname !== "/leagues" &&
-    pathname !== "/pricing" &&
-    pathname !== "/login";
+    isDemoLeaguePagePath(pathname);
 
   useEffect(() => {
     const root = document.documentElement;
