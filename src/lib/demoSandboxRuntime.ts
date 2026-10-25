@@ -46,3 +46,13 @@ export function isStandaloneTeam(record?: object | null): boolean {
   if (team.isStandalone === true) return true;
   return !team.leagueId && team.subscription?.status === "active";
 }
+
+// The persona simulator only belongs to demo league pages.
+export function isDemoLeaguePagePath(pathname: string | null): boolean {
+  if (!pathname || pathname.includes("/play-by-play")) return false;
+  return pathname === "/league" || pathname.startsWith("/league/") ||
+    pathname === "/schedule" || pathname === "/stats" ||
+    pathname === "/teams" || pathname.startsWith("/teams/") ||
+    pathname.startsWith("/matches/") || pathname === "/join" || pathname.startsWith("/join/") ||
+    pathname === "/admin/sandbox";
+}

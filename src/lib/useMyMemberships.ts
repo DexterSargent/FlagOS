@@ -64,6 +64,17 @@ function readCache(uid: string): Memberships | null {
   }
 }
 
+const inflightMemberships = new Map<string, Promise<Memberships>>();
+
+/** Shares one in-flight request per account so concurrent consumers do not spend the read budget twice. */
+function loadMemberships(uid: string): Promise<Memberships> {
+  const pending = inflightMemberships.get(uid);
+  if (pending) return pending;
+  const request = requestPrivateData<Memberships>("memberships").finally(() => inflightMemberships.delete(uid));
+  inflightMemberships.set(uid, request);
+  return request;
+}
+
 /**
  * Server-verified leagues and teams for the signed-in account. Paints the last result for this
  * account immediately and revalidates in the background.
@@ -84,7 +95,7 @@ export function useMyMemberships(uid: string | null | undefined) {
       error: "",
       refreshing: true,
     }));
-    requestPrivateData<Memberships>("memberships")
+    loadMemberships(uid)
       .then((data) => {
         if (cancelled) return;
         try {

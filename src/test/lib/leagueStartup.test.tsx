@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_LEAGUE_SETTINGS, LeagueProvider, useLeague } from "@/lib/leagueContext";
+import { DEFAULT_LEAGUE_SETTINGS, LeagueProvider, reconcileUserLeagues, useLeague, type UserLeagueSummary } from "@/lib/leagueContext";
 
 const mocks = vi.hoisted(() => ({
   pathname: "/teams/falcons",
@@ -21,6 +21,7 @@ function Probe() {
   return <output>{JSON.stringify({
     id: league.activeLeagueId, name: league.settings.leagueName,
     demo: league.isDemoLeague, loading: league.loading,
+    leagues: league.userLeagues.map((l) => l.id),
   })}</output>;
 }
 const state = () => JSON.parse(screen.getByRole("status").textContent!);
@@ -85,5 +86,66 @@ describe("Route-scoped league startup", () => {
     await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false }));
     expect(mocks.sandboxSettings).toHaveBeenCalledOnce();
     expect(mocks.getDoc).not.toHaveBeenCalled();
+  });
+
+  it("uses the owning league on a league team's pages and keeps it for league-wide pages", async () => {
+    localStorage.setItem("flagos_active_league_id", "default");
+    mocks.getDoc.mockImplementation(async ({ collection, id }) => ({
+      id, exists: () => true,
+      data: () => collection === "teams" ? { name: "York Lions", leagueId: "york" } : { leagueName: "York Region" },
+    }));
+    mocks.pathname = "/teams/york-lions";
+    const view = render(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "york", name: "York Region", demo: false, loading: false }));
+    expect(localStorage.getItem("flagos_active_league_id")).toBe("york");
+    mocks.pathname = "/schedule";
+    view.rerender(<LeagueProvider><Probe /></LeagueProvider>);
+    expect(state()).toMatchObject({ id: "york", name: "York Region", demo: false, loading: false });
+    expect(mocks.sandboxSettings).not.toHaveBeenCalled();
+  });
+
+  it("drops a deleted league from the switcher and falls back to the demo league", async () => {
+    localStorage.setItem("flagos_active_league_id", "deleted-league");
+    localStorage.setItem("flagos_user_leagues", JSON.stringify([
+      { id: "default", name: "Demo", shortcode: "FLAG", role: "owner" },
+      { id: "deleted-league", name: "Gone", shortcode: "GONE", role: "owner" },
+    ]));
+    mocks.getDoc.mockImplementation(async ({ id }) => ({ id, exists: () => false, data: () => null }));
+    mocks.pathname = "/schedule";
+    render(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false, leagues: ["default"] }));
+    expect(localStorage.getItem("flagos_active_league_id")).toBe("default");
+    expect(JSON.parse(localStorage.getItem("flagos_user_leagues")!).map((l: { id: string }) => l.id)).toEqual(["default"]);
+  });
+});
+
+describe("Deleted league URLs", () => {
+  it("does not keep a deleted league selected after visiting its dashboard URL", async () => {
+    localStorage.setItem("flagos_active_league_id", "default");
+    mocks.getDoc.mockImplementation(async ({ id }) => ({ id, exists: () => false, data: () => null }));
+    mocks.pathname = "/league/deleted-league";
+    const view = render(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "deleted-league", name: "League Not Found", loading: false }));
+    expect(localStorage.getItem("flagos_active_league_id")).toBe("default");
+    mocks.pathname = "/schedule";
+    view.rerender(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false }));
+  });
+});
+
+describe("reconcileUserLeagues", () => {
+  it("keeps only the demo league plus leagues the account still belongs to", () => {
+    const previous: UserLeagueSummary[] = [
+      { id: "default", name: "Demo", shortcode: "FLAG", role: "owner" },
+      { id: "deleted", name: "Deleted", shortcode: "DEL", role: "owner" },
+      { id: "mine", name: "Old Name", shortcode: "MINE", role: "owner" },
+    ];
+    const result = reconcileUserLeagues(previous, [
+      { id: "mine", name: "Mine", shortcode: "MINE", seasonTitle: "", logoUrl: "", primaryColor: "", accentColor: "", visibility: "public", isCommissioner: true, teams: [] },
+      { id: "york", name: "York Region", shortcode: "YRK", seasonTitle: "", logoUrl: "", primaryColor: "", accentColor: "", visibility: "public", isCommissioner: false, teams: [] },
+    ]);
+    expect(result.map((l) => [l.id, l.name, l.role])).toEqual([
+      ["default", "Demo", "owner"], ["mine", "Mine", "owner"], ["york", "York Region", "member"],
+    ]);
   });
 });
