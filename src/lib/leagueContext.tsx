@@ -676,6 +676,13 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
       return LEAGUE_NOT_FOUND;
     } catch (err) {
       if (!isCurrent()) return null;
+      if ((err as { code?: string })?.code === "permission-denied" && auth.currentUser?.emailVerified) {
+        // Only private leagues refuse a signed-in read; show their lock screen, not another league's data.
+        const locked: LeagueSettings = { ...DEFAULT_LEAGUE_SETTINGS, leagueName: "Private League", tagline: "", visibility: "private" };
+        setSettings(locked);
+        setSubscription(null);
+        return locked;
+      }
       console.error(`Failed to load settings for league ${leagueId}:`, err);
     }
     return null;
