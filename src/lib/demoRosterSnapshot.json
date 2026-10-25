@@ -4,7 +4,7 @@
   "sourceUrl": "https://github.com/nflverse/nflverse-data/releases/tag/rosters",
   "rosterUrl": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2026.csv",
   "depthChartUrl": "https://github.com/nflverse/nflverse-data/releases/download/depth_charts/depth_charts_2026.csv.gz",
-  "sourceUpdatedAt": "2026-10-24T11:59:56.000Z",
+  "sourceUpdatedAt": "2026-10-25T12:34:26.000Z",
   "players": [
     {
       "id": "nfl_00-0034857",
@@ -2269,17 +2269,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036192",
+      "id": "nfl_00-0036224",
       "teamId": "team_phi",
-      "playerName": "A.J. Epenesa",
-      "number": "57",
+      "playerName": "Jonathan Greenard",
+      "number": "52",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0036192",
-      "nflPosition": "DE",
+      "nflId": "00-0036224",
+      "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
     {
@@ -2297,16 +2297,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036224",
+      "id": "nfl_00-0039013",
       "teamId": "team_phi",
-      "playerName": "Jonathan Greenard",
-      "number": "52",
+      "playerName": "Nolan Smith",
+      "number": "3",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0036224",
+      "nflId": "00-0039013",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -2383,16 +2383,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036996",
+      "id": "nfl_00-0036937",
       "teamId": "team_nyg",
-      "playerName": "Greg Newsome II",
-      "number": "20",
+      "playerName": "Paulson Adebo",
+      "number": "21",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0036996",
+      "nflId": "00-0036937",
       "nflPosition": "CB",
       "sourceStatus": "ACT"
     },
@@ -2837,17 +2837,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0039811",
+      "id": "nfl_00-0035700",
       "teamId": "team_gb",
-      "playerName": "MarShawn Lloyd",
-      "number": "32",
+      "playerName": "Josh Jacobs",
+      "number": "8",
       "position": "RB",
       "positions": [
         "RB",
         "ATH"
       ],
       "status": "Active",
-      "nflId": "00-0039811",
+      "nflId": "00-0035700",
       "nflPosition": "RB",
       "sourceStatus": "ACT"
     },
@@ -2909,17 +2909,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0039112",
+      "id": "nfl_00-0038506",
       "teamId": "team_gb",
-      "playerName": "Lukas Van Ness",
-      "number": "90",
+      "playerName": "Jordon Riley",
+      "number": "97",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0039112",
-      "nflPosition": "OLB",
+      "nflId": "00-0038506",
+      "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
     {
@@ -2937,16 +2937,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0040010",
+      "id": "nfl_00-0039112",
       "teamId": "team_gb",
-      "playerName": "Barryn Sorrell",
-      "number": "99",
+      "playerName": "Lukas Van Ness",
+      "number": "90",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0040010",
+      "nflId": "00-0039112",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -3293,17 +3293,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036220",
+      "id": "nfl_00-0036934",
       "teamId": "team_car",
-      "playerName": "Derrick Brown",
-      "number": "95",
+      "playerName": "Jaelan Phillips",
+      "number": "5",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0036220",
-      "nflPosition": "DE",
+      "nflId": "00-0036934",
+      "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
     {
@@ -3321,16 +3321,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036934",
+      "id": "nfl_00-0037007",
       "teamId": "team_car",
-      "playerName": "Jaelan Phillips",
-      "number": "5",
+      "playerName": "Patrick Jones II",
+      "number": "91",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0036934",
+      "nflId": "00-0037007",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
