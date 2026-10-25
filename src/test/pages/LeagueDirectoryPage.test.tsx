@@ -18,9 +18,10 @@ const mockSwitchLeague = vi.fn();
 // Mock LeagueContext
 vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({
-    activeLeagueId: "default",
+    activeLeagueId: "league_lakeshore",
     settings: {
-      leagueName: "FlagOS Demo League",
+      id: "league_lakeshore",
+      leagueName: "Lakeshore Flag League",
       shortcode: "FLPC",
       tagline: "The Flag Football Operating System",
       seasonTitle: "2026 Championship",
@@ -100,13 +101,16 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     });
 
     // Public active league and user league are present in directory headings
-    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lakeshore Flag League" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
 
     // Fake mock circuits are completely absent
     expect(screen.queryByText("Toronto Flag League")).toBeNull();
     expect(screen.queryByText("GTA Premier 5v5 Flag Championship")).toBeNull();
     expect(screen.queryByText("Hamilton Steel City Flag Circuit")).toBeNull();
+
+    // The shared demo league is never listed
+    expect(screen.queryByText("FlagOS Demo League")).toBeNull();
 
     // Private leagues must be strictly excluded
     expect(screen.queryByText("Secret Private Circuit")).toBeNull();
@@ -194,13 +198,13 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // Only user's own leagues appear in card headings
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "FlagOS Demo League" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Lakeshore Flag League" })).toBeNull();
 
     // Click back to "All Leagues" tab button
     const allTabBtn = allBtns[allBtns.length - 1];
     fireEvent.click(allTabBtn);
 
-    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lakeshore Flag League" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
   });
 
@@ -225,7 +229,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     });
 
     // Both 5v5 (FlagOS Live Premier) and 7v7 (Metro West) are present initially
-    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lakeshore Flag League" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
 
     // Open format multi-select dropdown
@@ -247,7 +251,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // Metro West (7v7) remains, FlagOS Live Premier (5v5) is filtered out
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "FlagOS Demo League" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Lakeshore Flag League" })).toBeNull();
 
     // Also select 5v5 format
     const option5v5 = within(listbox).getByRole("option", { name: /5v5/i });
@@ -255,7 +259,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // Now both 5v5 and 7v7 match
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lakeshore Flag League" })).toBeInTheDocument();
 
     // Click Clear button in dropdown
     const clearBtn = within(listbox).getByRole("button", { name: "Clear" });
@@ -263,7 +267,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
 
     // All leagues displayed
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lakeshore Flag League" })).toBeInTheDocument();
   });
 
   it("filters circuits by keyword search (league name or location)", async () => {
@@ -277,7 +281,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     fireEvent.change(searchInput, { target: { value: "Metro West" } });
 
     expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "FlagOS Demo League" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Lakeshore Flag League" })).toBeNull();
   });
 
   it("filters by division (e.g. Women's Flag)", async () => {
@@ -290,7 +294,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     const divisionSelect = screen.getByDisplayValue("All Divisions");
     fireEvent.change(divisionSelect, { target: { value: "womens" } });
 
-    expect(screen.getByRole("heading", { name: "FlagOS Demo League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lakeshore Flag League" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Metro West Flag League" })).toBeNull();
   });
 
