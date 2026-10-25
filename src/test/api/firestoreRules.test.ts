@@ -195,6 +195,26 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
     }
   });
 
+  it("lets a league member list a league team's roster when the query is scoped to the league", async () => {
+    const viewer = auth("viewer@example.com");
+    await write("leagues/rules-roster", { visibility: "private", leagueName: "Roster League" });
+    await write("teams/roster-team", { name: "Roster Team", leagueId: "rules-roster" });
+    await write("players/roster-player", { teamId: "roster-team", leagueId: "rules-roster", playerName: "Member" });
+    try {
+      await write("league_access/rules-test-user", { leagueIds: ["rules-roster"] });
+      const scoped = await query("players", [filter("teamId", "roster-team"), filter("leagueId", "rules-roster")], 30, viewer);
+      const body = await scoped.text();
+      expect(scoped.status, body).toBe(200);
+      expect(body).toContain("roster-player");
+      // A teamId-only query cannot prove league membership, so it must also filter by leagueId.
+      expect((await query("players", [filter("teamId", "roster-team")], 30, viewer)).status).toBe(403);
+      await write("league_access/rules-test-user", { leagueIds: [] });
+      expect((await query("players", [filter("teamId", "roster-team"), filter("leagueId", "rules-roster")], 30, viewer)).status).toBe(403);
+    } finally {
+      await write("league_access/rules-test-user", { leagueIds: [] });
+    }
+  });
+
   it("allows listed coaches to update scores", async () => {
     const response = await write(`matches/${matchId}`, { ...fixture, homeScore: 7 }, auth(coach));
     expect(response.status, await response.text()).toBe(200);

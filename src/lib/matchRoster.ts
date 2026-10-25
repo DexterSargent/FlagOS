@@ -12,26 +12,15 @@ const isRealTeamId = (id: unknown): id is string =>
   typeof id === "string" && !!id && !id.startsWith("opponent_");
 
 /**
- * Loads the players for both sides of a match. Two shapes of the same query run together:
- * one scoped to the league (provable for league admins under the security rules) and one by
- * team only (team admins, and older player docs saved without a leagueId). Results are merged.
+ * Runs player queries side by side and merges the results. The league-scoped shape is what
+ * league members and league admins can read; the team-only shape covers team admins and older
+ * player docs saved without a leagueId. Throws only when every query is rejected.
  */
-export async function loadMatchRosterPlayers(match: MatchRosterSource): Promise<any[]> {
-  // Team-managed games only track the managing team; its coach may not be able to read the opponent.
-  const teamIds = isRealTeamId(match.managingTeamId)
-    ? [match.managingTeamId]
-    : [...new Set([match.homeTeamId, match.awayTeamId].filter(isRealTeamId))];
-  if (teamIds.length === 0) return [];
-  const queries = [
-    getDocs(query(collection(db, "players"), where("teamId", "in", teamIds), limit(120))),
-  ];
-  if (typeof match.leagueId === "string" && match.leagueId) {
-    queries.push(getDocs(query(
-      collection(db, "players"),
-      where("leagueId", "==", match.leagueId),
-      where("teamId", "in", teamIds),
-      limit(120),
-    )));
+async function loadPlayersByTeamIds(teamIds: string[], leagueId: string | undefined, max: number): Promise<any[]> {
+  const teamFilter = teamIds.length === 1 ? where("teamId", "==", teamIds[0]) : where("teamId", "in", teamIds);
+  const queries = [getDocs(query(collection(db, "players"), teamFilter, limit(max)))];
+  if (typeof leagueId === "string" && leagueId) {
+    queries.push(getDocs(query(collection(db, "players"), where("leagueId", "==", leagueId), teamFilter, limit(max))));
   }
   const results = await Promise.allSettled(queries);
   const byId = new Map<string, any>();
@@ -43,8 +32,23 @@ export async function loadMatchRosterPlayers(match: MatchRosterSource): Promise<
     }
     result.value.docs.forEach((d) => byId.set(d.id, { ...d.data(), id: d.id }));
   }
-  if (byId.size === 0 && lastError && results.every((r) => r.status === "rejected")) throw lastError;
+  if (results.every((r) => r.status === "rejected")) throw lastError;
   return [...byId.values()];
+}
+
+/** Loads one team's roster in a way every viewer who can see the team is allowed to read. */
+export function loadTeamPlayers(teamId: string, leagueId?: string | null, max = 30): Promise<any[]> {
+  return loadPlayersByTeamIds([teamId], leagueId || undefined, max);
+}
+
+/** Loads the players for both sides of a match. */
+export async function loadMatchRosterPlayers(match: MatchRosterSource): Promise<any[]> {
+  // Team-managed games only track the managing team; its coach may not be able to read the opponent.
+  const teamIds = isRealTeamId(match.managingTeamId)
+    ? [match.managingTeamId]
+    : [...new Set([match.homeTeamId, match.awayTeamId].filter(isRealTeamId))];
+  if (teamIds.length === 0) return [];
+  return loadPlayersByTeamIds(teamIds, match.leagueId, 120);
 }
 
 export type MatchSubsByTeam = { home: string[]; away: string[] };

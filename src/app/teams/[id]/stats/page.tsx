@@ -7,7 +7,8 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { loadTeamPlayers } from "@/lib/matchRoster";
 import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { useLeague } from "@/lib/leagueContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
@@ -78,20 +79,20 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             if (!(error instanceof TeamSeasonSummaryError) || error.status !== 404) throw error;
           }
           if (!leagueId) {
-            const [playersSnap, season] = await Promise.all([
-              getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
+            const [teamPlayers, season] = await Promise.all([
+              loadTeamPlayers(teamId),
               loadTeamSeasonData(teamId),
             ]);
-            players = playersSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
+            players = teamPlayers;
             matches = season.matches;
             plays = season.plays;
           } else {
-            const [playersSnap, rawMatches, rawPlays] = await Promise.all([
-              getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30))),
+            const [teamPlayers, rawMatches, rawPlays] = await Promise.all([
+              loadTeamPlayers(teamId, leagueId),
               getCachedLeagueMatches(leagueId),
               getCachedLeaguePlays(leagueId),
             ]);
-            players = playersSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
+            players = teamPlayers;
             matches = rawMatches.filter((m) => !m.isHidden && (!m.leagueId || m.leagueId === leagueId));
             plays = rawPlays;
           }

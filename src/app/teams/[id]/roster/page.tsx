@@ -22,15 +22,8 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  limit
-} from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { loadTeamPlayers } from "@/lib/matchRoster";
 import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { useAuth } from "@/lib/authContext";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
@@ -134,9 +127,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         const teamSnap = await getDoc(doc(db, "teams", teamId));
         if (teamSnap.exists()) tObj = { ...teamSnap.data(), id: teamSnap.id };
         const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
-        const playersSnap = await getDocs(query(collection(db, "players"), where("teamId", "==", teamId), limit(30)));
+        pList = await loadTeamPlayers(teamId, leagueId);
         if (version !== requestVersion.current) return;
-        pList = playersSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
         setTeam(tObj && isRealTeam(tObj) ? tObj : null);
         setPlayers([...pList].sort(compareByJersey));
         setLoading(false);
