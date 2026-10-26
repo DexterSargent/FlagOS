@@ -5,6 +5,7 @@ import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedR
 import { isPlatformAdminEmail } from "@/lib/platformAdmin";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, toMillis } from "@/lib/adminMetrics";
 import { computePlatformHealth } from "@/lib/platformHealth";
+import { enqueueNotification, loadNotificationSnapshot, notificationConfiguration, processNotificationQueue } from "@/lib/notificationsServer";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ const MAX_REQUEST_BYTES = 8_000;
 const LEDGER_COLLECTION = "platform_ledger";
 const AUDIT_COLLECTION = "platform_audit";
 const MAX_USERS = 5_000;
-const ACTIONS = ["load", "health", "ledger_add", "ledger_delete", "subscription_update", "user_set_disabled"] as const;
+const ACTIONS = ["load", "health", "notifications", "notification_test", "notification_process", "ledger_add", "ledger_delete", "subscription_update", "user_set_disabled"] as const;
 type Action = (typeof ACTIONS)[number];
 const STATUSES = ["active", "trial", "past_due", "canceled", "archived"];
 const DOCUMENT_ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -345,6 +346,31 @@ export async function POST(request: Request) {
         break;
       case "health":
         result = await computePlatformHealth();
+        break;
+      case "notifications":
+        onlyKeys(payload, []);
+        result = await loadNotificationSnapshot();
+        break;
+      case "notification_test": {
+        onlyKeys(payload, []);
+        const config = notificationConfiguration();
+        if (!config.enabled) fail(config.configurationIssues.join(" "), 503);
+        const ids = await enqueueNotification(`test/${token.uid}/${Math.floor(Date.now() / 600_000)}`, "service_test", [token.email!], {
+          subject: "Your FlagOS email service test",
+          title: "Your FlagOS email is connected",
+          preheader: "A test from the FlagOS admin portal.",
+          paragraphs: ["You requested this test from the admin portal. No customer emails or billing records were changed.", "If you received this message, the sender is connected. The Health tab shows provider acceptance and delivery updates separately."],
+          action: { label: "Check notification status", path: "/admin#health" },
+        });
+        await audit(token, "notification_test", "Queued a branded email test to the signed-in platform administrator.");
+        result = { ids };
+        break;
+      }
+      case "notification_process":
+        onlyKeys(payload, []);
+        if (!notificationConfiguration().enabled) fail("Complete notification configuration before processing emails.", 503);
+        await audit(token, "notification_process", "Requested processing of pending operational emails.");
+        result = await processNotificationQueue();
         break;
       case "ledger_add":
         result = await ledgerAdd(payload, token);

@@ -43,6 +43,7 @@ import AdminUsers, { type Membership } from "@/components/admin/AdminUsers";
 import AdminActivity from "@/components/admin/AdminActivity";
 import AdminFreeAgents from "@/components/admin/AdminFreeAgents";
 import AdminHealth from "@/components/admin/AdminHealth";
+import AdminNotifications from "@/components/admin/AdminNotifications";
 import type { PlatformHealthReport } from "@/lib/platformHealth";
 
 const CONSOLE_TABS: Array<{ id: ConsoleTab; label: string }> = [
@@ -856,8 +857,9 @@ export default function PlatformAdminPage() {
             <FlagOSLoader size={48} label="Loading business data" /> Loading business data…
           </div>
         ) : tab === "health" ? (
-          <div className="mt-6">
+          <div className="mt-6 space-y-5">
             <AdminHealth report={health} loading={healthLoading} error={healthError} onRefresh={() => void loadHealth()} onReview={reviewCustomer} />
+            <AdminNotifications />
           </div>
         ) : tab === "overview" ? (
           <div className="mt-6">

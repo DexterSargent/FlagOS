@@ -57,14 +57,16 @@ and is throttled to one run per 20 hours. It:
 - emails league admins once per season when their season is about to end (rollover reminder).
 
 Nothing is ever deleted automatically; stale records are listed for review only.
+Emails are now queued durably, not sent inside the scan. A queued reminder is not proof
+of delivery. Existing `digestSentAt` and previously sent rollover markers are respected.
 
 ### Optional configuration
 
 | Setting | Where | Purpose |
 | --- | --- | --- |
 | `CRON_SECRET` | App Hosting secret **and** GitHub Actions secret | Locks the endpoint to the scheduler and allows `?force=1`. |
-| `RESEND_API_KEY` | App Hosting secret | Enables email (digest and reminders). Verify the `flagos.ca` domain in Resend first. |
-| `REPORT_FROM_EMAIL` | App Hosting env | Sender, default `FlagOS <reports@flagos.ca>`. |
+| `RESEND_API_KEY` | App Hosting secret | Resend sending key; see notification activation below. |
+| `REPORT_FROM_EMAIL` | App Hosting env | Legacy sender fallback when `NOTIFICATION_FROM_EMAIL` is unset. |
 | `PLATFORM_REPORT_EMAILS` | App Hosting env | Comma-separated digest recipients (defaults to `PLATFORM_ADMIN_EMAIL`). |
 
 Create a secret and grant the backend access:
@@ -75,6 +77,106 @@ npx -y firebase-tools@latest apphosting:secrets:set CRON_SECRET --project flagfo
 
 Then reference it in `apphosting.yaml` under `env` (`- variable: CRON_SECRET` / `secret: CRON_SECRET`).
 Only add `secret:` references after the secret exists, otherwise the build fails.
+
+## Branded operational notifications
+
+The first release covers weekly platform reports, one reminder per league/season, and
+an admin alert for each new free-agent interest submission. The submission and its alert
+are committed in the same Firestore batch. Submitters are **not** emailed automatically:
+the public form must not become a way to send email to an unverified third party.
+Account verification and password reset still use Firebase Authentication; game reminders,
+membership invitations, optional notification preferences, and an in-app inbox are not
+implemented by this release.
+
+### Delivery guarantees and limits
+
+- HTML uses the current FlagOS emblem, readable inline styles, a clear action, a fallback
+  link, escaped text, and a plain-text alternative. Every recipient gets a separate email.
+- `notification_outbox` stores immutable rendered requests. A deterministic event/recipient
+  ID prevents duplicate enqueueing; transactions and two-minute leases prevent concurrent
+  workers from claiming the same send. Network timeout is ten seconds.
+- Resend receives the same idempotency key and payload on each retry. At most six attempts,
+  with waits of 1, 5, 15, 60 and 180 minutes. Scheduler cadence can make waits longer.
+  Uncertain sends stop being retried after 23 hours from the first attempt, within Resend's
+  24-hour key retention. Never manually requeue an uncertain send without checking Resend.
+- A worker handles at most 20 messages. GitHub Actions runs every 15 minutes when enabled;
+  its timing is best-effort, not suitable for urgent game notifications. Higher volume or
+  time-sensitive events require Cloud Tasks/Scheduler before enabling those events.
+- `accepted` means the send API returned a message ID. `delivered` comes from a signed
+  webhook and means acceptance by the recipient's mail server, not inbox placement or reading.
+- Webhooks use Svix verification against the **raw** bounded body, including timestamp
+  validation. Duplicate and out-of-order delivery events cannot undo complaints or bounces.
+  `notification_suppressions` blocks future sends after permanent bounces or complaints.
+  No open/click tracking is implemented.
+- Both collections are server-only under the existing default-deny Firestore policy.
+  Only the verified platform admin can inspect metadata or request a test/process action.
+  Bodies and API keys are not returned to the admin browser.
+
+### Activate sending
+
+Sending and the new workflow are off by default. No email provider credentials are checked in.
+
+1. Verify `flagos.ca` in Resend. Add its required SPF/DKIM records without creating a second
+   conflicting SPF record; configure a monitored DMARC policy after checking alignment.
+   Confirm the reply mailbox actually receives mail.
+2. Create a Resend webhook for `https://flagos.ca/api/webhooks/resend` subscribed to
+   `email.delivered`, `email.bounced`, `email.complained`, and `email.failed`.
+3. Create `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, and `CRON_SECRET` in App Hosting Secret
+   Manager, grant this backend access, and only then add their `secret:` references under
+   `env` in `apphosting.yaml` with runtime availability. Use the **same** `CRON_SECRET`
+   in GitHub Actions secrets. The webhook signing secret is not the sending API key.
+4. Review sender/reply-to settings in `apphosting.yaml`. The sender must be an `@flagos.ca`
+   address on the verified domain. Set `NOTIFICATION_EMAIL_ENABLED` to `"true"` in that file
+   and deploy. Keep the GitHub repository variable of the same name off for now.
+5. Open **Admin > Health > Notification delivery**. Confirm there are no configuration
+   issues. Review all queued messages for stale content before clicking **Process queue**:
+   this sends eligible queued operational messages, not just tests.
+6. Queue a test to the signed-in admin email and process the queue. Test requests in the same
+   ten-minute bucket reuse a message. Verify the HTML and text, reply routing, provider
+   acceptance, and the signed delivery webhook. Use Resend's test addresses through a
+   controlled non-production test fixture to verify bounce/complaint suppression.
+7. Set GitHub Actions repository variable `NOTIFICATION_EMAIL_ENABLED=true`. Run the
+   Notification delivery workflow manually once, then verify scheduled runs. Cron rejects
+   missing/wrong authentication even if no secret has been configured. Configuration failures
+   return 503 and newly terminal send failures return 502 so the workflow visibly fails.
+
+### Failure response
+
+Use **Refresh email status** to inspect configuration, complete state counts and the 50 newest
+messages. A queued message with attempts may be waiting for a retry; do not create duplicates.
+For `failed`, check the generic error and the provider dashboard. Correct configuration before
+creating replacement emails; an ambiguous timeout could already have delivered the original.
+For bounces/complaints, confirm the correct address and permission to contact the recipient
+before any suppression removal. There is intentionally no bulk resend or suppression-clear
+button. Firestore/worker failures are logged and webhook failures return 5xx for provider replay.
+
+The outbox currently retains bodies and event IDs; it has no automatic purge. Do not enable TTL
+on whole outbox records without retaining event-ID tombstones, or replayed business events could
+send twice. Add a reviewed payload-retention policy before increasing event volume.
+Monitor scheduler failures separately from email; a broken email provider cannot deliver its
+own incident alert. See the [financial automation plan](FINANCIAL-AUTOMATION-PLAN.md) for rollout
+gates, financial messaging, and the next notification phases.
+
+### Test without sending email
+
+Unit and route tests mock the provider, including raw signed webhook requests:
+
+```powershell
+npx vitest run --maxWorkers=2 src/test/lib/notificationEmail.test.ts src/test/lib/notificationsServer.test.ts src/test/lib/platformJobs.test.ts src/test/api/notificationRoutes.test.ts src/test/components/AdminNotifications.test.tsx
+```
+
+For real Firestore transactions, start the isolated `demo-flagos-local` emulators as described
+in [local development](local-firebase-emulators.md), then:
+
+```powershell
+$env:FLAGOS_TEST_EMULATORS = "true"
+npx vitest run --maxWorkers=1 src/test/api/notifications.emulator.test.ts
+```
+
+The opt-in suite verifies concurrent producer/worker deduplication, atomic event/outbox writes,
+bounce suppression, and client read denial against actual rules. It refuses to process an
+emulator that already has due messages, mocks every provider request, and removes its fixtures.
+It never connects to production Firestore or delivers email.
 
 ## Deleting leagues
 

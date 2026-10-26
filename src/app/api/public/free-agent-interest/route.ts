@@ -3,6 +3,8 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { createPublicRequestLimiter, requestClientKey } from "@/lib/publicRequestLimiter";
 import { isValidPublicEmail } from "@/lib/leaguePublicProfile";
+import { addNotificationsToBatch } from "@/lib/notificationsServer";
+import { PLATFORM_ADMIN_EMAIL } from "@/lib/platformAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,12 +55,22 @@ export async function POST(request: Request) {
   }
 
   try {
-    await adminDb.collection("free_agent_interest").add({
+    const ref = adminDb.collection("free_agent_interest").doc();
+    const batch = adminDb.batch();
+    batch.create(ref, {
       ...clean,
       email: clean.email.toLowerCase(),
       status: "new",
       createdAt: FieldValue.serverTimestamp(),
     });
+    addNotificationsToBatch(batch, `free-agent/${ref.id}`, "free_agent_interest", [PLATFORM_ADMIN_EMAIL], {
+      subject: "New player interest on FlagOS",
+      title: "A player is looking for a team",
+      preheader: "Review a new free-agent submission in the admin portal.",
+      paragraphs: ["A new free-agent interest form has been submitted. Review the player's details in the admin portal before contacting them. Their contact information is not included in this email."],
+      action: { label: "Review player interest", path: "/admin#free-agents" },
+    });
+    await batch.commit();
     return respond({ ok: true });
   } catch (error) {
     console.error("Free agent interest submission failed:", error);

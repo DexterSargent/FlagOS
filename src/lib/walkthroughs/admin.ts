@@ -212,9 +212,15 @@ export const ADMIN_HEALTH_GUIDE = guide("platform-admin-health", "Platform Healt
   overview("admin-health-intro", "What needs attention", "A read-only scan of the whole platform. The same scan runs nightly and emails you a weekly summary when email is configured. Nothing is ever changed or deleted automatically."), consoleNavigation,
   step("admin-health-panels", "Work through each list", "Each panel is empty when there is nothing to do.", [
     ["Data integrity", "Teams, players, games or plays pointing at records that no longer exist, and leagues with more teams than their plan covers."],
-    ["Renewals", "Paid plans renewing in the next 7 days or already overdue."], ["Seasons ending soon", "Active seasons whose final scheduled game is within two weeks. League admins get a one-time Start New Season reminder."],
+    ["Renewals", "Paid plans renewing in the next 7 days or already overdue."], ["Seasons ending soon", "Active seasons whose final scheduled game is within two weeks. A wrap-up email is queued once per season; sending depends on notification configuration."],
     ["Stale and test records", "Trial, archived or test-named leagues and teams idle for 30+ days. A dry run only."], ["Review", "Open Customers filtered to that record, where you can edit or delete it."],
     ["Re-run", "Scan again now."],
+  ]),
+  step("admin-notifications", "Check operational emails", "Configuration and delivery history are separate from the read-only health scan. Queued messages are not proof of delivery.", [
+    ["Refresh email status", "Reload configuration, message counts and the 50 newest emails."],
+    ["Queue a test to my email", "Queue a branded test to your signed-in platform-admin email only. Repeated clicks within 10 minutes reuse the same email."],
+    ["Process queue", "Attempt pending operational emails now, rather than waiting for the scheduler. Sending must be enabled and configured."],
+    ["Delivery status", "Accepted means the provider received the request. Delivered means the recipient's mail server accepted the email. Bounces and complaints suppress future sends to that address."],
   ]),
 ]);
 export const ADMIN_CONSOLE_GUIDES = { overview: ADMIN_OVERVIEW_GUIDE, health: ADMIN_HEALTH_GUIDE, customers: ADMIN_CUSTOMERS_GUIDE, finance: ADMIN_FINANCE_GUIDE, users: ADMIN_USERS_GUIDE, activity: ADMIN_ACTIVITY_GUIDE, "free-agents": ADMIN_FREE_AGENTS_GUIDE };

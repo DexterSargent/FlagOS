@@ -6,6 +6,7 @@ export default defineConfig({
     tsconfigPaths: true,
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
+      "server-only": path.resolve(import.meta.dirname, "./node_modules/next/dist/compiled/server-only/empty.js"),
     },
   },
   test: {

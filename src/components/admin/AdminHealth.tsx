@@ -107,7 +107,7 @@ export default function AdminHealth({
                 <li key={item.leagueId} className="rounded-xl border border-white/5 px-3 py-2">
                   <b>{item.leagueName}</b>: {item.seasonTitle}
                   <div className="text-xs text-neutral-400">
-                    Final game {formatDate(item.lastGameAt)} ({item.daysUntilEnd >= 0 ? `in ${item.daysUntilEnd} days` : `${-item.daysUntilEnd} days ago`}). Admins get a one-time Start New Season reminder by email.
+                    Final game {formatDate(item.lastGameAt)} ({item.daysUntilEnd >= 0 ? `in ${item.daysUntilEnd} days` : `${-item.daysUntilEnd} days ago`}). A season wrap-up email is queued for admins once per season. Check Notification delivery below for sending status.
                   </div>
                 </li>
               ))}
