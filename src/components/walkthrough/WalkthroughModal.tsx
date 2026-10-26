@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
-import { X, ChevronLeft, ChevronRight, CheckCircle, Lightbulb, Crosshair, MousePointerClick } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, CheckCircle, Lightbulb, Crosshair } from "lucide-react";
 import { createPortal } from "react-dom";
 import { ToolWalkthrough, WalkthroughStep } from "@/lib/walkthroughData";
 
@@ -25,32 +25,156 @@ const PADDING = 12;
 const GAP = 14;
 const MOBILE_BREAKPOINT = 640;
 
+function isRendered(el: HTMLElement): boolean {
+  const rect = el.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return false;
+  const style = window.getComputedStyle(el);
+  return style.visibility !== "hidden" && style.display !== "none";
+}
+
 /** Returns the first element matching the selector that is actually rendered on screen. */
 function findVisibleTarget(selector: string): HTMLElement | null {
   if (!selector || typeof document === "undefined") return null;
   try {
-    const matches = Array.from(document.querySelectorAll<HTMLElement>(selector));
-    return (
-      matches.find((el) => {
-        const rect = el.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) return false;
-        const style = window.getComputedStyle(el);
-        return style.visibility !== "hidden" && style.display !== "none";
-      }) ?? null
-    );
+    return Array.from(document.querySelectorAll<HTMLElement>(selector)).find(isRendered) ?? null;
   } catch {
     return null;
   }
 }
 
-/** Steps whose target is not on the current screen (e.g. defense-only controls on an offense play) are skipped. */
+const normalizeName = (value: string) =>
+  value.toLowerCase().replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9#+%&]+/g, " ").trim();
+const GENERIC_LIST = "button|buttons|icon|icons|toggle|dropdown|menu|field|fields|checkbox|link|links|tab|tabs|selector|input|box";
+const GENERIC_WORDS = new RegExp(`\\s+(${GENERIC_LIST})$`);
+const GENERIC_ONLY = new RegExp(`^(${GENERIC_LIST})$`);
+
+/** "Draw / Done" → ["draw", "done"]; "Notes icon" → ["notes icon", "notes"]. */
+function labelVariants(label: string): string[] {
+  const variants = new Set<string>();
+  const plain = label.replace(/\([^)]*\)/g, " ");
+  for (const part of [plain, ...plain.split(/\s*\/\s*|\s+or\s+|\s+and\s+|\s*,\s*/i)]) {
+    const name = normalizeName(part);
+    const trimmed = name.replace(GENERIC_WORDS, "");
+    for (const variant of [name, trimmed]) {
+      if (variant.length >= 2 && !GENERIC_ONLY.test(variant)) variants.add(variant);
+    }
+  }
+  return [...variants];
+}
+
+const CONTROL_SELECTOR = "button, a[href], input, select, textarea, label, summary, [role], [aria-label], [title], [placeholder], [data-tour], [data-testid], [data-guide-name], h2, h3, h4, th, legend";
+const INTERACTIVE = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY)$/;
+
+function controlNames(el: HTMLElement): string[] {
+  const names = [el.getAttribute("aria-label"), el.getAttribute("title"), el.getAttribute("placeholder"), el.getAttribute("data-guide-name")];
+  const labels = (el as HTMLInputElement).labels;
+  if (labels) for (const label of Array.from(labels)) names.push(label.textContent);
+  const text = el.textContent?.trim() || "";
+  if (text.length <= 60) names.push(text);
+  return names.filter((name): name is string => !!name).map(normalizeName).filter(Boolean);
+}
+
+/** Finds the control a detail describes inside its area by matching visible names to the detail label. */
+export function findControlByLabel(area: ParentNode, label: string): HTMLElement | null {
+  const variants = labelVariants(label);
+  if (!variants.length) return null;
+  let best: { el: HTMLElement; score: number; size: number } | null = null;
+  for (const el of Array.from(area.querySelectorAll<HTMLElement>(CONTROL_SELECTOR))) {
+    if (el.closest("[data-walkthrough-overlay]") || !isRendered(el)) continue;
+    let score = 0;
+    for (const name of controlNames(el)) {
+      for (const variant of variants) {
+        if (name === variant) score = Math.max(score, 30);
+        else if (new RegExp(`(^|\\s)${variant.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`).test(name)) {
+          score = Math.max(score, name.startsWith(variant) ? 20 : 10);
+        }
+      }
+    }
+    if (!score) continue;
+    if (INTERACTIVE.test(el.tagName) || el.getAttribute("role")) score += 5;
+    const rect = el.getBoundingClientRect();
+    const size = rect.width * rect.height;
+    if (!best || score > best.score || (score === best.score && size < best.size)) best = { el, score, size };
+  }
+  return best?.el ?? findLabelledCard(area, variants);
+}
+
+/** Tiles and cards named by plain text (e.g. a "Players" KPI): spotlight the card around the exact label. */
+function findLabelledCard(area: ParentNode, variants: string[]): HTMLElement | null {
+  for (const el of Array.from(area.querySelectorAll<HTMLElement>("p, span, div, dt, dd, strong, h5, h6"))) {
+    if (el.childElementCount > 1 || el.closest("[data-walkthrough-overlay]")) continue;
+    const text = normalizeName(el.textContent || "");
+    if (!text || text.length > 40 || !variants.includes(text) || !isRendered(el)) continue;
+    const card = el.parentElement?.closest<HTMLElement>('a, button, li, tr, article, [data-tour], [class*="rounded-"]');
+    return card && card !== area && (area as Node).contains(card) ? card : el;
+  }
+  return null;
+}
+
+/** The control a per-control step describes, or null when this viewer doesn't have it on screen. */
+export function findStepControl(step: WalkthroughStep): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  const area = step.targetSelector ? findVisibleTarget(step.targetSelector) : null;
+  if (step.controlSelector) {
+    try {
+      const inArea = area ? Array.from(area.querySelectorAll<HTMLElement>(step.controlSelector)).find(isRendered) : null;
+      // Only selectors anchored on a data attribute are specific enough to search the whole page.
+      const global = !area || /\[data-/.test(step.controlSelector) ? findVisibleTarget(step.controlSelector) : null;
+      return inArea ?? (area?.matches(step.controlSelector) ? area : null) ?? global;
+    } catch {
+      // Invalid selectors fall through to label matching.
+    }
+  }
+  if (!step.controlLabel) return null;
+  const control = findControlByLabel(area ?? document.body, step.controlLabel);
+  if (control && control !== area) return control;
+  // A step whose area is itself the control (e.g. one button) describes that button's states.
+  if (area) {
+    const variants = labelVariants(step.controlLabel);
+    if (controlNames(area).some((name) => variants.some((variant) => name === variant || name.startsWith(`${variant} `)))) return area;
+  }
+  return null;
+}
+
+/** The element a step spotlights: its own control when it is one, otherwise its area. */
+export function findStepTarget(step: WalkthroughStep): HTMLElement | null {
+  return (step.controlLabel || step.controlSelector ? findStepControl(step) : null)
+    ?? (step.targetSelector ? findVisibleTarget(step.targetSelector) : null);
+}
+
+/**
+ * Steps whose target is not on the current screen (e.g. defense-only controls on an offense play) are skipped,
+ * and every control listed in a step becomes its own spotlighted step after the area's introduction.
+ * Controls this viewer doesn't have on screen are left out.
+ */
 export function getAvailableSteps(steps: WalkthroughStep[]): WalkthroughStep[] {
   const available = steps.filter((step) => !step.targetSelector || findVisibleTarget(step.targetSelector));
-  return (available.length > 0 ? available : steps).map((step) =>
-    step.details?.some((d) => d.requiresSelector)
-      ? { ...step, details: step.details.filter((d) => !d.requiresSelector || findVisibleTarget(d.requiresSelector)) }
-      : step,
-  );
+  const skipped: string[] = [];
+  const result = (available.length > 0 ? available : steps).flatMap((step) => {
+    const { details = [], ...area } = step;
+    const controls = details
+      .filter((d) => !d.requiresSelector || findVisibleTarget(d.requiresSelector))
+      .map((detail, index): WalkthroughStep => ({
+        id: `${step.id}--${index}`,
+        targetSelector: step.targetSelector,
+        controlSelector: detail.targetSelector,
+        controlLabel: detail.label,
+        title: detail.label,
+        description: detail.text,
+        category: step.title,
+        placement: step.placement,
+      }))
+      .filter((control) => {
+        const found = !!findStepControl(control);
+        if (!found) skipped.push(`${step.title} > ${control.title} @ ${step.targetSelector}`);
+        return found;
+      });
+    return [area, ...controls];
+  });
+  if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+    (window as unknown as { __walkthroughSkipped?: string[] }).__walkthroughSkipped = skipped;
+  }
+  return result;
 }
 
 export default function WalkthroughModal({
@@ -62,6 +186,7 @@ export default function WalkthroughModal({
   const [steps, setSteps] = useState<WalkthroughStep[]>(walkthrough.steps);
   const [stepIndex, setStepIndex] = useState<number>(initialStepIndex);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+  const [controlFound, setControlFound] = useState(false);
   const [viewport, setViewport] = useState({ width: 1024, height: 768 });
   const [cardHeight, setCardHeight] = useState(280);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -72,6 +197,7 @@ export default function WalkthroughModal({
     const available = getAvailableSteps(walkthrough.steps);
     setSteps(available);
     setStepIndex(Math.min(initialStepIndex, available.length - 1));
+    return () => document.querySelectorAll("[data-walkthrough-target]").forEach((node) => node.removeAttribute("data-walkthrough-target"));
   }, [isOpen, walkthrough, initialStepIndex]);
 
   useLayoutEffect(() => {
@@ -99,11 +225,14 @@ export default function WalkthroughModal({
 
   const measureTarget = useCallback(
     (scroll: boolean) => {
-      if (!isOpen || !currentStep?.targetSelector) {
+      if (!isOpen || !currentStep || (!currentStep.targetSelector && !currentStep.controlLabel && !currentStep.controlSelector)) {
         setTargetRect(null);
         return;
       }
-      const el = findVisibleTarget(currentStep.targetSelector);
+      const el = findStepTarget(currentStep);
+      setControlFound(!!(currentStep.controlLabel || currentStep.controlSelector) && !!findStepControl(currentStep));
+      document.querySelectorAll("[data-walkthrough-target]").forEach((node) => { if (node !== el) node.removeAttribute("data-walkthrough-target"); });
+      el?.setAttribute("data-walkthrough-target", "");
       if (!el) {
         setTargetRect(null);
         return;
@@ -254,7 +383,7 @@ export default function WalkthroughModal({
 
   // Portal to <body> so ancestors with transforms or backdrop filters can't trap or clip the fixed overlay.
   return createPortal(
-    <div className="fixed inset-0 z-[120] overflow-hidden">
+    <div className="fixed inset-0 z-[120] overflow-hidden" data-walkthrough-overlay="">
       <svg className="absolute inset-0 w-full h-full pointer-events-none">
         <defs>
           <mask id="walkthrough-spotlight-mask">
@@ -278,6 +407,7 @@ export default function WalkthroughModal({
         role="dialog"
         aria-modal="true"
         aria-label={`${walkthrough.toolName} walkthrough`}
+        data-control-step={currentStep.controlLabel ? (controlFound ? "found" : "area") : undefined}
         tabIndex={-1}
         className="absolute z-10 flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl transition-[top,left] duration-200 dark:border-white/15 dark:bg-[#0B0F19] dark:text-neutral-100"
         style={{ top: position.top, left: position.left, width: cardWidth, maxHeight: maxCardHeight }}
@@ -309,24 +439,6 @@ export default function WalkthroughModal({
             <h3 className="mb-1 text-base font-black tracking-tight sm:text-lg">{currentStep.title}</h3>
             <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{currentStep.description}</p>
           </div>
-
-          {currentStep.details && currentStep.details.length > 0 && (
-            <div className="rounded-xl bg-[#7e22ce]/[0.05] p-3 dark:bg-[#a855f7]/[0.08]">
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)]">
-                <MousePointerClick className="h-3.5 w-3.5" />
-                What each control does
-              </div>
-              <ul className="space-y-3">
-                {currentStep.details.map((detail) => (
-                  <li key={detail.label} className="text-sm leading-relaxed text-[var(--text-secondary)]">
-                    <strong className="font-semibold text-[var(--text-primary)]">{detail.label}</strong>
-                    {" — "}
-                    {detail.text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {currentStep.actionHint && (
             <div className="flex items-start gap-2 rounded-xl bg-[#7e22ce]/[0.07] p-3 text-sm text-[var(--text-secondary)]">

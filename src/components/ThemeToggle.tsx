@@ -84,6 +84,7 @@ export default function ThemeToggle({
       } ${className}`}
       title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
       aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      data-guide-name="Theme toggle"
     >
       {isDark ? (
         <Sun className={`${size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"} text-amber-400 transition-transform duration-200 hover:rotate-45`} />

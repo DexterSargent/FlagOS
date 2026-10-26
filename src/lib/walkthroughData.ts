@@ -3,6 +3,11 @@ export interface WalkthroughDetail {
   text: string;
   /** Only shown when this selector exists on the page, so people never read about controls they don't have. */
   requiresSelector?: string;
+  /**
+   * The control to spotlight. When omitted, the guide finds the control inside the step's area whose
+   * label, aria-label or title matches `label`, and falls back to the whole area.
+   */
+  targetSelector?: string;
 }
 
 export interface WalkthroughStep {
@@ -11,8 +16,12 @@ export interface WalkthroughStep {
   targetSelector: string;
   title: string;
   description: string;
-  /** Button-by-button breakdown of everything inside the highlighted area. */
+  /** Every control inside the highlighted area; the guide spotlights each one as its own step. */
   details?: WalkthroughDetail[];
+  /** Set on generated per-control steps: the label used to find the control inside `targetSelector`. */
+  controlLabel?: string;
+  /** Set on generated per-control steps: an explicit selector for the control. */
+  controlSelector?: string;
   category?: string;
   placement?: "top" | "bottom" | "left" | "right";
   tip?: string;
@@ -486,7 +495,8 @@ export const TEAM_ROSTER_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Guide",
-          "text": "Open the guide for the current page or dialog."
+          "text": "Open the guide for the current page or dialog.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         },
         {
           "label": "Theme",
@@ -668,7 +678,8 @@ export const TEAM_HUB_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Guide",
-          "text": "Open the guide for the current page or dialog."
+          "text": "Open the guide for the current page or dialog.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         },
         {
           "label": "Theme",
@@ -835,7 +846,8 @@ export const TEAM_SCHEDULE_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Guide",
-          "text": "Open the guide for the current page or dialog."
+          "text": "Open the guide for the current page or dialog.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         },
         {
           "label": "Theme",
@@ -891,7 +903,8 @@ export const TEAM_SCHEDULE_WALKTHROUGH: ToolWalkthrough = {
       "details": [
         {
           "label": "Result card",
-          "text": "Open the game recap or untimed stat keeper."
+          "text": "Open the game recap or untimed stat keeper.",
+          "targetSelector": "a"
         },
         {
           "label": "Delete Event",
@@ -942,7 +955,8 @@ export const TEAM_STATS_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Guide",
-          "text": "Open the guide for the current page or dialog."
+          "text": "Open the guide for the current page or dialog.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         },
         {
           "label": "Theme",

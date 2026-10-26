@@ -51,7 +51,8 @@ export const LANDING_WALKTHROUGH: ToolWalkthrough = {
       "details": [
         {
           "label": "Guide",
-          "text": "Reopens this page guide."
+          "text": "Reopens this page guide.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         },
         {
           "label": "Theme toggle",
@@ -126,7 +127,7 @@ export const LANDING_WALKTHROUGH: ToolWalkthrough = {
           "text": "Tries drawing formations and routes."
         },
         {
-          "label": "Schedule Builder",
+          "label": "Schedule Builder / Schedule",
           "text": "Tries arranging games."
         },
         {
@@ -261,7 +262,8 @@ export const PRICING_WALKTHROUGH: ToolWalkthrough = {
       "details": [
         {
           "label": "Guide",
-          "text": "Reopens this guide."
+          "text": "Reopens this guide.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         },
         {
           "label": "Theme toggle",
@@ -373,7 +375,8 @@ export const PRICING_WALKTHROUGH: ToolWalkthrough = {
       "details": [
         {
           "label": "FAQ question",
-          "text": "Expands the answer; select it again to close it. Opening another question replaces the open answer."
+          "text": "Expands the answer; select it again to close it. Opening another question replaces the open answer.",
+          "targetSelector": "button"
         }
       ]
     },
@@ -885,7 +888,8 @@ export const LOGIN_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Guide",
-          "text": "Reopens this sign-in guide."
+          "text": "Reopens this sign-in guide.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         }
       ]
     },
@@ -1108,7 +1112,8 @@ export const JOIN_LEAGUE_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Player name",
-          "text": "Adds or removes that player from your requests."
+          "text": "Adds or removes that player from your requests.",
+          "targetSelector": "button"
         },
         {
           "label": "Selected teammate",
@@ -1500,7 +1505,8 @@ export const MY_STORY_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Guide",
-          "text": "Explains the story page and its available controls."
+          "text": "Explains the story page and its available controls.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         }
       ]
     },
@@ -1524,7 +1530,8 @@ export const MY_STORY_WALKTHROUGH: ToolWalkthrough = {
         },
         {
           "label": "Guide",
-          "text": "Reopens this reading guide."
+          "text": "Reopens this reading guide.",
+          "targetSelector": "[data-testid=\"page-guide-button\"]"
         },
         {
           "label": "Theme toggle",
@@ -1812,7 +1819,7 @@ export const FREE_AGENTS_WALKTHROUGH: ToolWalkthrough = {
       "details": [
         { "label": "Name, Email, City / Area", "text": "Required so an organizer can contact you." },
         { "label": "Experience and Notes", "text": "Optional. Positions you like, availability, or anything else organizers should know." },
-        { "label": "Age confirmation", "text": "Players under 18 need a parent or guardian's permission to submit." },
+        { "label": "Age confirmation", "text": "Players under 18 need a parent or guardian's permission to submit.", "targetSelector": "label:has(input[type=\"checkbox\"])" },
         { "label": "Send My Details", "text": "Saves your details and shows a confirmation." }
       ]
     },

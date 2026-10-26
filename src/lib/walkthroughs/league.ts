@@ -15,27 +15,28 @@ export const COMMISSIONER_DASHBOARD_WALKTHROUGH: ToolWalkthrough = {
     ] },
     { id: "league-kpis", targetSelector: '[data-tour="league-kpis"]', title: "League at a Glance", category: "Season", description: "These cards summarize team slots, schedule progress, player count, and league scoring leaders.", details: [
       { label: "Teams & Slots", text: "Compare the current team count with your league's available team slots." },
-      { label: "Manage Teams & Slots", text: "Open League Settings to adjust team slots. Demo leagues show Demo Settings instead." },
-      { label: "Schedule Progress", text: "See how many games have been scheduled or completed." },
-      { label: "Players", text: "See the number of players currently registered in the league." },
-      { label: "Top Scorer", text: "See who has scored the most touchdowns so far." },
+      { label: "Manage Teams & Slots / Demo Settings", text: "Open League Settings to adjust team slots. Demo leagues show Demo Settings instead." },
+      { label: "Schedule Progress", text: "See how many games have been completed out of everything on the schedule.", targetSelector: ":scope > div:nth-child(2)" },
+      { label: "Players", text: "See the number of players currently registered in the league.", targetSelector: ":scope > div:nth-child(3)" },
+      { label: "Top Scorer", text: "See who has scored the most touchdowns so far.", targetSelector: ":scope > div:nth-child(4)" },
     ] },
     { id: "league-schedule", targetSelector: '[data-tour="league-schedule-tab"]', title: "Live & Upcoming Games", category: "Games", description: "Follow current and upcoming matchups. Open a game for its score and play-by-play, or start scorekeeping when your role allows it.", details: [
-      { label: "Schedule", text: "Open the full league calendar." },
-      { label: "Game card", text: "Open a matchup to see its game details and available live or stat-keeping actions." },
-      { label: "Stat Keeper", text: "For an eligible manager, open the live controls and record plays." },
+      { label: "View Full Schedule", text: "Open the full league calendar." },
+      { label: "Game card", text: "Each card shows the matchup, records, field, and start time, or the live score and clock once the game starts.", targetSelector: ".grid > div" },
+      { label: "Launch Scorekeeper", text: "Open the live controls for that game and record plays. Only league admins and invited scorers see this." },
+      { label: "Game Preview & Details", text: "Open the matchup page with team details and, once it starts, the live score." },
     ] },
     { id: "league-standings", targetSelector: '[data-tour="league-standings-section"]', title: "Official Standings", category: "Season", description: "Compare team records and points as completed games update the table.", details: [
-      { label: "Team name", text: "Open that team's hub." },
-      { label: "Standings & Stats", text: "Open the complete league standings and player statistics." },
+      { label: "Team name", text: "Open that team's hub.", targetSelector: "tbody a" },
+      { label: "View Full Standings", text: "Open the complete league standings and player statistics." },
     ] },
     { id: "league-leaders", targetSelector: '[data-tour="league-leaders-section"]', title: "League Stat Leaders", category: "Season", description: "See the leading passers, receivers, scorers, and defenders.", details: [
-      { label: "Player name", text: "Open that player's profile or game details when available." },
-      { label: "View all stats", text: "Open the full stats page for sortable player leaderboards." },
+      { label: "Leader cards", text: "Each card shows the current leader for passing, receiving, total touchdowns, and flag pulls.", targetSelector: ".grid" },
+      { label: "View Full Stat Leaderboards", text: "Open the full stats page for sortable player leaderboards." },
     ] },
     { id: "league-teams", targetSelector: '[data-tour="league-teams-grid"]', title: "Team Directory Preview", category: "Teams", description: "Browse league teams and their records, then open a team hub.", details: [
-      { label: "Team card", text: "Open the selected team's hub." },
-      { label: "View all teams", text: "Open the full team directory." },
+      { label: "Team card", text: "Shows each team's logo, record, and roster size, with links to its roster and hub.", targetSelector: ".grid > div" },
+      { label: "Team Directory", text: "Open the full team directory." },
     ] },
   ],
 };
@@ -75,7 +76,7 @@ export const PLAYER_DASHBOARD_WALKTHROUGH: ToolWalkthrough = {
     { id: "player-games", targetSelector: '[data-tour="dashboard-schedule"]', title: "Games", category: "Games", description: "Follow live and upcoming league games. Open your matchup to see its details." },
     { id: "player-standings", targetSelector: '[data-tour="player-dashboard-standings"]', title: "League Standings", category: "Season", description: "Compare your team's record with the rest of the league.", details: [
       { label: "View Full Table", text: "Open complete standings and player statistics." },
-      { label: "Team name", text: "Open that team's hub." },
+      { label: "Team name", text: "Open that team's hub.", targetSelector: "tbody a" },
     ] },
     { id: "player-leaders", targetSelector: '[data-tour="player-league-recognition"]', title: "League Leader Recognition", category: "Stats", description: "If you are a league leader, this banner shows the categories where you rank at the top.", details: [
       { label: "Leaderboards", text: "Open the full league leaderboard page." },
@@ -126,7 +127,7 @@ export const SCHEDULE_WALKTHROUGH: ToolWalkthrough = {
       { label: "Week button", text: "Filter the calendar to the selected week." },
     ] },
     { id: "games", targetSelector: '[data-tour="schedule-games"]', title: "Game Calendar", category: "Games", description: "Browse matchups, results, and game locations. Open a matchup for its box score or live play-by-play.", details: [
-      { label: "Game matchup", text: "Open the game details page." },
+      { label: "Game matchup", text: "Open the game details page.", targetSelector: 'a[href*="/matches/"]' },
       { label: "Watch Live / See Stats", text: "Open the play-by-play viewer, which also shows box score and team stats." },
       { label: "Edit Event", text: "Change the selected game's details.", requiresSelector: '[data-guide="manage-event"]' },
       { label: "Delete Event", text: "Remove a game from the schedule after confirmation.", requiresSelector: '[data-guide="manage-event"]' },
@@ -147,11 +148,12 @@ export const STATS_WALKTHROUGH: ToolWalkthrough = {
       { label: "Rank / Played / W / L / T", text: "Review each team's position and game record." },
       { label: "PF / PA / DIFF / PTS", text: "Compare points for, points against, point differential, and standings points." },
     ] },
-    { id: "individual-stats", targetSelector: '[data-tour="stats-tabs"]', title: "Individual Player Stats", category: "Players", description: "Choose Individual Stats to switch from team standings to player leaders and the sortable player table.", details: [
-      { label: "Passing / Receiving / Defense", text: "Choose which player stat group to display." },
+    { id: "individual-stats", targetSelector: '[data-tour="stats-individual"]', title: "Individual Player Stats", category: "Players", description: "Player leaders and the sortable player table. Choose Individual Stats above to open this view.", details: [
       { label: "Leaders / Full Table", text: "Switch between top-three category cards and the sortable player table." },
-      { label: "View Full [stat] Stats", text: "Open the full player table for that stat category." },
-      { label: "Player / Team", text: "Sort by player or team; the team name opens that team's hub." },
+      { label: "View Full Stats", text: "Open the full player table for that stat category." },
+      { label: "Back to Stat Leaders", text: "Return from the full table to the category leader cards." },
+      { label: "Passing / Receiving / Defense", text: "Choose which player stat group to display." },
+      { label: "Player / Team", text: "Sort by player or team; the team name opens that team's hub.", targetSelector: "thead th:nth-child(2)" },
       { label: "Rank / GP / Comp / Comp % / Pass TD / INT / PAT Conv", text: "In Passing, compare games, completions, completion rate, touchdowns, interceptions, and conversions." },
       { label: "Receptions / Rec TD / Rush Att / Rush TD", text: "In Receiving, compare catches, receiving touchdowns, carries, and rushing touchdowns." },
       { label: "Flags / INT / Def TD / Sacks / FFL / PBU / Safeties", text: "In Defense, compare defensive production and turnovers." },
@@ -192,9 +194,9 @@ export const TEAMS_DIRECTORY_WALKTHROUGH: ToolWalkthrough = {
       { label: "Delete Player", text: "Administrators can remove the player after confirmation." },
     ] },
     { id: "free-agents", targetSelector: '[data-tour="teams-free-agents"]', title: "Free Agent Pool", category: "Players", description: "Find unassigned players and assign them to a team.", details: [
-      { label: "Search players", text: "Filter the free agent list by a player's name." },
+      { label: "Search free agents", text: "Filter the free agent list by a player's name." },
       { label: "ALL / QB / WR / RB / C / DB / RUSH / ATH", text: "Filter the pool by position." },
-      { label: "Select Team...", text: "Choose which team should receive the free agent." },
+      { label: "Select Team...", text: "Choose which team should receive the free agent.", targetSelector: "select" },
       { label: "Assign", text: "Move the selected player onto the chosen team." },
       { label: "Delete Free Agent", text: "Remove this free agent from the pool." },
       { label: "Join As Free Agent / Submit Join Form", text: "Open the player registration form." },

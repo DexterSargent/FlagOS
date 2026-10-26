@@ -561,6 +561,7 @@ export default function StatsAndStandings() {
                         {/* View Full Stats Button */}
                         <button
                           onClick={() => handleOpenFullStats(cat.subtab, cat.key)}
+                          data-guide-name="View Full Stats"
                           className="w-full mt-2 py-3 px-4 rounded-xl bg-white/5 hover:bg-cyan-600 text-neutral-300 hover:text-white text-xs font-bold transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-cyan-500 group-hover:shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.25)]"
                         >
                           <span>View Full {cat.title} Stats</span>
