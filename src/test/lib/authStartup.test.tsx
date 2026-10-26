@@ -25,6 +25,7 @@ function Probe() {
   return <output>{JSON.stringify({
     uid: auth.userProfile?.uid, role: auth.role, loading: auth.loading,
     playerId: auth.userProfile?.playerId, teamId: auth.managedTeamId,
+    platform: auth.isPlatformAdmin, coachesCustomerTeam: auth.isTeamAdmin("customer-team"),
   })}</output>;
 }
 const state = () => JSON.parse(screen.getByRole("status").textContent!);
@@ -97,6 +98,18 @@ describe("Parallel auth startup", () => {
       uid: "verified", role: "team_admin", teamId: "customer-team", playerId: "customer-player", loading: false,
     });
     expect(mocks.sandboxPlayers).not.toHaveBeenCalled();
+  });
+
+  it("ignores a deploy-time admin email override so a coach stays a team admin", async () => {
+    vi.stubEnv("NEXT_PUBLIC_ADMIN_EMAILS", "verified@example.com");
+    try {
+      mocks.lookup.mockResolvedValue({ teams: [{ id: "customer-team", name: "Customer Team" }], players: [] });
+      render(<AuthProvider><Probe /></AuthProvider>);
+      await act(async () => { await mocks.callback!(user()); });
+      expect(state()).toMatchObject({ role: "team_admin", platform: false, coachesCustomerTeam: true, loading: false });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("does not perform private identity lookup for an unverified email or trust cached roles", async () => {
