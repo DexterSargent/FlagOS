@@ -43,6 +43,68 @@ checked for persistence:
 
 ### Remaining immediate steps (do these next)
 
+**26 October initial credential verification:** The owner created
+`FLAGOS_SANDBOX_STRIPE_SECRET_KEY` in project `flagfootballleaguemachine`.
+The assistant successfully accessed it without printing the value. It initially contained
+an unrestricted test key, not a restricted key. Read-only API requests verified all three
+prices above are active, sandbox-only, monthly CAD prices with the expected amounts.
+The API also confirmed an active default portal with invoice history and payment-method
+updates enabled, cancellation at period end, and subscription updates disabled.
+No purchases or Stripe configuration changes were made during these checks.
+Production billing still reports `{"enabled":false}`.
+
+The owner subsequently replaced it with a restricted sandbox key. The following
+replacement sequence is retained for future rotations:
+
+1. In **FLAGOS sandbox > API keys**, choose **Create restricted key**, not
+   **Create secret key** or the publishable key.
+2. Use the permissions in step 6 below and name it **FlagOS development billing**.
+3. Confirm the resulting value starts with `rk_test_`.
+4. In Google Cloud Secret Manager, open the existing
+   `FLAGOS_SANDBOX_STRIPE_SECRET_KEY` secret and choose **New version**.
+5. Paste the restricted key directly into that secure form and save. Do not rename the
+   secret or send the value in chat. The assistant reads `versions/latest`.
+6. Tell the assistant: **"The secret now has a restricted sandbox key."**
+7. Once the replacement is verified and the old unrestricted key is no longer used
+   elsewhere, revoke the old key in Stripe. Disabling an old Secret Manager version
+   does not revoke the Stripe credential itself.
+
+**Restricted-key verification completed on 26 October:**
+
+- Latest secret is an `rk_test_` credential; its value was never printed or written
+  to the repository.
+- All three sandbox prices and the active default portal are readable with this key.
+- Stripe accepted a Team Checkout for CAD 40 and a six-team League Checkout for
+  CAD 160. Both were explicitly confirmed to be test-mode sessions.
+- Customer creation and billing-portal session creation also succeeded.
+- No payment was submitted. Both disposable checkouts were expired, and the
+  disposable customer was deleted.
+- Official Stripe CLI v1.55.1 was downloaded into the assistant's session tools
+  directory and its SHA-256 checked against Stripe's published Windows checksums.
+  No global installation or dependency-manifest changes were made.
+- The restricted app key could not authenticate the CLI webhook listener. Instead of
+  broadening it, a separate browser authorization was completed. `stripe whoami`
+  confirmed access to **only** sandbox `acct_1UUopeRk6enkly19` in test mode.
+- Auth and Firestore emulators were started and responded on 9099 and 8080.
+  They were stopped after the attempted isolated app startup.
+- Next.js refused to start a second app server while the existing local server
+  (port 3001, PID 12416 at the time of the check) was running, despite requesting a
+  different build directory. The existing server was not stopped or changed.
+- End-to-end purchases and signed webhook delivery to the app remain unverified.
+  Production checkout remains disabled.
+
+**Next action:** coordinate a restart of the existing local server with sandbox-only
+environment settings. Re-check its current PID before stopping it, and do not interrupt
+other active local work without coordination. Start emulators and webhook forwarding
+in the same test session; keep API and signing secrets in memory. The CLI is at:
+
+```text
+C:\Users\dexte\.copilot\session-state\1358eb56-2973-4712-8703-d79fe5e22830\files\stripe-cli-1.55.1\stripe.exe
+```
+
+The remaining numbered steps describe the full local setup. The key creation and CLI
+installation/authorization steps are now complete; do not repeat them unnecessarily.
+
 1. Leave the Dashboard in **FLAGOS sandbox**, not live FLAGOS or shared Test mode.
 2. Create the restricted **sandbox** key described in step 6. Do not paste it into chat.
    Store it securely under a clearly separate name, such as
@@ -52,8 +114,8 @@ checked for persistence:
 3. Tell the assistant the secret resource name only. It can retrieve the value directly
    into a local process without printing it; never use a tool command that outputs it.
 4. Install/authenticate the Stripe CLI locally for signed webhook forwarding. The CLI
-   is not currently available on PATH. Use Stripe's official CLI installation guide,
-   then `stripe login`, confirming the sandbox account, not live FLAGOS.
+   is installed in the session-only location above, not on PATH, and sandbox
+   authorization is complete. Use its full path or a terminal-local PATH entry.
 5. In one terminal, start the isolated Firebase services:
 
    ```powershell
@@ -80,8 +142,8 @@ checked for persistence:
 8. Verify emulators are responsive and run step 9 with a verified non-owner test account.
 
 Steps 1-5 below document the full setup and can now be skipped where marked complete
-above. The sandbox restricted key, signed webhook forwarding and real Checkout tests
-are still outstanding. Tax collection remains off.
+above. Signed webhook delivery and end-to-end Checkout payment tests are still
+outstanding. Tax collection remains off.
 
 Do not paste passwords, API keys, signing secrets, bank details or identity documents
 into chat. Enter them directly in Stripe or the hidden Secret Manager CLI prompts.

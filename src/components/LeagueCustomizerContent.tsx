@@ -928,7 +928,7 @@ export default function LeagueCustomizerContent() {
             {/* Section 3: Official League Colours */}
             <div data-tour="settings-colours" className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                   <Palette className="w-3.5 h-3.5" />
                   <span>3. Official League Colours</span>
                 </span>
@@ -1026,7 +1026,7 @@ export default function LeagueCustomizerContent() {
                       onChange={(e) => handlePrimaryChange(e.target.value)}
                       placeholder="#3CA505"
                       aria-label="Primary league colour hex"
-                      className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-purple-400 text-white font-mono text-xs uppercase outline-none transition-colors"
+                      className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white font-mono text-xs uppercase outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -1061,7 +1061,7 @@ export default function LeagueCustomizerContent() {
                       onChange={(e) => handleSecondaryChange(e.target.value)}
                       placeholder="#22C55E"
                       aria-label="Secondary league colour hex"
-                      className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-purple-400 text-white font-mono text-xs uppercase outline-none transition-colors"
+                      className="w-full px-3 py-2 rounded-xl bg-black/80 border border-white/10 focus:border-emerald-400 text-white font-mono text-xs uppercase outline-none transition-colors"
                     />
                   </div>
                 </div>

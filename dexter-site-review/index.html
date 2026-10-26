@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
+  <title>Dexter's FlagOS site review</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="inventory.js" defer></script>
+  <script src="review-plan.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div><p class="eyebrow">FLAGOS / PERSONAL RELEASE WORKSPACE</p><h1>Dexter's site review</h1>
+      <p class="muted">Walk the whole site. Check the details. Keep an honest launch list.</p></div>
+    <div class="tools">
+      <button id="export-json">Export backup</button><button id="export-report">Export report</button>
+      <label class="button" for="import-file">Import backup</label>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+      <button id="print">Print</button>
+    </div>
+  </header>
+  <div id="message" class="message" role="status" aria-live="polite" hidden></div>
+  <div id="storage-warning" class="warning" role="alert" hidden></div>
+  <main>
+    <section class="intro panel">
+      <div><h2>Your release cockpit</h2><p>This is a private, local checklist, not an admin tool. It never writes app data or marks anything passed automatically. Review the actual screen and save your own evidence.</p>
+        <p class="danger-text"><strong>Production: observe only.</strong> Run creation, deletion, fake-data generation, payments and score edits only with disposable isolated data. A demo URL is not proof of database isolation.</p>
+        <p id="snapshot" class="muted"></p>
+      </div>
+      <ol>
+        <li>Set the target origin and IDs below.</li>
+        <li>Start with Pages; expand an item and open it.</li>
+        <li>Review each role, control, state and screen size.</li>
+        <li>Record issues, then set a verdict. Export regularly.</li>
+      </ol>
+    </section>
+    <details class="panel setup" open>
+      <summary>Review target &amp; test fixtures</summary>
+      <div class="setup-grid">
+        <label>Site origin<input id="origin" type="url" placeholder="https://flagos.ca"></label>
+        <label>League ID<input id="league-id" placeholder="default"></label>
+        <label>Team ID<input id="team-id" placeholder="Paste a real or demo team ID"></label>
+        <label>League match ID<input id="match-id" placeholder="Paste a match ID"></label>
+        <label>Team match ID<input id="team-match-id" placeholder="Independent-team match ID"></label>
+        <label>Reviewer / session<input id="reviewer" placeholder="Dexter - release candidate"></label>
+      </div>
+      <label class="inline"><input id="demo" type="checkbox"> Append demo=true to links (device-local demo where supported; not a production safety guarantee)</label>
+      <p class="muted">League-wide schedule/teams/stats use the app's active league. Open your league dashboard first. IDs come from the address bar, not display names. Missing IDs disable the affected links. Scorer token links should be opened from the app; do not paste private tokens here.</p>
+      <p><a href="../docs/local-firebase-emulators.md">Emulator instructions</a> · <a href="README.md">Full reviewer guide</a></p>
+    </details>
+    <section class="metrics" aria-label="Overall review progress">
+      <div><strong id="progress-count">0</strong><span>Reviewed verdicts</span></div>
+      <div><strong id="pass-count">0</strong><span>Passed</span></div>
+      <div><strong id="issue-count">0</strong><span>Needs fixes</span></div>
+      <div><strong id="blocked-count">0</strong><span>Blocked / N/A</span></div>
+      <div><strong id="check-count">0</strong><span>Checks completed</span></div>
+      <progress id="progress" max="100" value="0" aria-label="Reviewed verdict percentage"></progress>
+    </section>
+    <nav id="views" class="views" aria-label="Dashboard views">
+      <button data-view="pages" aria-pressed="true">Pages</button>
+      <button data-view="components" aria-pressed="false">Components &amp; layouts</button>
+      <button data-view="journeys" aria-pressed="false">Journeys &amp; launch gates</button>
+      <button data-view="apis" aria-pressed="false">API checklist</button>
+      <button data-view="atlas" aria-pressed="false">Source atlas</button>
+      <button data-view="resources" aria-pressed="false">Resources</button>
+    </nav>
+    <section class="filters panel" aria-label="Review filters">
+      <label class="search">Search routes, files, controls or notes<input id="search" type="search" placeholder="Try depth chart, billing, roster, contrast..."></label>
+      <label>Group<select id="group"><option value="">All groups</option></select></label>
+      <label>Role<select id="role"><option value="">All roles</option></select></label>
+      <label>Verdict<select id="status"><option value="">All verdicts</option><option value="todo">Not reviewed</option><option value="reviewing">In review</option><option value="passed">Passed</option><option value="issue">Needs fixes</option><option value="blocked">Blocked</option><option value="na">Not applicable</option></select></label>
+      <button id="clear-filters">Clear filters</button>
+    </section>
+    <div class="results-heading"><h2 id="view-title">Page checklist</h2><span id="result-count" class="muted"></span></div>
+    <p id="view-help" class="muted"></p>
+    <div id="results"></div>
+    <section class="panel footer-panel">
+      <h2>Coverage is not a launch approval</h2>
+      <p>Inventoried files prove that review entries exist, not that a feature works. Import paths show potential usage, including conditional branches. Controls without tour markers still need manual inspection. A checked box is your observation, not an automated test result.</p>
+      <p>Progress is stored in this browser on this exact origin. Switching ports, browsers or file paths may show a different checklist. Export a backup before clearing browser data or changing machines. Notes may include sensitive context: keep exports private and out of Git.</p>
+      <button id="reset" class="danger">Reset local review progress...</button>
+    </section>
+  </main>
+  <footer class="bottom">Built for Dexter. No analytics, external scripts, API calls or app mutations. Page links open in a separate tab.</footer>
+  <noscript>This review dashboard needs JavaScript. Enable it locally; no external scripts are loaded.</noscript>
+</body>
+</html>
