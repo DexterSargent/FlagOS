@@ -787,14 +787,6 @@ export const LEAGUE_DIRECTORY_WALKTHROUGH: ToolWalkthrough = {
           "text": "Opens the league’s public portal."
         },
         {
-          "label": "Set Active",
-          "text": "Makes this your current league for other league pages."
-        },
-        {
-          "label": "Active",
-          "text": "Marks the already selected league and cannot be pressed."
-        },
-        {
           "label": "Register",
           "text": "Opens registration for that league."
         },

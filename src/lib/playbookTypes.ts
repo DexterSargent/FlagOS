@@ -789,10 +789,10 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
     name: "Wheel",
     shortName: "Wheel",
     category: "Crossing",
-    defaultBreakYards: 3,
+    defaultBreakYards: 5,
     minBreakYards: 2,
     maxBreakYards: 8,
-    description: "Releases toward the flat, then plants and turns straight up the sideline",
+    description: "Releases out toward the sideline, then plants and turns straight up the field",
   },
   {
     name: "Whip / Pivot",
@@ -917,7 +917,7 @@ export function generateRoutePreset(
       ];
     }
     case "Post": {
-      const postCut = (50 - startX) * 0.7;
+      const postCut = isLeftSide ? 20 : -20;
       const endY = snapYToYard(breakY - 12 * YARD_HEIGHT_PCT, losY);
       return [
         { x: startX, y: breakY },
@@ -960,11 +960,12 @@ export function generateRoutePreset(
       ];
     }
     case "Wheel": {
-      const flatOut = isLeftSide ? -10 : 10;
       const verticalY = snapYToYard(breakY - 16 * YARD_HEIGHT_PCT, losY);
+      const outDir = isLeftSide ? -10 : 10;
       return [
-        { x: Math.max(4, Math.min(96, startX + flatOut)), y: breakY },
-        { x: Math.max(4, Math.min(96, startX + flatOut)), y: verticalY },
+        { x: startX, y: breakY },
+        { x: Math.max(4, Math.min(96, startX + outDir)), y: breakY },
+        { x: Math.max(4, Math.min(96, startX + outDir)), y: verticalY },
       ];
     }
     case "Flat": {
@@ -976,9 +977,9 @@ export function generateRoutePreset(
     case "Drag":
     case "Drag / Cross": {
       const crossDir = isLeftSide ? 35 : -35;
-      const crossEnd = snapYToYard(breakY - 1 * YARD_HEIGHT_PCT, losY);
+      const crossEnd = snapYToYard(breakY, losY);
       return [
-        { x: startX, y: breakY },
+        { x: startX + 3 * YARD_HEIGHT_PCT, y: breakY },
         { x: Math.max(4, Math.min(96, startX + crossDir)), y: crossEnd },
       ];
     }
@@ -987,8 +988,9 @@ export function generateRoutePreset(
       const inFake = isLeftSide ? 6 : -6;
       const outWhip = isLeftSide ? -10 : 10;
       return [
-        { x: startX + inFake, y: breakY },
-        { x: Math.max(4, Math.min(96, startX + outWhip)), y: snapYToYard(breakY + 1 * YARD_HEIGHT_PCT, losY) },
+        { x: startX, y: breakY },
+        { x: startX + inFake, y: breakY - 1 * YARD_HEIGHT_PCT },
+        { x: Math.max(4, Math.min(96, startX + outWhip)), y: snapYToYard(breakY - 1 * YARD_HEIGHT_PCT, losY) },
       ];
     }
     case "Fade": {
@@ -1098,8 +1100,8 @@ export function generatePlayerAssignmentNote(
         shade === "inside"
           ? "inside shade"
           : shade === "outside"
-          ? "outside shade"
-          : "head up";
+            ? "outside shade"
+            : "head up";
 
       const cushion = player.cushionYards ?? 5;
       const cushionText = `${cushion}yd${cushion === 1 ? "" : "s"} off`;

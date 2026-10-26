@@ -14,8 +14,10 @@ if (process.env.NODE_ENV !== "production" && !useFirebaseEmulators) {
   );
 }
 
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
 if (useFirebaseEmulators) {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !isBuildPhase) {
     throw new Error("Firebase emulator mode cannot be enabled in production.");
   }
   if (projectId !== "demo-flagos-local") {

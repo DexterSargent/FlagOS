@@ -1064,8 +1064,8 @@ export default function LeagueDirectoryPage() {
                     </div>
                   </div>
 
-                  {/* Row 1: Explore Hub & Set Active */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Row 1: Explore Hub */}
+                  <div>
                     <Link
                       href={`/league/${league.id}`}
                       className="w-full py-2.5 px-3 rounded-xl bg-emerald-700 text-white font-black text-xs uppercase tracking-wider text-center transition-all hover:opacity-90 flex items-center justify-center gap-1 shadow-sm cursor-pointer"
@@ -1074,27 +1074,6 @@ export default function LeagueDirectoryPage() {
                       <span>Explore Hub</span>
                       <ArrowRight className="w-3.5 h-3.5" style={{ color: '#ffffff' }} />
                     </Link>
-
-                    {league.isActive ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full py-2.5 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-black text-xs uppercase tracking-wider text-center flex items-center justify-center gap-1"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Active</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => switchLeague(league.id)}
-                        className="w-full py-2.5 px-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 font-bold text-xs uppercase tracking-wider text-center border border-cyan-500/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
-                        title="Make this your active league"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
-                        <span>Set Active</span>
-                      </button>
-                    )}
                   </div>
 
                   {/* Row 2: Register & Inquire */}
@@ -1303,16 +1282,6 @@ export default function LeagueDirectoryPage() {
                     </td>
                     <td className="py-4 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {!l.isActive && (
-                          <button
-                            type="button"
-                            onClick={() => switchLeague(l.id)}
-                            className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30 text-[10px] font-bold uppercase transition-colors cursor-pointer"
-                            title="Set as active league"
-                          >
-                            Set Active
-                          </button>
-                        )}
                         <Link
                           href={`/league/${l.id}`}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-white font-black text-[11px] uppercase tracking-wider transition-all cursor-pointer"

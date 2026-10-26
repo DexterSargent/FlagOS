@@ -2,6 +2,13 @@
 
 Low-maintenance runbook for the production project `flagfootballleaguemachine`.
 
+## Stripe billing activation
+
+Follow the [Stripe setup walkthrough](STRIPE-SETUP-WALKTHROUGH.md) for account access,
+sandbox isolation, products, webhook events, secure secret storage, portal settings,
+acceptance tests and live activation. Checkout is disabled by default. Disabling checkout
+does not stop Stripe renewals; keep webhooks operational during rollback.
+
 ## Walkthrough and form checks
 
 Run `npm run audit:contrast -- http://localhost:3001` against a running local app

@@ -15,8 +15,8 @@ export function FlagOSText({
 }) {
   return (
     <span style={{ textTransform: "none" }} className={`inline-flex items-baseline tracking-normal font-black ${className}`}>
-      <span className="text-white">Flag</span>
-      <span style={{ color: "var(--league-ink, #3CA505)" }} className={osClassName}>
+      <span className="text-white flag-word">Flag</span>
+      <span style={{ color: "var(--league-ink, #2b7d04)" }} className={osClassName}>
         OS
       </span>
     </span>

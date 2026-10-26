@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import AccountMenu from "@/components/AccountMenu";
 
+let mockActiveLeagueId = "default";
 const { mockUseAuth, mockLogout, mockOpenCustomizer, usePathnameMock } = vi.hoisted(() => ({
   mockUseAuth: vi.fn(),
   mockLogout: vi.fn(),
@@ -11,7 +12,7 @@ const { mockUseAuth, mockLogout, mockOpenCustomizer, usePathnameMock } = vi.hois
 
 vi.mock("next/navigation", () => ({ usePathname: usePathnameMock }));
 vi.mock("@/lib/authContext", () => ({ useAuth: () => mockUseAuth() }));
-vi.mock("@/lib/leagueContext", () => ({ useLeague: () => ({ openCustomizer: mockOpenCustomizer }) }));
+vi.mock("@/lib/leagueContext", () => ({ useLeague: () => ({ openCustomizer: mockOpenCustomizer, activeLeagueId: mockActiveLeagueId }) }));
 
 const signedOut = {
   user: null,
@@ -28,6 +29,7 @@ const signedOut = {
 describe("AccountMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockActiveLeagueId = "default";
     usePathnameMock.mockReturnValue("/teams/york_lions/playbook");
     mockUseAuth.mockReturnValue(signedOut);
   });
@@ -100,5 +102,19 @@ describe("AccountMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Account menu for Commissioner" }));
     fireEvent.click(screen.getByRole("menuitem", { name: /League Settings/ }));
     expect(mockOpenCustomizer).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides league settings for independent teams when no active league is present", () => {
+    mockActiveLeagueId = "";
+    mockUseAuth.mockReturnValue({
+      ...signedOut,
+      user: { displayName: "Coach Indie", email: "indie@example.com" },
+      isLeagueAdmin: true,
+      isAuthorized: true,
+    });
+    render(<AccountMenu />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu for Coach Indie" }));
+    expect(screen.queryByRole("menuitem", { name: /League Settings/ })).not.toBeInTheDocument();
   });
 });

@@ -166,18 +166,15 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     expect(screen.getAllByText("FlagOS League").length).toBeGreaterThan(0);
   });
 
-  it("allows users to click Set Active to switch active league directly from directory", async () => {
+  it("allows users to click Explore Hub to navigate directly to league portal", async () => {
     render(<LeagueDirectoryPage />);
 
     await waitFor(() => {
       expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
     });
 
-    const setActiveBtns = screen.getAllByRole("button", { name: /Set Active/i });
-    expect(setActiveBtns.length).toBeGreaterThan(0);
-
-    fireEvent.click(setActiveBtns[0]);
-    expect(mockSwitchLeague).toHaveBeenCalled();
+    const hubLinks = screen.getAllByRole("link", { name: /Explore Hub/i });
+    expect(hubLinks.length).toBeGreaterThan(0);
   });
 
   it("filters directory with two clean tabs: All Leagues vs My Leagues", async () => {

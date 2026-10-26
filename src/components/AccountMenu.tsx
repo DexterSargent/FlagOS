@@ -14,7 +14,7 @@ import { useLeague } from "@/lib/leagueContext";
 export default function AccountMenu({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   const { user, isPlayer, playerData, playerTeamId, managedTeamId, isLeagueAdmin, isPlatformAdmin, isAuthorized, logout } = useAuth();
-  const { openCustomizer } = useLeague();
+  const { openCustomizer, activeLeagueId } = useLeague();
   // Remember the path the menu was opened on so navigating away closes it.
   const [openPath, setOpenPath] = useState<string | null>(null);
   const open = openPath !== null && openPath === pathname;
@@ -100,7 +100,7 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
           <Link href="/account" role="menuitem" className={itemClass}>
             <Settings className="w-4 h-4 shrink-0" /> Account Settings
           </Link>
-          {isAuthorized && isLeagueAdmin && (
+          {isAuthorized && isLeagueAdmin && Boolean(activeLeagueId) && (
             <button type="button" role="menuitem" className={itemClass} onClick={() => { setOpen(false); openCustomizer(); }}>
               <Sliders className="w-4 h-4 shrink-0" /> League Settings
             </button>

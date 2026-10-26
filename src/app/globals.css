@@ -178,6 +178,15 @@ html.light {
   border-color: var(--border);
 }
 
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+html.light .flag-word {
+  color: #0f172a !important;
+}
+
 /* Brand colours tuned for legibility as text; league and team contexts publish the -dark/-light pair. */
 html,
 html.dark {

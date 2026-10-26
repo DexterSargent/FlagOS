@@ -545,14 +545,16 @@ export default function PlayerProfilePage() {
                 </Link>
               )}
 
-              <button
-                type="button"
-                onClick={openCustomizer}
-                className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2"
-              >
-                {isLeagueAdmin ? <Settings className="w-4 h-4 text-cyan-400" /> : <BookOpen className="w-4 h-4 text-cyan-400" />}
-                <span>{isLeagueAdmin ? "League Settings" : "League Rules"}</span>
-              </button>
+              {Boolean(activeLeagueId) && (
+                <button
+                  type="button"
+                  onClick={openCustomizer}
+                  className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center gap-2"
+                >
+                  {isLeagueAdmin ? <Settings className="w-4 h-4 text-cyan-400" /> : <BookOpen className="w-4 h-4 text-cyan-400" />}
+                  <span>{isLeagueAdmin ? "League Settings" : "League Rules"}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

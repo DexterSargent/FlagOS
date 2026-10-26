@@ -36,6 +36,11 @@ owed to leagues must never be mixed in one revenue total.
 
 ## Phase 1 build status (code shipped, switched off)
 
+For the explicit owner setup sequence, secure secret-entry commands, sandbox testing,
+and remaining launch gates, follow the [Stripe setup walkthrough](STRIPE-SETUP-WALKTHROUGH.md).
+The checklist below is a summary, not authorization to enable sandbox payments against
+production data or evidence that the approved grace-period policy is implemented.
+
 What exists:
 
 - `src/lib/billingServer.ts`: Stripe Checkout (subscription mode, server-side prices, CAD),
@@ -49,8 +54,9 @@ What exists:
   and creates the league/team with a one-time paid purchase id. The server validates and
   consumes that purchase in the same transaction. Unused paid purchases show a "Finish setup" banner.
 - Paid leagues change seats only through Stripe: the price is shown first; additions charge a
-  prorated amount immediately and unlock after payment; reductions apply at renewal with no
-  refund and never go below the existing team count. Clients cannot edit paid subscription fields.
+  prorated amount immediately and unlock after payment. Reductions change capacity immediately
+  without a credit; the lower recurring price is billed at renewal. Capacity never goes below
+  the existing team count. Clients cannot edit paid subscription fields.
 - Deleting a paid league/team cancels at period end and flags the billing account for review.
   No automatic refunds.
 - Complimentary accounts are untouched, and the owner keeps the no-charge creation path.
@@ -66,7 +72,8 @@ registration exists and prices are confirmed as tax-exclusive).
 2. Create a restricted API key (`rk_…`) with write access to Checkout Sessions, Customers,
    Subscriptions, Invoices and Customer Portal, and read access to Charges, Payment Intents,
    Invoice Payments and Prices.
-3. Add a webhook endpoint `https://flagos.ca/api/webhooks/stripe` for:
+3. Add a webhook endpoint on the isolated development backend (production later uses
+   `https://flagos.ca/api/webhooks/stripe`) for:
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `checkout.session.async_payment_failed`, `checkout.session.expired`,
    `customer.subscription.created|updated|deleted|paused|resumed`, `invoice.paid`,
@@ -74,14 +81,16 @@ registration exists and prices are confirmed as tax-exclusive).
    `radar.early_fraud_warning.created`.
 4. Configure the Customer Portal: allow payment-method updates, invoice history and
    cancellation at period end; **disable quantity/plan changes** (seats go through FlagOS).
-5. Store secrets in Secret Manager and reference them in `apphosting.yaml`:
+5. Store environment-specific secrets in Secret Manager and reference them in `apphosting.yaml`:
    `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_TEAM`,
    `STRIPE_PRICE_LEAGUE_BASE`, `STRIPE_PRICE_LEAGUE_SEAT`
    (`firebase apphosting:secrets:set NAME`, then grant the backend access).
-6. Set `BILLING_CHECKOUT_ENABLED` to `"true"`, deploy, and run test-card purchases
+6. On the isolated development environment only, set `BILLING_CHECKOUT_ENABLED` to `"true"`,
+   deploy, and run test-card purchases
    (`4242…`, a decline, and 3-D Secure). Check that the league/team is created, seat changes
    work, and that cancelling in the portal updates the status.
-7. Repeat with live keys and live Price ids. Raise the platform team cap
+7. Resolve the launch gates in the walkthrough, then repeat configuration with live keys
+   and live Price ids on production. Review the platform team cap
    (`ENTITY_LIMITS.allTeams`, currently 256) before public launch.
 
 ## Decisions to approve
