@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -261,7 +262,7 @@ export default function StatsAndStandings() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col justify-center items-center font-sans">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

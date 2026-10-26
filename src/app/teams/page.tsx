@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -803,7 +804,7 @@ export default function TeamsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+            <FlagOSLoader />
           </div>
         ) : !activeTeamId ? (
 

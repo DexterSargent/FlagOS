@@ -56,7 +56,7 @@ export function FlagOSLogo({
     ? "drop-shadow-[0_25px_50px_rgba(60,165,5,0.45)] hover:scale-105 transition-transform duration-300"
     : "drop-shadow-[0_4px_16px_rgba(60,165,5,0.3)] transition-transform";
 
-  const logoSrc = typeof src === "string" && src ? src : FLAGOS_LOGO;
+  const logoSrc = typeof src === "string" && src && !isDefaultFlagOSLogo(src) ? src : FLAGOS_LOGO;
   const webpSrc = logoSrc.replace(/\.png$/i, ".webp");
 
   return (

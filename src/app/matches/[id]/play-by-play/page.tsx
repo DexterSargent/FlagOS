@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { useAuth } from "@/lib/authContext";
 import { use, useEffect, useRef, useState, type ReactNode } from "react";
@@ -129,7 +130,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
   if (loading || isFetching || scorer.loading) {
     return (
       <div className="h-screen bg-black text-white flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

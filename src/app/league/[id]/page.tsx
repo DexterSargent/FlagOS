@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { use, useState } from "react";
 import { useLeague } from "@/lib/leagueContext";
@@ -29,7 +30,7 @@ export default function FlagOSDashboard({ params }: { params?: Promise<{ id: str
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-surface-base" role="status" aria-live="polite">
         <div className="flex flex-col items-center gap-3 text-neutral-400">
-          <div className="w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+          <FlagOSLoader label="Loading league data" />
           <span className="text-sm">Loading league…</span>
         </div>
       </div>

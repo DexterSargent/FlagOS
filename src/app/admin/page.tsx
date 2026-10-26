@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -15,7 +16,6 @@ import {
   Edit3,
   ExternalLink,
   Layers,
-  LoaderCircle,
   LockKeyhole,
   Mail,
   Plus,
@@ -105,6 +105,7 @@ export default function PlatformAdminPage() {
   const [editingLeague, setEditingLeague] = useState<ManagedRecord | null>(null);
   const [adminManagingLeague, setAdminManagingLeague] = useState<ManagedRecord | null>(null);
   const [deletingLeague, setDeletingLeague] = useState<ManagedRecord | null>(null);
+  const [deleteLeagueTeams, setDeleteLeagueTeams] = useState(true);
   const [deletingTeam, setDeletingTeam] = useState<ManagedRecord | null>(null);
 
   // Form states for Editing League
@@ -598,6 +599,7 @@ export default function PlatformAdminPage() {
   // Open Delete Modal
   const openDeleteModal = (league: ManagedRecord) => {
     setDeletingLeague(league);
+    setDeleteLeagueTeams(true);
     setError("");
   };
 
@@ -609,15 +611,14 @@ export default function PlatformAdminPage() {
     setError("");
 
     try {
-      await createSecureRecord("delete_league", { leagueId: deletingLeague.id });
+      await createSecureRecord("delete_league", { leagueId: deletingLeague.id, deleteTeams: deleteLeagueTeams });
 
-      // Dissociate member teams
       const memberTeams = teams.filter((t) => t.leagueId === deletingLeague.id);
       if (memberTeams.length > 0) {
         setTeams((prev) =>
-          prev.map((t) =>
-            t.leagueId === deletingLeague.id ? { ...t, leagueId: "" } : t
-          )
+          deleteLeagueTeams
+            ? prev.filter((t) => t.leagueId !== deletingLeague.id)
+            : prev.map((t) => t.leagueId === deletingLeague.id ? { ...t, leagueId: "" } : t)
         );
       }
 
@@ -733,7 +734,7 @@ export default function PlatformAdminPage() {
   if (authLoading || (!user && !isPlatformAdmin)) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center bg-neutral-950 text-neutral-300">
-        <LoaderCircle className="h-6 w-6 animate-spin text-cyan-400" aria-label="Checking access" />
+        <FlagOSLoader label="Checking access" />
       </div>
     );
   }
@@ -852,7 +853,7 @@ export default function PlatformAdminPage() {
 
         {tab !== "customers" && (loadingRecords || (businessLoading && !business)) ? (
           <div className="flex items-center justify-center gap-3 py-20 text-sm text-neutral-400">
-            <LoaderCircle className="h-5 w-5 animate-spin text-cyan-400" /> Loading business data…
+            <FlagOSLoader size={48} label="Loading business data" /> Loading business data…
           </div>
         ) : tab === "health" ? (
           <div className="mt-6">
@@ -927,7 +928,7 @@ export default function PlatformAdminPage() {
 
         {loadingRecords ? (
           <div className="flex items-center justify-center gap-3 py-20 text-sm text-neutral-400">
-            <LoaderCircle className="h-5 w-5 animate-spin text-cyan-400" /> Loading platform records…
+            <FlagOSLoader size={48} label="Loading platform records" /> Loading platform records…
           </div>
         ) : (
           <div className="mt-8 grid gap-8 xl:grid-cols-2">
@@ -1591,9 +1592,27 @@ export default function PlatformAdminPage() {
             {teams.filter((t) => t.leagueId === deletingLeague.id).length > 0 && (
               <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200">
                 This league has <strong>{teams.filter((t) => t.leagueId === deletingLeague.id).length} member team(s)</strong>.
-                Deleting the league will decouple these teams so they become independent.
+                {" "}Choose what happens to its teams below.
               </div>
             )}
+
+            <fieldset className="mt-4 space-y-3 text-sm text-neutral-200" disabled={actionInProgress}>
+              <legend className="mb-2 font-bold">Member teams</legend>
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-3">
+                <input type="radio" name="league-team-deletion" checked={deleteLeagueTeams} onChange={() => setDeleteLeagueTeams(true)} className="mt-1 shrink-0" />
+                <span>
+                  <span className="block font-bold">Delete all member teams and their data</span>
+                  <span className="block text-xs text-neutral-400">Permanently removes their rosters, private player details, playbooks, depth charts and team-managed games.</span>
+                </span>
+              </label>
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-white/10 p-3">
+                <input type="radio" name="league-team-deletion" checked={!deleteLeagueTeams} onChange={() => setDeleteLeagueTeams(false)} className="mt-1 shrink-0" />
+                <span>
+                  <span className="block font-bold">Keep member teams</span>
+                  <span className="block text-xs text-neutral-400">Detaches teams from the league. This does not create independent billing accounts or activate paid team subscriptions.</span>
+                </span>
+              </label>
+            </fieldset>
 
             <div className="mt-6 flex justify-end gap-3">
               <PageGuideButton />

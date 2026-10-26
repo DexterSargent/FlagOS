@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -97,7 +98,7 @@ export default function FreeAgentsPage() {
             Leagues accepting free agents
           </h2>
           {loading ? (
-            <p className="text-sm text-slate-500 dark:text-neutral-400">Loading leagues…</p>
+            <FlagOSLoader label="Loading leagues" />
           ) : openLeagues.length === 0 ? (
             <div className="p-5 rounded-2xl bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 text-sm text-slate-600 dark:text-neutral-400 flex items-start gap-3">
               <Search className="w-5 h-5 shrink-0 text-cyan-600 dark:text-cyan-400" />

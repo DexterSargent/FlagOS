@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import { use, useEffect, useState, useRef, useMemo } from "react";
@@ -490,7 +491,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   if (loading) {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
-        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

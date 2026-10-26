@@ -7,6 +7,7 @@ import { LeagueProvider } from "@/lib/leagueContext";
 import GlobalShell from "@/components/GlobalShell";
 import AuthGuard from "@/components/AuthGuard";
 import ThrottleNotice from "@/components/ThrottleNotice";
+import { FLAGOS_LOGO } from "@/lib/brandTokens";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,9 +30,9 @@ export const metadata: Metadata = {
   title: "FlagOS | Operating System for Flag Football Leagues",
   description: "The complete operating system for flag football leagues: schedules, live play-by-play scorekeeper, team portals, and automated stat leaderboards.",
   icons: {
-    icon: "/flagos-emblem-512.png",
+    icon: FLAGOS_LOGO,
     shortcut: "/favicon.ico",
-    apple: "/flagos-emblem-512.png",
+    apple: FLAGOS_LOGO,
   },
 };
 

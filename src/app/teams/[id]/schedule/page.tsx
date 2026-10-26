@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 import { canRecordMatch } from "@/lib/scorerAccess";
 import VenueDirections from "@/components/VenueDirections";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
@@ -317,7 +318,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   if (loading) {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

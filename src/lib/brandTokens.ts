@@ -10,7 +10,7 @@
  * Typography text ("FLAG" + "OS") is rendered via `<FlagOSText />`.
  */
 
-export const FLAGOS_LOGO = "/flagos-emblem-512.png";
+export const FLAGOS_LOGO = "/flagos-emblem-v2-512.png";
 
 // Backward-compatible aliases for legacy imports
 export const FLAGOS_LOGO_LIGHT = FLAGOS_LOGO;
@@ -29,6 +29,8 @@ export function getFlagOSLogoPath(_theme?: string | null): string {
  */
 export const DEFAULT_FLAGOS_LOGO_URLS = [
   FLAGOS_LOGO,
+  "/flagos-emblem-v2-512.webp",
+  "/flagos-emblem-512.png",
   "/flagos-emblem.png",
   "/flagos-emblem.webp",
   "/flagos-emblem-512.webp",

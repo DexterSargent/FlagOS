@@ -64,7 +64,7 @@ vi.mock("@/lib/demoSandbox", () => ({
   getSandboxTeams: () => [],
   isDemoMatch: () => true,
   updateSandboxMatch: vi.fn(),
-  addSandboxPlay: vi.fn(),
+  addSandboxPlay: vi.fn((play: Record<string, unknown>) => ({ id: "sandbox-play", ...play })),
   deleteSandboxPlay: vi.fn(),
   deleteSandboxPlaysForMatch: vi.fn(),
   subscribeDemoSandbox: (cb: any) => () => {},
@@ -335,4 +335,3 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
   });
 });
-

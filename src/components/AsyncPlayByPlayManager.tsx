@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
 import { ASYNC_STAT_KEEPER_WALKTHROUGH, ASYNC_ADD_PLAYER_WALKTHROUGH } from "@/lib/walkthroughData";
@@ -1141,7 +1142,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
   if (loadingData) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

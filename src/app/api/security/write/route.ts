@@ -497,6 +497,9 @@ async function authorizeWrite(
     if (!isPlatformAdmin(token) || !isDocumentId(data.leagueId)) {
       fail("Only the platform administrator can delete a league.", 403);
     }
+    if (typeof data.deleteTeams !== "boolean") {
+      fail("Choose whether to delete or retain the league's teams.");
+    }
     return;
   }
 
@@ -1470,8 +1473,10 @@ export async function POST(request: Request) {
       } else if (requestedEntity === "delete_league") {
         const leagueId = String(data.leagueId);
         for (const team of leagueTeams) {
-          transaction.update(team.ref, { leagueId: "" });
-          transaction.set(adminDb.doc(`team_private/${team.id}`), { leagueId: "" }, { merge: true });
+          if (!data.deleteTeams) {
+            transaction.update(team.ref, { leagueId: "" });
+            transaction.set(adminDb.doc(`team_private/${team.id}`), { leagueId: "" }, { merge: true });
+          }
         }
         transaction.delete(adminDb.doc(`leagues/${leagueId}`));
         transaction.delete(adminDb.doc(`league_private/${leagueId}`));
@@ -1518,6 +1523,17 @@ export async function POST(request: Request) {
 
     if (requestedEntity === "delete_league") {
       await purgeLeagueGames(adminDb, String(data.leagueId));
+      if (data.deleteTeams) {
+        const memberTeams = await adminDb.collection("teams").where("leagueId", "==", data.leagueId).get();
+        for (const team of memberTeams.docs) {
+          // Keep the team and league link until its data is purged so failures can be retried.
+          await purgeTeamData(team.id);
+          const batch = adminDb.batch();
+          batch.delete(team.ref);
+          batch.delete(adminDb.doc(`team_private/${team.id}`));
+          await batch.commit();
+        }
+      }
     }
 
     if (requestedEntity === "delete_team" && data.purge === true) {

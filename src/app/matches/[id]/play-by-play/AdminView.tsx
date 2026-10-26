@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { resolvePeriodFormat, type PeriodFormat } from "@/lib/periodFormat";
 import { useState, useEffect, use, useRef, useCallback, useMemo } from "react";
@@ -1215,7 +1216,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   if (loadingData) {
     return (
       <div className="h-[100dvh] bg-black text-white flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

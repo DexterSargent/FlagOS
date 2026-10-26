@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 import { usePageGuide } from "@/lib/pageGuide";
 
 import { TEAM_STATS_WALKTHROUGH } from "@/lib/walkthroughData";
@@ -279,7 +280,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center font-sans">
-        <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" style={{ borderTopColor: accent }}></div>
+        <FlagOSLoader />
       </div>
     );
   }

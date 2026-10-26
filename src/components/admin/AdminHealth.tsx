@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, CalendarClock, CheckCircle2, CreditCard, HeartPulse, LoaderCircle, MailWarning, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, CreditCard, HeartPulse, MailWarning, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import FlagOSLoader from "@/components/FlagOSLoader";
 import type { PlatformHealthReport } from "@/lib/platformHealth";
 import { formatDate } from "@/lib/adminMetrics";
 import { EmptyState, Panel, StatCard, ghostButtonClass } from "./AdminUi";
@@ -29,7 +30,7 @@ export default function AdminHealth({
   if (!report) {
     return (
       <div data-tour="admin-health-panels" className="flex flex-col items-center gap-3 py-16 text-sm text-neutral-400">
-        {loading ? <LoaderCircle className="h-5 w-5 animate-spin text-cyan-400" /> : <HeartPulse className="h-6 w-6 text-neutral-500" />}
+        {loading ? <FlagOSLoader label="Scanning platform data" /> : <HeartPulse className="h-6 w-6 text-neutral-500" />}
         {loading ? "Scanning platform data\u2026" : error || "Run a health check to see what needs attention."}
         {!loading && <button type="button" className={ghostButtonClass} onClick={onRefresh}>Run health check</button>}
       </div>

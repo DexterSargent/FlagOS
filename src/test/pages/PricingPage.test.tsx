@@ -200,7 +200,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
         primaryColor: "#3ca505",
         secondaryColor: "#3b82f6",
         tertiaryColor: "#ffffff",
-        logoUrl: "/flagos-emblem-512.png",
+        logoUrl: "/flagos-emblem-v2-512.png",
       })
     );
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/league/league_new_99"));
@@ -254,7 +254,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
       primaryColor: "#22c55e",
       secondaryColor: "#06b6d4",
       tertiaryColor: "#ffffff",
-      logoUrl: "/flagos-emblem-512.png",
+      logoUrl: "/flagos-emblem-v2-512.png",
       adminEmails: ["dextersargent@flagos.ca"],
       subscription: expect.objectContaining({ status: "active", paymentMethod: "complimentary" }),
     }));

@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import VenueDirections from "@/components/VenueDirections";
 import { useState, useEffect, use } from "react";
@@ -193,7 +194,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

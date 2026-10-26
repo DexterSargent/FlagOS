@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { useCallback, useEffect, useState } from "react";
 import { collection, deleteDoc, doc, getDocs, limit, orderBy, query } from "firebase/firestore";
@@ -69,7 +70,7 @@ export default function AdminFreeAgents() {
       </div>
       {error && <p role="alert" className="text-xs font-bold text-red-400">{error}</p>}
       {loading ? (
-        <p className="text-sm text-neutral-400">Loading…</p>
+        <FlagOSLoader label="Loading free agents" />
       ) : entries.length === 0 ? (
         <p className="text-sm text-neutral-400">No submissions yet.</p>
       ) : (

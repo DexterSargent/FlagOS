@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { use, useEffect, useState, useRef } from "react";
 import Link from "next/link";
@@ -797,7 +798,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if (loading) {
     return (
       <div role="status" aria-label="Loading playbook" className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
-        <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader label="Loading playbook data" />
       </div>
     );
   }

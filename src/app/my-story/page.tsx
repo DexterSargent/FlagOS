@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { usePageGuide } from "@/lib/pageGuide";
 import { MY_STORY_WALKTHROUGH, STORY_PHOTO_WALKTHROUGH } from "@/lib/walkthroughs/public";
@@ -317,7 +318,7 @@ export default function MyStoryPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F9F8F5] text-sm text-neutral-500 dark:bg-[#080B08] dark:text-neutral-400">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3CA505] border-t-transparent" />
+          <FlagOSLoader label="Loading your story" />
           <span className="font-mono text-xs tracking-wider uppercase">Loading Story…</span>
         </div>
       </div>

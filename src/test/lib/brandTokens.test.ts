@@ -10,7 +10,7 @@ import {
 
 describe("FlagOS Brand Tokens & Logo Architecture", () => {
   it("exports a single unified logo token used across all themes", () => {
-    expect(FLAGOS_LOGO).toBe("/flagos-emblem-512.png");
+    expect(FLAGOS_LOGO).toBe("/flagos-emblem-v2-512.png");
     expect(FLAGOS_LOGO_LIGHT).toBe(FLAGOS_LOGO);
     expect(FLAGOS_LOGO_DARK).toBe(FLAGOS_LOGO);
   });
@@ -30,6 +30,8 @@ describe("FlagOS Brand Tokens & Logo Architecture", () => {
     expect(isDefaultFlagOSLogo("")).toBe(true);
     expect(isDefaultFlagOSLogo("/flagos-emblem.png")).toBe(true);
     expect(isDefaultFlagOSLogo("/flagos-emblem.webp")).toBe(true);
+    expect(isDefaultFlagOSLogo("/flagos-emblem-512.png")).toBe(true);
+    expect(isDefaultFlagOSLogo("/flagos-emblem-v2-512.webp")).toBe(true);
 
     // Custom third-party team logos should NOT be marked as default
     expect(isDefaultFlagOSLogo("https://example.com/custom-team-logo.png")).toBe(false);

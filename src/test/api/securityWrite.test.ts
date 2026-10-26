@@ -426,7 +426,7 @@ describe("secure data write API", () => {
       queryResults.set("plays", { docs: [{ ref: { path: "plays/p1" } }] });
       queryResults.set("red_plays", { docs: [{ ref: { path: "red_plays/r1" } }] });
       try {
-        const response = await POST(request({ entity: "delete_league", data: { leagueId: "league-1" } }));
+        const response = await POST(request({ entity: "delete_league", data: { leagueId: "league-1", deleteTeams: false } }));
         expect(response.status).toBe(201);
         expect(transaction.update).toHaveBeenCalledWith({ path: "teams/kept" }, { leagueId: "" });
         expect(batchMock.delete.mock.calls.map(([ref]) => ref.path)).toEqual([
@@ -443,7 +443,7 @@ describe("secure data write API", () => {
       queryResults.set("plays", { docs: Array.from({ length: 805 }, (_, i) => ({ ref: { path: `plays/p${i}` } })) });
       batchMock.commit.mockRejectedValueOnce(new Error("Firestore unavailable"));
       try {
-        const payload = { entity: "delete_league", data: { leagueId: "league-1" } };
+        const payload = { entity: "delete_league", data: { leagueId: "league-1", deleteTeams: false } };
         expect((await POST(request(payload))).status).toBe(500);
         expect(batchMock.delete.mock.calls.map(([ref]) => ref.path)).not.toContain("matches/m1");
         vi.clearAllMocks();
@@ -463,6 +463,44 @@ describe("secure data write API", () => {
       verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "coach@example.com" });
       expect((await POST(request({ entity: "delete_league", data: { leagueId: "league-1" } }))).status).toBe(403);
       expect(batchMock.delete).not.toHaveBeenCalled();
+    });
+
+    it.each([undefined, "yes", 1])("requires an explicit team deletion choice: %s", async (deleteTeams) => {
+      expect((await POST(request({ entity: "delete_league", data: { leagueId: "league-1", deleteTeams } }))).status).toBe(400);
+      expect(batchMock.delete).not.toHaveBeenCalled();
+    });
+
+    it("purges member teams and their data instead of detaching them", async () => {
+      queryResults.set("teams", { docs: [{ id: "kept", ref: { path: "teams/kept" } }] });
+      queryResults.set("players", { docs: [{ id: "p1", ref: { path: "players/p1" } }] });
+      queryResults.set("teams/kept/meta", { docs: [{ ref: { path: "teams/kept/meta/playbooks" } }] });
+      try {
+        const response = await POST(request({ entity: "delete_league", data: { leagueId: "league-1", deleteTeams: true } }));
+        expect(response.status).toBe(201);
+        expect(transaction.update).not.toHaveBeenCalled();
+        expect(batchMock.delete.mock.calls.map(([ref]) => ref.path)).toEqual(expect.arrayContaining([
+          "teams/kept", "team_private/kept", "team_depth_charts/kept", "players/p1",
+          "player_private/p1", "teams/kept/meta/playbooks",
+        ]));
+        expect(batchMock.delete.mock.calls.slice(-2).map(([ref]) => ref.path)).toEqual(["teams/kept", "team_private/kept"]);
+      } finally {
+        queryResults.clear();
+      }
+    });
+
+    it("retains the team's league link when a purge fails so the request can be retried", async () => {
+      queryResults.set("teams", { docs: [{ id: "kept", ref: { path: "teams/kept" } }] });
+      batchMock.commit.mockRejectedValueOnce(new Error("Firestore unavailable"));
+      try {
+        const payload = { entity: "delete_league", data: { leagueId: "league-1", deleteTeams: true } };
+        expect((await POST(request(payload))).status).toBe(500);
+        expect(transaction.update).not.toHaveBeenCalled();
+        expect(batchMock.delete.mock.calls.map(([ref]) => ref.path)).not.toContain("teams/kept");
+        expect((await POST(request(payload))).status).toBe(201);
+        expect(batchMock.delete.mock.calls.map(([ref]) => ref.path)).toContain("teams/kept");
+      } finally {
+        queryResults.clear();
+      }
     });
   });
 

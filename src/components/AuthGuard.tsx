@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield, PlayCircle } from "lucide-react";
-import { FlagOSLogo } from "@/components/FlagOSLogo";
+import FlagOSLoader from "@/components/FlagOSLoader";
 import { isDemoTeamId, useTeamRecord } from "@/lib/teamRecord";
 import { useEmbedState } from "@/lib/embedState";
 import EmailVerificationNotice from "@/components/EmailVerificationNotice";
@@ -97,14 +97,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-emerald-600/15 rounded-full blur-[140px] pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center text-center space-y-4">
-          <div className="relative">
-            <FlagOSLogo
-              size="lg"
-              variant="emblem"
-              className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_4px_20px_rgba(60,165,5,0.4)]"
-            />
-          </div>
-          <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mt-2" />
+          <FlagOSLoader size={112} label="Verifying authorization" />
           <div>
             <div className="text-sm font-bold uppercase tracking-wider text-neutral-300">
               Verifying Authorization

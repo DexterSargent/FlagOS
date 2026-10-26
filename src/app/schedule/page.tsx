@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import VenueDirections from "@/components/VenueDirections";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -853,7 +854,7 @@ export default function Calendar() {
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
-            <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+            <FlagOSLoader />
           </div>
         ) : activeView === "playoffs" ? (
           /* Playoff Picture / Playoffs View */

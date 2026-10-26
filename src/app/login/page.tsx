@@ -1,4 +1,5 @@
 "use client";
+import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { usePageGuide } from "@/lib/pageGuide";
 import { LOGIN_WALKTHROUGH } from "@/lib/walkthroughs/public";
@@ -86,7 +87,7 @@ export default function LoginPage() {
   if (loading) {
     return (
       <div className="h-screen bg-black text-white flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+        <FlagOSLoader />
       </div>
     );
   }

@@ -293,6 +293,7 @@ describe("Platform management page", () => {
 
     // Confirmation dialog opens
     expect(screen.getByRole("heading", { name: "Delete League" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Delete all member teams/ })).toBeChecked();
 
     // Click confirm delete
     fireEvent.click(screen.getByRole("button", { name: /Confirm Delete/i }));
@@ -300,7 +301,7 @@ describe("Platform management page", () => {
     await waitFor(() => {
       expect(mockCreateSecureRecord).toHaveBeenCalledWith(
         "delete_league",
-        { leagueId: "league_customer_1" },
+        { leagueId: "league_customer_1", deleteTeams: true },
       );
     });
 
@@ -308,6 +309,19 @@ describe("Platform management page", () => {
     await waitFor(() => {
       expect(screen.queryByText("Customer League")).not.toBeInTheDocument();
     });
+  });
+
+  it("can explicitly retain member teams without provisioning billing", async () => {
+    render(<PlatformAdminPage />);
+    await screen.findByText("Customer League");
+    fireEvent.click(screen.getAllByRole("button", { name: /^Delete$/i })[0]);
+    fireEvent.click(screen.getByRole("radio", { name: /Keep member teams/ }));
+    expect(screen.getByText(/does not create independent billing accounts/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Confirm Delete/i }));
+    await waitFor(() => expect(mockCreateSecureRecord).toHaveBeenCalledWith(
+      "delete_league", { leagueId: "league_customer_1", deleteTeams: false },
+    ));
+    expect(await screen.findByText("Customer Team")).toBeInTheDocument();
   });
 
   it("permanently deletes a team and its data after confirmation", async () => {
