@@ -90,8 +90,12 @@ describe("secure data write API", () => {
     ] };
     it("saves coach-authored assignments outside public team documents", async () => {
       verifyIdTokenMock.mockResolvedValue({ ...validToken, email: TEAM_ADMIN_EMAILS[2] });
+      const roster = [
+        { id: "p1", ref: { path: "players/p1" }, data: () => ({ positions: ["QB"] }) },
+        { id: "p2", ref: { path: "players/p2" }, data: () => ({ positions: ["WR", "DB"], depthChartPositions: ["DB"] }) },
+      ];
       transaction.get.mockImplementation(async (ref) => "collection" in ref
-        ? { size: 2, docs: [{ id: "p1" }, { id: "p2" }] }
+        ? { size: 2, docs: roster }
         : { exists: false, data: () => undefined });
       const response = await POST(request({ entity: "depth_chart", data: payload }));
       expect(response.status).toBe(201);
@@ -99,6 +103,11 @@ describe("secure data write API", () => {
         expect.objectContaining({ path: "team_depth_charts/falcons" }),
         expect.objectContaining({ charts: payload.charts, visibleToPlayers: false }),
       );
+      // p1 already plays QB; p2 gains QB from the chart and loses the DB slot it was auto-given.
+      expect(transaction.update).toHaveBeenCalledTimes(1);
+      expect(transaction.update).toHaveBeenCalledWith({ path: "players/p2" }, {
+        positions: ["WR", "QB"], position: "WR", depthChartPositions: ["QB"],
+      });
     });
     it("rejects another team's player assignments", async () => {
       transaction.get.mockImplementation(async (ref) => "collection" in ref

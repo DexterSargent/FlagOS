@@ -3,9 +3,72 @@ import type { Playbook } from "./playbookTypes";
 export const DEFAULT_PLAYER_POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
 export function getPlayerPositions(player: { positions?: unknown; position?: unknown }): string[] {
-  const values = Array.isArray(player.positions) && player.positions.length ? player.positions : [player.position];
-  const positions = [...new Set(values.filter((value): value is string => typeof value === "string" && !!value.trim()).map((value) => value.trim()))];
+  const positions = getStoredPlayerPositions(player);
   return positions.length ? positions : ["ATH"];
+}
+
+/** Positions saved on the player, without the display-only "ATH" fallback. */
+export function getStoredPlayerPositions(player: { positions?: unknown; position?: unknown }): string[] {
+  const values = Array.isArray(player.positions) && player.positions.length ? player.positions : [player.position];
+  return [...new Set(values.filter((value): value is string => typeof value === "string" && !!value.trim()).map((value) => value.trim()))];
+}
+
+const samePosition = (a: string, b: string) => a.trim().toUpperCase() === b.trim().toUpperCase();
+const includesPosition = (list: string[], position: string) => list.some((item) => samePosition(item, position));
+
+/** The roster position a depth-chart slot represents (template slots use their short code, e.g. "QB"). */
+export function getSlotPosition(formation: DepthFormation, slot: { id: string; label: string }): string {
+  return formation.key.startsWith("default:") ? slot.id : slot.label.trim();
+}
+
+export function playerPlaysPosition(player: { positions?: unknown; position?: unknown }, position: string): boolean {
+  return includesPosition(getPlayerPositions(player), position);
+}
+
+/** Every position each player holds across all charts whose formation still exists. */
+export function getDepthChartPositionsByPlayer(charts: DepthChart[], formations: DepthFormation[]): Map<string, string[]> {
+  const byPlayer = new Map<string, string[]>();
+  for (const chart of charts) {
+    const formation = formations.find((item) => item.key === chart.formationKey);
+    if (!formation) continue;
+    for (const slot of formation.slots) {
+      const position = getSlotPosition(formation, slot);
+      if (!position || position.length > 20) continue;
+      for (const playerId of chart.assignments[slot.id] || []) {
+        const list = byPlayer.get(playerId) || [];
+        if (!includesPosition(list, position)) list.push(position);
+        byPlayer.set(playerId, list);
+      }
+    }
+  }
+  return byPlayer;
+}
+
+export const MAX_PLAYER_POSITIONS = 10;
+
+/**
+ * Positions a player holds on depth charts are added to their roster positions automatically and
+ * remembered in depthChartPositions, so taking them off the chart removes only what was auto-added,
+ * never a position a coach picked by hand.
+ */
+export function syncDepthChartPositions(
+  player: { positions?: unknown; position?: unknown; depthChartPositions?: unknown },
+  chartPositions: string[],
+): { positions: string[]; position: string; depthChartPositions: string[] } {
+  const previousAuto = Array.isArray(player.depthChartPositions)
+    ? player.depthChartPositions.filter((value): value is string => typeof value === "string")
+    : [];
+  const explicit = getStoredPlayerPositions(player).filter((position) => !includesPosition(previousAuto, position));
+  const auto = chartPositions.filter((position) => !includesPosition(explicit, position))
+    .slice(0, Math.max(0, MAX_PLAYER_POSITIONS - explicit.length));
+  const positions = [...explicit, ...auto];
+  return { positions, position: positions[0] || "", depthChartPositions: auto };
+}
+
+/** When a coach edits positions by hand, auto-added positions they kept stay auto; ones they removed are forgotten. */
+export function keepDepthChartPositions(previousAuto: unknown, positions: string[]): string[] {
+  if (!Array.isArray(previousAuto)) return [];
+  return previousAuto.filter((value): value is string => typeof value === "string" && includesPosition(positions, value));
 }
 
 export interface DepthFormation {

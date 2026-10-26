@@ -27,6 +27,7 @@ export interface DemoPlayer {
   number?: string;
   position?: string;
   positions?: string[];
+  depthChartPositions?: string[];
   experience?: string;
   status?: string;
   preferredTeammateNames?: string[];

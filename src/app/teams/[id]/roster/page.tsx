@@ -38,7 +38,7 @@ import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadTeamSeasonSummary, buildRosterPlayerStats, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 import type { TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
-import { getFormationPositions, getPlayerPositions, type DepthFormation } from "@/lib/depthChart";
+import { getFormationPositions, getPlayerPositions, keepDepthChartPositions, type DepthFormation } from "@/lib/depthChart";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
@@ -431,6 +431,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         number: editPlayerNumber.trim(),
         position: editPlayerPositions[0],
         positions: editPlayerPositions,
+        depthChartPositions: keepDepthChartPositions(editingPlayer.depthChartPositions, editPlayerPositions),
         emails: parsedEmails,
         email: parsedEmails[0] || "",
       };
@@ -446,9 +447,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         return;
       }
 
+      const { depthChartPositions: _autoPositions, ...serverFields } = updatedFields;
       await createSecureRecord("player_update", {
         playerId: editingPlayer.id,
-        ...updatedFields,
+        ...serverFields,
       });
 
       setPlayers((prev) =>
@@ -873,7 +875,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         ) : null}
         <div data-tour="depth-chart-section" hidden={activeTab !== "depth_chart"}>
           <TeamDepthCharts teamId={teamId} players={players} canManage={!!canManageTeam(teamId)} signedIn={!!user}
-            isDemo={isDemoLeague} showStats={showStats} playerStats={playerStats} onFormations={setDepthFormations} />
+            isDemo={isDemoLeague} showStats={showStats} playerStats={playerStats} onFormations={setDepthFormations}
+            onPlayerPositions={(changes) => {
+              if (isDemoLeague && sandbox) Object.entries(changes).forEach(([id, change]) => sandbox.updateSandboxPlayer(id, change));
+              setPlayers((prev) => prev.map((p) => (changes[p.id] ? { ...p, ...changes[p.id] } : p)));
+            }} />
         </div>
       </div>
       </div>

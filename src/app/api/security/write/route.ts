@@ -5,7 +5,10 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { purgeLeagueGames } from "@/lib/purgeLeagueGames";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { accountEmailKey } from "@/lib/accountEmailKey";
-import { validateDepthCharts } from "@/lib/depthChart";
+import {
+  getDepthChartPositionsByPlayer, getDepthFormations, getStoredPlayerPositions, keepDepthChartPositions,
+  syncDepthChartPositions, validateDepthCharts, type DepthChart,
+} from "@/lib/depthChart";
 import { PLATFORM_ADMIN_EMAIL, isPlatformAdminEmail } from "@/lib/platformAdmin";
 import { listHasAccountEmail, loadAccountEmails, matchesAccountEmail } from "@/lib/accountEmailsServer";
 import {
@@ -284,6 +287,15 @@ async function isPrimaryTeamAdmin(
   return typeof primaryUid === "string" && primaryUid === userLink.get("accountUid");
 }
 
+type DepthPositionUpdate = {
+  ref: FirebaseFirestore.DocumentReference;
+  positions: string[];
+  position: string;
+  depthChartPositions: string[];
+};
+// Player position changes computed while authorizing a depth-chart save (transaction reads must precede writes).
+const depthPositionUpdates = new WeakMap<Record<string, unknown>, DepthPositionUpdate[]>();
+
 async function authorizeWrite(
   transaction: Transaction,
   entity: Entity,
@@ -454,6 +466,9 @@ async function authorizeWrite(
     }
     data.teamId = teamId;
     data.leagueId = leagueId || "";
+    if (Array.isArray(data.positions)) {
+      data.depthChartPositions = keepDepthChartPositions(playerData.depthChartPositions, data.positions as string[]);
+    }
     return;
   }
 
@@ -575,13 +590,29 @@ async function authorizeWrite(
     if (!isDocumentId(data.teamId)) fail("A valid team ID is required.");
     const team = await isTeamAdmin(transaction, data.teamId, token);
     if (!team.allowed) fail("Only this team's coaches can manage depth charts.", 403);
-    const roster = await transaction.get(adminDb.collection("players").where("teamId", "==", data.teamId).limit(MAX_ROSTER_HARD_CAP + 1));
+    const [roster, playbook] = await Promise.all([
+      transaction.get(adminDb.collection("players").where("teamId", "==", data.teamId).limit(MAX_ROSTER_HARD_CAP + 1)),
+      transaction.get(adminDb.doc(`teams/${data.teamId}/meta/playbook`)),
+    ]);
     const playerIds = new Set(roster.docs.map((player) => player.id));
-    for (const chart of (data.charts as import("@/lib/depthChart").DepthChart[])) {
+    const charts = data.charts as DepthChart[];
+    for (const chart of charts) {
       for (const assigned of Object.values(chart.assignments)) {
         if (assigned.some((id) => !playerIds.has(id))) fail("Depth charts may only contain current team players.");
       }
     }
+    const chartPositions = getDepthChartPositionsByPlayer(charts, getDepthFormations(playbook.data()?.playbooks || []));
+    const updates: DepthPositionUpdate[] = [];
+    for (const player of roster.docs) {
+      const current = player.data();
+      const next = syncDepthChartPositions(current, chartPositions.get(player.id) || []);
+      const previousAuto = Array.isArray(current.depthChartPositions) ? current.depthChartPositions : [];
+      if (JSON.stringify(next.positions) !== JSON.stringify(getStoredPlayerPositions(current)) ||
+        JSON.stringify(next.depthChartPositions) !== JSON.stringify(previousAuto)) {
+        updates.push({ ref: player.ref, ...next });
+      }
+    }
+    depthPositionUpdates.set(data, updates);
     return;
   }
 
@@ -1345,6 +1376,13 @@ export async function POST(request: Request) {
       if (requestedEntity === "depth_chart") {
         const ref = adminDb.doc(`team_depth_charts/${String(data.teamId)}`);
         transaction.set(ref, { charts: data.charts, visibleToPlayers: data.visibleToPlayers, updatedAt: FieldValue.serverTimestamp() });
+        for (const update of depthPositionUpdates.get(data) || []) {
+          transaction.update(update.ref, {
+            positions: update.positions,
+            position: update.position,
+            depthChartPositions: update.depthChartPositions,
+          });
+        }
         createdId = ref.id;
       } else if (requestedEntity === "playbook") {
         const teamId = String(data.teamId);

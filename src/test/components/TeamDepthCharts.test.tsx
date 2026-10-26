@@ -47,6 +47,28 @@ describe("coachable depth charts", () => {
     expect(screen.getByLabelText("Add player to Z")).toBeInTheDocument();
     expect(screen.queryByLabelText("Add player to Quarterback")).not.toBeInTheDocument();
   });
+  it("lists players who play the slot's position first and reports synced positions after saving", async () => {
+    const roster = [
+      { id: "p1", playerName: "Alex", positions: ["WR"] },
+      { id: "p2", playerName: "Sam", positions: ["QB"] },
+      { id: "p3", playerName: "Jo", positions: ["DB", "QB"], depthChartPositions: ["QB"] },
+    ];
+    vi.mocked(requestPrivateData).mockResolvedValue({ charts: [{ ...chart, assignments: {} }], formations: getDepthFormations(), visibleToPlayers: false, canEdit: true });
+    const onPlayerPositions = vi.fn();
+    render(<TeamDepthCharts {...props} players={roster} onPlayerPositions={onPlayerPositions} />);
+    const select = await screen.findByLabelText("Add player to Quarterback");
+    const groups = within(select).getAllByRole("group");
+    expect(groups[0]).toHaveAttribute("label", "Plays QB");
+    expect(within(groups[0]).getAllByRole("option").map((option) => option.textContent)).toEqual(["Sam (QB)", "Jo (DB / QB)"]);
+    expect(within(groups[1]).getAllByRole("option").map((option) => option.textContent)).toEqual(["Alex (WR)"]);
+    fireEvent.change(select, { target: { value: "p1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Depth Charts" }));
+    await screen.findByText("Depth charts saved.");
+    expect(onPlayerPositions).toHaveBeenCalledWith({
+      p1: { positions: ["WR", "QB"], position: "WR", depthChartPositions: ["QB"] },
+      p3: { positions: ["DB"], position: "DB", depthChartPositions: [] },
+    });
+  });
   it("shows published charts read-only to players", async () => {
     vi.mocked(requestPrivateData).mockResolvedValue({ charts: [chart], formations: getDepthFormations(), visibleToPlayers: true, canEdit: false });
     render(<TeamDepthCharts {...props} canManage={false} />);

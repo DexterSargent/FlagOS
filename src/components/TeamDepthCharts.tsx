@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Eye, Layers, LockKeyhole, Plus, Save, Shield, Trash2, Users, X, Zap } from "lucide-react";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
-import { getDepthFormations, getPlayerPositions, migrateDefaultCharts, type DepthChart, type DepthChartResponse, type DepthChartState, type DepthFormation } from "@/lib/depthChart";
+import { getDepthChartPositionsByPlayer, getDepthFormations, getPlayerPositions, getSlotPosition, getStoredPlayerPositions, migrateDefaultCharts, playerPlaysPosition, syncDepthChartPositions, type DepthChart, type DepthChartResponse, type DepthChartState, type DepthFormation } from "@/lib/depthChart";
 import type { Playbook } from "@/lib/playbookTypes";
 
 interface DepthPlayer {
@@ -12,9 +12,12 @@ interface DepthPlayer {
   number?: string;
   positions?: string[];
   position?: string;
+  depthChartPositions?: string[];
 }
 
-export default function TeamDepthCharts({ teamId, players, canManage, signedIn, isDemo, showStats, playerStats, onFormations }: {
+export type DepthPositionChanges = Record<string, { positions: string[]; position: string; depthChartPositions: string[] }>;
+
+export default function TeamDepthCharts({ teamId, players, canManage, signedIn, isDemo, showStats, playerStats, onFormations, onPlayerPositions }: {
   teamId: string;
   players: DepthPlayer[];
   canManage: boolean;
@@ -23,6 +26,8 @@ export default function TeamDepthCharts({ teamId, players, canManage, signedIn, 
   showStats: boolean;
   playerStats: Record<string, { gamesPlayed?: number; totalTDs?: number }>;
   onFormations: (formations: DepthFormation[]) => void;
+  /** Called after a save with roster positions the server added or removed to match the charts. */
+  onPlayerPositions?: (changes: DepthPositionChanges) => void;
 }) {
   const [state, setState] = useState<DepthChartResponse>({ charts: [], visibleToPlayers: false, formations: [], canEdit: false });
   const [activeId, setActiveId] = useState("");
@@ -93,6 +98,16 @@ export default function TeamDepthCharts({ teamId, players, canManage, signedIn, 
       else await createSecureRecord("depth_chart", { teamId, ...payload });
       setDirty(false);
       setNotice("Depth charts saved.");
+      if (onPlayerPositions) {
+        const chartPositions = getDepthChartPositionsByPlayer(state.charts, state.formations);
+        const changes: DepthPositionChanges = {};
+        for (const player of players) {
+          const next = syncDepthChartPositions(player, chartPositions.get(player.id) || []);
+          if (JSON.stringify(next.positions) !== JSON.stringify(getStoredPlayerPositions(player)) ||
+            JSON.stringify(next.depthChartPositions) !== JSON.stringify(player.depthChartPositions || [])) changes[player.id] = next;
+        }
+        if (Object.keys(changes).length) onPlayerPositions(changes);
+      }
     } catch (error) {
       console.error("Unable to save depth charts:", error);
       setError(error instanceof Error ? error.message : "Unable to save depth charts.");
@@ -199,6 +214,11 @@ export default function TeamDepthCharts({ teamId, players, canManage, signedIn, 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {slots.map((slot) => {
               const assigned = active.assignments[slot.id] || [];
+              const slotPosition = formation ? getSlotPosition(formation, slot) : slot.label;
+              const available = players.filter((player) => !assigned.includes(player.id));
+              const atPosition = available.filter((player) => playerPlaysPosition(player, slotPosition));
+              const others = available.filter((player) => !playerPlaysPosition(player, slotPosition));
+              const playerOption = (player: DepthPlayer) => <option key={player.id} value={player.id}>{player.playerName} ({getPlayerPositions(player).join(" / ")})</option>;
               return <section key={slot.id} aria-label={`${slot.label} depth chart`} className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-950/60">
                 <div className="flex items-center justify-between gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.03]">
                   <h5 className="min-w-0 break-words text-sm font-bold">{slot.label}</h5>
@@ -239,7 +259,10 @@ export default function TeamDepthCharts({ teamId, players, canManage, signedIn, 
                   if (event.target.value) updateChart({ ...active, assignments: { ...active.assignments, [slot.id]: [...assigned, event.target.value] } });
                 }} className="min-h-10 w-full min-w-0 rounded-xl border border-neutral-200 bg-neutral-50 p-2 text-xs text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-300">
                   <option value="">Add player...</option>
-                  {players.filter((player) => !assigned.includes(player.id)).map((player) => <option key={player.id} value={player.id}>{player.playerName} ({getPlayerPositions(player).join(" / ")})</option>)}
+                  {atPosition.length > 0 && others.length > 0 ? <>
+                    <optgroup label={`Plays ${slotPosition}`}>{atPosition.map(playerOption)}</optgroup>
+                    <optgroup label="Other players">{others.map(playerOption)}</optgroup>
+                  </> : [...atPosition, ...others].map(playerOption)}
                 </select>}
                 </div>
               </section>;

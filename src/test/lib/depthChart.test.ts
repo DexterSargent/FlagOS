@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDepthFormations, getPlayerPositions, validateDepthCharts } from "@/lib/depthChart";
+import { getDepthChartPositionsByPlayer, getDepthFormations, getPlayerPositions, getSlotPosition, keepDepthChartPositions, playerPlaysPosition, syncDepthChartPositions, validateDepthCharts, type DepthChart } from "@/lib/depthChart";
 import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 
 describe("depth chart definitions", () => {
@@ -31,5 +31,34 @@ describe("depth chart definitions", () => {
     expect(validateDepthCharts({ charts: [chart, chart], visibleToPlayers: false })).toBe(false);
     expect(validateDepthCharts({ charts: [{ ...chart, assignments: { QB: ["p1", "p1"] } }], visibleToPlayers: true })).toBe(false);
     expect(validateDepthCharts({ charts: [chart], visibleToPlayers: "true" })).toBe(false);
+  });
+  it("collects each player's chart positions, using short codes for template slots", () => {
+    const formations = getDepthFormations();
+    const charts: DepthChart[] = [
+      { id: "o", name: "O", formationKey: "default:offense", assignments: { QB: ["p1"], WR: ["p1", "p2"] } },
+      { id: "d", name: "D", formationKey: "default:defense", assignments: { DB: ["p2"] } },
+      { id: "x", name: "Gone", formationKey: "deleted:formation", assignments: { QB: ["p3"] } },
+    ];
+    const byPlayer = getDepthChartPositionsByPlayer(charts, formations);
+    expect(byPlayer.get("p1")).toEqual(["QB", "WR"]);
+    expect(byPlayer.get("p2")).toEqual(["WR", "DB"]);
+    expect(byPlayer.has("p3")).toBe(false);
+  });
+  it("adds chart positions and removes only the ones it added", () => {
+    const added = syncDepthChartPositions({ positions: ["QB"] }, ["QB", "WR"]);
+    expect(added).toEqual({ positions: ["QB", "WR"], position: "QB", depthChartPositions: ["WR"] });
+    const removed = syncDepthChartPositions({ ...added }, []);
+    expect(removed).toEqual({ positions: ["QB"], position: "QB", depthChartPositions: [] });
+    expect(syncDepthChartPositions({ positions: ["qb"] }, ["QB"]).depthChartPositions).toEqual([]);
+  });
+  it("caps auto-added positions at the roster limit", () => {
+    const explicit = Array.from({ length: 9 }, (_, index) => `P${index}`);
+    expect(syncDepthChartPositions({ positions: explicit }, ["QB", "WR"]).positions).toHaveLength(10);
+  });
+  it("forgets auto positions a coach removes by hand and keeps the rest", () => {
+    expect(keepDepthChartPositions(["WR", "DB"], ["QB", "WR"])).toEqual(["WR"]);
+    expect(keepDepthChartPositions(undefined, ["QB"])).toEqual([]);
+    expect(playerPlaysPosition({ positions: ["wr"] }, "WR")).toBe(true);
+    expect(getSlotPosition({ key: "book:f", name: "F", side: "offense", slots: [] }, { id: "node1", label: " X " })).toBe("X");
   });
 });
