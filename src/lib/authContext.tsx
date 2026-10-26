@@ -17,7 +17,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { cleanFirebaseConfigValue } from "./firebaseConfig";
+import { PLATFORM_ADMIN_EMAILS, isPlatformAdminEmail } from "./platformAdmin";
 import { DEMO_TEAM_IDS, subscribeDemoSandbox, notifySandboxChange } from "./demoSandboxRuntime";
 import { requestPrivateData } from "./secureWrites";
 import { resolveConnectedAccount } from "./accountEmails";
@@ -250,10 +250,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const adminEmails = (cleanFirebaseConfigValue(process.env.NEXT_PUBLIC_ADMIN_EMAILS) || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+  // Same list the server enforces; never read from deploy env, where a stale value once granted the wrong account.
+  const adminEmails = PLATFORM_ADMIN_EMAILS;
 
   // Helper to find player matching an email address
   const findPlayerByEmail = async (email: string, lookup?: Promise<IdentityLookup>): Promise<{ id: string; teamId?: string; [key: string]: any } | null> => {
@@ -718,7 +716,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const lockedEmbedRole: UserRole | null = isEmbed ? (isEmbedPlaybook ? "team_admin" : "league_admin") : null;
 
   // Determine effective role & player properties
-  const isDexter = !!user?.emailVerified && !!user.email && ["dextersargent@flagos.ca", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
+  const isDexter = !!user?.emailVerified && isPlatformAdminEmail(user.email);
   // Explicitly chosen role in dev Role Switcher takes precedence so admins/devs can simulate any persona
   const effectiveRole: UserRole =
     lockedEmbedRole || devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));
