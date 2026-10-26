@@ -154,7 +154,7 @@ describe("RoleSwitcherBar & Auth Lock in Embed Mode", () => {
     // Mock onAuthStateChanged callback returning Dexter user
     const { onAuthStateChanged } = await import("firebase/auth");
     (onAuthStateChanged as any).mockImplementationOnce((_auth: any, callback: any) => {
-      callback({ uid: "dexter-uid", email: "dextersargent@gmail.com", displayName: "Dexter" });
+      callback({ uid: "dexter-uid", email: "dextersargent@flagos.ca", displayName: "Dexter" });
       return vi.fn();
     });
 

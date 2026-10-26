@@ -10,7 +10,8 @@
     "migrate:private-data": "node scripts/migratePrivateData.cjs",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "audit:contrast": "node scripts/contrast-audit.mjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",

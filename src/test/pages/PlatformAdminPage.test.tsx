@@ -408,7 +408,7 @@ describe("Business console", () => {
 
   it("opens on the overview with MRR from paid subscriptions only and ledger profit", async () => {
     render(<PlatformAdminPage />);
-    expect(await screen.findByText("MRR (billed)")).toBeInTheDocument();
+    expect(await screen.findByText("MRR (marked paid)")).toBeInTheDocument();
     // League ($160) is paid; the $40 complimentary team is excluded from billed MRR.
     expect(screen.getByText("$1,920")).toBeInTheDocument();
     expect(screen.getByText(/1 complimentary subscription is worth/)).toBeInTheDocument();

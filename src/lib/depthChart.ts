@@ -64,6 +64,40 @@ export function getDepthFormations(playbooks: Playbook[] = []): DepthFormation[]
   ];
 }
 
+/**
+ * Charts built on the "Default Offense/Defense" template lose their formation once the team saves
+ * its first real formation. Move them onto the first real formation of the same side, keeping each
+ * slot's players where the position matches and filling remaining slots in order.
+ */
+export function migrateDefaultCharts(charts: DepthChart[], formations: DepthFormation[]): { charts: DepthChart[]; migrated: string[] } {
+  const known = new Set(formations.map((formation) => formation.key));
+  const migrated: string[] = [];
+  const next = charts.map((chart) => {
+    if (!chart.formationKey.startsWith("default:") || known.has(chart.formationKey)) return chart;
+    const side = chart.formationKey === "default:defense" ? "defense" : "offense";
+    const target = formations.find((formation) => formation.side === side && !formation.key.startsWith("default:"));
+    if (!target) return chart;
+    const normalize = (value: string) => value.trim().toUpperCase();
+    const free = [...target.slots];
+    const assignments: Record<string, string[]> = {};
+    const leftovers: string[][] = [];
+    for (const [slotId, playerIds] of Object.entries(chart.assignments)) {
+      if (!playerIds.length) continue;
+      const index = free.findIndex((slot) => normalize(slot.label) === normalize(slotId) || normalize(slot.id) === normalize(slotId));
+      if (index >= 0) assignments[free.splice(index, 1)[0].id] = playerIds;
+      else leftovers.push(playerIds);
+    }
+    for (const playerIds of leftovers) {
+      const slot = free.shift();
+      if (!slot) break;
+      assignments[slot.id] = playerIds;
+    }
+    migrated.push(chart.name);
+    return { ...chart, formationKey: target.key, assignments };
+  });
+  return { charts: next, migrated };
+}
+
 export function getFormationPositions(formations: DepthFormation[]): string[] {
   return [...new Set([...DEFAULT_PLAYER_POSITIONS, ...formations.filter((formation) => !formation.key.startsWith("default:")).flatMap((formation) => formation.slots.map((slot) => slot.label).filter((label) => label.length <= 20))])];
 }

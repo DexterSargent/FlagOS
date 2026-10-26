@@ -176,19 +176,20 @@ describe("private-data API", () => {
     });
     transaction.get.mockResolvedValue({
       exists: true,
-      get: (field: string) => field === "minuteStart" ? Date.now() : 3_900,
+      get: (field: string) => field === "minuteStart" ? Date.now() : 7_900,
     });
 
     const response = await POST(request({ action: "lookup", data: {} }));
 
     expect(response.status).toBe(429);
+    expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
     expect(collectionMock).not.toHaveBeenCalled();
   });
 
   it("does not throttle the platform admin overview", async () => {
     verifyIdTokenMock.mockResolvedValue({
       ...token,
-      email: "dextersargent@gmail.com",
+      email: "dextersargent@flagos.ca",
     });
     transaction.get.mockResolvedValue({
       exists: true,

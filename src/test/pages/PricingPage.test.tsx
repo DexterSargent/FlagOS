@@ -60,7 +60,7 @@ vi.mock("@/lib/secureWrites", () => ({
 }));
 
 const ownerAuth = () => ({
-  user: { uid: "owner-1", email: "dextersargent@gmail.com", emailVerified: true },
+  user: { uid: "owner-1", email: "dextersargent@flagos.ca", emailVerified: true },
   isLeagueAdmin: true,
   isPlatformAdmin: true,
   setDevRole: mockSetDevRole,
@@ -175,7 +175,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     render(<PricingPage />);
 
     const subscribeButton = screen.getByRole("button", {
-      name: /Launch & Subscribe League/i,
+      name: /Create League \(no charge\)/i,
     });
     fireEvent.click(subscribeButton);
 
@@ -190,7 +190,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
       target: { value: "MFL" },
     });
 
-    const confirmBtn = screen.getByRole("button", { name: /Confirm & Pay/i });
+    const confirmBtn = screen.getByRole("button", { name: /Complimentary/i });
     fireEvent.click(confirmBtn);
 
     expect(mockCreateLeague).toHaveBeenCalledWith(
@@ -210,7 +210,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     mockAuth = ownerAuth() as typeof mockAuth;
     render(<PricingPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Launch & Subscribe League/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Create League \(no charge\)/i }));
     fireEvent.change(screen.getByPlaceholderText(/Gotham Flag Football League/i), { target: { value: "Apex Flag League" } });
     fireEvent.change(screen.getByPlaceholderText(/GFFL/i), { target: { value: "AFL" } });
     fireEvent.change(screen.getByPlaceholderText(/Paste image URL/i), { target: { value: "https://example.com/crest.png" } });
@@ -220,7 +220,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     // Pick tertiary color swatch
     fireEvent.click(screen.getByRole("button", { name: /League tertiary color #FCD34D/i }));
 
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Complimentary/i }));
 
     expect(mockCreateLeague).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -238,11 +238,11 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     mockAuth = ownerAuth() as typeof mockAuth;
     render(<PricingPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Create Team Portal \(no charge\)/i }));
     fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Waterloo Wolves" } });
     fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "wat" } });
     fireEvent.change(screen.getByLabelText(/Team Portal Visibility/i), { target: { value: "private" } });
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Complimentary/i }));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
     expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
@@ -255,7 +255,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
       secondaryColor: "#06b6d4",
       tertiaryColor: "#ffffff",
       logoUrl: "/flagos-emblem-512.png",
-      adminEmails: ["dextersargent@gmail.com"],
+      adminEmails: ["dextersargent@flagos.ca"],
       subscription: expect.objectContaining({ status: "active", paymentMethod: "complimentary" }),
     }));
   });
@@ -264,7 +264,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     mockAuth = ownerAuth() as typeof mockAuth;
     render(<PricingPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Create Team Portal \(no charge\)/i }));
     fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Viper Squad" } });
     fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "VIP" } });
     fireEvent.change(screen.getByPlaceholderText(/Paste image URL/i), { target: { value: "https://example.com/viper.png" } });
@@ -274,7 +274,7 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     // Pick secondary color swatch
     fireEvent.click(screen.getByRole("button", { name: /Team secondary color #EC4899/i }));
 
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Complimentary/i }));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
     expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
@@ -296,10 +296,10 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     } as typeof mockAuth;
     render(<PricingPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Create Team Portal \(no charge\)/i }));
     fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "FlagOS Raptors" } });
     fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "RAP" } });
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Complimentary/i }));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42"));
     expect(mockCreateSecureRecord).toHaveBeenCalledWith("team", expect.objectContaining({
@@ -314,9 +314,9 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     mockCreateSecureRecord.mockRejectedValue(new Error("Write rate limit reached."));
     render(<PricingPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Create Team Portal \(no charge\)/i }));
     fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Wolves" } });
-    fireEvent.click(screen.getByRole("button", { name: /Confirm & Pay/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Complimentary/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Write rate limit reached.");
     expect(mockPush).not.toHaveBeenCalled();

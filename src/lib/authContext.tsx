@@ -174,6 +174,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   /** Signed in with a password account whose email has not been verified yet. */
   needsEmailVerification: boolean;
+  /** True when the server couldn't confirm this account's memberships (network error or rate limit). */
+  identityLookupFailed: boolean;
   resendVerificationEmail: () => Promise<LoginResult>;
   /** Reloads the Firebase user; reloads the app when the email is now verified. */
   confirmEmailVerified: () => Promise<boolean>;
@@ -209,6 +211,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithPlayerEmail: async () => ({ success: false }),
   logout: async () => { },
   needsEmailVerification: false,
+  identityLookupFailed: false,
   resendVerificationEmail: async () => ({ success: false, message: "Verification is unavailable." }),
   confirmEmailVerified: async () => false,
   bypassLogin: () => { },
@@ -220,6 +223,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const embedState = useEmbedState();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [identityLookupFailed, setIdentityLookupFailed] = useState(false);
   const [devRole, setDevRoleState] = useState<UserRole | null>(null);
   const [activeLeagueCommissioner, setActiveLeagueCommissioner] = useState(false);
   const [devTeamId, setDevTeamId] = useState<string | null>(null);
@@ -332,6 +336,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Firestore rules enforce real access) and revalidate in the background.
       const cachedProfile = u?.emailVerified ? readCachedProfile(u.uid, u.email) : null;
       setUserProfile(cachedProfile);
+      setIdentityLookupFailed(false);
       setLoading(!cachedProfile && !!u);
       if (u) {
         const isPendingUnassignedAccount = !!u.email &&
@@ -363,9 +368,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               : Promise.resolve([null, null]),
           ]);
           if (version !== authVersion) return;
-          const managedTeamIds = lookup
-            ? (await lookup.catch(() => ({ teams: [] as IdentityLookup["teams"] }))).teams.map((team) => team.id)
-            : [];
+          const lookupResult = lookup ? await lookup.catch(() => null) : undefined;
+          // A failed or throttled lookup says nothing about membership; keep the last known profile.
+          if (lookup && !lookupResult) throw new Error("Identity lookup failed.");
+          const managedTeamIds = (lookupResult?.teams || []).map((team) => team.id);
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
@@ -423,6 +429,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (err) {
           console.error("Error fetching user profile:", err);
           if (version !== authVersion) return;
+          if (!cachedProfile) setIdentityLookupFailed(true);
           if (!cachedProfile) {
             const isEmailLeagueAdmin = !!(u.email && adminEmails.includes(u.email.toLowerCase()));
             setUserProfile({
@@ -711,7 +718,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const lockedEmbedRole: UserRole | null = isEmbed ? (isEmbedPlaybook ? "team_admin" : "league_admin") : null;
 
   // Determine effective role & player properties
-  const isDexter = !!user?.emailVerified && !!user.email && ["dextersargent@flagos.ca", "dextersargent@gmail.com", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
+  const isDexter = !!user?.emailVerified && !!user.email && ["dextersargent@flagos.ca", "dexter@yuwffl.ca", "dexter.b.harvey@gmail.com"].includes(user.email.trim().toLowerCase());
   // Explicitly chosen role in dev Role Switcher takes precedence so admins/devs can simulate any persona
   const effectiveRole: UserRole =
     lockedEmbedRole || devRole || (isDexter ? "league_admin" : (userProfile?.role || "user"));
@@ -801,6 +808,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         sendPasswordReset,
         loginWithPlayerEmail,
         needsEmailVerification,
+        identityLookupFailed,
         resendVerificationEmail,
         confirmEmailVerified,
         logout,

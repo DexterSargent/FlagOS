@@ -234,8 +234,7 @@ export default function FreeAgentsPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2.5 rounded-xl text-white text-xs font-black uppercase tracking-wider disabled:opacity-60"
-                style={{ backgroundColor: "#2b7d04", color: "#ffffff" }}
+                className="px-5 py-2.5 rounded-xl bg-[#256c03] hover:bg-[#1d5502] text-[#fff] text-xs font-black uppercase tracking-wider disabled:opacity-60"
               >
                 {submitting ? "Sending…" : "Send My Details"}
               </button>

@@ -16,8 +16,7 @@ service cloud.firestore {
 
     function isPlatformAdmin() {
       return signedIn() &&
-        (request.auth.token.email == 'dextersargent@flagos.ca' ||
-         request.auth.token.email == 'dextersargent@gmail.com');
+        request.auth.token.email == 'dextersargent@flagos.ca';
     }
 
     // Independent (league-free) teams can opt into a public portal by setting
@@ -84,57 +83,40 @@ service cloud.firestore {
     }
 
     function isTeamAdmin(teamId) {
-      let teamPath = /databases/$(database)/documents/teams/$(teamId);
-      let privateTeamPath = /databases/$(database)/documents/team_private/$(teamId);
       return isPlatformAdmin() ||
-        (signedIn() &&
-          teamId is string &&
-          (
-            (exists(privateTeamPath) &&
-              (
-                (get(privateTeamPath).data.adminEmails is list &&
-                  get(privateTeamPath).data.adminEmails.hasAny(authEmails())) ||
-                (get(privateTeamPath).data.coachEmail is string &&
-                  get(privateTeamPath).data.coachEmail.lower() in authEmails()) ||
-                (get(privateTeamPath).data.adminEmail is string &&
-                  get(privateTeamPath).data.adminEmail.lower() in authEmails())
-              )) ||
-            (exists(teamPath) &&
-          (
-            (get(teamPath).data.adminEmails is list &&
-              get(teamPath).data.adminEmails.hasAny(authEmails())) ||
-            (get(teamPath).data.coachEmail is string &&
-              get(teamPath).data.coachEmail.lower() in authEmails()) ||
-            (get(teamPath).data.adminEmail is string &&
-              get(teamPath).data.adminEmail.lower() in authEmails())
-          ))
-          ));
+        (signedIn() && teamId is string && teamId != '' &&
+          (teamDocListsAdmin(/databases/$(database)/documents/team_private/$(teamId)) ||
+            teamDocListsAdmin(/databases/$(database)/documents/teams/$(teamId))));
+    }
+
+    // A missing document makes get() fail, which an OR treats as false, so no separate exists() call
+    // is needed. Every lookup counts toward the 10-document limit per request.
+    function teamDocListsAdmin(path) {
+      return teamDataListsAdmin(get(path).data, authEmails());
+    }
+
+    function teamDataListsAdmin(data, emails) {
+      return (data.get('adminEmails', []) is list && data.get('adminEmails', []).hasAny(emails)) ||
+        (data.get('coachEmail', '') is string && data.get('coachEmail', '').lower() in emails) ||
+        (data.get('adminEmail', '') is string && data.get('adminEmail', '').lower() in emails);
     }
 
     function isLeagueAdmin(leagueId) {
-      let leaguePath = /databases/$(database)/documents/leagues/$(leagueId);
-      let privateLeaguePath = /databases/$(database)/documents/league_private/$(leagueId);
       return isPlatformAdmin() ||
-        (signedIn() &&
-          leagueId is string &&
-          (
-            (exists(privateLeaguePath) &&
-              (
-                (get(privateLeaguePath).data.ownerUid is string &&
-                  get(privateLeaguePath).data.ownerUid == request.auth.uid) ||
-                (get(privateLeaguePath).data.adminEmails is list &&
-                  get(privateLeaguePath).data.adminEmails.hasAny(authEmails())) ||
-                (get(privateLeaguePath).data.subscriptionAdminEmails is list &&
-                  get(privateLeaguePath).data.subscriptionAdminEmails.hasAny(authEmails()))
-              )) ||
-            (exists(leaguePath) &&
-          (
-            (get(leaguePath).data.ownerUid is string &&
-              get(leaguePath).data.ownerUid == request.auth.uid) ||
-            (get(leaguePath).data.adminEmails is list &&
-              get(leaguePath).data.adminEmails.hasAny(authEmails()))
-          ))
-          ));
+        (signedIn() && leagueId is string && leagueId != '' &&
+          (leagueDocListsAdmin(/databases/$(database)/documents/league_private/$(leagueId), true) ||
+            leagueDocListsAdmin(/databases/$(database)/documents/leagues/$(leagueId), false)));
+    }
+
+    function leagueDocListsAdmin(path, includeSubscriptionAdmins) {
+      return leagueDataListsAdmin(get(path).data, authEmails(), includeSubscriptionAdmins);
+    }
+
+    function leagueDataListsAdmin(data, emails, includeSubscriptionAdmins) {
+      return (data.get('ownerUid', '') is string && data.get('ownerUid', '') == request.auth.uid) ||
+        (data.get('adminEmails', []) is list && data.get('adminEmails', []).hasAny(emails)) ||
+        (includeSubscriptionAdmins && data.get('subscriptionAdminEmails', []) is list &&
+          data.get('subscriptionAdminEmails', []).hasAny(emails));
     }
 
     function isPublicLeague(leagueId) {
@@ -147,7 +129,7 @@ service cloud.firestore {
     // league_access/{uid} in sync with rosters whenever it resolves the account.
     function isLeagueMember(leagueId) {
       let accessPath = /databases/$(database)/documents/league_access/$(request.auth.uid);
-      return signedIn() && leagueId is string && leagueId != '' && exists(accessPath) &&
+      return signedIn() && leagueId is string && leagueId != '' &&
         get(accessPath).data.get('leagueIds', []) is list &&
         leagueId in get(accessPath).data.get('leagueIds', []);
     }
@@ -160,7 +142,7 @@ service cloud.firestore {
     // so private-league games can be scored by someone who isn't a member.
     function hasScorerLeagueAccess(leagueId) {
       let accessPath = /databases/$(database)/documents/scorer_league_access/$(leagueId + '__' + request.auth.uid);
-      return signedIn() && leagueId is string && leagueId != '' && exists(accessPath) &&
+      return signedIn() && leagueId is string && leagueId != '' &&
         get(accessPath).data.uid == request.auth.uid &&
         get(accessPath).data.expiresAt > request.time;
     }
@@ -305,7 +287,7 @@ service cloud.firestore {
     // Temporary scorer access to one game, issued by a league admin through /api/scorer-access.
     function hasScorerGrant(matchId) {
       let grantPath = /databases/$(database)/documents/scorer_grants/$(matchId + '__' + request.auth.uid);
-      return signedIn() && matchId is string && exists(grantPath) &&
+      return signedIn() && matchId is string &&
         get(grantPath).data.uid == request.auth.uid &&
         get(grantPath).data.expiresAt > request.time;
     }
@@ -313,21 +295,19 @@ service cloud.firestore {
     function canManageMatch(matchId) {
       let matchPath = /databases/$(database)/documents/matches/$(matchId);
       return isPlatformAdmin() || hasScorerGrant(matchId) ||
-        (matchId is string && exists(matchPath) &&
-          (
-            canManageTeam(
-              get(matchPath).data.get('managingTeamId', ''),
-              get(matchPath).data.get('leagueId', '')
-            ) ||
-            canManageTeam(
-              get(matchPath).data.get('homeTeamId', ''),
-              get(matchPath).data.get('leagueId', '')
-            ) ||
-            canManageTeam(
-              get(matchPath).data.get('awayTeamId', ''),
-              get(matchPath).data.get('leagueId', '')
-            )
-          ));
+        (matchId is string && canManageMatchData(get(matchPath).data));
+    }
+
+    // Each check runs once so list queries stay well under the rules expression budget.
+    function canManageMatchData(game) {
+      let leagueId = game.get('leagueId', '');
+      let managingTeamId = game.get('managingTeamId', '');
+      let homeTeamId = game.get('homeTeamId', '');
+      let awayTeamId = game.get('awayTeamId', '');
+      return (leagueId is string && leagueId != '' && isLeagueAdmin(leagueId)) ||
+        (managingTeamId is string && managingTeamId != '' && isTeamAdmin(managingTeamId)) ||
+        (homeTeamId is string && homeTeamId != '' && homeTeamId != managingTeamId && isTeamAdmin(homeTeamId)) ||
+        (awayTeamId is string && awayTeamId != '' && awayTeamId != managingTeamId && isTeamAdmin(awayTeamId));
     }
 
     function isValidUser(data, userId) {
@@ -456,18 +436,20 @@ service cloud.firestore {
         (isPlatformAdmin() ||
           (resource.data.teamId is string && isTeamAdmin(resource.data.teamId)) ||
           (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
+          (resource.data.get('managingTeamId', '') != '' && isTeamAdmin(resource.data.managingTeamId)) ||
           (resource.data.matchId is string && canManageMatch(resource.data.matchId)) ||
           isPublicLeaguePlay(resource.data)));
-      allow list: if hasBoundedListLimit(10000) &&
+      allow list: if hasBoundedListLimit(10000) && (
         // Queries can't follow each play to its match, so league queries rely on the play's
         // own isHidden flag (copied from the match when the play is recorded).
-        ((signedIn() && resource.data.isHidden != true && canViewLeague(resource.data.leagueId)) ||
-        isPublicTeamPlay(resource.data) || (signedIn() &&
-        (isPlatformAdmin() ||
-          (resource.data.teamId is string && isTeamAdmin(resource.data.teamId)) ||
-          (resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
-          (resource.data.matchId is string && canManageMatch(resource.data.matchId)) ||
-          isPublicLeaguePlay(resource.data))));
+        // Branches run cheapest-first to stay within the 10-document lookup limit.
+        (signedIn() && resource.data.isHidden != true && canViewLeague(resource.data.leagueId)) ||
+        isPublicTeamPlay(resource.data) ||
+        // Independent-team games: queries scoped by managingTeamId resolve with two lookups.
+        (signedIn() && resource.data.get('managingTeamId', '') != '' && isTeamAdmin(resource.data.managingTeamId)) ||
+        (signedIn() && resource.data.leagueId is string && isLeagueAdmin(resource.data.leagueId)) ||
+        (signedIn() && resource.data.matchId is string && canManageMatch(resource.data.matchId)) ||
+        (signedIn() && resource.data.teamId is string && isTeamAdmin(resource.data.teamId)));
       allow create: if false;
       allow update: if isValidPlay(request.resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([

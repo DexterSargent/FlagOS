@@ -80,7 +80,7 @@ export default function ThemeToggle({
           ? "w-7 h-7"
           : size === "lg"
           ? "w-10 h-10"
-          : "w-8 h-8"
+          : "w-10 h-10 sm:w-8 sm:h-8"
       } ${className}`}
       title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
       aria-label={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}

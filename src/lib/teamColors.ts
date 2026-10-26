@@ -54,8 +54,8 @@ export function getReadableTextColor(background: string, preferred: string): str
 export const INK_SURFACE_DARK = "#171e28";
 export const INK_SURFACE_LIGHT = "#e7edf4";
 
-/** Lightens or darkens a brand colour just enough to read as text (4.5:1) on the given surface. */
-export function readableInk(color: string, surface: string, minRatio = 4.5): string {
+/** Lightens or darkens a brand colour until it reads as text on the given surface (5:1 leaves headroom for tinted panels). */
+export function readableInk(color: string, surface: string, minRatio = 5): string {
   const bg = luminance(surface);
   const base = /^#?[0-9a-f]{6}$/i.test(color.trim()) ? parseHexColor(color) : null;
   if (bg === null || !base) return color;

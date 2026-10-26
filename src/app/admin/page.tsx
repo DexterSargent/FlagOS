@@ -42,9 +42,12 @@ import AdminFinance, { BillingModal, LedgerEntryModal } from "@/components/admin
 import AdminUsers, { type Membership } from "@/components/admin/AdminUsers";
 import AdminActivity from "@/components/admin/AdminActivity";
 import AdminFreeAgents from "@/components/admin/AdminFreeAgents";
+import AdminHealth from "@/components/admin/AdminHealth";
+import type { PlatformHealthReport } from "@/lib/platformHealth";
 
 const CONSOLE_TABS: Array<{ id: ConsoleTab; label: string }> = [
   { id: "overview", label: "Overview" },
+  { id: "health", label: "Health" },
   { id: "customers", label: "Customers" },
   { id: "finance", label: "Finance" },
   { id: "users", label: "Users" },
@@ -79,6 +82,9 @@ export interface ManagedRecord {
   leagueId?: string;
   [key: string]: unknown;
 }
+
+const LIST_PAGE_SIZE = 50;
+const AUTO_REFRESH_MS = 5 * 60_000;
 
 const getText = (value: unknown, fallback: string) =>
   typeof value === "string" && value.trim() ? value : fallback;
@@ -127,6 +133,11 @@ export default function PlatformAdminPage() {
   const businessRequestPending = useRef(false);
   const [ledgerPrefill, setLedgerPrefill] = useState<Partial<LedgerDraft> | null>(null);
   const [billingRecord, setBillingRecord] = useState<BillingRecord | null>(null);
+  const [health, setHealth] = useState<PlatformHealthReport | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthError, setHealthError] = useState("");
+  const [leagueVisible, setLeagueVisible] = useState(LIST_PAGE_SIZE);
+  const [teamVisible, setTeamVisible] = useState(LIST_PAGE_SIZE);
 
   useEffect(() => {
     const fromHash = window.location.hash.replace("#", "") as ConsoleTab;
@@ -151,6 +162,19 @@ export default function PlatformAdminPage() {
     } finally {
       businessRequestPending.current = false;
       setBusinessLoading(false);
+    }
+  }, []);
+
+  const loadHealth = useCallback(async () => {
+    setHealthLoading(true);
+    setHealthError("");
+    try {
+      setHealth(await adminBusinessRequest<PlatformHealthReport>("health"));
+    } catch (healthLoadError) {
+      console.error("Failed to load platform health:", healthLoadError);
+      setHealthError(healthLoadError instanceof Error ? healthLoadError.message : "Could not run the health check.");
+    } finally {
+      setHealthLoading(false);
     }
   }, []);
 
@@ -268,6 +292,19 @@ export default function PlatformAdminPage() {
     }
   }, [authLoading, isPlatformAdmin, loadRecords, loadBusiness]);
 
+  useEffect(() => {
+    if (tab === "health" && isPlatformAdmin && !health && !healthLoading && !healthError) void loadHealth();
+  }, [tab, isPlatformAdmin, health, healthLoading, healthError, loadHealth]);
+
+  // Keep the console current without manual refreshes while the tab is visible.
+  useEffect(() => {
+    if (authLoading || !isPlatformAdmin) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadBusiness();
+    }, AUTO_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [authLoading, isPlatformAdmin, loadBusiness]);
+
   const billingRecords = useMemo(() => toBillingRecords(leagues, teams), [leagues, teams]);
   const kpis = useMemo(() => computeKpis(billingRecords), [billingRecords]);
   const memberships = useMemo(() => {
@@ -275,8 +312,16 @@ export default function PlatformAdminPage() {
     const add = (email: string, membership: Membership) => map.set(email, [...(map.get(email) || []), membership]);
     for (const league of leagues) for (const email of league.adminEmails) add(email, { id: league.id, name: league.name, kind: "league" });
     for (const team of teams) for (const email of team.adminEmails) add(email, { id: team.id, name: team.name, kind: "team" });
+    const teamNames = new Map(teams.map((team) => [team.id, team.name]));
+    const seen = new Set<string>();
+    for (const link of business?.playerLinks ?? []) {
+      const key = `${link.email}|${link.teamId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      add(link.email, { id: link.teamId, name: teamNames.get(link.teamId) || link.teamId, kind: "player" });
+    }
     return map;
-  }, [leagues, teams]);
+  }, [leagues, teams, business?.playerLinks]);
 
   const saveLedgerEntry = async (draft: LedgerDraft) => {
     await adminBusinessRequest("ledger_add", { ...draft });
@@ -367,6 +412,12 @@ export default function PlatformAdminPage() {
 
   // Tab for the Teams column: "independent" (teams not in a league) or "all"
   const [teamTab, setTeamTab] = useState<"independent" | "all">("independent");
+
+  const reviewCustomer = useCallback((id: string) => {
+    setSearch(id);
+    setTeamTab("all");
+    setTab("customers");
+  }, [setTab]);
 
   const independentTeams = useMemo(
     () => filteredTeams.filter((team) => !team.leagueId || !leagues.some((l) => l.id === team.leagueId)),
@@ -720,7 +771,7 @@ export default function PlatformAdminPage() {
               Revenue, customers, billing, accounts, and activity across FlagOS.
               {!loadingRecords && billingRecords.length > 0 && (
                 <span className="ml-1 text-neutral-300">
-                  {formatMoney(kpis.billedMrr)} MRR · {kpis.activeCustomers} active customers.
+                  {formatMoney(kpis.billedMrr)} MRR marked paid · {kpis.activeCustomers} active customers.
                 </span>
               )}
             </p>
@@ -739,6 +790,11 @@ export default function PlatformAdminPage() {
             >
               <RefreshCw className={`h-4 w-4 ${loadingRecords || businessLoading ? "animate-spin" : ""}`} /> <span className="hidden sm:inline">Refresh</span>
             </button>
+            {business && (
+              <span className="self-center text-xs text-neutral-500" title="Refreshes automatically every 5 minutes">
+                Updated {new Date(business.generatedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}
+              </span>
+            )}
             <Link
               href="/pricing"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm font-bold text-emerald-200 hover:bg-emerald-500/20"
@@ -757,7 +813,7 @@ export default function PlatformAdminPage() {
         </div>
 
         <nav className="sticky top-0 z-30 -mx-4 mt-6 border-b border-white/10 bg-neutral-950/90 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10" aria-label="Console sections">
-          <div className="flex gap-1 overflow-x-auto" role="tablist">
+          <div className="scroll-hint-x flex gap-1 overflow-x-auto" role="tablist">
             {CONSOLE_TABS.map((entry) => (
               <button
                 key={entry.id}
@@ -798,6 +854,10 @@ export default function PlatformAdminPage() {
           <div className="flex items-center justify-center gap-3 py-20 text-sm text-neutral-400">
             <LoaderCircle className="h-5 w-5 animate-spin text-cyan-400" /> Loading business data…
           </div>
+        ) : tab === "health" ? (
+          <div className="mt-6">
+            <AdminHealth report={health} loading={healthLoading} error={healthError} onRefresh={() => void loadHealth()} onReview={reviewCustomer} />
+          </div>
         ) : tab === "overview" ? (
           <div className="mt-6">
             <AdminOverview records={billingRecords} snapshot={business} onNavigate={setTab} onRecordPayment={recordPaymentFor} />
@@ -818,7 +878,12 @@ export default function PlatformAdminPage() {
           </div>
         ) : tab === "activity" ? (
           <div className="mt-6">
-            <AdminActivity entries={business?.audit ?? []} />
+            <AdminActivity
+              entries={business?.audit ?? []}
+              leagues={leagues.map((league) => ({ id: league.id, name: league.name }))}
+              teams={teams.map((team) => ({ id: team.id, name: team.name, leagueId: team.leagueId }))}
+              total={business?.counts.audit ?? null}
+            />
           </div>
         ) : tab === "free-agents" ? (
           <div className="mt-6">
@@ -847,11 +912,18 @@ export default function PlatformAdminPage() {
           <Search className="h-4 w-4 text-neutral-500" />
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => { setSearch(event.target.value); setLeagueVisible(LIST_PAGE_SIZE); setTeamVisible(LIST_PAGE_SIZE); }}
             placeholder="Search leagues, teams, or IDs"
+            aria-label="Search customers"
+            type="search"
             className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-600"
           />
         </label>
+        {business && ((business.counts.leagues ?? 0) > leagues.length || (business.counts.teams ?? 0) > teams.length) && (
+          <p role="status" className="mt-3 max-w-xl rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-100">
+            Showing {leagues.length} of {business.counts.leagues ?? leagues.length} leagues and {teams.length} of {business.counts.teams ?? teams.length} teams. Search by ID to find older records.
+          </p>
+        )}
 
         {loadingRecords ? (
           <div className="flex items-center justify-center gap-3 py-20 text-sm text-neutral-400">
@@ -876,7 +948,7 @@ export default function PlatformAdminPage() {
                 )}
               </div>
               <div className="space-y-4">
-                {filteredLeagues.map((league) => {
+                {filteredLeagues.slice(0, leagueVisible).map((league) => {
                   const memberTeams = teams.filter((t) => t.leagueId === league.id);
                   const isCollapsed = !!collapsedLeagues[league.id];
 
@@ -1086,6 +1158,11 @@ export default function PlatformAdminPage() {
                   );
                 })}
                 {!filteredLeagues.length && <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-neutral-500">No leagues found.</p>}
+                {filteredLeagues.length > leagueVisible && (
+                  <button type="button" onClick={() => setLeagueVisible((count) => count + LIST_PAGE_SIZE)} className="h-10 w-full rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-neutral-200 hover:bg-white/10">
+                    Showing {leagueVisible} of {filteredLeagues.length} · Show more leagues
+                  </button>
+                )}
               </div>
             </section>
 
@@ -1123,7 +1200,7 @@ export default function PlatformAdminPage() {
               </div>
 
               <div className="space-y-3">
-                {displayedTeams.map((team) => {
+                {displayedTeams.slice(0, teamVisible).map((team) => {
                   const subInfo = getTeamSubscriptionInfo(team);
                   return (
                     <article key={team.id} className="rounded-2xl border border-white/10 bg-neutral-900 p-5 transition-colors hover:border-white/20">
@@ -1221,6 +1298,11 @@ export default function PlatformAdminPage() {
                   ) : (
                     <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-neutral-500">No teams found.</p>
                   )
+                )}
+                {displayedTeams.length > teamVisible && (
+                  <button type="button" onClick={() => setTeamVisible((count) => count + LIST_PAGE_SIZE)} className="h-10 w-full rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-neutral-200 hover:bg-white/10">
+                    Showing {teamVisible} of {displayedTeams.length} · Show more teams
+                  </button>
                 )}
               </div>
             </section>

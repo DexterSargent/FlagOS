@@ -10,11 +10,14 @@ describe("platformAdmin", () => {
     expect(PLATFORM_ADMIN_EMAIL).toBe("dextersargent@flagos.ca");
   });
 
-  it("authorizes both dextersargent@flagos.ca and dextersargent@gmail.com", () => {
+  it("authorizes only dextersargent@flagos.ca", () => {
     expect(isPlatformAdminEmail("dextersargent@flagos.ca")).toBe(true);
     expect(isPlatformAdminEmail("DEXTERSARGENT@FLAGOS.CA")).toBe(true);
-    expect(isPlatformAdminEmail("dextersargent@gmail.com")).toBe(true);
-    expect(isPlatformAdminEmail("DEXTERSARGENT@GMAIL.COM")).toBe(true);
+    expect(PLATFORM_ADMIN_EMAILS).toEqual(["dextersargent@flagos.ca"]);
+  });
+
+  it("treats the personal gmail account as a regular customer", () => {
+    expect(isPlatformAdminEmail("dextersargent@gmail.com")).toBe(false);
   });
 
   it("rejects unauthorized emails", () => {

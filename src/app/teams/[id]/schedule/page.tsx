@@ -456,8 +456,8 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-4">
-                          <div className="flex items-center gap-2 min-w-0 whitespace-nowrap">
-                            <span className="text-[11px] font-mono text-neutral-400 bg-white/5 px-2 sm:px-2.5 py-1 rounded-md border border-white/5 truncate">
+                          <div className="flex flex-wrap items-center gap-2 min-w-0">
+                            <span className="text-[11px] font-mono text-neutral-400 bg-white/5 px-2 sm:px-2.5 py-1 rounded-md border border-white/5 whitespace-nowrap">
                               {m.week || "Gameday"}
                             </span>
                             {isAsyncMatch && (
@@ -555,7 +555,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
             </div>
 
             {pastMatches.length === 0 ? (
-              <div className="bg-neutral-900/40 border border-white/5 rounded-2xl p-8 text-center text-neutral-500 italic text-sm">
+              <div className="bg-neutral-900/40 border border-white/5 rounded-2xl p-8 text-center text-neutral-400 italic text-sm">
                 No completed games recorded yet.
               </div>
             ) : (

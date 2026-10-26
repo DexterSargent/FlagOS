@@ -2253,7 +2253,7 @@ export default function LeagueCustomizerContent() {
                       League Team Subscription
                     </h3>
                     <p className="text-xs text-neutral-400">
-                      Tier Capacity: {subscription?.teamCount || 8} Teams • $40 base + $20/team per month
+                      Tier Capacity: {subscription?.teamCount || 8} Teams • {subscription?.paymentMethod === "complimentary" ? "Complimentary, no charge" : "$40 base + $20/team per month"}
                     </p>
                   </div>
                 </div>
@@ -2555,7 +2555,7 @@ export default function LeagueCustomizerContent() {
                 <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">
                   <div className="text-[10px] uppercase font-bold text-neutral-400">Monthly Licensing</div>
                   <div className="text-sm font-black text-cyan-400 font-mono mt-0.5">
-                    ${subscription?.totalMonthlyFee || 40 + (subscription?.teamCount || 8) * 20}/mo
+                    {subscription?.paymentMethod === "complimentary" ? "Complimentary" : `$${subscription?.totalMonthlyFee || 40 + (subscription?.teamCount || 8) * 20}/mo`}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-neutral-900 border border-white/5">

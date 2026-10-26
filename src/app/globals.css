@@ -291,6 +291,8 @@ body {
 .bg-white\/5,
 .bg-white\/10,
 .bg-white\/15,
+.bg-neutral-900\/30,
+.bg-neutral-900\/40,
 .bg-neutral-900\/50,
 .bg-neutral-900\/60,
 .bg-neutral-900\/70,
@@ -403,6 +405,53 @@ a[class*="bg-purple-"] .text-white,
 button[class*="bg-gradient-to"] .text-white,
 a[class*="bg-gradient-to"] .text-white {
   color: #fff !important;
+}
+
+/* Phones: fade the trailing edge of horizontal rails so it is clear more items are off-screen. */
+@media (max-width: 767px) {
+  .scroll-hint-x {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .scroll-hint-x {
+      animation: scroll-hint-x-end linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
+}
+
+@keyframes scroll-hint-x-end {
+  0%,
+  92% {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+  }
+  100% {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* White-on-solid-colour buttons: shift to the -700 shade so the label keeps >= 4.5:1 contrast */
+:is(button, a)[class~="text-white"]:is([class~="bg-cyan-500"], [class~="bg-cyan-600"]) {
+  background-color: var(--color-cyan-700) !important;
+}
+:is(button, a)[class~="text-white"]:is([class~="bg-cyan-500"], [class~="bg-cyan-600"]):not(:disabled):hover {
+  background-color: var(--color-cyan-800) !important;
+}
+:is(button, a)[class~="text-white"]:is([class~="bg-emerald-500"], [class~="bg-emerald-600"]) {
+  background-color: #047857 !important;
+}
+:is(button, a)[class~="text-white"]:is([class~="bg-emerald-500"], [class~="bg-emerald-600"]):not(:disabled):hover {
+  background-color: #065f46 !important;
+}
+:is(button, a)[class~="text-white"]:is([class~="bg-red-500"], [class~="bg-red-600"]) {
+  background-color: #b91c1c !important;
+}
+:is(button, a)[class~="text-white"]:is([class~="bg-red-500"], [class~="bg-red-600"]):not(:disabled):hover {
+  background-color: #991b1b !important;
 }
 
 .hover\:text-white:hover {
@@ -689,6 +738,8 @@ html.light .bg-\[\#121826\],
 html.light .bg-\[\#141c2e\],
 html.light .bg-neutral-900,
 html.light .bg-neutral-950,
+html.light .bg-neutral-900\/30,
+html.light .bg-neutral-900\/40,
 html.light .bg-neutral-900\/50,
 html.light .bg-neutral-900\/60,
 html.light .bg-neutral-900\/70,
@@ -914,12 +965,75 @@ html.light .text-blue-300 {
 
 html.light .text-red-400,
 html.light .text-red-300 {
-  color: #dc2626 !important;
+  color: #b91c1c !important;
 }
 
 html.light .text-purple-400,
 html.light .text-purple-300 {
   color: #7e22ce !important;
+}
+
+/* Remaining accent shades that were designed for dark surfaces (WCAG AA on light tints) */
+html.light .text-cyan-100,
+html.light .text-cyan-200 {
+  color: var(--text-brand) !important;
+}
+
+html.light .text-emerald-200,
+html.light .text-emerald-500,
+html.light .text-emerald-600 {
+  color: #047857 !important;
+}
+
+html.light .text-green-300,
+html.light .text-green-400,
+html.light .text-green-500,
+html.light .text-green-600 {
+  color: #15803d !important;
+}
+
+html.light .text-amber-100,
+html.light .text-amber-200,
+html.light .text-amber-500,
+html.light .text-amber-600,
+html.light .text-yellow-200,
+html.light .text-yellow-300,
+html.light .text-yellow-500 {
+  color: #92400e !important;
+}
+
+html.light .text-red-200,
+html.light .text-red-500 {
+  color: #b91c1c !important;
+}
+
+html.light .text-rose-300,
+html.light .text-rose-400,
+html.light .text-rose-500 {
+  color: #be123c !important;
+}
+
+html.light .text-sky-300,
+html.light .text-sky-400,
+html.light .text-sky-500 {
+  color: #0369a1 !important;
+}
+
+html.light .text-teal-300,
+html.light .text-teal-400,
+html.light .text-teal-500 {
+  color: #0f766e !important;
+}
+
+html.light .text-violet-200,
+html.light .text-violet-300,
+html.light .text-violet-400,
+html.light .text-purple-200 {
+  color: #6d28d9 !important;
+}
+
+html.light .text-blue-200 {
+  color: #1d4ed8 !important;
 }
 
 /* Clean Pastel Tint Badges in Light Mode */

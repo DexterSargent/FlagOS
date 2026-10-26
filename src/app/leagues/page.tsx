@@ -523,7 +523,7 @@ export default function LeagueDirectoryPage() {
               </button>
 
               {/* Radius Selector */}
-              <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-white/10 text-xs font-medium shrink-0">
+              <div className="flex items-center gap-1 px-2.5 py-1.5 min-h-10 sm:min-h-0 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-white/10 text-xs font-medium shrink-0">
                 <span className="text-[11px] text-slate-600 dark:text-neutral-400">Radius:</span>
                 <select
                   value={maxDistanceMiles}
@@ -539,7 +539,7 @@ export default function LeagueDirectoryPage() {
               </div>
 
               {/* Sort Selector */}
-              <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-white/10 text-xs font-medium shrink-0">
+              <div className="flex items-center gap-1 px-2.5 py-1.5 min-h-10 sm:min-h-0 rounded-xl bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-white/10 text-xs font-medium shrink-0">
                 <span className="text-[11px] text-slate-600 dark:text-neutral-400">Sort:</span>
                 <select
                   value={sortBy}
@@ -590,13 +590,13 @@ export default function LeagueDirectoryPage() {
                   onClick={() => setIsFormatDropdownOpen((prev) => !prev)}
                   aria-expanded={isFormatDropdownOpen}
                   aria-haspopup="listbox"
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                  className={`flex items-center gap-2 px-3 py-1.5 min-h-10 sm:min-h-0 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                     selectedFormats.length > 0
                       ? "bg-cyan-500/10 border-cyan-500/40 text-cyan-800 dark:text-cyan-300 shadow-sm"
                       : "bg-white dark:bg-[#0B0F19] border-slate-200 dark:border-white/10 text-slate-800 dark:text-white hover:border-slate-300 dark:hover:border-white/20 shadow-sm"
                   }`}
                 >
-                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-neutral-400">Format:</span>
+                  <span className="text-[10px] uppercase font-mono text-slate-600 dark:text-neutral-400">Format:</span>
                   <span className="font-bold">
                     {selectedFormats.length === 0 || selectedFormats.length === DIRECTORY_FORMAT_OPTIONS.length
                       ? "All (4v4 – 8v8)"
@@ -694,12 +694,12 @@ export default function LeagueDirectoryPage() {
               </div>
 
               {/* Division Filter */}
-              <div className="flex items-center gap-1 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1.5 text-xs font-bold shrink-0 shadow-sm">
-                <span className="text-[10px] text-slate-400 uppercase">Division:</span>
+              <div className="flex items-center gap-1 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1.5 min-h-10 sm:min-h-0 text-xs font-bold shrink-0 shadow-sm">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 uppercase">Division:</span>
                 <select
                   value={selectedDivision}
                   onChange={(e) => setSelectedDivision(e.target.value)}
-                  className="bg-transparent text-purple-600 dark:text-purple-400 outline-none cursor-pointer"
+                  className="bg-transparent text-purple-700 dark:text-purple-300 outline-none cursor-pointer"
                 >
                   <option value="all" className="dark:bg-[#0B0F19] text-black dark:text-white">All Divisions</option>
                   <option value="womens" className="dark:bg-[#0B0F19] text-black dark:text-white">Women's Flag</option>
@@ -710,12 +710,12 @@ export default function LeagueDirectoryPage() {
               </div>
 
               {/* Competition Level */}
-              <div className="flex items-center gap-1 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1.5 text-xs font-bold shrink-0 shadow-sm">
-                <span className="text-[10px] text-slate-400 uppercase">Tier:</span>
+              <div className="flex items-center gap-1 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1.5 min-h-10 sm:min-h-0 text-xs font-bold shrink-0 shadow-sm">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 uppercase">Tier:</span>
                 <select
                   value={selectedTier}
                   onChange={(e) => setSelectedTier(e.target.value)}
-                  className="bg-transparent text-emerald-600 dark:text-emerald-400 outline-none cursor-pointer"
+                  className="bg-transparent text-emerald-700 dark:text-emerald-300 outline-none cursor-pointer"
                 >
                   <option value="all" className="dark:bg-[#0B0F19] text-black dark:text-white">All Tiers</option>
                   <option value="Premier / Elite" className="dark:bg-[#0B0F19] text-black dark:text-white">Premier / Elite</option>
@@ -725,12 +725,12 @@ export default function LeagueDirectoryPage() {
               </div>
 
               {/* Game Day */}
-              <div className="flex items-center gap-1 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1.5 text-xs font-bold shrink-0 shadow-sm">
-                <span className="text-[10px] text-slate-400 uppercase">Day:</span>
+              <div className="flex items-center gap-1 bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/10 rounded-xl px-2.5 py-1.5 min-h-10 sm:min-h-0 text-xs font-bold shrink-0 shadow-sm">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 uppercase">Day:</span>
                 <select
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(e.target.value)}
-                  className="bg-transparent text-amber-600 dark:text-amber-400 outline-none cursor-pointer"
+                  className="bg-transparent text-amber-700 dark:text-amber-300 outline-none cursor-pointer"
                 >
                   <option value="all" className="dark:bg-[#0B0F19] text-black dark:text-white">Any Day</option>
                   <option value="Sunday" className="dark:bg-[#0B0F19] text-black dark:text-white">Sundays</option>
@@ -744,7 +744,7 @@ export default function LeagueDirectoryPage() {
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
+                  className="px-2.5 py-1.5 min-h-10 sm:min-h-0 rounded-xl text-xs font-bold text-red-700 dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer shrink-0"
                 >
                   Reset All
                 </button>
@@ -756,7 +756,7 @@ export default function LeagueDirectoryPage() {
               <button
                 type="button"
                 onClick={() => setViewMode("cards")}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1.5 min-h-10 sm:min-h-0 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                   viewMode === "cards"
                     ? "bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-sm"
                     : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
@@ -768,7 +768,7 @@ export default function LeagueDirectoryPage() {
               <button
                 type="button"
                 onClick={() => setViewMode("venues")}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1.5 min-h-10 sm:min-h-0 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                   viewMode === "venues"
                     ? "bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-sm"
                     : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
@@ -780,7 +780,7 @@ export default function LeagueDirectoryPage() {
               <button
                 type="button"
                 onClick={() => setViewMode("table")}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                className={`px-3 py-1.5 min-h-10 sm:min-h-0 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                   viewMode === "table"
                     ? "bg-white dark:bg-white/15 text-slate-900 dark:text-white shadow-sm"
                     : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
@@ -840,8 +840,7 @@ export default function LeagueDirectoryPage() {
               </Link>
               <Link
                 href="/pricing"
-                className="px-5 py-2.5 rounded-xl text-white font-black text-xs uppercase tracking-wider transition-all hover:opacity-90"
-                style={{ backgroundColor: "#2b7d04", color: "#ffffff" }}
+                className="px-5 py-2.5 rounded-xl bg-[#256c03] hover:bg-[#1d5502] text-[#fff] font-black text-xs uppercase tracking-wider transition-colors"
               >
                 Start a League
               </Link>

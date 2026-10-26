@@ -142,7 +142,7 @@ function TeamRow({ team }: { team: TeamMembership }) {
         <QuickLink href={`/teams/${team.id}/schedule`} icon={CalendarDays} label="Schedule" />
         <QuickLink href={`/teams/${team.id}/playbook`} icon={BookOpen} label="Playbook" />
         <QuickLink href={`/teams/${team.id}/roster`} icon={Users} label={isCoach(team) ? "Manage Roster" : "Roster"} />
-        <QuickLink href={playerOnly ? "/profile" : `/teams/${team.id}/stats`} icon={BarChart3} label={playerOnly ? "My Stats" : "Stats"} />
+        <QuickLink href={playerOnly && team.leagueId ? `/profile?league=${team.leagueId}${team.player ? `&player=${team.player.id}` : ""}` : `/teams/${team.id}/stats`} icon={BarChart3} label={playerOnly ? "My Stats" : "Stats"} />
       </div>
     </div>
   );

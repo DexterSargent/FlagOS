@@ -546,6 +546,14 @@ async function authorizeWrite(
       : typeof matchData.homeTeamId === "string" ? matchData.homeTeamId : "";
     data.isHidden = matchData.isHidden === true;
     data.seasonId = await assertCurrentSeason(transaction, matchData.leagueId, matchData);
+    // A touchdown is saved as soon as it's entered; choosing the PAT replaces that pending play.
+    if (entity === "play" && data.replacesPlayId !== undefined) {
+      if (!isDocumentId(data.replacesPlayId)) fail("A valid play ID is required.");
+      const replaced = await transaction.get(adminDb.doc(`plays/${String(data.replacesPlayId)}`));
+      if (!replaced.exists || replaced.get("matchId") !== matchId || replaced.get("conversionPending") !== true) {
+        fail("Only a touchdown that is waiting for its PAT can be completed.", 409);
+      }
+    }
     if (typeof matchData.leagueId === "string" && matchData.leagueId &&
       await isLeagueAdmin(transaction, matchData.leagueId, token)) return;
     // A temporary scorer invited by the league admin may record this one game until the link expires.
@@ -758,13 +766,32 @@ function buildRecord(entity: Entity, data: Record<string, unknown>): Record<stri
     delete record.email;
     delete record.emails;
   }
-  if (entity === "play") record.timestamp = FieldValue.serverTimestamp();
+  if (entity === "play") {
+    record.timestamp = FieldValue.serverTimestamp();
+    delete record.replacesPlayId;
+  }
   if (entity === "match" && typeof record.isHidden !== "boolean") record.isHidden = false;
   if (entity !== "playbook") record.createdAt = FieldValue.serverTimestamp();
   return record;
 }
 
-const AUDITED_ENTITIES = new Set<Entity>(["league", "team", "league_update", "delete_team", "delete_league", "start_season"]);
+/** Security-sensitive writes recorded in the platform activity log, whoever makes them. */
+const AUDITED_ENTITIES = new Set<Entity>([
+  "league",
+  "team",
+  "player",
+  "league_update",
+  "league_private_update",
+  "team_private_update",
+  "player_update",
+  "player_private_update",
+  "assign_player",
+  "delete_player",
+  "delete_team",
+  "delete_league",
+  "start_season",
+]);
+const AUDIT_ID_FIELDS = new Set(["leagueId", "teamId", "playerId", "matchId", "purge"]);
 
 function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
@@ -848,35 +875,71 @@ async function startLeagueSeason(token: DecodedIdToken, data: Record<string, unk
   return nextId;
 }
 
-/** Best-effort record of platform-owner changes for the admin console activity log. */
+/** Best-effort record of security-sensitive changes (by any user) for the admin console activity log. */
 async function recordPlatformAudit(
   token: DecodedIdToken,
   entity: Entity,
   data: Record<string, unknown>,
   targetId: string,
+  names: { league?: string; team?: string; player?: string } = {},
 ): Promise<void> {
-  const name = String(data.leagueName || data.name || data.teamName || targetId).slice(0, 120);
+  const name = String(data.leagueName || data.name || data.teamName || data.playerName || targetId).slice(0, 120);
+  const changed = Object.keys(data).filter((key) => !AUDIT_ID_FIELDS.has(key)).slice(0, 8).join(", ");
+  const changedSuffix = changed ? ` (${changed})` : "";
+  const teamLabel = names.team || String(data.teamId || targetId);
+  const playerLabel = names.player || name;
   const summaries: Partial<Record<Entity, string>> = {
     league: `Created league ${name}`,
     team: `Created ${data.leagueId ? "league" : "independent"} team ${name}`,
-    league_update: `Updated league ${name}${data.subscription ? " (incl. subscription)" : ""}`,
-    delete_team: `Deleted team ${targetId}${data.purge === true ? " and purged its data" : ""}`,
-    delete_league: `Deleted league ${targetId}`,
-    start_season: `Started ${String(data.title || "a new season").slice(0, 80)} in league ${String(data.leagueId)}`,
+    player: `Added player ${playerLabel} to ${teamLabel}`,
+    league_update: `Updated league ${names.league || name}${changedSuffix}`,
+    league_private_update: `Updated private settings for league ${names.league || String(data.leagueId || targetId)}${changedSuffix}`,
+    team_private_update: `Updated admins/contacts for team ${teamLabel}${changedSuffix}`,
+    player_update: `Updated player ${playerLabel}${changedSuffix}`,
+    player_private_update: `Updated contact details for player ${playerLabel}${changedSuffix}`,
+    assign_player: `Moved player ${playerLabel} to ${teamLabel}`,
+    delete_player: `Deleted player ${playerLabel}`,
+    delete_team: `Deleted team ${teamLabel}${data.purge === true ? " and purged its data" : ""}`,
+    delete_league: `Deleted league ${names.league || targetId}`,
+    start_season: `Started ${String(data.title || "a new season").slice(0, 80)} in league ${names.league || String(data.leagueId)}`,
   };
+  const leagueScoped = entity === "league" || entity.startsWith("league_") || entity === "delete_league";
+  const targetKind = entity.includes("player") ? "player" : entity.includes("team") ? "team" : entity === "start_season" ? "season" : "league";
   try {
     await adminDb.collection("platform_audit").add({
       action: entity,
-      summary: summaries[entity] || entity,
+      summary: (summaries[entity] || entity).slice(0, 300),
       actorEmail: String(token.email || "").toLowerCase(),
       actorUid: token.uid,
+      actorIsPlatformAdmin: isPlatformAdmin(token),
       targetId,
-      targetKind: entity.includes("team") ? "team" : "league",
+      targetKind,
+      leagueId: String(data.leagueId || (leagueScoped ? targetId : "")).slice(0, 128),
+      teamId: String(data.teamId || (entity === "team" || entity === "delete_team" ? targetId : "")).slice(0, 128),
       createdAt: FieldValue.serverTimestamp(),
     });
   } catch (error) {
     console.warn("Platform audit write skipped:", error);
   }
+}
+
+/** Reads display names before a write so deletes and updates stay readable in the activity log. */
+async function lookupAuditNames(data: Record<string, unknown>): Promise<{ league?: string; team?: string; player?: string }> {
+  const read = async (collection: string, id: unknown, field: string) => {
+    if (!isDocumentId(id)) return undefined;
+    try {
+      const value = (await adminDb.doc(`${collection}/${id}`).get()).get(field);
+      return typeof value === "string" && value ? value.slice(0, 120) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const [league, team, player] = await Promise.all([
+    read("leagues", data.leagueId, "leagueName"),
+    read("teams", data.teamId, "name"),
+    read("players", data.playerId, "playerName"),
+  ]);
+  return { league, team, player };
 }
 
 /**
@@ -940,7 +1003,7 @@ export async function POST(request: Request) {
     const requestedEntity = entity as Entity;
     if (requestedEntity === "start_season") {
       const seasonId = await startLeagueSeason(token, data);
-      if (isPlatformAdmin(token)) await recordPlatformAudit(token, requestedEntity, data, seasonId);
+      await recordPlatformAudit(token, requestedEntity, data, seasonId);
       return Response.json({ id: seasonId }, { status: 201 });
     }
     if (requestedEntity === "depth_chart" &&
@@ -1160,6 +1223,7 @@ export async function POST(request: Request) {
     const writeUnits = requestedEntity === "play_batch" ? (batch as unknown[]).length : 1;
 
     let createdId = "";
+    const auditNames = AUDITED_ENTITIES.has(requestedEntity) ? await lookupAuditNames(data) : {};
 
     await adminDb.runTransaction(async (transaction) => {
       let assignmentRef: FirebaseFirestore.DocumentReference | null = null;
@@ -1416,6 +1480,9 @@ export async function POST(request: Request) {
         const recordRef = adminDb.collection(recordCollection).doc();
         const record = buildRecord(requestedEntity, data);
         transaction.create(recordRef, record);
+        if (requestedEntity === "play" && isDocumentId(data.replacesPlayId)) {
+          transaction.delete(adminDb.doc(`plays/${String(data.replacesPlayId)}`));
+        }
         if (requestedEntity === "league") {
           transaction.create(adminDb.doc(`league_private/${recordRef.id}`), {
             leagueId: recordRef.id,
@@ -1452,8 +1519,8 @@ export async function POST(request: Request) {
       await purgeTeamData(String(data.teamId));
     }
 
-    if (isPlatformAdmin(token) && AUDITED_ENTITIES.has(requestedEntity)) {
-      await recordPlatformAudit(token, requestedEntity, data, createdId);
+    if (AUDITED_ENTITIES.has(requestedEntity)) {
+      await recordPlatformAudit(token, requestedEntity, data, createdId, auditNames);
     }
 
     return Response.json({ id: createdId }, { status: 201 });

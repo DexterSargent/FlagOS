@@ -6,13 +6,22 @@ import { formatDate, toCsv, type PlatformUser } from "@/lib/adminMetrics";
 import { isPlatformAdminEmail } from "@/lib/platformAdmin";
 import { EmptyState, Panel, StatCard, downloadCsv, ghostButtonClass } from "./AdminUi";
 
-type Filter = "all" | "admins" | "unverified" | "disabled" | "dormant";
+type Filter = "all" | "admins" | "players" | "unlinked" | "unverified" | "disabled" | "dormant";
 
 export interface Membership {
   id: string;
   name: string;
-  kind: "league" | "team";
+  kind: "league" | "team" | "player";
 }
+
+const PAGE_SIZE = 50;
+const ROLE_LABEL: Record<Membership["kind"], string> = { league: "Runs", team: "Coaches", player: "Plays on" };
+const ROLE_CLASS: Record<Membership["kind"], string> = {
+  league: "bg-cyan-500/10 text-cyan-300",
+  team: "bg-emerald-500/10 text-emerald-300",
+  player: "bg-violet-500/10 text-violet-300",
+};
+const isAdminRole = (membership: Membership) => membership.kind !== "player";
 
 export default function AdminUsers({
   users,
@@ -26,6 +35,7 @@ export default function AdminUsers({
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [pendingUid, setPendingUid] = useState<string | null>(null);
+  const [visible, setVisible] = useState(PAGE_SIZE);
   const dormantCutoff = Date.now() - 90 * 86_400_000;
   const monthAgo = Date.now() - 30 * 86_400_000;
 
@@ -33,7 +43,9 @@ export default function AdminUsers({
     const term = search.trim().toLowerCase();
     return users
       .filter((user) => {
-        if (filter === "admins") return (memberships.get(user.email)?.length ?? 0) > 0;
+        if (filter === "admins") return (memberships.get(user.email) || []).some(isAdminRole);
+        if (filter === "players") return (memberships.get(user.email) || []).some((membership) => membership.kind === "player");
+        if (filter === "unlinked") return (memberships.get(user.email)?.length ?? 0) === 0;
         if (filter === "unverified") return !user.emailVerified;
         if (filter === "disabled") return user.disabled;
         if (filter === "dormant") return (user.lastSignInAt ?? 0) < dormantCutoff;
@@ -48,7 +60,7 @@ export default function AdminUsers({
     downloadCsv(
       "flagos-users.csv",
       toCsv(
-        ["Email", "Name", "UID", "Verified", "Disabled", "Created", "Last active", "Manages"],
+        ["Email", "Name", "UID", "Verified", "Disabled", "Created", "Last active", "Roles"],
         rows.map((user) => [
           user.email,
           user.displayName,
@@ -57,7 +69,7 @@ export default function AdminUsers({
           user.disabled ? "yes" : "no",
           user.createdAt ? new Date(user.createdAt).toISOString() : "",
           user.lastSignInAt ? new Date(user.lastSignInAt).toISOString() : "",
-          (memberships.get(user.email) || []).map((membership) => `${membership.name} (${membership.kind})`).join("; "),
+          (memberships.get(user.email) || []).map((membership) => `${ROLE_LABEL[membership.kind]} ${membership.name}`).join("; "),
         ]),
       ),
     );
@@ -78,7 +90,7 @@ export default function AdminUsers({
         <StatCard label="Accounts" value={users.length} icon={Users} tone="cyan" />
         <StatCard label="New (30d)" value={users.filter((user) => (user.createdAt ?? 0) >= monthAgo).length} tone="emerald" />
         <StatCard label="Active (30d)" value={users.filter((user) => (user.lastSignInAt ?? 0) >= monthAgo).length} tone="violet" />
-        <StatCard label="Customer admins" value={users.filter((user) => (memberships.get(user.email)?.length ?? 0) > 0).length} icon={ShieldCheck} tone="amber" />
+        <StatCard label="Customer admins" value={users.filter((user) => (memberships.get(user.email) || []).some(isAdminRole)).length} icon={ShieldCheck} tone="amber" />
       </div>
 
       <Panel
@@ -91,7 +103,7 @@ export default function AdminUsers({
               <Search className="h-3.5 w-3.5 text-neutral-500" />
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => { setSearch(event.target.value); setVisible(PAGE_SIZE); }}
                 placeholder="Email, name, league"
                 aria-label="Search accounts"
                 className="w-36 bg-transparent text-xs outline-none placeholder:text-neutral-600 sm:w-48"
@@ -100,11 +112,13 @@ export default function AdminUsers({
             <select
               aria-label="Filter accounts"
               value={filter}
-              onChange={(event) => setFilter(event.target.value as Filter)}
+              onChange={(event) => { setFilter(event.target.value as Filter); setVisible(PAGE_SIZE); }}
               className="rounded-lg border border-white/10 bg-neutral-950 px-2 py-1.5 text-xs font-bold text-neutral-200"
             >
               <option value="all">All accounts</option>
               <option value="admins">League / team admins</option>
+              <option value="players">Rostered players</option>
+              <option value="unlinked">Not linked to any team</option>
               <option value="unverified">Unverified email</option>
               <option value="dormant">Inactive 90+ days</option>
               <option value="disabled">Disabled</option>
@@ -119,7 +133,7 @@ export default function AdminUsers({
           <EmptyState>No accounts match.</EmptyState>
         ) : (
           <ul className="divide-y divide-white/5">
-            {rows.map((user) => {
+            {rows.slice(0, visible).map((user) => {
               const managed = memberships.get(user.email) || [];
               const protectedAccount = isPlatformAdminEmail(user.email);
               return (
@@ -137,12 +151,12 @@ export default function AdminUsers({
                     </div>
                     {managed.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
-                        {managed.slice(0, 4).map((membership) => (
-                          <span key={`${membership.kind}-${membership.id}`} className={`max-w-[12rem] truncate rounded-md px-1.5 py-0.5 text-[10px] font-bold ${membership.kind === "league" ? "bg-cyan-500/10 text-cyan-300" : "bg-emerald-500/10 text-emerald-300"}`}>
-                            {membership.name}
+                        {managed.slice(0, 6).map((membership) => (
+                          <span key={`${membership.kind}-${membership.id}`} className={`max-w-[16rem] truncate rounded-md px-1.5 py-0.5 text-[10px] font-bold ${ROLE_CLASS[membership.kind]}`}>
+                            <span className="font-normal">{ROLE_LABEL[membership.kind]}</span> {membership.name}
                           </span>
                         ))}
-                        {managed.length > 4 && <span className="text-[10px] text-neutral-500">+{managed.length - 4} more</span>}
+                        {managed.length > 6 && <span className="text-[10px] text-neutral-500">+{managed.length - 6} more</span>}
                       </div>
                     )}
                   </div>
@@ -167,6 +181,16 @@ export default function AdminUsers({
               );
             })}
           </ul>
+        )}
+        {rows.length > PAGE_SIZE && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-xs text-neutral-400">
+            <span>Showing {Math.min(visible, rows.length)} of {rows.length}</span>
+            {visible < rows.length && (
+              <button type="button" className={ghostButtonClass} onClick={() => setVisible((count) => count + PAGE_SIZE)}>
+                Show {Math.min(PAGE_SIZE, rows.length - visible)} more
+              </button>
+            )}
+          </div>
         )}
       </Panel>
     </div>

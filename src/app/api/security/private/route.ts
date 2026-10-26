@@ -13,7 +13,7 @@ type PrivateAction = "lookup" | "memberships" | "team" | "league" | "admin_overv
 
 import { PLATFORM_ADMIN_EMAIL, isPlatformAdminEmail } from "@/lib/platformAdmin";
 const MAX_REQUEST_BYTES = 8_000;
-const MAX_READ_UNITS_PER_MINUTE = 4_000;
+const MAX_READ_UNITS_PER_MINUTE = 8_000;
 const ACTION_READ_UNITS: Record<PrivateAction, number> = {
   lookup: 250,
   memberships: 500,
@@ -24,13 +24,13 @@ const ACTION_READ_UNITS: Record<PrivateAction, number> = {
 };
 
 class RequestError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly retryAfterSeconds?: number) {
     super(message);
   }
 }
 
-function fail(message: string, status = 400): never {
-  throw new RequestError(message, status);
+function fail(message: string, status = 400, retryAfterSeconds?: number): never {
+  throw new RequestError(message, status, retryAfterSeconds);
 }
 
 function isPlatformAdmin(token: DecodedIdToken): boolean {
@@ -82,7 +82,7 @@ async function enforceReadLimit(uid: string, action: PrivateAction): Promise<voi
       : 0;
     const requestUnits = ACTION_READ_UNITS[action];
     if (units + requestUnits > MAX_READ_UNITS_PER_MINUTE) {
-      fail("Private-data request limit reached. Please wait.", 429);
+      fail("Private-data request limit reached. Please wait.", 429, Math.max(1, Math.ceil((start + 60_000 - now) / 1000)));
     }
     transaction.set(ref, {
       minuteStart: now - start >= 60_000 ? now : start,
@@ -608,7 +608,13 @@ export async function POST(request: Request) {
       return Response.json({ error: "Request exceeds the maximum allowed size." }, { status: 413 });
     }
     if (error instanceof RequestError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return Response.json(
+        { error: error.message },
+        {
+          status: error.status,
+          ...(error.retryAfterSeconds ? { headers: { "Retry-After": String(error.retryAfterSeconds) } } : {}),
+        },
+      );
     }
     if (error instanceof SyntaxError) {
       return Response.json({ error: "Request body must be valid JSON." }, { status: 400 });

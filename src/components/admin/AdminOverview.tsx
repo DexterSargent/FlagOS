@@ -28,7 +28,7 @@ import {
 import type { BusinessSnapshot } from "@/lib/adminBusiness";
 import { EmptyState, MonthlyBars, Panel, SplitBar, StatCard, StatusBadge, TrendLine, ghostButtonClass } from "./AdminUi";
 
-export type ConsoleTab = "overview" | "customers" | "finance" | "users" | "activity" | "free-agents";
+export type ConsoleTab = "overview" | "health" | "customers" | "finance" | "users" | "activity" | "free-agents";
 
 export default function AdminOverview({
   records,
@@ -60,7 +60,7 @@ export default function AdminOverview({
     <div className="space-y-5">
       <div data-tour="admin-overview-kpis" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label="MRR (billed)"
+          label="MRR (marked paid)"
           value={money(kpis.billedMrr)}
           hint={`${money(kpis.listMrr)} list incl. comp`}
           icon={BadgeDollarSign}
@@ -131,7 +131,7 @@ export default function AdminOverview({
         <Panel tour="admin-overview-trends" title="Customer growth" icon={TrendingUp} action={<span className="text-xs text-neutral-500">Total customers</span>}>
           <TrendLine id="trend-customers" values={series.map((point) => point.totalCustomers)} labels={series.map((point) => point.label)} format={(value) => String(value)} />
         </Panel>
-        <Panel title="Billed MRR trend" icon={BadgeDollarSign} action={<span className="text-xs text-neutral-500">Paid subscriptions</span>}>
+        <Panel title="MRR trend (marked paid)" icon={BadgeDollarSign} action={<span className="text-xs text-neutral-500">Plans marked paid</span>}>
           <TrendLine id="trend-mrr" values={series.map((point) => point.projectedMrr)} labels={series.map((point) => point.label)} format={money} />
         </Panel>
       </div>

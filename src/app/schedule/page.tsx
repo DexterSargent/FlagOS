@@ -91,7 +91,21 @@ interface Match {
 export default function Calendar() {
   usePageGuide(SCHEDULE_WALKTHROUGH);
   const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
-  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId } = useLeague();
+  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId, switchLeague } = useLeague();
+  // `?league=` opens the schedule on a specific league (e.g. from that league's dashboard).
+  const [awaitingLeague, setAwaitingLeague] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("league"),
+  );
+  const leagueSwitchRequested = useRef(false);
+  useEffect(() => {
+    if (!awaitingLeague) return;
+    if (activeLeagueId === awaitingLeague || leagueSwitchRequested.current) {
+      setAwaitingLeague(null);
+      return;
+    }
+    leagueSwitchRequested.current = true;
+    void switchLeague(awaitingLeague);
+  }, [awaitingLeague, activeLeagueId, switchLeague]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [simulatingMatchId, setSimulatingMatchId] = useState<string | null>(null);
 
@@ -239,6 +253,7 @@ export default function Calendar() {
 
   useEffect(() => {
     setLoading(true);
+    if (awaitingLeague) return;
 
     if (isDemoLeague || isEmbedded) {
       const loadDemoData = () => {
@@ -289,7 +304,7 @@ export default function Calendar() {
     );
 
     return () => unsub();
-  }, [isDemoLeague, isEmbedded, activeLeagueId, currentSeasonId]);
+  }, [isDemoLeague, isEmbedded, activeLeagueId, currentSeasonId, awaitingLeague]);
 
   // Standings & Playoff Calculations
   const playoffActive = useMemo(() => isPlayoffActive(matches), [matches]);
@@ -810,7 +825,7 @@ export default function Calendar() {
 
           {/* Regular Season Week Filter Pills (Only visible in schedule view when weeks exist) */}
           {activeView === "schedule" && regularSeasonWeeks.length > 1 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+            <div className="scroll-hint-x flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
               <button
                 onClick={() => setSelectedWeekFilter(null)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-colors whitespace-nowrap ${selectedWeekFilter === null

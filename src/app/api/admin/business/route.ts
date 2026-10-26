@@ -4,6 +4,7 @@ import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { isPlatformAdminEmail } from "@/lib/platformAdmin";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, toMillis } from "@/lib/adminMetrics";
+import { computePlatformHealth } from "@/lib/platformHealth";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ const MAX_REQUEST_BYTES = 8_000;
 const LEDGER_COLLECTION = "platform_ledger";
 const AUDIT_COLLECTION = "platform_audit";
 const MAX_USERS = 5_000;
-const ACTIONS = ["load", "ledger_add", "ledger_delete", "subscription_update", "user_set_disabled"] as const;
+const ACTIONS = ["load", "health", "ledger_add", "ledger_delete", "subscription_update", "user_set_disabled"] as const;
 type Action = (typeof ACTIONS)[number];
 const STATUSES = ["active", "trial", "past_due", "canceled", "archived"];
 const DOCUMENT_ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -103,15 +104,17 @@ async function listAllUsers() {
 }
 
 async function load() {
-  const [ledger, auditLog, users, leagues, teams, players, matches, plays] = await Promise.allSettled([
+  const [ledger, auditLog, users, leagues, teams, players, matches, plays, playerPrivate, auditCount] = await Promise.allSettled([
     adminDb.collection(LEDGER_COLLECTION).orderBy("date", "desc").limit(2_000).get(),
-    adminDb.collection(AUDIT_COLLECTION).orderBy("createdAt", "desc").limit(300).get(),
+    adminDb.collection(AUDIT_COLLECTION).orderBy("createdAt", "desc").limit(1_000).get(),
     listAllUsers(),
     countOf("leagues"),
     countOf("teams"),
     countOf("players"),
     countOf("matches"),
     countOf("plays"),
+    adminDb.collection("player_private").select("email", "emails", "teamId").limit(5_000).get(),
+    countOf(AUDIT_COLLECTION),
   ]);
   const warnings: string[] = [];
   function settledValue<T>(result: PromiseSettledResult<T>, label: string, fallback: T): T {
@@ -122,6 +125,16 @@ async function load() {
   }
   const ledgerDocs = settledValue(ledger, "Ledger", null)?.docs || [];
   const auditDocs = settledValue(auditLog, "Activity log", null)?.docs || [];
+  const playerLinks: Array<{ email: string; teamId: string }> = [];
+  for (const snapshot of settledValue(playerPrivate, "Player accounts", null)?.docs || []) {
+    const data = snapshot.data();
+    const teamId = String(data.teamId || "");
+    if (!teamId) continue;
+    const emails = new Set<string>();
+    if (typeof data.email === "string") emails.add(data.email.trim().toLowerCase());
+    if (Array.isArray(data.emails)) data.emails.forEach((email: unknown) => typeof email === "string" && emails.add(email.trim().toLowerCase()));
+    emails.forEach((email) => email && playerLinks.push({ email, teamId }));
+  }
   return {
     ledger: ledgerDocs.map((snapshot) => {
       const data = snapshot.data();
@@ -147,9 +160,13 @@ async function load() {
         actorEmail: String(data.actorEmail || ""),
         targetId: String(data.targetId || ""),
         targetKind: String(data.targetKind || ""),
+        leagueId: String(data.leagueId || ""),
+        teamId: String(data.teamId || ""),
+        actorIsPlatformAdmin: data.actorIsPlatformAdmin === true || isPlatformAdminEmail(String(data.actorEmail || "")),
         createdAt: toMillis(data.createdAt),
       };
     }),
+    playerLinks,
     users: settledValue(users, "User accounts", []),
     counts: {
       leagues: settledValue<number | null>(leagues, "League count", null),
@@ -157,6 +174,7 @@ async function load() {
       players: settledValue<number | null>(players, "Player count", null),
       matches: settledValue<number | null>(matches, "Game count", null),
       plays: settledValue<number | null>(plays, "Play count", null),
+      audit: settledValue<number | null>(auditCount, "Activity count", null),
     },
     warnings,
     generatedAt: Date.now(),
@@ -324,6 +342,9 @@ export async function POST(request: Request) {
     switch (action as Action) {
       case "load":
         result = await load();
+        break;
+      case "health":
+        result = await computePlatformHealth();
         break;
       case "ledger_add":
         result = await ledgerAdd(payload, token);

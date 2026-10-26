@@ -38,6 +38,19 @@
   .toolbarCollapsible .metadata {
     flex: 1 1 0;
     min-width: 0;
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+
+  /* Full play name on its own line; formation and situation share the row below. */
+  .toolbarCollapsible .playName {
+    flex: 1 1 calc(100% - 3rem);
+  }
+
+  .toolbarCollapsible .metaSelect {
+    flex: 1 1 0;
+    width: auto;
+    max-width: none;
   }
 
   .toolbarCollapsible .toolbarMore {

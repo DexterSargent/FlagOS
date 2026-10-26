@@ -23,8 +23,7 @@ describe("Team Admin RBAC & Primary Admin Deletion Rights", () => {
   it("identifies platform owner / Dexter emails", () => {
     expect(isDexterUser("dextersargent@flagos.ca")).toBe(true);
     expect(isDexterUser("DEXTERSARGENT@FLAGOS.CA")).toBe(true);
-    expect(isDexterUser("dextersargent@gmail.com")).toBe(true);
-    expect(isDexterUser("DEXTERSARGENT@GMAIL.COM")).toBe(true);
+    expect(isDexterUser("dextersargent@gmail.com")).toBe(false);
     expect(isDexterUser("dexter@yuwffl.ca")).toBe(true);
     expect(isDexterUser("assistant@coach.com")).toBe(false);
     expect(isDexterUser(null)).toBe(false);
@@ -52,7 +51,8 @@ describe("Team Admin RBAC & Primary Admin Deletion Rights", () => {
       adminEmails: ["othercoach@customer.com"],
     };
 
-    expect(isPrimaryTeamAdmin("dextersargent@gmail.com", team)).toBe(true);
+    expect(isPrimaryTeamAdmin("dextersargent@flagos.ca", team)).toBe(true);
+    expect(isPrimaryTeamAdmin("dextersargent@gmail.com", team)).toBe(false);
     expect(isPrimaryTeamAdmin("dexter@yuwffl.ca", team)).toBe(true);
   });
 

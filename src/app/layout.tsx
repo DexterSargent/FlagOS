@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/themeContext";
 import { LeagueProvider } from "@/lib/leagueContext";
 import GlobalShell from "@/components/GlobalShell";
 import AuthGuard from "@/components/AuthGuard";
+import ThrottleNotice from "@/components/ThrottleNotice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {children}
                 </GlobalShell>
               </AuthGuard>
+              <ThrottleNotice />
             </LeagueProvider>
           </ThemeProvider>
         </AuthProvider>

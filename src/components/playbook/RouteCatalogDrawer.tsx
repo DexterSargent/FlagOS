@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import { Check, Plus, Star, X, Zap } from "lucide-react";
 import { ROUTE_PRESETS_CATALOG, type CustomRoutePreset, type PlayerNode } from "@/lib/playbookTypes";
 import styles from "./PlayCanvas.module.css";
@@ -30,6 +30,7 @@ export default function RouteCatalogDrawer({
   onDeleteCustomPreset,
   onSaveCurrentRoute,
 }: RouteCatalogDrawerProps) {
+  const [showFullDescriptions, setShowFullDescriptions] = useState(false);
   return (
       <div
         data-tour="route-catalog"
@@ -108,6 +109,15 @@ export default function RouteCatalogDrawer({
         <div className="space-y-1.5">
           <div className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 flex flex-wrap items-center justify-between gap-1">
             <span>Standard Route Tree ({ROUTE_PRESETS_CATALOG.length})</span>
+            <button
+              type="button"
+              onClick={() => setShowFullDescriptions((v) => !v)}
+              aria-expanded={showFullDescriptions}
+              data-testid="route-descriptions-toggle"
+              className="px-2 py-1 min-h-8 rounded-lg text-[10px] font-bold text-cyan-700 dark:text-cyan-300 hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
+            >
+              {showFullDescriptions ? "Shorter descriptions" : "Full descriptions"}
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {ROUTE_PRESETS_CATALOG.map((rp) => {
@@ -144,7 +154,7 @@ export default function RouteCatalogDrawer({
                       </span>
                     </div>
                     <div
-                      className={`text-[11px] leading-snug mt-1 line-clamp-2 ${
+                      className={`text-[11px] leading-snug mt-1 ${showFullDescriptions ? "" : "line-clamp-2"} ${
                         isCurrent
                           ? "text-neutral-700 dark:text-neutral-300 font-medium"
                           : "text-neutral-500 dark:text-neutral-400 font-normal"

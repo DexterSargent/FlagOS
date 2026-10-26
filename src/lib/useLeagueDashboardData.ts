@@ -15,6 +15,7 @@ import {
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
 import { getGameDisplayState, isFinalGameStatus, isStartedGameStatus, useNow } from "@/lib/gameLiveState";
+import { useMyMemberships } from "@/lib/useMyMemberships";
 
 const noopSubscribe = () => () => {};
 const readEmbeddedFlag = () => {
@@ -54,6 +55,13 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
     canRegisterAsPlayer,
     setDevRole,
   } = useAuth();
+
+  // Roles are per league: coaching an unrelated team must not turn this league's view into a coach view.
+  const { data: memberships } = useMyMemberships(isEffectiveDemo ? null : user?.uid);
+  const membershipKnown = !isEffectiveDemo && !!memberships;
+  const leagueMembership = membershipKnown ? memberships.leagues.find((league) => league.id === activeLeagueId) ?? null : null;
+  const coachTeamHere = leagueMembership?.teams.find((team) => team.roles.includes("coach")) ?? null;
+  const playerTeamHere = leagueMembership?.teams.find((team) => team.player) ?? null;
 
   const [teams, setTeams] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
@@ -337,8 +345,9 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   const upcomingMatches = activeNonCompletedMatches;
 
   // Team Admin Data Computation
-  const managedTeam =
-    teams.find((t) => t.id === managedTeamId) || (role === "team_admin" && teams.length > 0 ? teams[0] : null);
+  const managedTeam = membershipKnown
+    ? teams.find((t) => t.id === coachTeamHere?.id) || null
+    : teams.find((t) => t.id === managedTeamId) || (role === "team_admin" && teams.length > 0 ? teams[0] : null);
   const managedTeamStanding = managedTeam ? standingsMap[managedTeam.id] : null;
   const managedTeamStandingRank = managedTeam
     ? sortedStandings.findIndex((s) => s.id === managedTeam.id) + 1
@@ -377,13 +386,16 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   const teamTopDefender = teamTopFlagger;
 
   // Athlete & Player View Data Computation
-  const activePlayer =
-    (playerId ? players.find((p) => p.id === playerId) : null) ||
+  const activePlayer = membershipKnown
+    ? (playerTeamHere?.player ? players.find((p) => p.id === playerTeamHere.player?.id) ?? null : null)
+    : (playerId ? players.find((p) => p.id === playerId) : null) ||
     (playerData?.playerName ? players.find((p) => p.playerName === playerData.playerName) : null) ||
     ((isPlayer || role === "player") && players.length > 0 ? players[0] : null) ||
     playerData;
 
-  const playerAssignedTeamId = activePlayer?.teamId || playerData?.teamId || playerTeamId;
+  const playerAssignedTeamId = membershipKnown
+    ? activePlayer?.teamId || playerTeamHere?.id || null
+    : activePlayer?.teamId || playerData?.teamId || playerTeamId;
   const myPlayerTeam = playerAssignedTeamId ? teams.find((t) => t.id === playerAssignedTeamId) : null;
   const myPlayerStanding = myPlayerTeam ? standingsMap[myPlayerTeam.id] : null;
   const myPlayerStandingRank = myPlayerTeam
@@ -572,8 +584,8 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   const isLeagueTopFlagger = topFlagger.name === pName && topFlagger.flagPulls > 0;
 
   // Strict view precedence: Player > Team Admin > League Admin > Spectator
-  const isPlayerView = role === "player" || isPlayer;
-  const isTeamAdminView = !isPlayerView && role === "team_admin";
+  const isPlayerView = membershipKnown ? !coachTeamHere && !!playerTeamHere : role === "player" || isPlayer;
+  const isTeamAdminView = membershipKnown ? !!coachTeamHere : !isPlayerView && role === "team_admin";
   const isLeagueAdminView = !isPlayerView && !isTeamAdminView && (isLeagueAdmin || role === "league_admin");
   const isSpectatorView = !isPlayerView && !isTeamAdminView && !isLeagueAdminView;
 

@@ -3,7 +3,7 @@
 import { usePageGuide } from "@/lib/pageGuide";
 import { PROFILE_WALKTHROUGH } from "@/lib/walkthroughs/public";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -42,6 +42,7 @@ import { getTeamShortcode } from "@/components/TeamAssets";
 import ThemeToggle from "@/components/ThemeToggle";
 import DemoNoticeStrip from "@/components/DemoNoticeStrip";
 import { effectiveMaxRoster } from "@/lib/rosterLimits";
+import { useMyMemberships } from "@/lib/useMyMemberships";
 
 interface PlayerStats {
   gamesPlayed: number;
@@ -81,7 +82,54 @@ export default function PlayerProfilePage() {
     isDemoLeague,
     seasons,
     currentSeasonId,
+    switchLeague,
   } = useLeague();
+  const { data: memberships, loading: membershipsLoading } = useMyMemberships(user?.uid);
+  const leagueMembership = memberships?.leagues.find((league) => league.id === activeLeagueId) ?? null;
+  const ownPlayerIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (authPlayerId) ids.add(authPlayerId);
+    leagueMembership?.teams.forEach((team) => { if (team.player?.id) ids.add(team.player.id); });
+    return ids;
+  }, [authPlayerId, leagueMembership]);
+  const coachedTeamIds = useMemo(
+    () => new Set((leagueMembership?.teams || []).filter((team) => team.roles.includes("coach")).map((team) => team.id)),
+    [leagueMembership],
+  );
+  // Only commissioners and coaches may look at other players' profiles; everyone else sees their own.
+  const canPreviewPlayers = isDemoLeague || isLeagueAdmin || !!leagueMembership?.isCommissioner || coachedTeamIds.size > 0;
+  const ownPlayerKey = [...ownPlayerIds].sort().join(",");
+  const coachedTeamKey = [...coachedTeamIds].sort().join(",");
+
+  // /profile?league=X&player=Y opens that league; a signed-in visit never falls back to the demo athlete.
+  const leagueRedirectDone = useRef(false);
+  const [stayInLeague, setStayInLeague] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>(authPlayerId || "");
+  useEffect(() => {
+    if (typeof window === "undefined" || leagueRedirectDone.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const requestedLeague = params.get("league");
+    const requestedPlayer = params.get("player");
+    if (requestedPlayer) setSelectedPlayerId(requestedPlayer);
+    if (requestedLeague) {
+      leagueRedirectDone.current = true;
+      setStayInLeague(true);
+      if (requestedLeague !== activeLeagueId) void switchLeague(requestedLeague).catch(() => {});
+      return;
+    }
+    if (!user || !isDemoLeague || !memberships) return;
+    leagueRedirectDone.current = true;
+    const ownLeague = memberships.leagues.find((league) => league.teams.some((team) => team.player)) || memberships.leagues[0];
+    if (ownLeague) void switchLeague(ownLeague.id).catch(() => setStayInLeague(true));
+  }, [user, isDemoLeague, memberships, activeLeagueId, switchLeague]);
+  const contextRoleLabel = isDemoLeague
+    ? String(role).replace("_", " ")
+    : [
+        leagueMembership?.isCommissioner || isLeagueAdmin ? "Commissioner" : "",
+        coachedTeamIds.size > 0 ? "Coach" : "",
+        leagueMembership?.teams.some((team) => team.player) ? "Player" : "",
+      ].filter(Boolean).join(" & ") || "Spectator";
+  const needsLeaguePick = !!user && isDemoLeague && !!memberships && memberships.leagues.length === 0;
   const { sandbox } = useDemoSandbox(isDemoLeague);
   const hasArchivedSeasons = !isDemoLeague && seasons.some((season) => season.status === "archived");
   const seasonHistory = useLeagueSeasonHistory(activeLeagueId, hasArchivedSeasons);
@@ -90,7 +138,6 @@ export default function PlayerProfilePage() {
   const [loading, setLoading] = useState(true);
 
   // Profile data state
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>(authPlayerId || "");
   const [selectedPlayer, setSelectedPlayer] = useState<any>(authPlayerData || null);
   const [playerTeam, setPlayerTeam] = useState<any>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats>({
@@ -140,21 +187,18 @@ export default function PlayerProfilePage() {
 
         setAllRosteredPlayers(playersList);
 
-        // Determine which player to display
-        let targetPlayer = selectedPlayer;
-        if (!targetPlayer && selectedPlayerId) {
-          targetPlayer = playersList.find((p) => p.id === selectedPlayerId);
-        }
-        if (!targetPlayer && authPlayerId) {
-          targetPlayer = playersList.find((p) => p.id === authPlayerId);
-        }
-        // Fallback: if user is not a player yet, default to first rostered player for preview
-        if (!targetPlayer && playersList.length > 0) {
-          targetPlayer = playersList.find((p) => p.teamId === "team_kc") || playersList[0];
-          setSelectedPlayerId(targetPlayer.id);
+        // Your own record in this league comes first; coaches may pick another player to preview.
+        let targetPlayer = selectedPlayerId ? playersList.find((p) => p.id === selectedPlayerId) : undefined;
+        if (targetPlayer && !canPreviewPlayers && !ownPlayerIds.has(targetPlayer.id)) targetPlayer = undefined;
+        if (!targetPlayer) targetPlayer = playersList.find((p) => ownPlayerIds.has(p.id));
+        if (!targetPlayer && canPreviewPlayers && playersList.length > 0) {
+          targetPlayer = isDemoLeague
+            ? playersList.find((p) => p.teamId === "team_kc") || playersList[0]
+            : playersList.find((p) => coachedTeamIds.has(p.teamId)) || playersList[0];
         }
 
-        setSelectedPlayer(targetPlayer);
+        setSelectedPlayer(targetPlayer ?? null);
+        if (!targetPlayer) setPlayerTeam(null);
 
         if (targetPlayer?.teamId && isDemoLeague && sandbox) {
           setPlayerTeam(sandbox.getSandboxTeams().find((t: any) => t.id === targetPlayer.teamId) ?? null);
@@ -286,7 +330,8 @@ export default function PlayerProfilePage() {
     };
 
     fetchProfileAndStats();
-  }, [selectedPlayerId, authPlayerId, activeLeagueId, isDemoLeague, sandbox]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlayerId, authPlayerId, activeLeagueId, isDemoLeague, sandbox, ownPlayerKey, coachedTeamKey, canPreviewPlayers]);
 
   // Handle switching player (for admins / preview)
   const handleSelectAnotherPlayer = (pId: string) => {
@@ -294,20 +339,51 @@ export default function PlayerProfilePage() {
     const found = allRosteredPlayers.find((p) => p.id === pId);
     if (found) {
       setSelectedPlayer(found);
-      // If dev / testing, also switch dev auth
-      if (typeof window !== "undefined") {
-        setDevRole("player", found.teamId, found.id);
-      }
+      if (isDemoLeague) setDevRole("player", found.teamId, found.id);
     }
   };
 
-  if (loading) {
+  const leavingDemo = !!user && isDemoLeague && !stayInLeague && !!memberships && memberships.leagues.length > 0;
+  if (loading || (!!user && membershipsLoading) || leavingDemo) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
         <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
+
+  if (needsLeaguePick || (!isDemoLeague && !loading && !selectedPlayer)) {
+    const playerLeagues = (memberships?.leagues || []).filter((league) => league.teams.some((team) => team.player));
+    return (
+      <div className="min-h-screen bg-black text-white font-sans flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4 text-center">
+          <User className="w-10 h-10 mx-auto text-cyan-400" aria-hidden />
+          <h1 className="text-xl font-black">{needsLeaguePick ? "Pick a league" : "No player profile here yet"}</h1>
+          <p className="text-sm text-neutral-300">
+            {needsLeaguePick
+              ? "Your player profile lives inside a league. Join a league or open one you belong to."
+              : `You're not on a roster in ${settings.leagueName || "this league"}. Your stats appear here once a coach adds you to a team.`}
+          </p>
+          {playerLeagues.length > 0 && (
+            <ul className="space-y-2">
+              {playerLeagues.map((league) => (
+                <li key={league.id}>
+                  <a href={`/profile?league=${league.id}`} className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold hover:bg-white/10">
+                    My stats in {league.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link href="/" className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold hover:bg-white/10">Home</Link>
+            <Link href="/leagues" className="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold hover:bg-white/10">Find a league</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
   const effectivePlayer = selectedPlayer || authPlayerData;
   const effectiveTeam = playerTeam;
@@ -345,7 +421,7 @@ export default function PlayerProfilePage() {
         {/* ============================================================== */}
         {/* TOP DEMO / ROLE SWITCHER BANNER (IF ADMIN OR PREVIEWING)       */}
         {/* ============================================================== */}
-        {(!isPlayer || isLeagueAdmin) && allRosteredPlayers.length > 0 && (
+        {canPreviewPlayers && allRosteredPlayers.length > 0 && (
           <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
@@ -353,18 +429,20 @@ export default function PlayerProfilePage() {
               </div>
               <div>
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-300 block">
-                  {isLeagueAdmin ? "Commissioner Athlete Inspector" : "Player Profile Preview"}
+                  {selectedPlayer && ownPlayerIds.has(selectedPlayer.id) ? "Your profile" : "Previewing another player"}
                 </span>
-                <p className="text-xs text-neutral-400">
-                  Select any rostered player to view their individualized stats, linked emails, and personal settings.
+                <p className="text-xs text-neutral-300">
+                  {selectedPlayer && !ownPlayerIds.has(selectedPlayer.id)
+                    ? `You're viewing ${selectedPlayer.playerName || "this player"}'s profile as a coach.`
+                    : "As a coach you can preview any rostered player's profile."}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 self-start md:self-auto">
-              <label className="text-xs font-mono text-neutral-400 whitespace-nowrap">Switch Player:</label>
-              <select data-tour="profile-player-selector"
-                value={selectedPlayerId}
+              <label htmlFor="profile-player-selector" className="text-xs font-mono text-neutral-300 whitespace-nowrap">Preview another player:</label>
+              <select data-tour="profile-player-selector" id="profile-player-selector"
+                value={selectedPlayer?.id || ""}
                 onChange={(e) => handleSelectAnotherPlayer(e.target.value)}
                 className="px-3 py-1.5 rounded-xl bg-black border border-white/15 text-xs text-white focus:border-cyan-400 outline-none"
               >
@@ -448,11 +526,11 @@ export default function PlayerProfilePage() {
               {effectiveTeamId && (!isLeagueAdmin || isTeamAdmin(effectiveTeamId)) && (
                 <Link
                   href={`/teams/${effectiveTeamId}/playbook`}
-                  className="px-5 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/20"
+                  className="px-5 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-cyan-500/20"
                 >
                   <BookOpen className="w-4 h-4" />
                   <span>Study Team Playbook</span>
-                  <span className="px-1.5 py-0.2 rounded bg-black/20 text-[10px] font-mono">View Only</span>
+                  <span className="px-1.5 py-0.5 rounded bg-black/25 text-white text-[10px] font-mono">View Only</span>
                 </Link>
               )}
 
@@ -519,7 +597,7 @@ export default function PlayerProfilePage() {
         {activeTab === "stats" && (
           <div className="space-y-8">
             <div className="space-y-2">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-300">
               {hasArchivedSeasons
                 ? `${seasons.find((season) => season.id === currentSeasonId)?.title || "Current season"} stats`
                 : "This season's stats"}
@@ -904,8 +982,8 @@ export default function PlayerProfilePage() {
                 Current App Session:
               </span>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-neutral-400">Authenticated Role:</span>
-                <span className="font-mono font-bold uppercase text-cyan-400">{role}</span>
+                <span className="text-neutral-400">Your role in {settings.leagueName || "this league"}:</span>
+                <span className="font-mono font-bold uppercase text-cyan-400">{contextRoleLabel}</span>
               </div>
               {user?.email && (
                 <div className="flex items-center justify-between text-xs">

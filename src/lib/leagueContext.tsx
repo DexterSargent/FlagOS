@@ -144,6 +144,11 @@ export interface PlayoffFormat {
  *   12 teams -> 8 team playoff
  *   16 teams -> 16 team playoff
  */
+/** League-scoped schedule link so the schedule opens on the league being viewed. */
+export function leagueScheduleHref(leagueId: string | null | undefined): string {
+  return leagueId && !checkIsDemoLeague(leagueId) ? `/schedule?league=${encodeURIComponent(leagueId)}` : "/schedule";
+}
+
 export function getNearestSimplePlayoffBracket(totalTeams: number): number {
   const count = Math.floor(Number(totalTeams) || 0);
   if (count <= 0) return 4;
@@ -723,8 +728,13 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
     // Restore the stored league selection and switcher list.
     if (typeof window !== "undefined") {
       try {
-        const savedLeagueId = localStorage.getItem(ACTIVE_LEAGUE_KEY);
+        // A league-scoped schedule link (see leagueScheduleHref) wins over the stored selection.
+        const linkedLeagueId = window.location.pathname === "/schedule"
+          ? new URLSearchParams(window.location.search).get("league")
+          : null;
+        const savedLeagueId = linkedLeagueId || localStorage.getItem(ACTIVE_LEAGUE_KEY);
         if (savedLeagueId) setSelectedLeagueId(savedLeagueId);
+        if (linkedLeagueId) localStorage.setItem(ACTIVE_LEAGUE_KEY, linkedLeagueId);
 
         const savedUserLeagues = localStorage.getItem(USER_LEAGUES_KEY);
         if (savedUserLeagues) {

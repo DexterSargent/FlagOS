@@ -26,7 +26,7 @@ function isShowcaseRoute(path: string): boolean {
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, userProfile, isPlayer, isAuthorized, loading, logout, needsEmailVerification } = useAuth();
+  const { user, userProfile, isPlayer, isAuthorized, loading, logout, needsEmailVerification, identityLookupFailed } = useAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
   const { demoFlag, inIframe, embedQuery } = useEmbedState();
   const routeTeamId = pathname.startsWith("/teams/") ? pathname.split("/")[2] || null : null;
@@ -163,6 +163,28 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="bg-neutral-900/90 border border-amber-500/30 p-8 md:p-10 rounded-[2rem] shadow-2xl flex flex-col items-center max-w-md w-full text-center space-y-5">
           <h1 className="text-2xl font-black uppercase tracking-tight">One more step</h1>
           <EmailVerificationNotice />
+        </div>
+      </div>
+    );
+  }
+
+  // Case 2b: The membership check itself failed (offline or throttled). Don't claim the account has no access.
+  if (!isAuthorized && identityLookupFailed) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-sans">
+        <div className="bg-neutral-900/90 border border-white/10 p-8 rounded-[2rem] max-w-md w-full text-center space-y-4">
+          <ShieldAlert className="w-10 h-10 mx-auto text-amber-400" aria-hidden />
+          <h1 className="text-xl font-black">We couldn&apos;t confirm your access</h1>
+          <p className="text-sm text-neutral-300">
+            FlagOS is busy or your connection dropped while checking your leagues and teams. Your access hasn&apos;t changed.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full min-h-11 rounded-xl bg-white text-black font-extrabold text-sm hover:bg-neutral-200"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );

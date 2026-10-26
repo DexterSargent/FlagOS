@@ -46,7 +46,7 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
     return (
       <Link
         href={`/login${redirect}`}
-        className={`inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-primary text-xs font-bold transition-colors shrink-0 ${className}`}
+        className={`inline-flex items-center gap-1.5 h-10 sm:h-8 px-2.5 sm:px-3 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-primary text-xs font-bold transition-colors shrink-0 ${className}`}
         aria-label="Sign in"
       >
         <LogIn className="w-3.5 h-3.5 shrink-0" />
@@ -69,7 +69,7 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu for ${displayName}`}
-        className="inline-flex items-center gap-1 h-8 pl-0.5 pr-1.5 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1 h-10 sm:h-8 pl-1 sm:pl-0.5 pr-1.5 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
       >
         <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-black flex items-center justify-center">
           {initial}

@@ -51,6 +51,7 @@ import FitTeamName from "@/components/FitTeamName";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
 import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts, getDefensiveStatCategory, getDefensiveStatLabel, getEligibleReceivers } from "@/lib/playerNumberHelper";
 import { loadStatKeeperHistory } from "@/lib/statKeeperHistory";
+import { describePlaysError, fetchMatchPlays, matchPlayConstraints, sortPlaysChronologically } from "@/lib/matchPlaysQuery";
 import StatPlayerPicker from "@/components/play-by-play/StatPlayerPicker";
 import {
   PENALTY_CATALOG,
@@ -95,7 +96,7 @@ type PlayResult = "Touchdown" | "First Down" | "Short" | "Safety" | "Turnover" |
 export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGrant = false }: AsyncPlayByPlayManagerProps) {
   const router = useRouter();
   const { settings, isDemoLeague } = useLeague();
-  const { canManageTeam, isLeagueAdmin, loading: authLoading } = useAuth();
+  const { user, canManageTeam, isLeagueAdmin, loading: authLoading } = useAuth();
   // Persisted team games are real data and must never route through the demo sandbox.
   const isDemo = isDemoMatchId(matchId) && (isDemoLeague || matchId?.startsWith("match_demo_"));
   usePageGuide(ASYNC_STAT_KEEPER_WALKTHROUGH, 1);
@@ -182,6 +183,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
   const [convPasser, setConvPasser] = useState<string>("");
   const [convReceiver, setConvReceiver] = useState<string>("");
   const [playResult, setPlayResult] = useState<string>("");
+  // The touchdown is saved as soon as it's entered; the PAT then replaces that pending play.
+  const pendingTdRef = useRef<{ play: Record<string, any>; id: Promise<string | null> } | null>(null);
+  const resolvedPendingIds = useRef<Set<string>>(new Set());
+  const conversionsInFlight = useRef(0);
 
   // View tabs
   const [activeTab, setActiveTab] = useState<"tracker" | "play-by-play" | "box-score" | "team-stats">("tracker");
@@ -320,27 +325,29 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
   const loadPlays = async () => {
     try {
       let pList: any[] = [];
-      let firestoreFailed = false;
+      let failure: unknown = null;
       if (isDemo) {
         pList = getSandboxPlays(matchId);
       } else {
+        if (!matchData) return;
         try {
-          const q = query(collection(db, "plays"), where("matchId", "==", matchId), where("isHidden", "==", false), orderBy("timestamp", "asc"), limit(500));
-          const snap = await getDocs(q);
-          pList = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+          pList = await fetchMatchPlays(matchId, matchData);
         } catch (e) {
           console.warn("Could not query Firestore plays:", e);
-          firestoreFailed = true;
+          failure = e;
         }
       }
-      setPlaysError(
-        firestoreFailed && pList.length === 0
-          ? "Couldn't reach the server to load plays. Showing nothing until the connection is restored."
-          : null
-      );
+      setPlaysError(failure ? describePlaysError(failure, !!user) : null);
       setPlays(pList);
       if (pList.length > 0) {
         const last = pList[pList.length - 1];
+        if (canEdit && last.conversionPending === true && last.id && !resolvedPendingIds.current.has(last.id) && conversionsInFlight.current === 0 && step === "IDLE") {
+          const { id: pendingId, timestamp: _ts, createdAt: _created, ref: _ref, ...pendingPlay } = last;
+          pendingTdRef.current = { play: pendingPlay, id: Promise.resolve(pendingId) };
+          setPlayResult(last.result || (last.isPick6 ? "Pick 6" : "Touchdown"));
+          setSaveNotice({ kind: "warning", message: "PAT pending: choose the conversion result for the last touchdown." });
+          setStep("CONVERSION");
+        }
         setLastLoggedPlayStatement(
           formatPlaySentence(last, {
             homeTeamName,
@@ -384,7 +391,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
 
   useEffect(() => {
     loadPlays();
-  }, [matchId, step, homeScore, awayScore]);
+  }, [matchId, step, homeScore, awayScore, matchData]);
 
   // Autosave game state
   useEffect(() => {
@@ -512,6 +519,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
   };
 
   const resetPlayForm = () => {
+    pendingTdRef.current = null;
     setStep("IDLE");
     setPlayType(null);
     setOutcome(null);
@@ -668,19 +676,22 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
     };
   };
 
-  const logPlayToFirestore = async (playData: any) => {
-    if (!canEdit) return;
+  const logPlayToFirestore = async (playData: any): Promise<string | null> => {
+    if (!canEdit) return null;
     if (isDemo) {
-      addSandboxPlay({
-        ...playData,
+      const { replacesPlayId, ...demoPlay } = playData;
+      if (replacesPlayId) deleteSandboxPlay(replacesPlayId);
+      const saved = addSandboxPlay({
+        ...demoPlay,
         matchId,
         timestamp: new Date().toISOString(),
       });
       loadPlays();
-      return;
+      return saved.id;
     }
+    let savedId: string | null = null;
     try {
-      await createSecureRecord("play", {
+      savedId = await createSecureRecord("play", {
         ...playData,
         matchId,
       });
@@ -690,6 +701,17 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
       setSaveNotice({ kind: "error", message: "This play could not be saved. Check your connection and log it again." });
     }
     loadPlays();
+    return savedId;
+  };
+
+  const saveTouchdownPending = (result: PlayResult) => {
+    const rawPlay: Record<string, any> = buildPlayData(result, { conversionPending: true, pointsScored: 6 });
+    // Possession hasn't flipped yet for a Pick 6, so record the original offense explicitly.
+    rawPlay.possessionTeamId = possession === homeTeamName ? homeTeamId : awayTeamId;
+    rawPlay.playStatement = `${formatPlaySentence(rawPlay, { homeTeamName, awayTeamName, homeTeamId, downsPerSeries })} (PAT pending)`;
+    setLastLoggedPlayStatement(rawPlay.playStatement);
+    pendingTdRef.current = { play: rawPlay, id: logPlayToFirestore(rawPlay) };
+    return rawPlay;
   };
 
   const handleSavePlay = (result: PlayResult) => {
@@ -705,6 +727,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
     }
 
     if (result === "Touchdown") {
+      saveTouchdownPending(result);
       if (possession === homeTeamName) setHomeScore((s) => s + 6);
       else setAwayScore((s) => s + 6);
       setStep("CONVERSION");
@@ -712,6 +735,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
     }
 
     if (result === "Pick 6") {
+      saveTouchdownPending(result);
       const newPoss = possession === homeTeamName ? awayTeamName : homeTeamName;
       if (newPoss === homeTeamName) setHomeScore((s) => s + 6);
       else setAwayScore((s) => s + 6);
@@ -827,8 +851,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
       else setAwayScore((s) => s + convPts);
     }
 
+    const pending = pendingTdRef.current;
+    pendingTdRef.current = null;
     const finalPlay: any = {
-      ...buildPlayData(playResult),
+      ...(pending ? { ...pending.play } : buildPlayData(playResult)),
+      conversionPending: false,
       conversionAttempt: convPts,
       conversionSuccess: convIsGood,
       conversionPasser: convIsGood ? convPasser : "",
@@ -842,7 +869,17 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
       downsPerSeries,
     });
     finalPlay.playStatement = statement;
-    logPlayToFirestore(finalPlay);
+    if (pending) {
+      conversionsInFlight.current += 1;
+      void pending.id.then((pendingId) => {
+        if (pendingId) resolvedPendingIds.current.add(pendingId);
+        return logPlayToFirestore(pendingId ? { ...finalPlay, replacesPlayId: pendingId } : finalPlay);
+      }).finally(() => {
+        conversionsInFlight.current -= 1;
+      });
+    } else {
+      logPlayToFirestore(finalPlay);
+    }
     setLastLoggedPlayStatement(statement);
 
     // Turnover possession to defense after conversion
@@ -877,16 +914,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
         return;
       }
 
-      const q = query(
-        collection(db, "plays"),
-        where("matchId", "==", matchId),
-        orderBy("timestamp", "desc"),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const lastPlayDoc = snap.docs[0];
-        const lastPlay = lastPlayDoc.data();
+      const snap = await getDocs(query(collection(db, "plays"), ...matchPlayConstraints(matchId, matchData || {}, { visibleOnly: false })));
+      const ordered = sortPlaysChronologically(snap.docs.map((record) => ({ ref: record.ref, ...record.data() })));
+      if (ordered.length > 0) {
+        const lastPlay: any = ordered[ordered.length - 1];
+        const lastPlayDoc = { ref: lastPlay.ref };
 
         setCurrentDown(lastPlay.down || 1);
         const wasHomePossession = lastPlay.possessionTeamId === homeTeamId;

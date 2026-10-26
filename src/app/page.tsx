@@ -54,7 +54,6 @@ export default function FlagOSPlatformLandingPage() {
   usePageGuide(user ? null : LANDING_WALKTHROUGH);
   const isMe =
     user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca" ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
     Boolean(isPlatformAdmin);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);

@@ -181,7 +181,6 @@ export default function MyStoryPage() {
 
   const isMe =
     user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca" ||
-    user?.email?.trim().toLowerCase() === "dextersargent@gmail.com" ||
     Boolean(isPlatformAdmin);
 
   // Load photos from localStorage

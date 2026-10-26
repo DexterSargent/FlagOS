@@ -46,7 +46,7 @@ env:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_ADMIN_EMAILS
-    value: "dextersargent@flagos.ca,dextersargent@gmail.com"
+    value: "dextersargent@flagos.ca"
     availability:
       - BUILD
       - RUNTIME

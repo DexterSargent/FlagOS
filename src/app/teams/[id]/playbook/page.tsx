@@ -1150,7 +1150,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                     {teamName}&apos;s <span style={{ color: "var(--team-ink)" }}>Playbooks</span>
                   </h1>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Select a playbook to manage custom formations and design plays. Up to {MAX_PLAYBOOKS_PER_TEAM} playbooks.
+                    {hasEditAccess
+                      ? <>Select a playbook to manage custom formations and design plays. Up to {MAX_PLAYBOOKS_PER_TEAM} playbooks.</>
+                      : "Select a playbook to study your team's formations and plays. Only coaches can make changes."}
                   </p>
                 </div>
               </div>
@@ -1272,9 +1274,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 type="button"
                 data-tour="autosave-status"
                 onClick={flushAutoSave}
-                aria-label="Auto-save status"
+                aria-label={autoSaveStatus === "unsaved" ? "Unsaved changes: save now" : "Auto-save status"}
                 title={isDemoLeague ? "Demo changes stay in this browser session and are never saved to an account" : autoSaveStatus === "unsaved" ? "Unsaved changes: click to save immediately" : "Auto-saving to cloud is active"}
-                className="px-3.5 py-2 max-sm:px-2 max-sm:py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono flex items-center gap-2 transition-all hover:bg-white/10 cursor-pointer"
+                className={`px-3.5 py-2 max-sm:px-2 max-sm:py-1.5 rounded-2xl text-xs flex items-center gap-2 transition-all cursor-pointer ${autoSaveStatus === "unsaved" ? "min-h-10 bg-amber-500 text-neutral-950 font-bold font-sans border border-amber-600 shadow-sm hover:bg-amber-400" : "font-mono bg-white/5 border border-white/10 hover:bg-white/10"}`}
                 data-testid="autosave-status-badge"
               >
                 {autoSaveStatus === "saving" ? (
@@ -1285,9 +1287,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                   </>
                 ) : autoSaveStatus === "unsaved" ? (
                   <>
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    <span className="text-amber-300 max-sm:hidden">Unsaved changes</span>
-                    <span className="text-amber-300 sm:hidden">Unsaved</span>
+                    <Save className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span className="max-sm:hidden">Unsaved · Save now</span>
+                    <span className="sm:hidden">Save now</span>
                   </>
                 ) : isDemoLeague ? (
                   <>

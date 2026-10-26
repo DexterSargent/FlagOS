@@ -4,6 +4,7 @@ import React from "react";
 import { usePageGuide } from "@/lib/pageGuide";
 import { SPECTATOR_DASHBOARD_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import Link from "next/link";
+import { useLeague, leagueScheduleHref } from "@/lib/leagueContext";
 import {
   CalendarDays,
   Trophy,
@@ -53,6 +54,7 @@ export function SpectatorView({
   canRegisterAsPlayer,
 }: SpectatorViewProps) {
   usePageGuide(SPECTATOR_DASHBOARD_WALKTHROUGH);
+  const { activeLeagueId: scheduleLeagueId } = useLeague();
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* Fan & Spectator Hero Banner */}
@@ -82,7 +84,7 @@ export function SpectatorView({
           {!isEmbedded && (
             <div data-tour="spectator-dashboard-links" className="flex flex-wrap items-center gap-3">
               <Link
-                href="/schedule"
+                href={leagueScheduleHref(scheduleLeagueId)}
                 className="px-5 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
               >
                 <CalendarDays className="w-4 h-4" />

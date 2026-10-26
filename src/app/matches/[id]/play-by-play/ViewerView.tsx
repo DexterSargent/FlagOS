@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, Shield, MapPin, Zap, RotateCcw, BookOpen, ArrowUp } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
+import { describePlaysError, subscribeMatchPlays } from "@/lib/matchPlaysQuery";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
@@ -91,6 +92,8 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
   const awayText = getReadableTextColor(awayColors.secondary, awayColors.primary);
   const homeAccent = getReadableTextColor(isLight ? "#FFFFFF" : "#0A0A0A", homeColors.primary);
   const [plays, setPlays] = useState<any[]>([]);
+  const [playsError, setPlaysError] = useState<string | null>(null);
+  const [playsReloadKey, setPlaysReloadKey] = useState(0);
   const [players, setPlayers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'play-by-play' | 'box-score' | 'team-stats'>('play-by-play');
   const [boxScoreTab, setBoxScoreTab] = useState<'home' | 'away'>('home');
@@ -395,6 +398,11 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
     return () => unsub();
   }, [matchId, isDemoMatch]);
 
+  const matchScopeReady = !!matchData;
+  const matchLeagueId: string = matchData?.leagueId || "";
+  const matchManagingTeamId: string = matchData?.managingTeamId || "";
+  const matchHomeTeamId: string = matchData?.homeTeamId || "";
+
   useEffect(() => {
     if (isDemoMatch) {
       const loadDemoPlays = () => {
@@ -410,14 +418,13 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       const unsub = subscribeDemoSandbox(() => loadDemoPlays());
       return () => unsub();
     }
-    const q = query(
-      collection(db, "plays"),
-      where("matchId", "==", matchId),
-      where("isHidden", "==", false),
-      limit(500),
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const p = snap.docs.map(d => d.data());
+    if (!matchScopeReady) return;
+    const unsub = subscribeMatchPlays(matchId, {
+      leagueId: matchLeagueId,
+      managingTeamId: matchManagingTeamId,
+      homeTeamId: matchHomeTeamId,
+    }, (p) => {
+      setPlaysError(null);
       p.sort((a, b) => {
         const tA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
         const tB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
@@ -429,10 +436,10 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       setPlays(p);
     }, (err) => {
       console.warn("ViewerView plays snapshot warning:", err);
-      setPlays(getSandboxPlays(matchId));
-    });
+      setPlaysError(describePlaysError(err, !!user));
+    }, { visibleOnly: true });
     return () => unsub();
-  }, [matchId, isDemoMatch]);
+  }, [matchId, isDemoMatch, matchScopeReady, matchLeagueId, matchManagingTeamId, matchHomeTeamId, playsReloadKey, user]);
 
   if (isDenied) {
     return deniedElement;
@@ -674,7 +681,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               </div>
             )}
             {usesLiveClock && effectiveMatchData.status !== "completed" && (
-              <span className="text-[10px] sm:text-xs font-bold opacity-80 leading-none">{timeoutsText(s.homeTimeouts ?? 0)}</span>
+              <span className="text-[10px] sm:text-xs font-bold leading-none">{timeoutsText(s.homeTimeouts ?? 0)}</span>
             )}
           </div>
 
@@ -686,7 +693,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               <LiveGameClock state={viewerGameState === "live" ? s : { ...s, gameClockRunning: false }} className="text-xl sm:text-2xl md:text-4xl font-black leading-none text-white tracking-tighter tabular-nums" />
             ) : (
               <span className="text-base sm:text-xl md:text-3xl font-black leading-none text-emerald-400 uppercase tracking-widest">
-                {effectiveMatchData.status === "completed" ? "Game Complete" : s.half === 2 ? "2nd Half" : "1st Half"}
+                {effectiveMatchData.status === "completed" ? "Game Complete" : `${plays.length} ${plays.length === 1 ? "Play" : "Plays"}`}
               </span>
             )}
             {effectiveMatchData.status !== "completed" && (
@@ -710,7 +717,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
               </div>
             )}
             {usesLiveClock && effectiveMatchData.status !== "completed" && (
-              <span className="text-[10px] sm:text-xs font-bold opacity-80 leading-none">{timeoutsText(s.awayTimeouts ?? 0)}</span>
+              <span className="text-[10px] sm:text-xs font-bold leading-none">{timeoutsText(s.awayTimeouts ?? 0)}</span>
             )}
           </div>
         </div>
@@ -773,8 +780,19 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
         <div className="max-w-4xl mx-auto flex flex-col gap-3 sm:gap-4">
           {activeTab === 'play-by-play' && (
             <>
-              {plays.length === 0 && (
-                <div className="text-neutral-600 text-center font-bold">No plays logged yet.</div>
+              {playsError ? (
+                <div role="alert" className="flex flex-col items-center gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-center">
+                  <p className="text-sm font-bold text-red-200">{playsError}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setPlaysError(null); setPlaysReloadKey((key) => key + 1); }}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-black uppercase tracking-wider text-white"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : plays.length === 0 && (
+                <div className="text-neutral-400 text-center font-bold">No plays logged yet.</div>
               )}
               {plays.map((play, idx) => (
                 <div

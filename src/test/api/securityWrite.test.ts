@@ -50,7 +50,7 @@ vi.mock("firebase-admin/firestore", () => ({
 
 const validToken = {
   uid: "owner-1",
-  email: "dextersargent@gmail.com",
+  email: "dextersargent@flagos.ca",
   email_verified: true,
 };
 

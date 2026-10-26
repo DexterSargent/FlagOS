@@ -201,7 +201,16 @@ export async function getCachedLeaguesDirectory(): Promise<{ leagues: any[]; tea
   return cachedLeagueRequest("directory:leagues", async () => {
     const leaguesSnap = await getDocs(query(collection(db, "leagues"), limit(100)));
     const teamsCountMap: Record<string, number> = {};
+    let countsAreAuthoritative = false;
     try {
+      const response = await fetch("/api/public/league-team-counts");
+      if (!response.ok) throw new Error(`Team counts unavailable (${response.status})`);
+      const body = await response.json() as { counts?: Record<string, number> };
+      Object.assign(teamsCountMap, body.counts || {});
+      countsAreAuthoritative = true;
+    } catch {
+      // Fall back to the teams this account can list directly.
+      try {
       const teamsSnap = await getDocs(query(collection(db, "teams"), limit(300)));
       if (teamsSnap && Array.isArray(teamsSnap.docs)) {
         teamsSnap.docs.forEach((docSnap) => {
@@ -212,8 +221,9 @@ export async function getCachedLeaguesDirectory(): Promise<{ leagues: any[]; tea
           }
         });
       }
-    } catch {
-      // ignore team count query errors in mocked/offline modes
+      } catch {
+        // ignore team count query errors in mocked/offline modes
+      }
     }
 
     const leagues = leaguesSnap.docs
@@ -222,7 +232,7 @@ export async function getCachedLeaguesDirectory(): Promise<{ leagues: any[]; tea
         return {
           id: docSnap.id,
           ...data,
-          teamCount:
+          teamCount: countsAreAuthoritative ? teamsCountMap[docSnap.id] ?? 0 :
             teamsCountMap[docSnap.id] ??
             data.teamCount ??
             data.subscription?.teamCount ??

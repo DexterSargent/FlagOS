@@ -19,6 +19,7 @@ import {
   entriesInPeriod,
   formatDate,
   formatMoney,
+  isGrandfathered,
   isRecurring,
   profitAndLoss,
   toCsv,
@@ -265,6 +266,11 @@ export default function AdminFinance({
                       <div className="flex flex-wrap gap-1">
                         <StatusBadge status={record.status} />
                         <StatusBadge status={record.paymentMethod} />
+                        {isGrandfathered(record) && (
+                          <span title="Priced below today's list rate" className="rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-violet-300">
+                            Grandfathered
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="col-start-2 row-start-1 text-right font-black tabular-nums sm:px-2 sm:py-2.5">{formatMoney(record.monthlyFee, { cents: record.monthlyFee % 1 !== 0 })}</td>

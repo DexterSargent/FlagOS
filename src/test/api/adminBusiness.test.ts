@@ -23,6 +23,7 @@ vi.mock("@/lib/firebaseAdmin", () => ({
     collection: vi.fn(() => ({
       add: addMock,
       orderBy: () => ({ limit: () => ({ get: async () => ({ docs: [] }) }) }),
+      select: () => ({ limit: () => ({ get: async () => ({ docs: [] }) }) }),
       count: () => ({ get: async () => ({ data: () => ({ count: 3 }) }) }),
     })),
     doc: docMock,
@@ -33,7 +34,11 @@ vi.mock("firebase-admin/firestore", () => ({
   FieldValue: { serverTimestamp: vi.fn(() => "server-timestamp") },
 }));
 
-const owner = { uid: "owner", email: "dextersargent@gmail.com", email_verified: true };
+vi.mock("@/lib/platformHealth", () => ({
+  computePlatformHealth: vi.fn(async () => ({ generatedAt: "now", issues: [] })),
+}));
+
+const owner = { uid: "owner", email: "dextersargent@flagos.ca", email_verified: true };
 
 function request(body: unknown) {
   return new Request("http://localhost/api/admin/business", {

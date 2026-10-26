@@ -338,7 +338,7 @@ export default function TeamsPage() {
 
     if (isExpandingSubscription) {
       const confirmExpand = window.confirm(
-        `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}All ${currentPaid} paid team slots are currently in use.\n\nAdding "${newTeamName.trim()}" will add a team slot and adjust your monthly subscription by +$20/mo (new cost: $${40 + (currentPaid + 1) * 20}/mo starting at your next monthly payment). Proceed?`
+        `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}All ${currentPaid} team slots are currently in use.\n\nAdding "${newTeamName.trim()}" will add a team slot${subscription?.paymentMethod === "complimentary" ? " (complimentary, no charge)" : ` and adjust your monthly subscription by +$20/mo (new cost: $${40 + (currentPaid + 1) * 20}/mo starting at your next monthly payment)`}. Proceed?`
       );
       if (!confirmExpand) return;
       try {
@@ -402,7 +402,7 @@ export default function TeamsPage() {
     const nextCount = Math.max(2, currentPaid - 1);
 
     const reduceSubscription = window.confirm(
-      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}Delete "${activeTeam?.name || "this team"}"?\n\nClick OK to also remove this team slot and reduce your subscription by $20/month (new rate: $${40 + nextCount * 20}/mo at next monthly payment).\n\nClick Cancel to choose if you want to keep the open slot.`
+      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}Delete "${activeTeam?.name || "this team"}"?\n\nClick OK to also remove this team slot${subscription?.paymentMethod === "complimentary" ? "" : ` and reduce your subscription by $20/month (new rate: $${40 + nextCount * 20}/mo at next monthly payment)`}.\n\nClick Cancel to choose if you want to keep the open slot.`
     );
 
     if (reduceSubscription) {
@@ -757,6 +757,10 @@ export default function TeamsPage() {
                   )}
                 </div>
                 <div className="text-xs text-slate-400 dark:text-neutral-400 flex flex-wrap items-center gap-2">
+                  {subscription?.paymentMethod === "complimentary" ? (
+                    <span className="font-semibold text-slate-200 dark:text-neutral-200">Complimentary · no charge</span>
+                  ) : (
+                  <>
                   <span>${subscription?.totalMonthlyFee ?? (40 + (subscription?.teamCount ?? 8) * (subscription?.perTeamMonthlyFee ?? 20))}/mo ($40 base + {subscription?.teamCount ?? 8} × ${subscription?.perTeamMonthlyFee ?? 20})</span>
                   <span>•</span>
                   <span>
@@ -769,6 +773,8 @@ export default function TeamsPage() {
                       })}
                     </strong>
                   </span>
+                  </>
+                  )}
                 </div>
               </div>
             </div>
@@ -780,7 +786,7 @@ export default function TeamsPage() {
                 className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Team to Subscription (+ $20/mo)</span>
+                <span>{subscription?.paymentMethod === "complimentary" ? "Add Team Slot" : "Add Team to Subscription (+ $20/mo)"}</span>
               </button>
 
               <button

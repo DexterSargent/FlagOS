@@ -19,11 +19,12 @@ export function loadTeamManagedMatches(teamId: string): Promise<DemoMatch[]> {
   });
 }
 
-export function loadTeamMatchPlays(matchId: string): Promise<DemoPlay[]> {
+export function loadTeamMatchPlays(matchId: string, teamId: string): Promise<DemoPlay[]> {
   return cachedPublicTeamRequest(`team-plays:${matchId}`, async () => {
     const snapshot = await getDocs(query(
       collection(db, "plays"),
       where("matchId", "==", matchId),
+      where("managingTeamId", "==", teamId),
       where("isHidden", "==", false),
       limit(10_000),
     ));
@@ -33,6 +34,6 @@ export function loadTeamMatchPlays(matchId: string): Promise<DemoPlay[]> {
 
 export async function loadTeamSeasonData(teamId: string): Promise<{ matches: DemoMatch[]; plays: DemoPlay[] }> {
   const matches = await loadTeamManagedMatches(teamId);
-  const plays = await Promise.all(matches.map((match) => loadTeamMatchPlays(match.id)));
+  const plays = await Promise.all(matches.map((match) => loadTeamMatchPlays(match.id, teamId)));
   return { matches, plays: plays.flat() };
 }

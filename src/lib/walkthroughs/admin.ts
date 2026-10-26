@@ -131,10 +131,10 @@ const consoleNavigation = step("admin-navigation", "Move around the business con
 ], "admin-header");
 export const ADMIN_OVERVIEW_GUIDE = guide("platform-admin-overview", "Business Overview", [
   overview("admin-overview-intro", "Your business at a glance", "This owner-only console brings together customer records and bookkeeping. Billed recurring revenue and money actually recorded in the ledger are different measures."), consoleNavigation,
-  step("admin-overview-kpis", "Business metrics", "Read the current recurring revenue, month and year-to-date results, active customers and account totals. These cards are summaries, not buttons.", [["MRR (billed)", "Monthly recurring revenue from billed plans; the list figure also includes complimentary value."], ["ARR run-rate", "Annualized recurring revenue, with average revenue per account (ARPA)."], ["Profit this month", "This month's ledger revenue less expenses."], ["Active customers", "Current paid and complimentary customers."], ["Revenue YTD", "Year-to-date revenue after refunds."], ["Expenses YTD", "Year-to-date recorded spending."], ["Profit YTD", "Year-to-date revenue less expenses, with margin when available."], ["User accounts", "Account count, with new and active account totals for 30 days."]]),
+  step("admin-overview-kpis", "Business metrics", "Read the current recurring revenue, month and year-to-date results, active customers and account totals. These cards are summaries, not buttons.", [["MRR (marked paid)", "Monthly recurring revenue from plans you have marked as paid. Payments are not processed automatically yet; the list figure also includes complimentary value."], ["ARR run-rate", "Annualized recurring revenue, with average revenue per account (ARPA)."], ["Profit this month", "This month's ledger revenue less expenses."], ["Active customers", "Current paid and complimentary customers."], ["Revenue YTD", "Year-to-date revenue after refunds."], ["Expenses YTD", "Year-to-date recorded spending."], ["Profit YTD", "Year-to-date revenue less expenses, with margin when available."], ["User accounts", "Account count, with new and active account totals for 30 days."]]),
   step("admin-overview-comp", "Complimentary subscriptions", "Compare complimentary plan value with billed revenue.", [["Open billing", "Switch to Finance to manage paid versus complimentary billing."]]),
   step("admin-overview-charts", "Revenue and customer mix", "Revenue vs expenses uses the last twelve months of ledger records. Customer mix separates paid, complimentary, trial and churned accounts, then league versus independent team plans."),
-  step("admin-overview-trends", "Growth and recurring revenue trends", "Customer growth tracks total customers; Billed MRR trend tracks paid subscriptions rather than cash collected."),
+  step("admin-overview-trends", "Growth and recurring revenue trends", "Customer growth tracks total customers; MRR trend (marked paid) tracks plans you have marked as paid rather than cash collected."),
   step("admin-overview-renewals", "Renewals due (30 days)", "Check upcoming and overdue renewals.", [["Record payment", "Open a prefilled income entry; check its amount and date before saving."]]),
   step("admin-overview-signups", "Recent signups", "See who recently created an account.", [["All users", "Switch to Users for account search, status and access controls."]]),
   step("admin-overview-health", "Platform health", "Review loaded league, team, player, game, play and account counts. A dash means the count is unavailable.", [["Activity", "Switch to the audit trail to inspect recorded changes."]]),
@@ -174,16 +174,18 @@ export const ADMIN_FINANCE_GUIDE = guide("platform-admin-finance", "Finance", [
 export const ADMIN_USERS_GUIDE = guide("platform-admin-users", "User Accounts", [
   overview("admin-users-intro", "Review account access", "These are authentication accounts, not player roster records. Disabling an account affects sign-in access, not a team roster slot."), consoleNavigation,
   step("admin-users-stats", "Account totals", "Review total accounts, new accounts, Active (30d) and Customer admins."),
-  step("admin-users-accounts", "Find and manage accounts", "Each row includes account dates, sign-in providers, verification status and managed customers.", [
-    ["Email, name, league", "Search accounts by email, display name, UID or managed customer."], ["All accounts / League / team admins / Unverified email / Inactive 90+ days / Disabled", "Choose an account filter."],
+  step("admin-users-accounts", "Find and manage accounts", "Each row includes account dates, sign-in providers, verification status and role chips: Runs (league admin), Coaches (team admin) and Plays on (rostered player email).", [
+    ["Email, name, league", "Search accounts by email, display name, UID or linked league or team."], ["All accounts / League / team admins / Rostered players / Not linked to any team / Unverified email / Inactive 90+ days / Disabled", "Choose an account filter. Not linked helps with \"I'm not on my team\" support requests."],
+    ["Show more", "Load the next 50 accounts."],
     ["CSV", "Download the currently filtered accounts."], ["Disable", "Confirm blocking this account from signing in."], ["Enable", "Restore sign-in access to a disabled account."],
     ["Owner", "The platform owner's account is protected and has no Disable button."],
   ]),
 ]);
 export const ADMIN_ACTIVITY_GUIDE = guide("platform-admin-activity", "Platform Activity", [
-  overview("admin-activity-intro", "Read the audit trail", "Review changes recorded through the platform console. The list is read-only and is grouped by day."), consoleNavigation,
-  step("admin-activity-log", "Find a recorded change", "Each entry shows its summary, time and acting administrator. Empty results mean no recorded entries match the current filters.", [
-    ["Search activity", "Search summaries, actor email addresses or target IDs."], ["All activity / Leagues & teams / Billing & ledger / Accounts", "Filter by the kind of administrative change."],
+  overview("admin-activity-intro", "Read the audit trail", "Review security-sensitive changes made by anyone: leagues, teams, rosters, billing, seasons and accounts. The list is read-only and is grouped by day."), consoleNavigation,
+  step("admin-activity-log", "Find a recorded change", "Each entry shows its summary, time and the account that made it. Customer marks changes made by league or team admins rather than you.", [
+    ["Search activity", "Search summaries, actor email addresses or target IDs."], ["All activity / Leagues & teams / Billing & ledger / Accounts", "Filter by the kind of change."],
+    ["All leagues", "Show only changes in one league, or in independent teams."], ["All accounts", "Show only changes made by one account."], ["Show more", "Load the next 50 entries."],
   ]),
 ]);
 export const ADMIN_FREE_AGENTS_GUIDE = guide("platform-admin-free-agents", "Free Agent Interest", [
@@ -193,7 +195,16 @@ export const ADMIN_FREE_AGENTS_GUIDE = guide("platform-admin-free-agents", "Free
     ["Delete (trash)", "Asks for confirmation; Delete? permanently removes the submission."],
   ]),
 ]);
-export const ADMIN_CONSOLE_GUIDES = { overview: ADMIN_OVERVIEW_GUIDE, customers: ADMIN_CUSTOMERS_GUIDE, finance: ADMIN_FINANCE_GUIDE, users: ADMIN_USERS_GUIDE, activity: ADMIN_ACTIVITY_GUIDE, "free-agents": ADMIN_FREE_AGENTS_GUIDE };
+export const ADMIN_HEALTH_GUIDE = guide("platform-admin-health", "Platform Health", [
+  overview("admin-health-intro", "What needs attention", "A read-only scan of the whole platform. The same scan runs nightly and emails you a weekly summary when email is configured. Nothing is ever changed or deleted automatically."), consoleNavigation,
+  step("admin-health-panels", "Work through each list", "Each panel is empty when there is nothing to do.", [
+    ["Data integrity", "Teams, players, games or plays pointing at records that no longer exist, and leagues with more teams than their plan covers."],
+    ["Renewals", "Paid plans renewing in the next 7 days or already overdue."], ["Seasons ending soon", "Active seasons whose final scheduled game is within two weeks. League admins get a one-time Start New Season reminder."],
+    ["Stale and test records", "Trial, archived or test-named leagues and teams idle for 30+ days. A dry run only."], ["Review", "Open Customers filtered to that record, where you can edit or delete it."],
+    ["Re-run", "Scan again now."],
+  ]),
+]);
+export const ADMIN_CONSOLE_GUIDES = { overview: ADMIN_OVERVIEW_GUIDE, health: ADMIN_HEALTH_GUIDE, customers: ADMIN_CUSTOMERS_GUIDE, finance: ADMIN_FINANCE_GUIDE, users: ADMIN_USERS_GUIDE, activity: ADMIN_ACTIVITY_GUIDE, "free-agents": ADMIN_FREE_AGENTS_GUIDE };
 
 export const ADMIN_EDIT_LEAGUE_GUIDE = guide("platform-admin-edit-league", "Edit League", [
   overview("admin-edit-intro", "Edit a customer league", "Review all fields before saving. Changes here update the customer league rather than your own account."),

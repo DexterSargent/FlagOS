@@ -20,7 +20,7 @@ import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
 import { useEmbedState } from "@/lib/embedState";
 import { COMMISSIONER_DASHBOARD_WALKTHROUGH } from "@/lib/walkthroughs/league";
-import { useLeague } from "@/lib/leagueContext";
+import { useLeague, leagueScheduleHref } from "@/lib/leagueContext";
 
 export interface LeagueAdminViewProps {
   teams: any[];
@@ -127,7 +127,7 @@ export function LeagueAdminView({
 
             {!isLeagueArchived && (
             <Link
-              href="/schedule"
+              href={leagueScheduleHref(activeLeagueId)}
               className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
@@ -151,11 +151,11 @@ export function LeagueAdminView({
             <div className="flex flex-wrap items-center justify-between gap-1">
               <span className="text-[11px] uppercase font-bold text-[var(--text-muted)] tracking-wider block">Teams &amp; Slots</span>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
-                {isEffectiveDemo ? "Sandbox" : isLeagueArchived ? "Archived" : `$${subscription?.totalMonthlyFee ?? (40 + (subscription?.teamCount ?? 8) * (subscription?.perTeamMonthlyFee ?? 20))}/mo`}
+                {isEffectiveDemo ? "Sandbox" : isLeagueArchived ? "Archived" : subscription?.paymentMethod === "complimentary" ? "Complimentary" : `$${subscription?.totalMonthlyFee ?? (40 + (subscription?.teamCount ?? 8) * (subscription?.perTeamMonthlyFee ?? 20))}/mo`}
               </span>
             </div>
             <div className="text-3xl font-black text-white mt-1 tabular-nums">
-              {teams.length} <span className="text-sm font-normal text-neutral-400">{isEffectiveDemo ? "Demo Teams" : `/ ${subscription?.teamCount || 8} Paid`}</span>
+              {teams.length} <span className="text-sm font-normal text-neutral-400">{isEffectiveDemo ? "Demo Teams" : `/ ${subscription?.teamCount || 8} ${subscription?.paymentMethod === "complimentary" ? "Slots" : "Paid"}`}</span>
             </div>
             <button
               type="button"

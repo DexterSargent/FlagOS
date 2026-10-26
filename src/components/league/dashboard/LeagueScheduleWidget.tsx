@@ -12,7 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { TeamLogo } from "@/components/TeamAssets";
-import { useLeague } from "@/lib/leagueContext";
+import { useLeague, leagueScheduleHref } from "@/lib/leagueContext";
 import { getGameDisplayState, isFinalGameStatus, isStartedGameStatus, useNow } from "@/lib/gameLiveState";
 
 export interface LeagueScheduleWidgetProps {
@@ -34,7 +34,8 @@ export function LeagueScheduleWidget({
   isEmbedded,
   isDemo,
 }: LeagueScheduleWidgetProps) {
-  const { settings } = useLeague();
+  const { settings, activeLeagueId } = useLeague();
+  const scheduleHref = leagueScheduleHref(activeLeagueId);
   const periodPrefix = settings.rules?.periodType === "quarters" ? "Q" : "H";
   const formatClock = (seconds: number) => {
     const m = Math.floor(Math.max(0, seconds) / 60);
@@ -70,7 +71,7 @@ export function LeagueScheduleWidget({
         </div>
 
         <Link
-          href="/schedule"
+          href={scheduleHref}
           className="px-4 py-2 bg-surface-muted hover:bg-white/10 text-neutral-200 hover:text-white text-xs font-bold uppercase tracking-wider rounded-xl border border-line transition-colors flex items-center gap-2 shrink-0 self-start sm:self-auto"
         >
           <CalendarDays className="w-3.5 h-3.5 text-cyan-400" />
@@ -84,7 +85,7 @@ export function LeagueScheduleWidget({
           <CalendarDays className="w-8 h-8 text-neutral-600" />
           <p>No live or upcoming games scheduled at the moment.</p>
           <Link
-            href="/schedule"
+            href={scheduleHref}
             className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition-all"
           >
             Check Schedule Calendar

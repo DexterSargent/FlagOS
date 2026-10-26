@@ -64,6 +64,9 @@ export interface AuditEntry {
   actorEmail: string;
   targetId?: string;
   targetKind?: string;
+  leagueId?: string;
+  teamId?: string;
+  actorIsPlatformAdmin?: boolean;
   createdAt: number | null;
 }
 
@@ -161,6 +164,14 @@ export function toBillingRecords(leagues: RawRecord[], teams: RawRecord[]): Bill
     });
   }
   return records;
+}
+
+/** A paid plan priced below today's list price keeps its original (grandfathered) rate. */
+export function isGrandfathered(record: BillingRecord): boolean {
+  if (record.paymentMethod !== "paid") return false;
+  if (record.kind === "team") return record.monthlyFee < TEAM_PLAN_MONTHLY_FEE;
+  return (record.perTeamMonthlyFee ?? LEAGUE_PER_TEAM_MONTHLY_FEE) < LEAGUE_PER_TEAM_MONTHLY_FEE ||
+    (record.baseMonthlyFee ?? LEAGUE_BASE_MONTHLY_FEE) < LEAGUE_BASE_MONTHLY_FEE;
 }
 
 /** A subscription contributes recurring revenue while it is active or past due. */

@@ -56,7 +56,8 @@ vi.mock("@/lib/demoSandbox", () => ({
   getSandboxPlayers: () => players, getSandboxTeams: () => [],
   getSandboxPlays: () => [], isDemoMatch: () => true,
   subscribeDemoSandbox: () => () => {},
-  addSandboxPlay: vi.fn(), updateSandboxMatch: vi.fn(),
+  addSandboxPlay: vi.fn((play: Record<string, unknown>) => ({ id: `sandbox_${Math.random().toString(36).slice(2)}`, ...play })),
+  updateSandboxMatch: vi.fn(),
   deleteSandboxPlay: vi.fn(), deleteSandboxPlaysForMatch: vi.fn(),
 }));
 
@@ -127,9 +128,9 @@ describe.each(["sync", "async"] as const)("%s stat keeper selection parity", (mo
     const results = screen.getByRole("group", { name: "Save play result" });
     expect(results).toHaveClass("shrink-0");
     fireEvent.click(within(results).getByRole("button", { name: /loss of yards/i }));
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       defenders: ["Flag Leader", "INT Leader"], passOutcome: "Sack",
-    }));
+    })));
   });
 
   it("collapses conversion categories and keeps the save action outside the selection scroller", async () => {
@@ -149,9 +150,9 @@ describe.each(["sync", "async"] as const)("%s stat keeper selection parity", (mo
     const save = screen.getByRole("button", { name: mode === "sync" ? /SAVE CONVERSION STATS/ : /Confirm Conversion/ });
     expect(save.parentElement).toHaveClass("shrink-0");
     fireEvent.click(save);
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       conversionSuccess: true, conversionPasser: "Pass Leader", conversionReceiver: "Catch Leader",
-    }));
+    })));
   });
 });
 
@@ -218,9 +219,9 @@ describe("async copied workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: /^1 POINT /i }));
     fireEvent.click(screen.getByRole("button", { name: /NO GOOD/i }));
     fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       possessionTeamId: "home", defenders: ["INT Leader"], isPick6: true, pointsScored: 6,
-    }));
+    })));
     expect(screen.getByTestId("away-scoreboard")).toHaveTextContent("6");
   });
 
@@ -233,9 +234,9 @@ describe("async copied workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: /^1 POINT /i }));
     fireEvent.click(screen.getByRole("button", { name: /NO GOOD/i }));
     fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       down: 4, result: "Touchdown", turnover: false, isFourthDownConversion: true,
-    }));
+    })));
   });
 
   it("records interception return flaggers and only one interceptor, without a clock", async () => {
@@ -252,9 +253,9 @@ describe("async copied workflows", () => {
     fireEvent.click(within(flaggers).getByRole("button", { name: "Catch Leader" }));
     expect(screen.queryByRole("button", { name: /PICK 6/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Turnover/i }));
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       defenders: ["INT Leader"], flaggers: ["Catch Leader"], gameClock: null,
-    }));
+    })));
   });
 
   it("supports sorted conversion credit and excludes the conversion passer from receiving", async () => {
@@ -275,9 +276,9 @@ describe("async copied workflows", () => {
     fireEvent.click(within(receivers).getByRole("button", { name: "Catch Leader" }));
     expect(within(receivers).getByRole("button", { name: /Click to change/ })).toHaveTextContent("Catch Leader");
     fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       conversionPasser: "Pass Leader", conversionReceiver: "Catch Leader", gameClock: null,
-    }));
+    })));
   });
 
   it("preserves conversion selections while reopening and changing the attempt value", async () => {
@@ -293,10 +294,10 @@ describe("async copied workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Conversion attempt:.*Click to change/ }));
     fireEvent.click(screen.getByRole("button", { name: /^2 POINTS /i }));
     fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       conversionAttempt: 2, conversionSuccess: true, conversionPasser: "Pass Leader",
       conversionReceiver: "Catch Leader", pointsScored: 8,
-    }));
+    })));
   });
 
   it("does not award conversion credit if a selected successful attempt is changed to no good", async () => {
@@ -311,8 +312,8 @@ describe("async copied workflows", () => {
     fireEvent.click(screen.getByRole("button", { name: /Conversion result: Good.*Click to change/ }));
     fireEvent.click(screen.getByRole("button", { name: /NO GOOD/i }));
     fireEvent.click(screen.getByRole("button", { name: /Confirm Conversion/i }));
-    expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(addSandboxPlay).toHaveBeenCalledWith(expect.objectContaining({
       conversionPasser: "", conversionReceiver: "", conversionSuccess: false, pointsScored: 6,
-    }));
+    })));
   });
 });

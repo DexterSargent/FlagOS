@@ -52,7 +52,7 @@ describe("Optional startup UI boundaries", () => {
   it("never imports role controls on York/customer pages, including for the owner on York", async () => {
     const view = render(<RoleSwitcherBar />);
     expect(mocks.roleImported).not.toHaveBeenCalled();
-    mocks.user = { email: "dextersargent@gmail.com" };
+    mocks.user = { email: "dextersargent@flagos.ca" };
     view.rerender(<RoleSwitcherBar />);
     expect(mocks.roleImported).not.toHaveBeenCalled();
     mocks.user = null;

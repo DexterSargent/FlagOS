@@ -250,7 +250,7 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
     expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 7 }, auth(head))).status).toBe(200);
     await write("leagues/rules-archived", { ...league, isArchived: true, seasonStatus: "archived" });
     expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth(head))).status).toBe(403);
-    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth("dextersargent@gmail.com"))).status).toBe(403);
+    expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth("dextersargent@flagos.ca"))).status).toBe(403);
   });
 
   it("blocks independent-team season writes while archived but allows reopening", async () => {
@@ -274,9 +274,9 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
     expect((await read("free_agent_interest/fa1", auth(coach))).status).toBe(403);
     expect((await listAs(auth(coach))).status).toBe(403);
     expect((await write("free_agent_interest/fa2", { name: "Spam", email: "x@example.com", area: "X" }, auth(coach))).status).toBe(403);
-    expect((await read("free_agent_interest/fa1", auth("dextersargent@gmail.com"))).status).toBe(200);
-    expect((await listAs(auth("dextersargent@gmail.com"))).status).toBe(200);
-    expect((await listAs(auth("dextersargent@gmail.com"), 500)).status).toBe(403);
+    expect((await read("free_agent_interest/fa1", auth("dextersargent@flagos.ca"))).status).toBe(200);
+    expect((await listAs(auth("dextersargent@flagos.ca"))).status).toBe(200);
+    expect((await listAs(auth("dextersargent@flagos.ca"), 500)).status).toBe(403);
   });
 
   it("lets a temporary scorer record only their game, only until the grant expires", async () => {
@@ -298,6 +298,62 @@ describe.skipIf(!host)("independent team Firestore rules (local emulator)", () =
 
     await write(grantPath, { uid: "rules-test-user", matchId, expiresAt: new Date(Date.now() - 60_000) });
     expect((await write(`matches/${matchId}`, { ...leagueMatch, homeScore: 14 }, auth(scorer))).status).toBe(403);
+  });
+
+  it("lets each role load a game's plays with the scoped match query", async () => {
+    const leagueId = "rules-plays-league";
+    const leagueMatch = { ...fixture, leagueId, homeTeamId: "league-home", awayTeamId: "league-away", managingTeamId: "league-home" };
+    await write(`leagues/${leagueId}`, { visibility: "public", isArchived: false, seasonStatus: "active" });
+    await write("teams/league-home", { name: "Home", leagueId });
+    await write("team_private/league-home", { adminEmails: ["home-head@example.com", "home-assistant@example.com"] });
+    await write("teams/league-away", { name: "Away", leagueId });
+    await write("team_private/league-away", { adminEmails: ["away-head@example.com"] });
+    await write("matches/league-game", leagueMatch);
+    await write("plays/league-game-play", { matchId: "league-game", leagueId, managingTeamId: "league-home", isHidden: false });
+    const visible = [filter("matchId", "league-game"), filter("leagueId", leagueId), filter("isHidden", false)];
+    const all = [filter("matchId", "league-game"), filter("leagueId", leagueId)];
+    const expectRows = async (filters: ReturnType<typeof filter>[], bearer: string | undefined) => {
+      const response = await query("plays", filters, 500, bearer);
+      const body = await response.text();
+      expect(response.status, body).toBe(200);
+      expect(body).toContain("league-game-play");
+    };
+
+    // Spectator in a public league, and a league player.
+    await expectRows(visible, auth("spectator@example.com"));
+    await write(`leagues/${leagueId}`, { visibility: "private", isArchived: false, seasonStatus: "active" });
+    expect((await query("plays", visible, 500, auth("spectator@example.com"))).status).toBe(403);
+    try {
+      await write("league_access/rules-test-user", { leagueIds: [leagueId] });
+      await expectRows(visible, auth("player@example.com"));
+    } finally {
+      await write("league_access/rules-test-user", { leagueIds: [] });
+    }
+    // Coaches are league members, so their visible-game queries use the same cheap path.
+    try {
+      await write("league_access/rules-test-user", { leagueIds: [leagueId] });
+      await expectRows(visible, auth("away-head@example.com"));
+    } finally {
+      await write("league_access/rules-test-user", { leagueIds: [] });
+    }
+    // The league admin sees every play, hidden or not.
+    await write(`leagues/${leagueId}`, { visibility: "private", isArchived: false, seasonStatus: "active", ownerUid: "rules-test-user" });
+    await expectRows(all, auth("league-admin@example.com"));
+    await write(`leagues/${leagueId}`, { visibility: "private", isArchived: false, seasonStatus: "active" });
+    expect((await query("plays", all, 500, auth("outsider@example.com"))).status).toBe(403);
+    // A temporary scorer with a grant for this game.
+    await write("scorer_grants/league-game__rules-test-user", { uid: "rules-test-user", matchId: "league-game", expiresAt: new Date(Date.now() + 3_600_000) });
+    await expectRows(visible, auth("volunteer@example.com"));
+
+    // Secondary coach of a private independent team, scoped by managingTeamId.
+    await seedTeam("private");
+    await write("plays/indie-scoped", { matchId, leagueId: "", managingTeamId: teamId, isHidden: false });
+    const indie = [filter("matchId", matchId), filter("managingTeamId", teamId)];
+    const response = await query("plays", indie, 500, auth(coach));
+    const body = await response.text();
+    expect(response.status, body).toBe(200);
+    expect(body).toContain("indie-scoped");
+    expect((await query("plays", indie, 500, auth("outsider@example.com"))).status).toBe(403);
   });
 
   it("lets a temporary scorer read a private league's teams and rosters only while their access lasts", async () => {

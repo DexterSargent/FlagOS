@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Eye, Layers, LockKeyhole, Plus, Save, Shield, Trash2, Users, X, Zap } from "lucide-react";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
-import { getDepthFormations, getPlayerPositions, type DepthChart, type DepthChartResponse, type DepthChartState, type DepthFormation } from "@/lib/depthChart";
+import { getDepthFormations, getPlayerPositions, migrateDefaultCharts, type DepthChart, type DepthChartResponse, type DepthChartState, type DepthFormation } from "@/lib/depthChart";
 import type { Playbook } from "@/lib/playbookTypes";
 
 interface DepthPlayer {
@@ -52,10 +52,14 @@ export default function TeamDepthCharts({ teamId, players, canManage, signedIn, 
           loaded = { charts: [], visibleToPlayers: false, formations: [], canEdit: false };
         }
         if (cancelled) return;
+        const { charts, migrated } = migrateDefaultCharts(loaded.charts, loaded.formations);
+        loaded = { ...loaded, charts };
         setState(loaded);
         setActiveId(loaded.charts[0]?.id || "");
         setFormationKey(loaded.formations[0]?.key || "");
-        setDirty(false);
+        const needsSave = migrated.length > 0 && canManage && loaded.canEdit;
+        setDirty(needsSave);
+        setNotice(needsSave ? `${migrated.join(", ")} moved from the default template to your first saved formation. Save to keep the change.` : "");
         onFormations(loaded.canEdit ? loaded.formations : []);
       } catch (error) {
         console.error("Unable to load depth charts:", error);
@@ -132,7 +136,7 @@ export default function TeamDepthCharts({ teamId, players, canManage, signedIn, 
               </span>
             </label>
             <div className="flex flex-wrap items-center gap-3">
-              {dirty && <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Unsaved changes</span>}
+              {dirty && <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">Unsaved changes</span>}
               <button type="button" disabled={!dirty} onClick={save} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-40">
                 <Save className="h-4 w-4" aria-hidden="true" />{saving ? "Saving..." : "Save Depth Charts"}
               </button>

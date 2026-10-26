@@ -1385,7 +1385,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               <p className="text-[11px] text-neutral-400 mb-3">
                 Enter the email address of an assistant coach, coordinator, or team manager.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   id="new-coach-email-input"
                   type="email"
@@ -1393,12 +1393,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
                   placeholder="coach@example.com"
-                  className="flex-1 rounded-xl border border-white/10 bg-neutral-950 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none font-mono"
+                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-neutral-950 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none font-mono"
                 />
                 <button
                   type="submit"
                   disabled={savingStaff || !newAdminEmail.trim()}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                  className="min-h-10 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shrink-0 cursor-pointer"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>{savingStaff ? "Adding..." : "Add Admin"}</span>

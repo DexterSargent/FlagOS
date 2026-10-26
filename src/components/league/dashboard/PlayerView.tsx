@@ -4,6 +4,7 @@ import React from "react";
 import { usePageGuide } from "@/lib/pageGuide";
 import { PLAYER_DASHBOARD_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import Link from "next/link";
+import { useLeague, leagueScheduleHref } from "@/lib/leagueContext";
 import {
   Trophy,
   Sparkles,
@@ -98,6 +99,7 @@ export function PlayerView({
   setDevRole,
 }: PlayerViewProps) {
   usePageGuide(PLAYER_DASHBOARD_WALKTHROUGH);
+  const { activeLeagueId: scheduleLeagueId } = useLeague();
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-full overflow-hidden space-y-8">
       {/* Athlete Cockpit Hero Banner */}
@@ -447,7 +449,7 @@ export function PlayerView({
             </span>
           </div>
           <Link
-            href="/schedule"
+            href={leagueScheduleHref(scheduleLeagueId)}
             className="px-4 py-2 bg-surface-muted hover:bg-white/10 text-white text-xs font-bold rounded-xl border border-line transition-colors flex items-center gap-1.5"
           >
             <span>View Full League Schedule</span>

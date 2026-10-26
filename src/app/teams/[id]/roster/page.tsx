@@ -933,7 +933,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               <div data-tour="team-add-player-access">
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
                   <span>Player Emails</span>
-                  <span className="text-[10px] text-neutral-500 font-mono">1 or more, comma-separated</span>
+                  <span className="text-[10px] text-neutral-400 normal-case tracking-normal">Optional · comma-separated</span>
                 </label>
                 <input
                   type="text"
@@ -943,7 +943,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   placeholder="athlete@domain.com, backup@email.com"
                 />
                 <span className="text-[10px] text-neutral-500 mt-1 block">
-                  These emails give the player access to their stats and team playbook.
+                  Optional. Add the player's sign-in email to link their account to their stats and the team playbook. You can add it later.
                 </span>
               </div>
 
@@ -1044,7 +1044,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               <div data-tour="team-edit-player-access">
                 <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
                   <span>Player Emails</span>
-                  <span className="text-[10px] text-neutral-500 font-mono">1 or more, comma-separated</span>
+                  <span className="text-[10px] text-neutral-400 normal-case tracking-normal">Optional · comma-separated</span>
                 </label>
                 <input
                   type="text"
@@ -1054,7 +1054,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   placeholder="athlete@domain.com, backup@email.com"
                 />
                 <span className="text-[10px] text-neutral-500 mt-1 block">
-                  These emails give the player access to their stats and team playbook.
+                  Optional. Add the player's sign-in email to link their account to their stats and the team playbook. You can add it later.
                 </span>
               </div>
 

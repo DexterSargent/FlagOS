@@ -9,6 +9,7 @@ import SiteControls from "@/components/SiteControls";
 import { db } from "@/lib/firebase";
 import { createSecureRecord } from "@/lib/secureWrites";
 import { collection, getDoc, getDocs, doc, serverTimestamp, updateDoc, deleteDoc, query, where, orderBy, limit } from "firebase/firestore";
+import { fetchMatchPlays, matchPlayConstraints, sortPlaysChronologically } from "@/lib/matchPlaysQuery";
 import { useLeague } from "@/lib/leagueContext";
 import { getPlayScoreDelta } from "@/lib/playScoring";
 import { projectGameClock, useWallClockCountdown } from "@/lib/wallClock";
@@ -206,6 +207,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
   // Play Result Memory for Conversion
   const [playResult, setPlayResult] = useState<string>("");
+  // The touchdown is saved as soon as it's entered; the PAT then replaces that pending play.
+  const pendingTdRef = useRef<{ play: Record<string, any>; id: Promise<string | null> } | null>(null);
+  const resolvedPendingIds = useRef<Set<string>>(new Set());
+  const conversionsInFlight = useRef(0);
 
   // Live Play Statement & Play Log Drawer State
   const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
@@ -215,20 +220,24 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
 
+  useEffect(() => {
+    const last = matchPlaysList[matchPlaysList.length - 1];
+    if (!last || last.conversionPending !== true || !last.id || step !== 'PLAY_TYPE') return;
+    if (resolvedPendingIds.current.has(last.id) || conversionsInFlight.current > 0 || pendingTdRef.current) return;
+    const { id: pendingId, timestamp: _ts, createdAt: _created, ...pendingPlay } = last;
+    pendingTdRef.current = { play: pendingPlay, id: Promise.resolve(pendingId) };
+    setPlayResult(last.result || (last.isPick6 ? 'Pick 6' : 'Touchdown'));
+    setStep('CONVERSION');
+  }, [matchPlaysList, step]);
+
   const refreshPlays = useCallback(async () => {
     try {
       let pList: any[] = [];
       if (isDemo) {
         pList = getSandboxPlays(matchId);
       } else {
-        const q = query(
-          collection(db, "plays"),
-          where("matchId", "==", matchId),
-          orderBy("timestamp", "asc"),
-          limit(500),
-        );
-        const snap = await getDocs(q);
-        pList = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+        if (!matchData) return;
+        pList = await fetchMatchPlays(matchId, matchData, { visibleOnly: false });
       }
       setMatchPlaysList(pList);
       if (pList.length > 0) {
@@ -261,7 +270,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     } catch (e) {
       console.error("Error refreshing plays in admin:", e);
     }
-  }, [matchId, isDemo, homeTeamName, awayTeamName, homeTeamId, downsPerSeries]);
+  }, [matchId, isDemo, matchData, homeTeamName, awayTeamName, homeTeamId, downsPerSeries]);
 
   const allPlaysForStats = useMemo(() => {
     return [...historicalPlays, ...matchPlaysList];
@@ -589,11 +598,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       }
 
       // 1. Purge all plays logged for this match from Firestore
-      const playsQuery = query(
-        collection(db, "plays"),
-        where("matchId", "==", matchId),
-        limit(500),
-      );
+      const playsQuery = query(collection(db, "plays"), ...matchPlayConstraints(matchId, matchData || {}, { visibleOnly: false }));
       const playsSnap = await getDocs(playsQuery);
       const deletePromises = playsSnap.docs.map((d) => deleteDoc(d.ref));
       await Promise.all(deletePromises);
@@ -727,6 +732,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   };
 
   const resetPlay = () => {
+    pendingTdRef.current = null;
     setIsPlayClockRunning(false);
     setPlayClock(playClockSeconds);
     setStep('PLAY_TYPE');
@@ -789,16 +795,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
         return;
       }
 
-      const q = query(
-        collection(db, "plays"),
-        where("matchId", "==", matchId),
-        orderBy("timestamp", "desc"),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const lastPlayDoc = snap.docs[0];
-        const lastPlay = lastPlayDoc.data();
+      const snap = await getDocs(query(collection(db, "plays"), ...matchPlayConstraints(matchId, matchData || {}, { visibleOnly: false })));
+      const ordered = sortPlaysChronologically(snap.docs.map((record) => ({ ref: record.ref, ...record.data() })));
+      if (ordered.length > 0) {
+        const lastPlay: any = ordered[ordered.length - 1];
+        const lastPlayDoc = { ref: lastPlay.ref };
 
         // Revert state
         if (lastPlay.down !== undefined) setCurrentDown(lastPlay.down);
@@ -962,26 +963,38 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     };
   };
 
-  const logPlayToFirestore = async (playData: any) => {
+  const logPlayToFirestore = async (playData: any): Promise<string | null> => {
     if (isDemo) {
-      addSandboxPlay({
-        ...playData,
+      const { replacesPlayId, ...demoPlay } = playData;
+      if (replacesPlayId) deleteSandboxPlay(replacesPlayId);
+      const saved = addSandboxPlay({
+        ...demoPlay,
         matchId,
         timestamp: new Date().toISOString(),
       });
       refreshPlays();
-      return;
+      return saved.id;
     }
     try {
-      await createSecureRecord("play", {
+      const id = await createSecureRecord("play", {
         ...playData,
         matchId,
       });
       refreshPlays();
-      console.log("Play saved to Firestore!");
+      return id;
     } catch (e) {
       console.error("Error saving play:", e);
+      return null;
     }
+  };
+
+  const saveTouchdownPending = (result: string) => {
+    const rawPlay: Record<string, any> = buildPlayData(result, { conversionPending: true, pointsScored: 6 });
+    // Possession hasn't flipped yet for a Pick 6, so record the original offense explicitly.
+    rawPlay.possessionTeamId = possession === homeTeamName ? homeTeamId : awayTeamId;
+    rawPlay.playStatement = `${formatPlaySentence(rawPlay, { homeTeamName, awayTeamName, homeTeamId, downsPerSeries })} (PAT pending)`;
+    setLastLoggedPlayStatement(rawPlay.playStatement);
+    pendingTdRef.current = { play: rawPlay, id: logPlayToFirestore(rawPlay) };
   };
 
   const handleSavePlay = (result: "Touchdown" | "First Down" | "Short" | "Safety" | "Turnover" | "Next Down" | "Pick 6" | "Repeat Down" | "Loss of Down") => {
@@ -994,6 +1007,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     }
 
     if (result === 'Touchdown') {
+      saveTouchdownPending(result);
       if (possession === homeTeamName) setHomeScore(s => s + 6);
       else setAwayScore(s => s + 6);
       // IFAF: Game clock stops on score; start play clock for PAT conversion attempt
@@ -1011,6 +1025,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     }
 
     if (result === 'Pick 6') {
+      saveTouchdownPending(result);
       const newPoss = possession === homeTeamName ? awayTeamName : homeTeamName;
       if (newPoss === homeTeamName) setHomeScore(s => s + 6);
       else setAwayScore(s => s + 6);
@@ -1145,9 +1160,11 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       else setAwayScore(s => s + convPts);
     }
 
-    // Log Touchdown + PAT to Firestore
+    const pending = pendingTdRef.current;
+    pendingTdRef.current = null;
     const finalPlay: any = {
-      ...buildPlayData(playResult),
+      ...(pending ? { ...pending.play } : buildPlayData(playResult)),
+      conversionPending: false,
       conversionAttempt: convPts,
       conversionSuccess,
       conversionPasser: convPasser,
@@ -1161,7 +1178,17 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       downsPerSeries,
     });
     finalPlay.playStatement = statement;
-    logPlayToFirestore(finalPlay);
+    if (pending) {
+      conversionsInFlight.current += 1;
+      void pending.id.then((pendingId) => {
+        if (pendingId) resolvedPendingIds.current.add(pendingId);
+        return logPlayToFirestore(pendingId ? { ...finalPlay, replacesPlayId: pendingId } : finalPlay);
+      }).finally(() => {
+        conversionsInFlight.current -= 1;
+      });
+    } else {
+      logPlayToFirestore(finalPlay);
+    }
     setLastLoggedPlayStatement(statement);
 
     setPossession(possession === homeTeamName ? awayTeamName : homeTeamName);

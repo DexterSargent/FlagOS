@@ -7,7 +7,8 @@ export interface BusinessSnapshot {
   ledger: LedgerEntry[];
   audit: AuditEntry[];
   users: PlatformUser[];
-  counts: { leagues: number | null; teams: number | null; players: number | null; matches: number | null; plays: number | null };
+  playerLinks?: Array<{ email: string; teamId: string }>;
+  counts: { leagues: number | null; teams: number | null; players: number | null; matches: number | null; plays: number | null; audit?: number | null };
   warnings: string[];
   generatedAt: number;
 }

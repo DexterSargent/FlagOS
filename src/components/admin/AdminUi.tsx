@@ -32,8 +32,8 @@ export function StatCard({
   const colors = TONES[tone];
   return (
     <div className={`min-w-0 rounded-2xl border ${colors.border} ${colors.bg} p-4`}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="truncate text-[11px] font-bold uppercase tracking-wide text-neutral-400">{label}</div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 break-words text-[11px] font-bold uppercase leading-tight tracking-wide text-neutral-400">{label}</div>
         {Icon && <Icon className={`h-4 w-4 shrink-0 ${colors.icon}`} aria-hidden />}
       </div>
       <div className="mt-1.5 truncate text-2xl font-black tabular-nums tracking-tight">{value}</div>

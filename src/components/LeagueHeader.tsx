@@ -221,7 +221,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               {/* League Identity Text */}
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1 sm:gap-1.5">
-                  <span className="text-xs sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white truncate max-w-[170px] sm:max-w-[210px] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                  <span className="text-xs sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight break-words line-clamp-2 sm:line-clamp-1 max-w-[170px] sm:max-w-[210px] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
                     {isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}
                   </span>
                   {settings.visibility === "private" ? (
@@ -275,7 +275,6 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                         const userEmail = (user?.email || "").trim().toLowerCase();
                         return (
                           userEmail === "dextersargent@flagos.ca" ||
-                          userEmail === "dextersargent@gmail.com" ||
                           Boolean(memberLeagueIds?.includes(l.id)) ||
                           (l.adminEmails && l.adminEmails.some((e) => e.toLowerCase() === userEmail))
                         );
@@ -473,7 +472,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             {isAuthorized && isLeagueAdmin && (
               <button
                 onClick={openCustomizer}
-                className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold border border-amber-500/25 transition-all shadow-sm cursor-pointer shrink-0"
+                className="flex items-center justify-center gap-1.5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 px-2 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold border border-amber-500/25 transition-all shadow-sm cursor-pointer shrink-0"
                 title="League Settings, Rules & Custom Colors"
               >
                 <Settings className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
@@ -485,7 +484,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             {isPlayer ? (
               <Link
                 href="/profile"
-                className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-xs font-bold transition-all shadow-sm shrink-0"
+                className="flex items-center gap-1.5 min-h-10 sm:min-h-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-xs font-bold transition-all shadow-sm shrink-0"
               >
                 <User className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                 <span className="truncate max-w-[70px] sm:max-w-[120px]">#{playerData?.number || "00"} {playerData?.playerName || "My Profile"}</span>
@@ -522,7 +521,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 <Link
                   href="/login"
                   aria-label="Sign in"
-                  className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
+                  className="flex items-center justify-center gap-1 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
                 >
                   <LogIn className="w-3.5 h-3.5 shrink-0" />
                   <span className="hidden sm:inline">Sign In</span>
@@ -532,7 +531,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <Link
                 href={user ? "/profile" : "/login"}
                 aria-label={user ? "My account" : "Sign in"}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
+                className="flex items-center justify-center gap-1.5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
               >
                 {isLeagueAdmin ? (
                   <>
@@ -563,7 +562,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer shrink-0"
+              className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer shrink-0"
               aria-label="Toggle Navigation Menu"
             >
               {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}

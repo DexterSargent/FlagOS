@@ -387,7 +387,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
           <div>
             <h3 className="font-semibold text-lg text-white flex items-center gap-2">
               {gameState === 'final' ? 'Box Score & Play-by-Play' : 'Play-by-Play'}
-              <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${gameState === 'live' ? 'text-red-400 border-red-500/30 bg-red-500/10 animate-pulse' : gameState === 'paused' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' : gameState === 'upcoming' ? 'text-cyan-400 border-cyan-500/20 bg-cyan-500/10' : 'text-neutral-300 border-white/10 bg-white/5'}`}>
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${gameState === 'live' ? 'text-red-300 border-red-500/30 bg-red-500/10' : gameState === 'paused' ? 'text-amber-400 border-amber-500/30 bg-amber-500/10' : gameState === 'upcoming' ? 'text-cyan-400 border-cyan-500/20 bg-cyan-500/10' : 'text-neutral-300 border-white/10 bg-white/5'}`}>
                 {GAME_STATE_LABEL[gameState]}
               </span>
             </h3>

@@ -29,7 +29,7 @@ describe("My Story Page (/my-story)", () => {
 
   it("presents Dexter's story as a clear chronological path from football to FlagOS", () => {
     mockUseAuth.mockReturnValue({
-      user: { uid: "dexter-1", email: "dextersargent@gmail.com" },
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
       isPlatformAdmin: true,
       loading: false,
     });
@@ -110,7 +110,7 @@ describe("My Story Page (/my-story)", () => {
   it("renders interactive photo frames and allows Dexter to add a photo via modal", () => {
     localStorage.clear();
     mockUseAuth.mockReturnValue({
-      user: { uid: "dexter-1", email: "dextersargent@gmail.com" },
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
       isPlatformAdmin: true,
       loading: false,
     });
@@ -157,7 +157,7 @@ describe("My Story Page (/my-story)", () => {
     );
 
     mockUseAuth.mockReturnValue({
-      user: { uid: "dexter-1", email: "dextersargent@gmail.com" },
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
       isPlatformAdmin: true,
       loading: false,
     });

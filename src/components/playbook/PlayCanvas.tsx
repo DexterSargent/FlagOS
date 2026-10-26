@@ -100,6 +100,7 @@ import {
   ChevronLeft,
   Undo2,
   MoreHorizontal,
+  Save,
 } from "lucide-react";
 import {
   STANDARD_OFFENSIVE_PRESETS,
@@ -2491,12 +2492,12 @@ export default function PlayCanvas({
           {/* Play Name Editable Field */}
           {readOnly ? (
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-sm font-bold text-neutral-900 dark:text-white" title={play.name}>{play.name}</h2>
+              <h2 className="break-words leading-snug sm:truncate text-sm font-bold text-neutral-900 dark:text-white" title={play.name}>{play.name}</h2>
               <p className="truncate text-[11px] text-neutral-500 dark:text-neutral-400">{play.formation} · {play.situation || "Standard"}</p>
             </div>
           ) : (
           <>
-          <div className="flex items-center gap-1 min-w-0 flex-1">
+          <div className={`${styles.playName} flex items-center gap-1 min-w-0 flex-1`}>
             <span className="text-[10px] font-black uppercase text-cyan-600 dark:text-cyan-400 font-mono tracking-wider shrink-0 hidden md:inline">Play:</span>
             <input
               type="text"
@@ -2510,7 +2511,7 @@ export default function PlayCanvas({
           </div>
 
           {/* Formation Dropdown (THE ONLY ONE) */}
-          <div data-tour="formation-selector" className="flex items-center gap-1 min-w-0 w-[30%] max-w-[160px]">
+          <div data-tour="formation-selector" className={`${styles.metaSelect} flex items-center gap-1 min-w-0 w-[30%] max-w-[160px]`}>
             <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden xl:inline shrink-0">Formation:</span>
             <select
               aria-label={onBackToPlays && canEdit ? "Play category" : "Play formation"}
@@ -2558,7 +2559,7 @@ export default function PlayCanvas({
           </div>
 
           {/* Gameday Situation Dropdown */}
-          <div className="flex items-center gap-1 min-w-0 w-[25%] max-w-[130px]">
+          <div className={`${styles.metaSelect} flex items-center gap-1 min-w-0 w-[25%] max-w-[130px]`}>
             <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden 2xl:inline shrink-0">Situation:</span>
             <select
               aria-label="Play situation"
@@ -2822,7 +2823,7 @@ export default function PlayCanvas({
               onClick={onFlushAutoSave}
               aria-label={autoSaveStatus === "saving" ? "Saving playbook" : "Save playbook"}
               title={isDemo ? "Demo changes stay in this browser session and are never saved to an account" : autoSaveStatus === "unsaved" ? "Unsaved changes: click to save immediately" : "Auto-saving to cloud is active"}
-              className="px-2.5 py-1.5 rounded-xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-xs font-mono flex items-center gap-1.5 transition-all hover:bg-neutral-200 dark:hover:bg-white/10 cursor-pointer shrink-0"
+              className={`px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${autoSaveStatus === "unsaved" ? "bg-amber-500 text-neutral-950 font-bold border border-amber-600 hover:bg-amber-400" : "font-mono bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 hover:bg-neutral-200 dark:hover:bg-white/10"}`}
               data-testid="editor-autosave-status-badge"
             >
               {autoSaveStatus === "saving" ? (
@@ -2832,8 +2833,8 @@ export default function PlayCanvas({
                 </>
               ) : autoSaveStatus === "unsaved" ? (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="text-amber-600 dark:text-amber-300 hidden xl:inline">Unsaved</span>
+                  <Save className="w-3 h-3" aria-hidden="true" />
+                  <span>Save now</span>
                 </>
               ) : isDemo ? (
                 <>

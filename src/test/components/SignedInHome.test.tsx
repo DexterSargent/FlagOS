@@ -140,7 +140,7 @@ describe("SignedInHome", () => {
     const sundayCard = screen.getByRole("heading", { name: "Sunday Social" }).closest("article")!;
     expect(within(sundayCard).getByText("Player · #12")).toBeInTheDocument();
     expect(within(sundayCard).queryByText("Commissioner")).toBeNull();
-    expect(within(sundayCard).getByRole("link", { name: /My Stats/ })).toHaveAttribute("href", "/profile");
+    expect(within(sundayCard).getByRole("link", { name: /My Stats/ })).toHaveAttribute("href", "/profile?league=league_play&player=p1");
     expect(within(sundayCard).getByRole("link", { name: /^Roster$/ })).toHaveAttribute("href", "/teams/sharks/roster");
 
     const metroCard = screen.getByRole("heading", { name: "Metro Flag" }).closest("article")!;

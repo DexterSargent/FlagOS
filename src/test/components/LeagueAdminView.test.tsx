@@ -4,6 +4,7 @@ import { LeagueAdminView, type LeagueAdminViewProps } from "@/components/league/
 
 vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({ isLeagueArchived: false }),
+  leagueScheduleHref: (leagueId?: string | null) => (leagueId ? `/schedule?league=${leagueId}` : "/schedule"),
 }));
 vi.mock("@/components/walkthrough/PageGuideButton", () => ({ default: () => null }));
 vi.mock("@/components/league/dashboard/LeagueScheduleWidget", () => ({ LeagueScheduleWidget: () => null }));

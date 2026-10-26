@@ -739,7 +739,7 @@ export default function PricingPage() {
                 }}
                 className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <span>Subscribe Team Portal ($40/mo)</span>
+                <span>{isOwnerEmail ? "Create Team Portal (no charge)" : "Subscribe Team Portal ($40/mo)"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -897,7 +897,7 @@ export default function PricingPage() {
                 }}
                 className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <span>Launch &amp; Subscribe League (${totalLeagueMonthly}/mo)</span>
+                <span>{isOwnerEmail ? "Create League (no charge)" : `Launch & Subscribe League ($${totalLeagueMonthly}/mo)`}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -1678,7 +1678,7 @@ export default function PricingPage() {
                 className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>{isSubmittingLeague ? "Creating League..." : `Confirm & Pay $${totalLeagueMonthly}/mo`}</span>
+                <span>{isSubmittingLeague ? "Creating League..." : "Create League · Complimentary"}</span>
               </button>
               {checkoutError && (
                 <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">{checkoutError}</p>
@@ -1931,7 +1931,7 @@ export default function PricingPage() {
                 className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>{isSubmittingTeam ? "Creating Team..." : "Confirm & Pay $40/mo"}</span>
+                <span>{isSubmittingTeam ? "Creating Team..." : "Create Team · Complimentary"}</span>
               </button>
               <p className="text-center text-[11px] text-neutral-500 dark:text-neutral-400">Owner account: payment is recorded as complimentary — no card is charged.</p>
               {checkoutError && (
