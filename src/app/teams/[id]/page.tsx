@@ -35,7 +35,9 @@ import {
   Mail,
   ShieldCheck,
   Plus,
+  CreditCard,
 } from "lucide-react";
+import { openBillingPortal } from "@/lib/billingClient";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, collection, getDocs, query, where, limit } from "firebase/firestore";
 import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
@@ -98,6 +100,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const canEditTeam = hasEditAccess && !isTeamLeagueArchived;
   const teamSeasonArchived = isTeamSeasonArchived(team);
   const [archivingSeason, setArchivingSeason] = useState(false);
+  const [openingBilling, setOpeningBilling] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
@@ -754,6 +757,26 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   >
                     <Archive className="w-4 h-4 text-neutral-300" />
                     <span>{archivingSeason ? "Saving..." : teamSeasonArchived ? "Reopen Season" : "Conclude & Archive Season"}</span>
+                  </button>
+                )}
+                {isIndependentTeam && !isDemoLeague && team.subscription?.paymentMethod === "paid" && (
+                  <button
+                    type="button"
+                    data-tour="team-manage-billing"
+                    disabled={openingBilling}
+                    onClick={async () => {
+                      setOpeningBilling(true);
+                      try {
+                        await openBillingPortal("team", teamId);
+                      } catch (e) {
+                        alert(e instanceof Error ? e.message : "Could not open billing.");
+                        setOpeningBilling(false);
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer disabled:opacity-50"
+                  >
+                    <CreditCard className="w-4 h-4 text-sky-300" />
+                    <span>{openingBilling ? "Opening..." : "Manage Billing"}</span>
                   </button>
                 )}
               </>

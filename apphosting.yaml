@@ -22,6 +22,16 @@ env:
     value: "dextersargent@flagos.ca"
     availability:
       - RUNTIME
+  # Stripe checkout stays off until STRIPE_* secrets are added and tested (see docs/FINANCIAL-AUTOMATION-PLAN.md).
+  # When off, only the platform owner can create leagues/teams (complimentary).
+  - variable: BILLING_CHECKOUT_ENABLED
+    value: "false"
+    availability:
+      - RUNTIME
+  - variable: APP_BASE_URL
+    value: "https://flagos.ca"
+    availability:
+      - RUNTIME
   # Override the checked-in local emulator setting for production builds and runtime.
   - variable: NEXT_PUBLIC_USE_FIREBASE_EMULATORS
     value: "false"

@@ -59,6 +59,21 @@ vi.mock("@/lib/secureWrites", () => ({
   createSecureRecord: (...args: unknown[]) => mockCreateSecureRecord(...args),
 }));
 
+const mockStartCheckout = vi.fn();
+const mockGetCheckoutStatus = vi.fn();
+const mockSaveDraft = vi.fn();
+const mockReadDraft = vi.fn();
+vi.mock("@/lib/billingClient", () => ({
+  startCheckout: (...args: unknown[]) => mockStartCheckout(...args),
+  getCheckoutStatus: (...args: unknown[]) => mockGetCheckoutStatus(...args),
+  listUnusedPurchases: () => Promise.resolve({ enabled: true, unused: [] }),
+  saveCheckoutDraft: (...args: unknown[]) => mockSaveDraft(...args),
+  readCheckoutDraft: () => mockReadDraft(),
+  clearCheckoutDraft: vi.fn(),
+}));
+
+let billingEnabled = false;
+
 const ownerAuth = () => ({
   user: { uid: "owner-1", email: "dextersargent@flagos.ca", emailVerified: true },
   isLeagueAdmin: true,
@@ -72,6 +87,11 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     localStorage.clear();
     mockCreateLeague.mockResolvedValue("league_new_99");
     mockCreateSecureRecord.mockResolvedValue("team_new_42");
+    mockStartCheckout.mockResolvedValue(undefined);
+    mockReadDraft.mockReturnValue(null);
+    billingEnabled = false;
+    window.history.replaceState(null, "", "/pricing");
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ enabled: billingEnabled }) })));
     mockAuth = {
       user: { uid: "test-user-1", email: "coach@flagos.ca" },
       isLeagueAdmin: false,
@@ -329,5 +349,44 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Launch & Subscribe League/i }));
     expect(screen.getByRole("dialog")).toHaveTextContent("FlagOS is still in development");
     expect(screen.queryByPlaceholderText(/Gotham Flag Football League/i)).not.toBeInTheDocument();
+  });
+
+  it("sends non-owners to Stripe checkout when billing is enabled, without creating anything", async () => {
+    billingEnabled = true;
+    render(<PricingPage />);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/billing/status", expect.anything()));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    fireEvent.click(screen.getByRole("button", { name: /Subscribe Team Portal/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Wolves" } });
+    fireEvent.click(screen.getByRole("button", { name: /Continue to Secure Checkout/i }));
+
+    await waitFor(() => expect(mockStartCheckout).toHaveBeenCalledWith("team", undefined));
+    expect(mockSaveDraft).toHaveBeenCalledWith(expect.objectContaining({ kind: "team", name: "Wolves" }));
+    expect(mockCreateSecureRecord).not.toHaveBeenCalled();
+  });
+
+  it("finishes a paid team after Stripe confirms payment, using the purchase id instead of a subscription", async () => {
+    billingEnabled = true;
+    window.history.replaceState(null, "", "/pricing?checkout=success&request=req_paid_1");
+    mockReadDraft.mockReturnValue({ kind: "team", name: "Wolves", shortcode: "WLF", visibility: "public" });
+    mockGetCheckoutStatus.mockResolvedValue({ requestId: "req_paid_1", status: "paid", kind: "team", teamCount: 1, createdEntityId: "" });
+    render(<PricingPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Finish Team Setup · Paid/i }));
+
+    await waitFor(() => expect(mockCreateSecureRecord).toHaveBeenCalled());
+    const [kind, payload] = mockCreateSecureRecord.mock.calls[0] as [string, Record<string, unknown>];
+    expect(kind).toBe("team");
+    expect(payload).toMatchObject({ name: "Wolves", billingRequestId: "req_paid_1", leagueId: "" });
+    expect(payload).not.toHaveProperty("subscription");
+    expect(mockGetCheckoutStatus).toHaveBeenCalledWith("req_paid_1");
+    expect(mockPush).toHaveBeenCalledWith("/teams/team_new_42");
+  });
+
+  it("tells the buyer nothing was charged when checkout is cancelled", async () => {
+    window.history.replaceState(null, "", "/pricing?checkout=canceled&request=req_x");
+    render(<PricingPage />);
+    expect(await screen.findByRole("status")).toHaveTextContent("Nothing was charged");
   });
 });

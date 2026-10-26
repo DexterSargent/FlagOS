@@ -4,7 +4,7 @@ import { usePageGuide } from "@/lib/pageGuide";
 import { PRICING_WALKTHROUGH, TEAM_SUBSCRIPTION_WALKTHROUGH, LEAGUE_SUBSCRIPTION_WALKTHROUGH, DEVELOPMENT_NOTICE_WALKTHROUGH } from "@/lib/walkthroughs/public";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -32,6 +32,10 @@ import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { isPlatformAdminEmail } from "@/lib/platformAdmin";
 import { createSecureRecord } from "@/lib/secureWrites";
+import {
+  clearCheckoutDraft, getCheckoutStatus, listUnusedPurchases, readCheckoutDraft, saveCheckoutDraft, startCheckout,
+  type CheckoutStatus,
+} from "@/lib/billingClient";
 import { FlagOSText } from "@/components/FlagOSText";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import { FLAGOS_LOGO } from "@/lib/brandTokens";
@@ -89,16 +93,148 @@ export default function PricingPage() {
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
+  // Stripe checkout (server-flagged). The platform owner keeps the complimentary path.
+  const [billingEnabled, setBillingEnabled] = useState(false);
+  const [paidPurchase, setPaidPurchase] = useState<CheckoutStatus | null>(null);
+  const [unusedPurchases, setUnusedPurchases] = useState<CheckoutStatus[]>([]);
+  const [checkoutNotice, setCheckoutNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const usesCheckout = !isOwnerEmail && billingEnabled;
+  const finishingLeague = paidPurchase?.kind === "league";
+  const finishingTeam = paidPurchase?.kind === "team";
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/billing/status", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : { enabled: false })
+      .then((result: { enabled?: boolean }) => { if (!cancelled) setBillingEnabled(result.enabled === true); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!user || !billingEnabled || isOwnerEmail) return;
+    let cancelled = false;
+    listUnusedPurchases()
+      .then((result) => { if (!cancelled) setUnusedPurchases(result.unused); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [user, billingEnabled, isOwnerEmail]);
+
+  const openPurchaseSetup = (purchase: CheckoutStatus) => {
+    const draft = readCheckoutDraft();
+    setPaidPurchase(purchase);
+    setCheckoutError("");
+    if (purchase.kind === "league") {
+      setTeamCount(purchase.teamCount);
+      if (draft?.kind === "league") {
+        if (typeof draft.name === "string") setLeagueName(draft.name);
+        if (typeof draft.shortcode === "string") setLeagueShortcode(draft.shortcode);
+        if (typeof draft.primaryColor === "string") setLeaguePrimaryColor(draft.primaryColor);
+        if (typeof draft.secondaryColor === "string") setLeagueSecondaryColor(draft.secondaryColor);
+        if (typeof draft.tertiaryColor === "string") setLeagueTertiaryColor(draft.tertiaryColor);
+        if (typeof draft.logoUrl === "string") setLeagueLogoUrl(draft.logoUrl);
+      }
+      setIsLeagueModalOpen(true);
+    } else {
+      if (draft?.kind === "team") {
+        if (typeof draft.name === "string") setTeamName(draft.name);
+        if (typeof draft.shortcode === "string") setTeamShortcode(draft.shortcode);
+        if (typeof draft.primaryColor === "string") setTeamPrimaryColor(draft.primaryColor);
+        if (typeof draft.secondaryColor === "string") setTeamSecondaryColor(draft.secondaryColor);
+        if (typeof draft.tertiaryColor === "string") setTeamTertiaryColor(draft.tertiaryColor);
+        if (typeof draft.logoUrl === "string") setTeamLogoUrl(draft.logoUrl);
+        if (draft.visibility === "private" || draft.visibility === "public") setTeamVisibility(draft.visibility);
+      }
+      setIsTeamModalOpen(true);
+    }
+  };
+
+  // Returning from Stripe: confirm payment with the server (never the redirect itself), then finish setup.
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("checkout");
+    const requestId = params.get("request");
+    if (!result) return;
+    window.history.replaceState(null, "", "/pricing");
+    if (result === "canceled") {
+      setCheckoutNotice({ tone: "info", text: "Checkout was cancelled. Nothing was charged." });
+      return;
+    }
+    if (result !== "success" || !requestId) return;
+    let cancelled = false;
+    setCheckoutNotice({ tone: "info", text: "Confirming your payment…" });
+    void (async () => {
+      for (let attempt = 0; attempt < 10 && !cancelled; attempt += 1) {
+        try {
+          const status = await getCheckoutStatus(requestId);
+          if (cancelled) return;
+          if (status.status === "consumed" && status.createdEntityId) {
+            router.push(status.kind === "league" ? `/league/${status.createdEntityId}` : `/teams/${status.createdEntityId}`);
+            return;
+          }
+          if (status.status === "paid") {
+            setCheckoutNotice({ tone: "info", text: "Payment confirmed. Review your details and finish setup." });
+            openPurchaseSetup(status);
+            return;
+          }
+          if (status.status === "expired" || status.status === "failed") {
+            setCheckoutNotice({ tone: "error", text: "That checkout did not complete. Nothing was charged." });
+            return;
+          }
+        } catch (error) {
+          if (attempt === 9) {
+            setCheckoutNotice({ tone: "error", text: error instanceof Error ? error.message : "Could not confirm your payment." });
+            return;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      if (!cancelled) {
+        setCheckoutNotice({ tone: "info", text: "Your payment is still processing. This page will offer setup once Stripe confirms it — refresh in a minute." });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per signed-in return from Stripe
+  }, [user]);
+
+  const openPlanModal = (kind: "team" | "league") => {
+    setCheckoutError("");
+    if (isOwnerEmail || usesCheckout) {
+      if (usesCheckout && !user) {
+        router.push("/login?redirect=/pricing");
+        return;
+      }
+      setPaidPurchase(null);
+      if (kind === "team") setIsTeamModalOpen(true);
+      else setIsLeagueModalOpen(true);
+      return;
+    }
+    setShowDevelopmentNotice(true);
+  };
+
+  const beginCheckout = async (kind: "team" | "league", draft: Record<string, unknown>) => {
+    saveCheckoutDraft({ kind, ...draft });
+    await startCheckout(kind, kind === "league" ? teamCount : undefined);
+  };
+
   const handleSubscribeLeague = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isOwnerEmail || !leagueName.trim() || !leagueShortcode.trim()) return;
+    if ((!isOwnerEmail && !usesCheckout && !finishingLeague) || !leagueName.trim() || !leagueShortcode.trim()) return;
     setIsSubmittingLeague(true);
     setCheckoutError("");
     try {
+      if (usesCheckout && !finishingLeague) {
+        await beginCheckout("league", {
+          name: leagueName.trim(), shortcode: leagueShortcode.trim().toUpperCase(), primaryColor: leaguePrimaryColor,
+          secondaryColor: leagueSecondaryColor, tertiaryColor: leagueTertiaryColor, logoUrl: leagueLogoUrl.trim(),
+        });
+        return;
+      }
       const newLeagueId = await createLeague({
         name: leagueName.trim(),
         shortcode: leagueShortcode.trim().toUpperCase(),
-        teamCount: teamCount,
+        teamCount: finishingLeague ? paidPurchase.teamCount : teamCount,
         primaryColor: leaguePrimaryColor,
         secondaryColor: leagueSecondaryColor,
         accentColor: leagueSecondaryColor,
@@ -106,7 +242,10 @@ export default function PricingPage() {
         logoUrl: leagueLogoUrl.trim() || FLAGOS_LOGO,
         seasonTitle: `${new Date().getFullYear()} Season`,
         visibility: "public",
+        ...(finishingLeague ? { billingRequestId: paidPurchase.requestId } : {}),
       });
+      clearCheckoutDraft();
+      setPaidPurchase(null);
       setIsLeagueModalOpen(false);
       router.push(`/league/${newLeagueId}`);
     } catch (err) {
@@ -119,10 +258,18 @@ export default function PricingPage() {
 
   const handleSubscribeTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isOwnerEmail || !user?.email || !teamName.trim()) return;
+    if ((!isOwnerEmail && !usesCheckout && !finishingTeam) || !user?.email || !teamName.trim()) return;
     setIsSubmittingTeam(true);
     setCheckoutError("");
     try {
+      if (usesCheckout && !finishingTeam) {
+        await beginCheckout("team", {
+          name: teamName.trim(), shortcode: teamShortcode.trim().toUpperCase(), visibility: teamVisibility,
+          primaryColor: teamPrimaryColor, secondaryColor: teamSecondaryColor, tertiaryColor: teamTertiaryColor,
+          logoUrl: teamLogoUrl.trim(),
+        });
+        return;
+      }
       const newTeamId = await createSecureRecord("team", {
         name: teamName.trim(),
         shortcode: teamShortcode.trim().toUpperCase(),
@@ -134,15 +281,21 @@ export default function PricingPage() {
         tertiaryColor: teamTertiaryColor,
         logoUrl: teamLogoUrl.trim() || FLAGOS_LOGO,
         adminEmails: [user.email.trim().toLowerCase()],
-        subscription: {
-          plan: "team",
-          status: "active",
-          monthlyFee: 40,
-          billingCycle: "monthly",
-          paymentMethod: "complimentary",
-          renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        },
+        ...(finishingTeam
+          ? { billingRequestId: paidPurchase.requestId }
+          : {
+            subscription: {
+              plan: "team",
+              status: "active",
+              monthlyFee: 40,
+              billingCycle: "monthly",
+              paymentMethod: "complimentary",
+              renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+          }),
       });
+      clearCheckoutDraft();
+      setPaidPurchase(null);
       setIsTeamModalOpen(false);
       router.push(`/teams/${newTeamId}`);
     } catch (err) {
@@ -586,6 +739,34 @@ export default function PricingPage() {
 
       {/* MAIN PRICING CONTENT */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16 flex-1 w-full max-w-full overflow-hidden relative z-10 space-y-12 sm:space-y-16">
+        {(checkoutNotice || (unusedPurchases.length > 0 && !isLeagueModalOpen && !isTeamModalOpen)) && (
+          <div className="max-w-3xl mx-auto space-y-3">
+            {checkoutNotice && (
+              <p
+                role={checkoutNotice.tone === "error" ? "alert" : "status"}
+                className={`rounded-xl border px-4 py-3 text-sm ${checkoutNotice.tone === "error"
+                  ? "border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-200"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100"}`}
+              >
+                {checkoutNotice.text}
+              </p>
+            )}
+            {!isLeagueModalOpen && !isTeamModalOpen && unusedPurchases.map((purchase) => (
+              <div key={purchase.requestId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-neutral-900 dark:text-neutral-100">
+                <span>
+                  You have a paid {purchase.kind === "league" ? `league plan (${purchase.teamCount} teams)` : "team plan"} that is not set up yet.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openPurchaseSetup(purchase)}
+                  className="shrink-0 rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-xs font-black uppercase tracking-wider text-white cursor-pointer"
+                >
+                  Finish setup
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Page Hero Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-400 text-xs font-mono font-bold uppercase tracking-widest">
@@ -729,14 +910,7 @@ export default function PricingPage() {
 
             <div className="pt-6 border-t border-neutral-100 dark:border-white/10 mt-6">
               <button
-                onClick={() => {
-                  if (isOwnerEmail) {
-                    setCheckoutError("");
-                    setIsTeamModalOpen(true);
-                  } else {
-                    setShowDevelopmentNotice(true);
-                  }
-                }}
+                onClick={() => openPlanModal("team")}
                 className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
                 <span>{isOwnerEmail ? "Create Team Portal (no charge)" : "Subscribe Team Portal ($40/mo)"}</span>
@@ -887,17 +1061,10 @@ export default function PricingPage() {
 
             <div className="pt-6 border-t border-neutral-100 dark:border-white/10 mt-6">
               <button
-                onClick={() => {
-                  if (isOwnerEmail) {
-                    setCheckoutError("");
-                    setIsLeagueModalOpen(true);
-                  } else {
-                    setShowDevelopmentNotice(true);
-                  }
-                }}
+                onClick={() => openPlanModal("league")}
                 className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
               >
-                <span>{isOwnerEmail ? "Create League (no charge)" : `Launch & Subscribe League ($${totalLeagueMonthly}/mo)`}</span>
+                <span>{isOwnerEmail ? "Create League (no charge)" : `Launch & Subscribe League ($${totalLeagueMonthly} CAD/mo)`}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -1678,8 +1845,20 @@ export default function PricingPage() {
                 className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>{isSubmittingLeague ? "Creating League..." : "Create League · Complimentary"}</span>
+                <span>
+                  {isSubmittingLeague
+                    ? (usesCheckout && !finishingLeague ? "Opening secure checkout..." : "Creating League...")
+                    : finishingLeague ? "Finish League Setup · Paid"
+                    : usesCheckout ? "Continue to Secure Checkout"
+                    : "Create League · Complimentary"}
+                </span>
               </button>
+              {finishingLeague && (
+                <p className="text-center text-[11px] text-neutral-500 dark:text-neutral-400">Payment confirmed for {paidPurchase.teamCount} teams. Change your team count later from League Settings.</p>
+              )}
+              {usesCheckout && !finishingLeague && (
+                <p className="text-center text-[11px] text-neutral-500 dark:text-neutral-400">You will pay on Stripe, then return here to finish setup. Prices in CAD.</p>
+              )}
               {checkoutError && (
                 <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">{checkoutError}</p>
               )}
@@ -1931,9 +2110,21 @@ export default function PricingPage() {
                 className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
-                <span>{isSubmittingTeam ? "Creating Team..." : "Create Team · Complimentary"}</span>
+                <span>
+                  {isSubmittingTeam
+                    ? (usesCheckout && !finishingTeam ? "Opening secure checkout..." : "Creating Team...")
+                    : finishingTeam ? "Finish Team Setup · Paid"
+                    : usesCheckout ? "Continue to Secure Checkout"
+                    : "Create Team · Complimentary"}
+                </span>
               </button>
-              <p className="text-center text-[11px] text-neutral-500 dark:text-neutral-400">Owner account: payment is recorded as complimentary — no card is charged.</p>
+              <p className="text-center text-[11px] text-neutral-500 dark:text-neutral-400">
+                {finishingTeam
+                  ? "Payment confirmed. Your team portal is created as soon as you finish."
+                  : usesCheckout
+                    ? "You will pay on Stripe, then return here to finish setup. Prices in CAD."
+                    : "Owner account: payment is recorded as complimentary — no card is charged."}
+              </p>
               {checkoutError && (
                 <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">{checkoutError}</p>
               )}

@@ -105,10 +105,11 @@ export const LEAGUE_RULES_VIEW_GUIDE = guide("league-settings-rules-view", "Offi
 export const LEAGUE_SUBSCRIPTION_GUIDE = guide("league-settings-subscription", "Subscription & Teams", [
   overview("subscription-overview", "Manage your plan and teams", "Team slots are your plan's capacity; team records are the teams actually using it. Review both before making changes. Complimentary accounts are not charged."), settingsNavigation,
   step("settings-subscription-summary", "Current subscription", "Review Active Subscription, base licensing, team fees, total monthly cost and the next renewal. These are read-only summaries."),
+  step("settings-manage-billing", "Manage billing", "Paid plans only. Opens the secure Stripe billing portal to update your card, download invoices or cancel your plan."),
   step("settings-slots", "Adjust paid team slots", "Choose capacity from 2 to 32 teams and review the recalculated monthly total.", [
     ["Decrease team slot", "The minus button reduces the proposed slot count by one."], ["Increase team slot", "The plus button increases it by one."],
     ["Team slot slider", "Drag to choose a proposed capacity between 2 and 32 teams; the monthly price updates as you go."],
-    ["Confirm Teams", "Save the proposed capacity. For paid plans, the revised monthly amount starts at renewal; this does not record a payment."],
+    ["Confirm Teams", "Save the proposed capacity. Paid plans show the exact charge first: added slots are charged a prorated amount right away, and removed slots lower the price from your next renewal."],
   ]),
   step("settings-add-team", "Add an actual team", "Create a team record and increase the subscription together.", [
     ["Team name", "Type a name in the field, or leave it blank for the suggested Team number."],

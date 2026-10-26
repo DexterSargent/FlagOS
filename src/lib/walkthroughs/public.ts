@@ -502,15 +502,15 @@ export const TEAM_SUBSCRIPTION_WALKTHROUGH: ToolWalkthrough = {
       "id": "subscribe-team-subscribe-team-confirm",
       "targetSelector": "[data-tour=\"subscribe-team-confirm\"]",
       "title": "Review and confirm",
-      "description": "Review the team details and any error before creating the portal. Owner setup is complimentary.",
+      "description": "Review the team details and any error before you continue.",
       "details": [
         {
           "label": "Total Due Monthly",
-          "text": "Shows the plan's listed monthly value. The complimentary owner account is not charged."
+          "text": "Shows the plan's monthly price in CAD. The complimentary owner account is not charged."
         },
         {
-          "label": "Create Team · Complimentary",
-          "text": "The owner account can create a complimentary team. No card is charged. Other visitors see a development notice rather than creating a team."
+          "label": "Continue to Secure Checkout",
+          "text": "When subscriptions are open, this takes you to Stripe to pay. You come back here and the team portal is created once Stripe confirms payment. The owner account sees Create Team · Complimentary instead, and no card is charged."
         }
       ]
     }
@@ -604,15 +604,15 @@ export const LEAGUE_SUBSCRIPTION_WALKTHROUGH: ToolWalkthrough = {
       "id": "subscribe-league-subscribe-league-confirm",
       "targetSelector": "[data-tour=\"subscribe-league-confirm\"]",
       "title": "Review and confirm",
-      "description": "Review the league details, team count and any error before creating the portal. Owner setup is complimentary.",
+      "description": "Review the league details, team count and any error before you continue.",
       "details": [
         {
           "label": "Total Due Monthly",
-          "text": "Shows the listed value of the base plan plus team slots. The complimentary owner account is not charged."
+          "text": "Shows the base plan plus team slots in CAD. The complimentary owner account is not charged."
         },
         {
-          "label": "Create League · Complimentary",
-          "text": "The owner account can create a complimentary league and its teams. No card is charged. Other visitors see a development notice rather than creating a league."
+          "label": "Continue to Secure Checkout",
+          "text": "When subscriptions are open, this takes you to Stripe to pay for the base plan and team slots. You come back here and the league is created once Stripe confirms payment. The owner account sees Create League · Complimentary instead, and no card is charged."
         }
       ]
     }

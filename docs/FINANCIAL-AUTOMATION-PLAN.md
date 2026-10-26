@@ -23,8 +23,8 @@ owed to leagues must never be mixed in one revenue total.
 
 - Public pricing: independent team $40/month; league $40/month base + $20/team/month.
   A 10-team league is $240/month before any applicable tax.
-- Creation is currently restricted for development, with explicit complimentary access.
-  There is no Stripe checkout, payment webhook, customer portal or automatic card collection.
+- Creation is restricted to the platform owner (complimentary) until the server flag
+  `BILLING_CHECKOUT_ENABLED` is turned on. Phase 1 checkout code is built (see below) but off.
 - The admin Finance page supports manually entered income/expenses, plan settings and
   renewal dates. A manual ledger entry or an `active` subscription field is **not** proof
   that a processor received money.
@@ -33,6 +33,56 @@ owed to leagues must never be mixed in one revenue total.
 - The email implementation in this change is an operational foundation: branded HTML/text,
   persistent queue, retries, delivery webhooks, suppression, and admin status. It is not
   an in-app inbox or a complete member/game notification system.
+
+## Phase 1 build status (code shipped, switched off)
+
+What exists:
+
+- `src/lib/billingServer.ts`: Stripe Checkout (subscription mode, server-side prices, CAD),
+  payment confirmation by retrieving the session from Stripe (redirects are never trusted),
+  verified webhooks with de-duplication, subscription status sync into `billing_accounts` and
+  the league/team `subscription` fields, Customer Portal sessions, seat-change preview/apply,
+  and refund/dispute/fraud-warning flags (`needsReview`) for manual follow-up.
+- Routes: `/api/billing/checkout`, `/api/billing/status`, `/api/billing/portal`,
+  `/api/billing/seats`, and the webhook `/api/webhooks/stripe`.
+- Pay first, create after: the pricing page sends the buyer to Stripe, then confirms payment
+  and creates the league/team with a one-time paid purchase id. The server validates and
+  consumes that purchase in the same transaction. Unused paid purchases show a "Finish setup" banner.
+- Paid leagues change seats only through Stripe: the price is shown first; additions charge a
+  prorated amount immediately and unlock after payment; reductions apply at renewal with no
+  refund and never go below the existing team count. Clients cannot edit paid subscription fields.
+- Deleting a paid league/team cancels at period end and flags the billing account for review.
+  No automatic refunds.
+- Complimentary accounts are untouched, and the owner keeps the no-charge creation path.
+
+Deferred by decision: Stripe Connect (registration fees/organizer payouts), Stripe Invoicing
+for manual invoices, and Stripe Tax (turn on `STRIPE_AUTOMATIC_TAX=true` only after a tax
+registration exists and prices are confirmed as tax-exclusive).
+
+**Activation checklist (sandbox first, then live):**
+
+1. In a Stripe sandbox, create three Products with monthly CAD recurring Prices: Team plan
+   ($40), League base ($40), League team seat ($20, quantity = teams).
+2. Create a restricted API key (`rk_…`) with write access to Checkout Sessions, Customers,
+   Subscriptions, Invoices and Customer Portal, and read access to Charges, Payment Intents,
+   Invoice Payments and Prices.
+3. Add a webhook endpoint `https://flagos.ca/api/webhooks/stripe` for:
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `checkout.session.async_payment_failed`, `checkout.session.expired`,
+   `customer.subscription.created|updated|deleted|paused|resumed`, `invoice.paid`,
+   `invoice.payment_failed`, `charge.refunded`, `charge.dispute.created`,
+   `radar.early_fraud_warning.created`.
+4. Configure the Customer Portal: allow payment-method updates, invoice history and
+   cancellation at period end; **disable quantity/plan changes** (seats go through FlagOS).
+5. Store secrets in Secret Manager and reference them in `apphosting.yaml`:
+   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_TEAM`,
+   `STRIPE_PRICE_LEAGUE_BASE`, `STRIPE_PRICE_LEAGUE_SEAT`
+   (`firebase apphosting:secrets:set NAME`, then grant the backend access).
+6. Set `BILLING_CHECKOUT_ENABLED` to `"true"`, deploy, and run test-card purchases
+   (`4242…`, a decline, and 3-D Secure). Check that the league/team is created, seat changes
+   work, and that cancelling in the portal updates the status.
+7. Repeat with live keys and live Price ids. Raise the platform team cap
+   (`ENTITY_LIMITS.allTeams`, currently 256) before public launch.
 
 ## Decisions to approve
 

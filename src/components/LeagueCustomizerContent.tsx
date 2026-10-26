@@ -9,6 +9,7 @@ import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { useLeague, LeagueRules, DEFAULT_LEAGUE_RULES, IFAF_5V5_RULES } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { rosterHardCap } from "@/lib/rosterLimits";
+import { openBillingPortal } from "@/lib/billingClient";
 import {
   Palette,
   Shield,
@@ -94,6 +95,7 @@ export default function LeagueCustomizerContent() {
   // Subscription team management states
   const [targetTeamCount, setTargetTeamCount] = useState<number>(subscription?.teamCount ?? 8);
   const [isUpdatingSub, setIsUpdatingSub] = useState(false);
+  const [isOpeningBilling, setIsOpeningBilling] = useState(false);
   const [subSuccessMsg, setSubSuccessMsg] = useState("");
   const [subTeamsList, setSubTeamsList] = useState<{ id: string; name: string; shortcode?: string; primaryColor?: string }[]>([]);
   const [loadingSubTeams, setLoadingSubTeams] = useState(false);
@@ -2260,6 +2262,25 @@ export default function LeagueCustomizerContent() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {subscription?.paymentMethod === "paid" && !isDemoLeague && (
+                    <button
+                      type="button"
+                      data-tour="settings-manage-billing"
+                      disabled={isOpeningBilling}
+                      onClick={async () => {
+                        setIsOpeningBilling(true);
+                        try {
+                          await openBillingPortal("league", activeLeagueId);
+                        } catch (e) {
+                          alert(e instanceof Error ? e.message : "Could not open billing.");
+                          setIsOpeningBilling(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider bg-white text-neutral-950 hover:bg-neutral-200 disabled:opacity-60 cursor-pointer"
+                    >
+                      {isOpeningBilling ? "Opening..." : "Manage billing"}
+                    </button>
+                  )}
                   <span className="px-3 py-1 rounded-full text-xs font-black font-mono bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Active Subscription</span>

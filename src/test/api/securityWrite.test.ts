@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/security/write/route";
 import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 
@@ -352,18 +352,120 @@ describe("secure data write API", () => {
       expect(transaction.create).not.toHaveBeenCalled();
     });
 
-    it("rejects team creation by anyone other than the platform owner, even league admins", async () => {
+    it("rejects team creation by non-owners without a paid plan, even league admins", async () => {
       verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "commissioner@example.com" });
+      const league = { subscription: { paymentMethod: "complimentary", status: "active", teamCount: 8 } };
       transaction.get.mockImplementation(async (ref) => "collection" in ref
         ? { size: 0 }
         : ref.path === "league_private/league-1"
           ? { exists: true, data: () => ({ adminEmails: ["commissioner@example.com"] }) }
-          : { exists: false, data: () => undefined });
+          : ref.path === "leagues/league-1"
+            ? { exists: true, data: () => league, get: (field: string) => (league as Record<string, unknown>)[field] }
+            : { exists: false, data: () => undefined });
       for (const data of [independentTeam, { name: "Hawks", leagueId: "league-1" }]) {
         const response = await POST(request({ entity: "team", data }));
         expect(response.status).toBe(403);
       }
       expect(transaction.create).not.toHaveBeenCalled();
+    });
+
+    describe("with Stripe checkout enabled", () => {
+      const billingEnv = {
+        BILLING_CHECKOUT_ENABLED: "true", STRIPE_SECRET_KEY: "rk_test_x", STRIPE_WEBHOOK_SECRET: "whsec_x",
+        STRIPE_PRICE_TEAM: "price_team", STRIPE_PRICE_LEAGUE_BASE: "price_base", STRIPE_PRICE_LEAGUE_SEAT: "price_seat",
+      };
+      const coach = { ...validToken, uid: "coach-1", email: "coach@example.com" };
+      const paidRequest = (fields: Record<string, unknown>) => ({
+        exists: true,
+        data: () => fields,
+        get: (field: string) => fields[field],
+      });
+
+      beforeEach(() => {
+        for (const [key, value] of Object.entries(billingEnv)) vi.stubEnv(key, value);
+        verifyIdTokenMock.mockResolvedValue(coach);
+      });
+      afterEach(() => vi.unstubAllEnvs());
+
+      it("creates a paid independent team from the buyer's own paid purchase and consumes it", async () => {
+        transaction.get.mockImplementation(async (ref) => "collection" in ref
+          ? { size: 0 }
+          : ref.path === "billing_requests/req-1"
+            ? paidRequest({ uid: "coach-1", kind: "team", status: "paid", customerId: "cus_1", subscriptionId: "sub_1", teamCount: 1 })
+            : { exists: false, data: () => undefined });
+        const response = await POST(request({ entity: "team", data: {
+          ...independentTeam, adminEmails: ["someone-else@example.com"], billingRequestId: "req-1",
+          subscription: { plan: "team", status: "active", paymentMethod: "complimentary" },
+        } }));
+        expect(response.status).toBe(201);
+        const publicCreate = transaction.create.mock.calls.find(([ref]) => ref.id === "created-record-id");
+        expect(publicCreate?.[1]).toMatchObject({ subscription: { paymentMethod: "paid", status: "active" } });
+        expect(publicCreate?.[1]).not.toHaveProperty("billingRequestId");
+        expect(transaction.create).toHaveBeenCalledWith(
+          expect.objectContaining({ path: "team_private/created-record-id" }),
+          expect.objectContaining({ adminEmails: ["coach@example.com"] }),
+        );
+        expect(transaction.update).toHaveBeenCalledWith(
+          expect.objectContaining({ path: "billing_requests/req-1" }),
+          expect.objectContaining({ status: "consumed", createdEntityId: "created-record-id" }),
+        );
+        expect(transaction.set).toHaveBeenCalledWith(
+          expect.objectContaining({ path: "billing_accounts/team_created-record-id" }),
+          expect.objectContaining({ subscriptionId: "sub_1", ownerUid: "coach-1" }),
+        );
+      });
+
+      it("rejects purchases that are unpaid, already used, the wrong kind, or someone else's", async () => {
+        const cases: Array<[Record<string, unknown>, number]> = [
+          [{ uid: "coach-1", kind: "team", status: "pending" }, 402],
+          [{ uid: "coach-1", kind: "team", status: "consumed" }, 409],
+          [{ uid: "coach-1", kind: "league", status: "paid" }, 403],
+          [{ uid: "other", kind: "team", status: "paid" }, 403],
+        ];
+        for (const [fields, status] of cases) {
+          transaction.get.mockImplementation(async (ref) => "collection" in ref
+            ? { size: 0 }
+            : ref.path === "billing_requests/req-1" ? paidRequest(fields) : { exists: false, data: () => undefined });
+          const response = await POST(request({ entity: "team", data: { ...independentTeam, billingRequestId: "req-1" } }));
+          expect(response.status).toBe(status);
+        }
+        expect(transaction.create).not.toHaveBeenCalled();
+      });
+
+      it("lets a paid league's admin add teams only within the paid team count", async () => {
+        const league = { subscription: { paymentMethod: "paid", status: "active", teamCount: 2 } };
+        let existingTeams = 1;
+        transaction.get.mockImplementation(async (ref) => "collection" in ref
+          ? { size: existingTeams }
+          : ref.path === "league_private/league-1"
+            ? { exists: true, data: () => ({ adminEmails: ["coach@example.com"] }) }
+            : ref.path === "leagues/league-1"
+              ? { exists: true, data: () => league, get: (field: string) => (league as Record<string, unknown>)[field] }
+              : { exists: false, data: () => undefined });
+        expect((await POST(request({ entity: "team", data: { name: "Hawks", leagueId: "league-1" } }))).status).toBe(201);
+        existingTeams = 2;
+        expect((await POST(request({ entity: "team", data: { name: "Owls", leagueId: "league-1" } }))).status).toBe(409);
+      });
+    });
+
+    it("never lets a league admin rewrite a paid subscription or payment method", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, uid: "coach-1", email: "coach@example.com" });
+      const league = { subscription: { paymentMethod: "paid", status: "past_due", teamCount: 4 } };
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 0 }
+        : ref.path === "league_private/league-1"
+          ? { exists: true, data: () => ({ adminEmails: ["coach@example.com"] }) }
+          : ref.path === "leagues/league-1"
+            ? { exists: true, data: () => league, get: (field: string) => (league as Record<string, unknown>)[field] }
+            : { exists: false, data: () => undefined });
+      const response = await POST(request({ entity: "league_update", data: {
+        leagueId: "league-1", leagueName: "Renamed",
+        subscription: { teamCount: 64, status: "active", paymentMethod: "complimentary" },
+      } }));
+      expect(response.status).toBe(201);
+      const write = transaction.set.mock.calls.find(([ref]) => ref.path === "leagues/league-1");
+      expect(write?.[1]).toMatchObject({ leagueName: "Renamed" });
+      expect(write?.[1]).not.toHaveProperty("subscription");
     });
 
     it("lets the platform owner create a paid independent team with private staff emails", async () => {

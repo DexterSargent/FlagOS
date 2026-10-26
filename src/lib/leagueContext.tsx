@@ -12,6 +12,7 @@ import { FLAGOS_LOGO } from "./brandTokens";
 import { INK_SURFACE_DARK, INK_SURFACE_LIGHT, readableInk } from "./teamColors";
 import { auth } from "./firebase";
 import { createSecureRecord } from "./secureWrites";
+import { applySeatChange, formatCad, previewSeatChange } from "./billingClient";
 import { getCurrentSeasonId, getLeagueSeasons, type LeagueSeason } from "./leagueSeasons";
 import { notifyDataChanged } from "./leagueDataCache";
 import { useAuth } from "./authContext";
@@ -377,6 +378,8 @@ interface LeagueContextType {
     logoUrl?: string;
     rulePreset?: string;
     visibility?: "public" | "private";
+    /** A paid, unused Stripe purchase; required for everyone except the platform owner. */
+    billingRequestId?: string;
   }) => Promise<string>;
   subscription: LeagueSubscriptionInfo | null;
   updateSubscriptionTeamCount: (newTeamCount: number) => Promise<LeagueSubscriptionInfo>;
@@ -848,6 +851,7 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
     logoUrl?: string;
     rulePreset?: string;
     visibility?: "public" | "private";
+    billingRequestId?: string;
   }): Promise<string> => {
     const owner = auth.currentUser;
     if (!owner?.email || !owner.emailVerified) {
@@ -869,8 +873,8 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
       teamCount: teams,
       totalMonthlyFee: baseFee + teams * perTeamFee,
       billingCycle: "monthly",
-      // No payment processor yet: owner-provisioned leagues start complimentary until marked paid in the admin console.
-      paymentMethod: "complimentary",
+      // Owner-provisioned leagues are complimentary; checkout purchases are confirmed and priced by the server.
+      paymentMethod: data.billingRequestId ? "paid" : "complimentary",
       renewsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     };
 
@@ -896,10 +900,13 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
     // Save to Firestore
     let newLeagueId: string;
     try {
-      newLeagueId = await createSecureRecord("league", newLeagueSettings as unknown as Record<string, unknown>);
+      newLeagueId = await createSecureRecord("league", {
+        ...(newLeagueSettings as unknown as Record<string, unknown>),
+        ...(data.billingRequestId ? { billingRequestId: data.billingRequestId } : {}),
+      });
     } catch (e) {
       console.error("Could not save new league to Firestore:", e);
-      throw new Error("Could not create the league. Check your permissions and try again.");
+      throw new Error(e instanceof Error && e.message ? e.message : "Could not create the league. Check your permissions and try again.");
     }
 
     const starterTeamColors = [
@@ -1124,7 +1131,24 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   };
 
   const updateSubscriptionTeamCount = async (newTeamCount: number): Promise<LeagueSubscriptionInfo> => {
-    const clampedCount = Math.max(2, Math.round(newTeamCount));
+    let clampedCount = Math.max(2, Math.round(newTeamCount));
+    const isPaidLeague = subscription?.paymentMethod === "paid" && !checkIsDemoLeague(activeLeagueId);
+    if (isPaidLeague && clampedCount !== (subscription?.teamCount ?? clampedCount)) {
+      // Paid leagues change seats through Stripe: show the prorated price first, then charge or schedule.
+      const preview = await previewSeatChange(activeLeagueId, clampedCount);
+      const increase = preview.teamCount > preview.currentTeamCount;
+      const message = increase
+        ? `Change your plan to ${preview.teamCount} teams?\n\nCharged now (prorated): ${formatCad(preview.amountDueNowCents)}\nNew monthly price: ${formatCad(preview.newMonthlyCents)}\n\nThe extra team slots unlock once the payment goes through.`
+        : `Change your plan to ${preview.teamCount} teams?\n\nNew monthly price from your next renewal: ${formatCad(preview.newMonthlyCents)}\nNo refund is issued for the current month.`;
+      if (typeof window !== "undefined" && !window.confirm(message)) {
+        throw new Error("Team count change cancelled. Nothing was charged.");
+      }
+      const result = await applySeatChange(activeLeagueId, preview.teamCount, preview.prorationDate);
+      if (result.status === "payment_required") {
+        throw new Error("The payment did not go through, so your team count was not changed. Update your card under Manage billing and try again.");
+      }
+      clampedCount = result.teamCount;
+    }
     const baseFee = subscription?.baseMonthlyFee ?? 40;
     const perTeamFee = subscription?.perTeamMonthlyFee ?? 20;
     const totalMonthlyFee = baseFee + clampedCount * perTeamFee;
@@ -1177,7 +1201,8 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
     try {
       await createSecureRecord("league_update", {
         leagueId: activeLeagueId,
-        subscription: nextSub,
+        // The server owns paid subscriptions (synced from Stripe); only send the playoff format for them.
+        ...(isPaidLeague ? {} : { subscription: nextSub }),
         playoffFormat: nextSettings.playoffFormat,
       });
     } catch (err) {
@@ -1229,8 +1254,13 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
 
     const currentCount = subscription?.teamCount ?? 8;
     const nextCount = Math.max(2, currentCount - 1);
-    const updatedSub = await updateSubscriptionTeamCount(nextCount);
-    return { newSubscription: updatedSub };
+    try {
+      const updatedSub = await updateSubscriptionTeamCount(nextCount);
+      return { newSubscription: updatedSub };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "The plan change failed.";
+      throw new Error(`The team was removed, but your plan still has ${currentCount} team slots. ${reason}`);
+    }
   };
 
   const openCustomizer = () => setIsCustomizerOpen(true);

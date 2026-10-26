@@ -752,6 +752,12 @@ export const TEAM_HUB_WALKTHROUGH: ToolWalkthrough = {
       ]
     },
     {
+      "id": "team-manage-billing",
+      "targetSelector": "[data-tour=\"team-manage-billing\"]",
+      "title": "Manage billing",
+      "description": "Paid independent teams only. Opens the secure Stripe billing portal to update your card, download invoices or cancel your plan."
+    },
+    {
       "id": "team-record-badge",
       "targetSelector": "[data-tour=\"team-record-badge\"]",
       "title": "Record and team stats",

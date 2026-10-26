@@ -20,6 +20,10 @@ import { SCORER_GRANTS_COLLECTION, scorerGrantDocId, timestampMillis } from "@/l
 import { MAX_ROSTER_HARD_CAP, rosterHardCap } from "@/lib/rosterLimits";
 
 import { isValidPublicEmail, validatePlayerInfo, validateVenues } from "@/lib/leaguePublicProfile";
+import {
+  BillingError, consumeBillingClaim, handleBilledEntityDeleted, MAX_LEAGUE_TEAMS, paidSubscriptionRecord,
+  readBillingClaim, type BillingClaim,
+} from "@/lib/billingServer";
 export const runtime = "nodejs";
 
 const MAX_REQUEST_BYTES = 300_000;
@@ -295,6 +299,40 @@ type DepthPositionUpdate = {
 };
 // Player position changes computed while authorizing a depth-chart save (transaction reads must precede writes).
 const depthPositionUpdates = new WeakMap<Record<string, unknown>, DepthPositionUpdate[]>();
+// Paid purchases validated during authorization and consumed when the league/team is written.
+const billingClaims = new WeakMap<Record<string, unknown>, BillingClaim>();
+
+/** Subscription fields a league administrator may change on a complimentary or legacy plan. */
+const CLIENT_SUBSCRIPTION_FIELDS = new Set([
+  "plan", "status", "baseMonthlyFee", "perTeamMonthlyFee", "teamCount", "totalMonthlyFee", "billingCycle", "renewsAt",
+]);
+
+/**
+ * Payment state is server-owned: only the platform admin or Stripe webhooks may set it. On
+ * processor-paid leagues, size and status change only through Stripe (seat changes / portal).
+ */
+function restrictLeagueSubscriptionUpdate(
+  data: Record<string, unknown>,
+  stored: Record<string, unknown> | undefined,
+): void {
+  const paid = stored?.paymentMethod === "paid";
+  if (paid) delete data.teamCount;
+  if (data.subscription === undefined) return;
+  const incoming = data.subscription && typeof data.subscription === "object" && !Array.isArray(data.subscription)
+    ? data.subscription as Record<string, unknown>
+    : {};
+  const allowed: Record<string, unknown> = {};
+  if (!paid) {
+    for (const [key, value] of Object.entries(incoming)) {
+      if (CLIENT_SUBSCRIPTION_FIELDS.has(key)) allowed[key] = value;
+    }
+    if (allowed.status !== undefined && allowed.status !== "active" && allowed.status !== "archived") {
+      delete allowed.status;
+    }
+  }
+  if (Object.keys(allowed).length) data.subscription = allowed;
+  else delete data.subscription;
+}
 
 async function authorizeWrite(
   transaction: Transaction,
@@ -303,25 +341,51 @@ async function authorizeWrite(
   token: DecodedIdToken,
 ): Promise<void> {
   if (entity === "league") {
-    if (!isPlatformAdmin(token)) fail("Only the FlagOS platform administrator can create leagues.", 403);
     if (data.ownerUid !== token.uid ||
       typeof token.email !== "string" ||
       !Array.isArray(data.adminEmails) ||
       !data.adminEmails.map((value) => String(value).toLowerCase()).includes(normalizeEmail(token.email))) {
       fail("A league must be created by its verified owner.", 403);
     }
+    if (!isPlatformAdmin(token)) {
+      const claim = await readBillingClaim(transaction, data.billingRequestId, token.uid, "league");
+      // The paid plan, not the client, decides the league's size and subscription.
+      data.subscription = paidSubscriptionRecord(claim);
+      billingClaims.set(data, claim);
+    }
     return;
   }
 
   if (entity === "team") {
-    if (!isPlatformAdmin(token)) fail("Only the FlagOS platform administrator can create teams.", 403);
     if (data.leagueId === "") {
+      if (!isPlatformAdmin(token)) {
+        const claim = await readBillingClaim(transaction, data.billingRequestId, token.uid, "team");
+        data.subscription = paidSubscriptionRecord(claim);
+        data.adminEmails = [normalizeEmail(token.email)];
+        billingClaims.set(data, claim);
+      }
       data.isStandalone = true;
       return;
     }
     if (!isDocumentId(data.leagueId)) fail("A valid league ID is required.");
     const league = await transaction.get(adminDb.doc(`leagues/${data.leagueId}`));
     if (!league.exists) fail("The league was not found.", 404);
+    if (!isPlatformAdmin(token)) {
+      if (!(await isLeagueAdmin(transaction, data.leagueId, token))) {
+        fail("Only the league administrator can add teams.", 403);
+      }
+      const subscription = league.get("subscription") as Record<string, unknown> | undefined;
+      if (subscription?.paymentMethod !== "paid" || subscription.status !== "active") {
+        fail("Teams can be added once the league's subscription is active.", 403);
+      }
+      const teams = await transaction.get(
+        adminDb.collection("teams").where("leagueId", "==", data.leagueId).limit(MAX_LEAGUE_TEAMS + 1),
+      );
+      if (teams.size >= Number(subscription.teamCount || 0)) {
+        fail(`Your plan covers ${Number(subscription.teamCount || 0)} teams. Add a team slot in League Settings first.`, 409);
+      }
+      delete data.subscription;
+    }
     delete data.isStandalone;
     return;
   }
@@ -523,8 +587,12 @@ async function authorizeWrite(
     if (!isDocumentId(leagueId) || !(await isLeagueAdmin(transaction, leagueId, token))) {
       fail("You do not have permission to manage this league's private details.", 403);
     }
-    if (entity === "league_update" && !(await transaction.get(adminDb.doc(`leagues/${leagueId}`))).exists) {
-      fail("The league was not found.", 404);
+    if (entity === "league_update") {
+      const league = await transaction.get(adminDb.doc(`leagues/${leagueId}`));
+      if (!league.exists) fail("The league was not found.", 404);
+      if (!isPlatformAdmin(token)) {
+        restrictLeagueSubscriptionUpdate(data, league.get("subscription") as Record<string, unknown> | undefined);
+      }
     }
     return;
   }
@@ -782,6 +850,7 @@ function buildRecord(entity: Entity, data: Record<string, unknown>): Record<stri
   const record = { ...data };
   // Firestore assigns the document ID; a client-supplied id would shadow it on read.
   delete record.id;
+  delete record.billingRequestId;
   if (entity === "league") {
     delete record.adminEmails;
     delete record.contactEmail;
@@ -1158,6 +1227,10 @@ export async function POST(request: Request) {
         (data.manualMatchup !== undefined && typeof data.manualMatchup !== "boolean"))) {
       fail("Matchup data is invalid.");
     }
+    if ((requestedEntity === "league" || requestedEntity === "team") && data.billingRequestId !== undefined &&
+      !isDocumentId(data.billingRequestId)) {
+      fail("The purchase reference is invalid.");
+    }
     if (requestedEntity === "league" &&
       (typeof data.leagueName !== "string" || typeof data.shortcode !== "string")) {
       fail("A league name and shortcode are required.");
@@ -1524,6 +1597,8 @@ export async function POST(request: Request) {
         const recordRef = adminDb.collection(recordCollection).doc();
         const record = buildRecord(requestedEntity, data);
         transaction.create(recordRef, record);
+        const billingClaim = billingClaims.get(data);
+        if (billingClaim) consumeBillingClaim(transaction, billingClaim, recordRef.id);
         if (requestedEntity === "play" && isDocumentId(data.replacesPlayId)) {
           transaction.delete(adminDb.doc(`plays/${String(data.replacesPlayId)}`));
         }
@@ -1578,6 +1653,13 @@ export async function POST(request: Request) {
       await purgeTeamData(String(data.teamId));
     }
 
+    if (requestedEntity === "delete_team" || requestedEntity === "delete_league") {
+      await handleBilledEntityDeleted(
+        requestedEntity === "delete_team" ? "team" : "league",
+        String(requestedEntity === "delete_team" ? data.teamId : data.leagueId),
+      ).catch((billingError) => console.error("Billing cleanup after delete failed:", billingError));
+    }
+
     if (AUDITED_ENTITIES.has(requestedEntity)) {
       await recordPlatformAudit(token, requestedEntity, data, createdId, auditNames);
     }
@@ -1588,6 +1670,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "Payload exceeds the maximum allowed size." }, { status: 413 });
     }
     if (error instanceof RequestError) {
+      return Response.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof BillingError) {
       return Response.json({ error: error.message }, { status: error.status });
     }
     console.error("Secure write failed:", error);

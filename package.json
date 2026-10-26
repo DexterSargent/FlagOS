@@ -20,6 +20,7 @@
     "next": "^16.4.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "stripe": "^23.0.1",
     "svix": "^2.9.0"
   },
   "devDependencies": {
