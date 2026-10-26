@@ -808,7 +808,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
         <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
         <p className="text-neutral-400 mb-6 max-w-md">
-          The requested franchise does not exist. Free agents are an unassigned draft pool, not a franchise.
+          This team could not be found. The free-agent pool does not have a team playbook.
         </p>
         <Link
           href="/teams"
@@ -844,7 +844,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 League Admin Access Restricted
               </h2>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
-                To safeguard competitive integrity and prevent tactical advantages, League Administrators do not have access to franchise playbooks. Team playbooks, route diagrams, and schemes are strictly private to verified team coaching staff and rostered players.
+                League admin access does not include team playbooks. Only that team&apos;s coaches and rostered players can view its plays and schemes.
               </p>
               {isDemoLeague && (
                 <div className="mt-4 p-3 rounded-2xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-[var(--team-ink)] text-left">
@@ -893,7 +893,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               </span>
               <h2 className="text-2xl font-black uppercase text-white mt-3">Coach Access Restricted</h2>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
-                As an authorized Team Coach or Manager, you only have editing and management access to your own franchise&apos;s playbook. Opponent schemes, route designs, and gameplans are strictly protected.
+                You can manage your own team&apos;s playbooks. To open another team&apos;s plays, you need to be on that team&apos;s coaching staff or roster.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">

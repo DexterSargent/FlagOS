@@ -273,7 +273,7 @@ export default function RoleSwitcherContent() {
           {/* Team Admin Toggle */}
           <button
             onClick={() => handleSelectRole("team_admin")}
-            title="Team manager view: franchise portal, exhibition games & stat keeping"
+            title="Team manager view: team portal, exhibition games and stat keeping"
             aria-label="Team Admin"
             aria-pressed={role === "team_admin"}
             className={`flex min-w-0 items-center justify-center gap-0.5 sm:gap-1 px-0.5 sm:px-2 lg:px-2.5 py-1 rounded-md sm:rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap text-[10px] sm:text-xs ${
@@ -324,7 +324,7 @@ export default function RoleSwitcherContent() {
           {/* Team Admin Team Selector */}
           {role === "team_admin" && teams.length > 0 && (
             <div className="flex items-center gap-0.5 sm:gap-1 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-500/30 px-0.5 sm:px-2 py-0.5 rounded-lg shrink min-w-0 overflow-hidden">
-              <span className="hidden lg:inline text-[10px] uppercase font-bold text-cyan-800 dark:text-cyan-300">Franchise:</span>
+              <span className="hidden lg:inline text-[10px] uppercase font-bold text-cyan-800 dark:text-cyan-300">Team:</span>
               <select
                 aria-label="Demo team"
                 value={activeTeamId || ""}

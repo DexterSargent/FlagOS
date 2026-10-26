@@ -305,7 +305,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                     data-guide="manage-event"
                     onClick={handleDeleteMatch}
                     disabled={isDeleting}
-                    className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 font-semibold rounded-xl border border-rose-500/20 transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm"
+                    className="px-4 py-2.5 bg-[var(--tint-danger)] hover:brightness-95 text-[var(--text-danger)] font-semibold rounded-xl border border-[var(--tint-danger-border)] transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-sm"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>{isDeleting ? "Deleting..." : "Delete Event"}</span>
@@ -555,7 +555,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 <button
                   type="button"
                   onClick={handleDeleteMatch}
-                  className="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 font-semibold rounded-xl transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                  className="px-4 py-2.5 bg-[var(--tint-danger)] hover:brightness-95 text-[var(--text-danger)] border border-[var(--tint-danger-border)] font-semibold rounded-xl transition-all flex items-center gap-1.5 text-xs cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete Event</span>

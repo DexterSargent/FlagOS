@@ -893,7 +893,7 @@ export default function LeagueDirectoryPage() {
                       {league.isActive && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-black uppercase shadow-sm">
                           <Sparkles className="w-3 h-3 text-emerald-500" />
-                          Active League
+                          FlagOS League
                         </span>
                       )}
                       {!league.isActive && league.isUserLeague && (
@@ -904,7 +904,7 @@ export default function LeagueDirectoryPage() {
                       {!league.isActive && !league.isUserLeague && league.isLive && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold uppercase">
                           <Globe className="w-3 h-3 text-cyan-500" />
-                          Live Circuit
+                          Active League
                         </span>
                       )}
                     </div>
@@ -1089,7 +1089,7 @@ export default function LeagueDirectoryPage() {
                         type="button"
                         onClick={() => switchLeague(league.id)}
                         className="w-full py-2.5 px-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 font-bold text-xs uppercase tracking-wider text-center border border-cyan-500/30 transition-all flex items-center justify-center gap-1 cursor-pointer"
-                        title="Switch to this league as your active circuit"
+                        title="Make this your active league"
                       >
                         <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
                         <span>Set Active</span>
@@ -1176,7 +1176,7 @@ export default function LeagueDirectoryPage() {
                 {/* Circuits Hosted at this Venue */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
-                    Circuits Hosted at this Facility ({leagues.length})
+                    Leagues at this venue ({leagues.length})
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {leagues.map((l) => (
@@ -1239,7 +1239,7 @@ export default function LeagueDirectoryPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/40 text-[11px] font-mono uppercase text-slate-500 dark:text-neutral-400">
-                  <th className="py-4 px-4 font-bold">Circuit &amp; Format</th>
+                  <th className="py-4 px-4 font-bold">League &amp; Format</th>
                   <th className="py-4 px-4 font-bold">Teams</th>
                   <th className="py-4 px-4 font-bold">Location &amp; Distance</th>
                   <th className="py-4 px-4 font-bold">Division</th>

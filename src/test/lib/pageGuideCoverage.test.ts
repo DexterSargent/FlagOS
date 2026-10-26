@@ -73,4 +73,11 @@ describe("page guide coverage", () => {
       expect(guide.steps.length, `${guide.id} step count`).toBeGreaterThanOrEqual(4);
     }
   });
+
+  it("uses plain league terminology and does not describe the old checkout buttons", () => {
+    const copy = JSON.stringify(everyGuide);
+    expect(copy).not.toMatch(/\bcircuits?\b/i);
+    expect(copy).not.toContain("Confirm & Pay");
+    expect(copy).not.toContain("Flag Guarding / FFL");
+  });
 });

@@ -163,7 +163,7 @@ describe("async copied workflows", () => {
     ["Incomplete", ["SAVE & NEXT DOWN"]],
     ["Pass Breakup (PBU)", ["SAVE & NEXT DOWN"]],
     ["Sack", ["LOSS OF YARDS", "SAFETY (+2 DEF)"]],
-    ["Flag Guarding / FFL", ["LOSS OF YARDS", "SAFETY (+2 DEF)"]],
+    ["Flag For Loss (FFL)", ["LOSS OF YARDS", "SAFETY (+2 DEF)"]],
     ["Interception", ["PICK 6 (+6)", "OOB / DOWNED (Save Turnover)"]],
   ])("limits %s to valid results after the required players are selected", async (outcome, results) => {
     await start("async");

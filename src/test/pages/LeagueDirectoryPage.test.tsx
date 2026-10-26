@@ -116,7 +116,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     expect(screen.queryByText("Secret Private Circuit")).toBeNull();
   });
 
-  it("fetches and displays real existing leagues from Firestore with Live Circuit badge and team counts", async () => {
+  it("fetches and displays real existing leagues from Firestore with FlagOS League badge and team counts", async () => {
     mockGetDocs.mockImplementation(async (ref: { name?: string }) => {
       if (ref?.name === "leagues") {
         return {
@@ -163,7 +163,7 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     expect(screen.getByText("OPFC")).toBeInTheDocument();
     expect(screen.getByText("Downsview Park Stadium")).toBeInTheDocument();
     expect(screen.getByText("4 Teams")).toBeInTheDocument();
-    expect(screen.getAllByText("Live Circuit").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("FlagOS League").length).toBeGreaterThan(0);
   });
 
   it("allows users to click Set Active to switch active league directly from directory", async () => {
@@ -309,12 +309,12 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     // Switch to Venues view
     const venuesBtn = screen.getByRole("button", { name: /Venues/i });
     fireEvent.click(venuesBtn);
-    expect(screen.getAllByText(/Circuits Hosted at this Facility/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Leagues at this venue/i).length).toBeGreaterThan(0);
 
     // Switch to Compare Table view
     const tableBtn = screen.getByRole("button", { name: /Compare/i });
     fireEvent.click(tableBtn);
-    expect(screen.getByText("Circuit & Format")).toBeInTheDocument();
+    expect(screen.getByText("League & Format")).toBeInTheDocument();
     expect(screen.getByText("Team Fee")).toBeInTheDocument();
   });
 

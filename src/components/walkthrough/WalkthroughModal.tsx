@@ -48,18 +48,9 @@ export function getAvailableSteps(steps: WalkthroughStep[]): WalkthroughStep[] {
   const available = steps.filter((step) => !step.targetSelector || findVisibleTarget(step.targetSelector));
   return (available.length > 0 ? available : steps).map((step) =>
     step.details?.some((d) => d.requiresSelector)
-      ? { ...step, details: step.details.filter((d) => !d.requiresSelector || hasElement(d.requiresSelector)) }
+      ? { ...step, details: step.details.filter((d) => !d.requiresSelector || findVisibleTarget(d.requiresSelector)) }
       : step,
   );
-}
-
-function hasElement(selector: string): boolean {
-  if (typeof document === "undefined") return false;
-  try {
-    return document.querySelector(selector) !== null;
-  } catch {
-    return false;
-  }
 }
 
 export default function WalkthroughModal({
@@ -74,6 +65,7 @@ export default function WalkthroughModal({
   const [viewport, setViewport] = useState({ width: 1024, height: 768 });
   const [cardHeight, setCardHeight] = useState(280);
   const cardRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -81,6 +73,19 @@ export default function WalkthroughModal({
     setSteps(available);
     setStepIndex(Math.min(initialStepIndex, available.length - 1));
   }, [isOpen, walkthrough, initialStepIndex]);
+
+  useLayoutEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [stepIndex]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cardRef.current?.focus();
+    return () => {
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const updateSize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
@@ -150,7 +155,23 @@ export default function WalkthroughModal({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onClose();
+      }
+      else if (e.key === "Tab") {
+        const controls = cardRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), [tabindex='0']");
+        const first = controls?.[0];
+        const last = controls?.[controls.length - 1];
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === cardRef.current)) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
       else if (e.key === "ArrowRight") {
         e.preventDefault();
         goNext();
@@ -159,15 +180,15 @@ export default function WalkthroughModal({
         goBack();
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [isOpen, goNext, goBack, onClose]);
 
   if (!isOpen || !currentStep || typeof document === "undefined") return null;
 
   const isMobile = viewport.width < MOBILE_BREAKPOINT;
   const cardWidth = isMobile ? viewport.width - PADDING * 2 : Math.min(420, viewport.width - PADDING * 2);
-  const maxCardHeight = Math.round(viewport.height * (isMobile ? 0.55 : 0.8));
+  const maxCardHeight = Math.min(viewport.height - PADDING * 2, Math.round(viewport.height * (isMobile ? 0.65 : 0.85)));
   const effectiveCardHeight = Math.min(cardHeight, maxCardHeight);
 
   const computeCardPosition = (): { top: number; left: number } => {
@@ -212,7 +233,7 @@ export default function WalkthroughModal({
     const roomBelow = viewport.height - targetRect.bottom;
     return {
       top: roomBelow >= targetRect.top ? viewport.height - effectiveCardHeight - PADDING : PADDING,
-      left: centeredLeft,
+      left: targetRect.left >= viewport.width - targetRect.right ? PADDING : viewport.width - cardWidth - PADDING,
     };
   };
 
@@ -247,7 +268,7 @@ export default function WalkthroughModal({
       {spotlight && (
         <div
           data-testid="walkthrough-spotlight"
-          className="absolute pointer-events-none transition-all duration-300 rounded-2xl ring-4 ring-cyan-400/80 shadow-[0_0_25px_rgba(6,182,212,0.6)]"
+          className="absolute pointer-events-none transition-all duration-300 rounded-2xl ring-2 ring-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.15)]"
           style={{ top: spotlight.y, left: spotlight.x, width: spotlight.width, height: spotlight.height }}
         />
       )}
@@ -257,15 +278,17 @@ export default function WalkthroughModal({
         role="dialog"
         aria-modal="true"
         aria-label={`${walkthrough.toolName} walkthrough`}
-        className="absolute z-10 flex flex-col rounded-2xl border-2 border-cyan-500/50 bg-white text-slate-900 shadow-2xl transition-[top,left] duration-200 dark:bg-[#0B0F19] dark:text-white"
+        tabIndex={-1}
+        className="absolute z-10 flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl transition-[top,left] duration-200 dark:border-white/15 dark:bg-[#0B0F19] dark:text-neutral-100"
         style={{ top: position.top, left: position.left, width: cardWidth, maxHeight: maxCardHeight }}
       >
         {/* Header */}
         <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 pt-3 pb-2.5 dark:border-white/10 shrink-0">
           <div className="flex min-w-0 items-center gap-1.5 flex-wrap">
-            <span className="rounded-full border border-cyan-600/30 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-cyan-700 dark:border-cyan-500/40 dark:bg-cyan-500/20 dark:text-cyan-300">
+            <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs font-bold text-blue-800 dark:text-blue-300">
               Step {stepIndex + 1} of {steps.length}
             </span>
+            <span className="text-xs font-semibold text-[var(--text-secondary)]">{walkthrough.toolName}</span>
             {currentStep.category && (
               <span className="text-[11px] font-bold text-slate-500 dark:text-neutral-400">{currentStep.category}</span>
             )}
@@ -274,29 +297,29 @@ export default function WalkthroughModal({
             type="button"
             onClick={onClose}
             aria-label="Close walkthrough"
-            className="rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white cursor-pointer"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body (scrolls if the step has a lot of detail) */}
-        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-4 py-3">
+        <div ref={bodyRef} role="region" aria-label="Step details" tabIndex={0} className="flex min-h-0 flex-col gap-4 overflow-y-auto overscroll-contain px-4 py-4" aria-live="polite" aria-atomic="true">
           <div>
             <h3 className="mb-1 text-base font-black tracking-tight sm:text-lg">{currentStep.title}</h3>
-            <p className="text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-neutral-300">{currentStep.description}</p>
+            <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{currentStep.description}</p>
           </div>
 
           {currentStep.details && currentStep.details.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 dark:border-white/10 dark:bg-white/5">
-              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+            <div className="rounded-xl bg-blue-500/[0.04] p-3 dark:bg-blue-500/[0.06]">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)]">
                 <MousePointerClick className="h-3.5 w-3.5" />
                 What each control does
               </div>
-              <ul className="space-y-1.5">
+              <ul className="space-y-3">
                 {currentStep.details.map((detail) => (
-                  <li key={detail.label} className="text-xs leading-snug text-slate-700 dark:text-neutral-300">
-                    <strong className="font-bold text-slate-900 dark:text-white">{detail.label}</strong>
+                  <li key={detail.label} className="text-sm leading-relaxed text-[var(--text-secondary)]">
+                    <strong className="font-semibold text-[var(--text-primary)]">{detail.label}</strong>
                     {" — "}
                     {detail.text}
                   </li>
@@ -306,19 +329,19 @@ export default function WalkthroughModal({
           )}
 
           {currentStep.actionHint && (
-            <div className="flex items-start gap-2 rounded-xl border border-cyan-600/25 bg-cyan-500/10 p-2.5 text-xs text-cyan-900 dark:border-cyan-500/25 dark:text-cyan-100">
-              <Crosshair className="mt-0.5 h-4 w-4 shrink-0 text-cyan-600 dark:text-cyan-400" />
+            <div className="flex items-start gap-2 rounded-xl bg-blue-500/[0.06] p-3 text-sm text-[var(--text-secondary)]">
+              <Crosshair className="mt-0.5 h-4 w-4 shrink-0 text-blue-700 dark:text-blue-300" />
               <span>
-                <strong className="font-bold">Try it:</strong> {currentStep.actionHint}
+                <strong className="font-bold">After the guide:</strong> {currentStep.actionHint}
               </span>
             </div>
           )}
 
           {currentStep.tip && (
-            <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-900 dark:border-amber-500/25 dark:text-amber-100">
+            <div className="flex items-start gap-2 rounded-xl bg-amber-500/[0.06] p-3 text-sm text-[var(--text-secondary)]">
               <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <span>
-                <strong className="font-bold">Coach tip:</strong> {currentStep.tip}
+                <strong className="font-bold">Keep in mind:</strong> {currentStep.tip}
               </span>
             </div>
           )}
@@ -326,30 +349,23 @@ export default function WalkthroughModal({
 
         {/* Footer */}
         <div className="flex shrink-0 flex-col gap-2 border-t border-slate-200 px-4 pt-2 pb-3 dark:border-white/10">
-          <div className="flex items-center justify-center gap-1" aria-hidden="true">
-            {steps.map((step, i) => (
-              <span
-                key={step.id}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === stepIndex ? "w-4 bg-cyan-500" : i < stepIndex ? "w-1.5 bg-cyan-500/50" : "w-1.5 bg-slate-300 dark:bg-white/15"
-                }`}
-              />
-            ))}
+          <div className="h-1 w-full overflow-hidden rounded-full bg-blue-500/10" aria-hidden="true">
+            <div className="h-full rounded-full bg-blue-600 dark:bg-blue-400" style={{ width: `${((stepIndex + 1) / steps.length) * 100}%` }} />
           </div>
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-1 text-xs font-bold text-slate-500 transition-colors hover:text-slate-900 dark:text-neutral-400 dark:hover:text-white cursor-pointer"
+              className="min-h-11 px-1 text-sm font-semibold text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)] cursor-pointer"
             >
-              Skip tour
+              Close guide
             </button>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={stepIndex === 0}
                 onClick={goBack}
-                className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-200 disabled:pointer-events-none disabled:opacity-30 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white cursor-pointer"
+                className="flex min-h-11 items-center gap-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-semibold text-neutral-800 transition-all hover:bg-neutral-100 disabled:pointer-events-none disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10 cursor-pointer"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
                 <span>Back</span>
@@ -358,16 +374,16 @@ export default function WalkthroughModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex items-center gap-1 rounded-xl bg-emerald-500 px-4 py-1.5 text-xs font-black text-black shadow-lg shadow-emerald-500/30 transition-all hover:bg-emerald-400 active:scale-95 cursor-pointer"
+                  className="flex min-h-11 items-center gap-1 rounded-xl bg-[#256c03] px-4 py-2 text-sm font-bold text-[#fff] transition-all hover:bg-[#1c5302] active:scale-95 cursor-pointer"
                 >
                   <CheckCircle className="h-3.5 w-3.5 stroke-[3]" />
-                  <span>Got it!</span>
+                  <span>Done</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={goNext}
-                  className="flex items-center gap-1 rounded-xl bg-cyan-500 px-4 py-1.5 text-xs font-black text-black shadow-lg shadow-cyan-500/30 transition-all hover:bg-cyan-400 active:scale-95 cursor-pointer"
+                  className="flex min-h-11 items-center gap-1 rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-[#fff] transition-all hover:bg-blue-800 active:scale-95 cursor-pointer"
                 >
                   <span>Next</span>
                   <ChevronRight className="h-3.5 w-3.5 stroke-[3]" />

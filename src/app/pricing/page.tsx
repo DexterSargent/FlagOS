@@ -398,7 +398,7 @@ export default function PricingPage() {
     },
     {
       q: "Can an independent team join a league later without losing playbooks or stats?",
-      a: "Absolutely. Player stats and team playbooks are portable throughout FlagOS. If a team begins as an independent squad and subsequently enters a FlagOS league, their roster and playbooks seamlessly link to their new league division.",
+      a: "Yes. An independent team can join a FlagOS league without starting over. Its roster, playbooks and recorded player stats stay with the team.",
     },
     {
       q: "Do parents, fans, or spectators need a subscription to view games?",
@@ -1373,7 +1373,7 @@ export default function PricingPage() {
             <div>
               <h3 className="text-lg font-bold text-neutral-950 dark:text-white">Run Multiple Leagues or Independent Teams</h3>
               <p className="text-neutral-600 dark:text-neutral-400 text-xs md:text-sm mt-1 leading-relaxed">
-                Whether you commission multiple recreational leagues, host weekend tournaments, or coach separate travel squads, you can manage everything under one login. Seamlessly switch between leagues and clubs right from your top menu.
+                Run multiple leagues, weekend tournaments or separate travel teams under one login. Switch between your leagues and teams from the top menu.
               </p>
             </div>
           </div>

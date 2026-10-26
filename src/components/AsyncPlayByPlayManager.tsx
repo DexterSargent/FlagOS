@@ -1561,7 +1561,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
                           { id: "PBU", label: "Pass Breakup (PBU)" },
                           { id: "Interception", label: "Interception" },
                           { id: "Sack", label: "Sack" },
-                          { id: "FFL", label: "Flag Guarding / FFL" },
+                          { id: "FFL", label: "Flag For Loss (FFL)" },
                         ] satisfies { id: PlayOutcome; label: string }[]).map((opt) => (
                           <button
                             key={opt.id}
@@ -1583,7 +1583,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
                         {([
                           { id: "Gain", label: "Positive Gain" },
                           { id: "Loss", label: "Loss of Yards" },
-                          { id: "FFL", label: "Flag Guarding / FFL" },
+                          { id: "FFL", label: "Flag For Loss (FFL)" },
                         ] satisfies { id: PlayOutcome; label: string }[]).map((opt) => (
                           <button
                             key={opt.id}

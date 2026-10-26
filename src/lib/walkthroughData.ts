@@ -2144,8 +2144,8 @@ export const ASYNC_STAT_KEEPER_WALKTHROUGH: ToolWalkthrough = {
           "text": "Credit a quarterback sack."
         },
         {
-          "label": "Flag Guarding / FFL",
-          "text": "Record the shown flag-related loss outcome."
+          "label": "Flag For Loss (FFL)",
+          "text": "Record a flag pull behind the line of scrimmage. This is a defensive stat, not a flag-guarding penalty."
         },
         {
           "label": "Positive Gain / Loss of Yards",

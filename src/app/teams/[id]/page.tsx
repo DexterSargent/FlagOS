@@ -1292,6 +1292,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   setStaffActionError("");
                   setStaffActionSuccess("");
                 }}
+                aria-label="Close team staff"
                 className="rounded-lg p-1.5 text-neutral-400 hover:bg-white/10 hover:text-white"
               >
                 <X className="h-5 w-5" />

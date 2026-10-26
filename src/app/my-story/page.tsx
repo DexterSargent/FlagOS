@@ -115,7 +115,7 @@ const STORY_SECTIONS: StorySection[] = [
     id: "coaching",
     number: "04",
     era: "Reading Week 2024",
-    location: "OWIFA Championship Circuit",
+    location: "OWIFA Championship",
     title: "Coaching York Women's Flag Football",
     suggestedPhoto: "York Women's Flag Football huddle, playoff win celebration, or whiteboard installation",
     photoPromptLabel: "York Women's Flag Football & 17-8 Playoff Win",

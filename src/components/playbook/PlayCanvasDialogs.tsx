@@ -38,7 +38,7 @@ export function SaveRoutePresetDialog({
                 <PageGuideButton />
                 <h3 className="text-sm font-black uppercase text-white">Save Route Preset</h3>
                 <span className="text-[10px] text-neutral-400 font-mono">
-                  {customPresetCount}/20 Custom Presets for this Franchise
+                  {customPresetCount}/20 custom presets for this team
                 </span>
               </div>
             </div>

@@ -56,7 +56,7 @@ describe("Walkthrough System", () => {
     expect(screen.getByText("Build and teach a play")).toBeInTheDocument();
     toolbar.remove();
 
-    fireEvent.click(screen.getByRole("button", { name: /Skip tour/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Close guide/i }));
     expect(handleClose).toHaveBeenCalled();
   });
 
@@ -111,5 +111,59 @@ describe("Walkthrough System", () => {
       </PageGuideProvider>
     );
     expect(screen.queryByTestId("page-guide-button")).not.toBeInTheDocument();
+  });
+
+  it("keeps keyboard focus in the guide, closes only the guide with Escape and restores focus", () => {
+    const onClose = vi.fn();
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const { rerender } = render(<WalkthroughModal walkthrough={PLAY_DESIGNER_WALKTHROUGH} isOpen onClose={onClose} />);
+    expect(screen.getByRole("dialog")).toHaveFocus();
+    const next = screen.getByRole("button", { name: "Done" });
+    next.focus();
+    fireEvent.keyDown(next, { key: "Tab" });
+    expect(screen.getByRole("button", { name: "Close walkthrough" })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: "Tab", shiftKey: true });
+    expect(next).toHaveFocus();
+    const underlyingEscape = vi.fn();
+    window.addEventListener("keydown", underlyingEscape);
+    fireEvent.keyDown(next, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(underlyingEscape).not.toHaveBeenCalled();
+    window.removeEventListener("keydown", underlyingEscape);
+    rerender(<WalkthroughModal walkthrough={PLAY_DESIGNER_WALKTHROUGH} isOpen={false} onClose={onClose} />);
+    expect(trigger).toHaveFocus();
+    trigger.remove();
+  });
+
+  it("omits detail controls that exist but are hidden", () => {
+    const hidden = document.createElement("button");
+    hidden.id = "hidden-control";
+    hidden.style.display = "none";
+    document.body.appendChild(hidden);
+    const steps = getAvailableSteps([{
+      id: "overview", title: "Overview", description: "Help", targetSelector: "",
+      details: [{ label: "Hidden action", text: "Not available", requiresSelector: "#hidden-control" }],
+    }]);
+    expect(steps[0].details).toEqual([]);
+    hidden.remove();
+  });
+
+  it("resets scroll between steps and keeps progress bounded for long guides", () => {
+    const walkthrough: ToolWalkthrough = {
+      id: "long-guide", toolName: "Long Guide", subtitle: "Test",
+      steps: Array.from({ length: 50 }, (_, i) => ({
+        id: `step-${i}`, title: `Title ${i}`, description: `Description ${i}`, targetSelector: "",
+        details: [{ label: "Control", text: "What it does" }],
+      })),
+    };
+    render(<WalkthroughModal walkthrough={walkthrough} isOpen onClose={vi.fn()} />);
+    const body = screen.getByText(/What it does/).closest('[aria-live="polite"]')!;
+    body.scrollTop = 200;
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(body.scrollTop).toBe(0);
+    expect(screen.getByText("Step 2 of 50")).toBeInTheDocument();
+    expect(screen.getByText("Long Guide")).toBeInTheDocument();
   });
 });

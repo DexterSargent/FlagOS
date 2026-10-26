@@ -5,7 +5,7 @@ const step = (id: string, title: string, description: string, details: [string, 
   details: details.map(([label, text]) => ({ label, text })),
 });
 const overview = (id: string, title: string, description: string) => step(id, title, description, [], "");
-const guide = (id: string, toolName: string, steps: WalkthroughStep[]): ToolWalkthrough => ({ id, toolName, subtitle: "A friendly guide to every section and control", steps });
+const guide = (id: string, toolName: string, steps: WalkthroughStep[]): ToolWalkthrough => ({ id, toolName, subtitle: "Understand the settings, review your changes and know what happens when you save.", steps });
 
 const settingsNavigation = step("settings-navigation", "Find your settings", "Choose a tab, then reopen Guide for that tab's own tour. The tour never saves or changes your settings.", [
   ["League Branding", "Edit identity, privacy, colours, venue and public registration information."],
@@ -19,8 +19,10 @@ const help = ["Info icons", "Open the small information icons beside field label
 export const LEAGUE_BRANDING_GUIDE = guide("league-settings-branding", "League Branding", [
   overview("branding-overview", "Make this league your own", "Branding changes are drafts until you apply them. Scroll through the panel to review every section before saving."), settingsNavigation,
   step("settings-preview", "Preview your identity", "The site-wide preview shows how your name, shortcode, season, logo and venue will look. It is not a separate save button."),
-  step("settings-privacy", "Choose who can discover you", "Directory visibility controls discovery, not who can edit league records.", [
-    ["Public League", "List the league in the public directory so visitors can find it."], ["Private League", "Hide it from the directory; people with its direct URL can still visit."],
+  step("settings-privacy", "Choose who can find and view your league", "Listing and access are different choices. None of these options gives visitors permission to edit league records.", [
+    ["Listed Publicly", "Anyone can find the league in the directory and open its public hub. Free-agent search also requires accepting free agents."],
+    ["Unlisted (Link Only)", "Keep the league out of the directory. People with the link must sign in to view it."],
+    ["Private (Members Only)", "Only league admins, coaches and rostered players can open it. A shared link does not grant membership."],
     ["Direct Access URL", "Open the displayed league link to check the public destination."], ["Copy URL", "Copy the direct link; Copied! confirms it reached your clipboard."], help,
   ]),
   step("settings-identity", "League identity", "Set the names and badge used across your league.", [
@@ -41,6 +43,17 @@ export const LEAGUE_BRANDING_GUIDE = guide("league-settings-branding", "League B
     ["Team Registration Fee ($)", "Enter the team price, or leave it blank if undisclosed."],
     ["Free Agent / Individual Fee ($)", "Enter the individual price, or leave it blank if undisclosed."],
     ["Included Features & Perks (Comma-Separated)", "Separate perks with commas, such as referees, jerseys or trophies."], help,
+  ]),
+  step("settings-player-info", "Help players decide whether to join", "These details appear on your league's public information and help players find a suitable league.", [
+    ["City / Area and public contact", "Tell players where you play and how to ask about joining. Use contact details you are comfortable sharing."],
+    ["Game days, times, skill level and divisions", "Describe who the league is for and when games usually happen."],
+    ["Registration deadline and season dates", "Keep these dates current so players know whether registration is still open."],
+    ["Accepting free agents", "Choose whether to appear in free-agent search. The league must also be listed publicly."],
+  ]),
+  step("settings-venues", "Save your playing fields", "Add the fields you use so players can find game locations.", [
+    ["Add Venue", "Add a row, then enter the field name, address and any directions or parking notes."],
+    ["Venue name", "Use the same name in scheduled games so their location can show the saved address and notes."],
+    ["Remove venue", "Remove the row from this draft. Apply League Branding saves the change."],
   ]),
   step("settings-branding-save", "Apply your branding", "Review your preview and finish here.", [
     ["Apply League Branding / Apply", "Save your branding and current rule drafts, then close settings. Saving... means the request is running."],
@@ -90,16 +103,16 @@ export const LEAGUE_RULES_VIEW_GUIDE = guide("league-settings-rules-view", "Offi
 ]);
 
 export const LEAGUE_SUBSCRIPTION_GUIDE = guide("league-settings-subscription", "Subscription & Teams", [
-  overview("subscription-overview", "Manage capacity and licensing", "Review your FlagOS plan before changing it. Team capacity and actual team records are related, but are not the same thing."), settingsNavigation,
+  overview("subscription-overview", "Manage your plan and teams", "Team slots are your plan's capacity; team records are the teams actually using it. Review both before making changes. Complimentary accounts are not charged."), settingsNavigation,
   step("settings-subscription-summary", "Current subscription", "Review Active Subscription, base licensing, team fees, total monthly cost and the next renewal. These are read-only summaries."),
   step("settings-slots", "Adjust paid team slots", "Choose capacity from 2 to 32 teams and review the recalculated monthly total.", [
     ["Decrease team slot", "The minus button reduces the proposed slot count by one."], ["Increase team slot", "The plus button increases it by one."],
     ["Team slot slider", "Drag to choose a proposed capacity between 2 and 32 teams; the monthly price updates as you go."],
-    ["Confirm Teams", "Appears when the count changes; apply the proposed capacity. The new fee starts at renewal."],
+    ["Confirm Teams", "Save the proposed capacity. For paid plans, the revised monthly amount starts at renewal; this does not record a payment."],
   ]),
   step("settings-add-team", "Add an actual team", "Create a team record and increase the subscription together.", [
     ["Team name", "Type a name in the field, or leave it blank for the suggested Team number."],
-    ["Add Team to Subscription (+$20/mo)", "Create the team and increase paid capacity by one; wait for Adding... to finish."],
+    ["Add Team to Subscription (+$20/mo)", "Create the team and add one slot. The listed rate is $20 per month per slot; complimentary accounts remain free. Wait for Adding... to finish."],
   ]),
   step("settings-current-teams", "Current league teams", "Review the real team records included in your league.", [
     ["Remove (-$20/mo)", "Ask to remove this team and reduce capacity. Read the confirmation before continuing; the fee change applies at the next payment."],
@@ -127,7 +140,7 @@ export const LEAGUE_SETTINGS_GUIDES = { branding: LEAGUE_BRANDING_GUIDE, rules: 
 
 const consoleNavigation = step("admin-navigation", "Move around the business console", "These controls apply across the console. Each tab has its own Guide.", [
   ["FlagOS home", "Return to the site homepage."], ["Refresh", "Reload customer and business data."], ["New team / league", "Open pricing to start a new subscription."],
-  ["Sign out", "Sign out of your owner account."], ["Overview / Customers / Finance / Users / Activity", "Switch between business summaries, customer management, bookkeeping, accounts and the audit trail."],
+  ["Sign out", "Sign out of your owner account."], ["Overview / Customers / Finance / Users / Activity / Health", "Switch between business summaries, customers, bookkeeping, accounts, the audit trail and maintenance checks."],
 ], "admin-header");
 export const ADMIN_OVERVIEW_GUIDE = guide("platform-admin-overview", "Business Overview", [
   overview("admin-overview-intro", "Your business at a glance", "This owner-only console brings together customer records and bookkeeping. Billed recurring revenue and money actually recorded in the ledger are different measures."), consoleNavigation,

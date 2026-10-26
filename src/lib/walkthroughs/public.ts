@@ -418,7 +418,7 @@ export const TEAM_SUBSCRIPTION_WALKTHROUGH: ToolWalkthrough = {
     {
       "id": "subscribe-team-subscribe-team-identity",
       "targetSelector": "[data-tour=\"subscribe-team-identity\"]",
-      "title": "Name and capacity",
+      "title": "Name your team",
       "description": "Enter the details shown on the new portal.",
       "details": [
         {
@@ -499,15 +499,15 @@ export const TEAM_SUBSCRIPTION_WALKTHROUGH: ToolWalkthrough = {
       "id": "subscribe-team-subscribe-team-confirm",
       "targetSelector": "[data-tour=\"subscribe-team-confirm\"]",
       "title": "Review and confirm",
-      "description": "Check the monthly total and any error message before submitting.",
+      "description": "Review the team details and any error before creating the portal. Owner setup is complimentary.",
       "details": [
         {
           "label": "Total Due Monthly",
-          "text": "Shows the subscription total for your selection."
+          "text": "Shows the plan's listed monthly value. The complimentary owner account is not charged."
         },
         {
-          "label": "Confirm & Pay $40/mo",
-          "text": "Creates the portal through the currently available preview setup. The button is disabled while it is being created."
+          "label": "Create Team · Complimentary",
+          "text": "The owner account can create a complimentary team. No card is charged. Other visitors see a development notice rather than creating a team."
         }
       ]
     }
@@ -601,15 +601,15 @@ export const LEAGUE_SUBSCRIPTION_WALKTHROUGH: ToolWalkthrough = {
       "id": "subscribe-league-subscribe-league-confirm",
       "targetSelector": "[data-tour=\"subscribe-league-confirm\"]",
       "title": "Review and confirm",
-      "description": "Check the monthly total and any error message before submitting.",
+      "description": "Review the league details, team count and any error before creating the portal. Owner setup is complimentary.",
       "details": [
         {
           "label": "Total Due Monthly",
-          "text": "Shows the subscription total for your selection."
+          "text": "Shows the listed value of the base plan plus team slots. The complimentary owner account is not charged."
         },
         {
-          "label": "Confirm & Pay",
-          "text": "Creates the portal through the currently available preview setup. The button is disabled while it is being created."
+          "label": "Create League · Complimentary",
+          "text": "The owner account can create a complimentary league and its teams. No card is charged. Other visitors see a development notice rather than creating a league."
         }
       ]
     }

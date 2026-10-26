@@ -315,7 +315,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.getByText("League Admin Access Restricted")).toBeInTheDocument();
       expect(screen.getByText("Private Team Playbook")).toBeInTheDocument();
       expect(
-        screen.getByText(/To safeguard competitive integrity and prevent tactical advantages/i)
+        screen.getByText(/League admin access does not include team playbooks/i)
       ).toBeInTheDocument();
     });
   });
@@ -336,7 +336,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
       expect(screen.getByText("Coach Access Restricted")).toBeInTheDocument();
       expect(screen.getByText("Opponent Playbook Confidential")).toBeInTheDocument();
       expect(
-        screen.getByText(/As an authorized Team Coach or Manager, you only have editing and management access to your own franchise's playbook/i)
+        screen.getByText(/You can manage your own team's playbooks/i)
       ).toBeInTheDocument();
     });
   });

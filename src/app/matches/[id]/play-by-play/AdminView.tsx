@@ -1866,7 +1866,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
         {/* WIZARD: PLAY TYPE */}
         {step === 'PLAY_TYPE' && (
-          <div data-tour="play-type-selector" className="w-full flex-1 flex flex-col min-h-0">
+          <div data-tour={isBallSpotted ? "play-type-selector" : undefined} className="w-full flex-1 flex flex-col min-h-0">
             <PlayEntryWizard
               step="type"
               variant="sync"
@@ -1927,7 +1927,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                       Play Outcome: {outcome === "Missed" ? "Incomplete" : outcome} · Change
                     </button>
                   )}
-                  {isOutcomeOpen && <div className={`grid ${playType === 'Pass' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'} gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl shrink-0 relative z-10 w-full max-w-3xl mx-auto`}>
+                  {isOutcomeOpen && <div data-tour="play-outcome-selector" className={`grid ${playType === 'Pass' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'} gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl shrink-0 relative z-10 w-full max-w-3xl mx-auto`}>
                   {playType === 'Pass' && ['Complete', 'Incomplete', 'Interception', 'Sack'].map((res) => {
                     const isActive = (res === 'Incomplete' && (outcome === 'Incomplete_Menu' || outcome === 'PBU' || outcome === 'Missed')) || outcome === res;
                     return (
@@ -1969,7 +1969,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     </button>
                   ))}
                   </div>}
-                  <div className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:450px)]:gap-1 overflow-y-auto pr-1 w-full max-w-3xl mx-auto">
+                  <div data-tour={outcome && !isOutcomeOpen ? "play-player-selectors" : undefined} className="flex-1 min-h-0 flex flex-col gap-2.5 [@media(max-height:450px)]:gap-1 overflow-y-auto pr-1 w-full max-w-3xl mx-auto">
                     <div className={`flex flex-col gap-2.5 min-w-0 ${playType === 'Pass' && outcome === 'Complete' && qbRunner && receiver && !isQbOpen && !isReceiverOpen ? '[@media(max-height:450px)]:grid [@media(max-height:450px)]:grid-cols-2 [@media(max-height:450px)]:gap-1.5' : ''}`}>
                     {/* SECTION 1: QUARTERBACK / RUNNER */}
                       {qbRunner && !isQbOpen ? (

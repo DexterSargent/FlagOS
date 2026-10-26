@@ -56,4 +56,23 @@ describe("League Settings page guides", () => {
       for (const step of guide.steps) expect(step.details?.length ?? 0).toBeLessThanOrEqual(8);
     }
   });
+
+  it("covers every visible settings section in its tab guide", () => {
+    const { container } = render(<Fixture />);
+    for (const [label, key] of [["League Branding", "branding"], ["League Rules", "rules"], ["Subscription & Teams", "subscription"], ["Season & Archival", "season"]] as const) {
+      fireEvent.click(screen.getByRole("button", { name: label }));
+      const selectors = LEAGUE_SETTINGS_GUIDES[key].steps.map((step) => step.targetSelector);
+      for (const section of container.querySelectorAll("[data-tour]")) {
+        expect(selectors, `${key}: ${section.getAttribute("data-tour")}`).toContain(`[data-tour="${section.getAttribute("data-tour")}"]`);
+      }
+    }
+  });
+
+  it("explains all three privacy choices and the difference between links and membership", () => {
+    const privacy = LEAGUE_SETTINGS_GUIDES.branding.steps.find((step) => step.id === "settings-privacy")!;
+    expect(privacy.details?.map((detail) => detail.label)).toEqual(expect.arrayContaining([
+      "Listed Publicly", "Unlisted (Link Only)", "Private (Members Only)",
+    ]));
+    expect(privacy.details?.find((detail) => detail.label === "Private (Members Only)")?.text).toMatch(/does not grant membership/);
+  });
 });

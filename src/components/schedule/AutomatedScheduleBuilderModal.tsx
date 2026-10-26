@@ -204,7 +204,7 @@ export default function AutomatedScheduleBuilderModal({
     writeBuilderPrefs({ weeksCount, gameDays, venues, timeSlots });
     setPhase("building");
     setBuildProgress(5);
-    setCurrentStepText("Analyzing franchise roster and calculating round-robin matrix...");
+    setCurrentStepText("Building a round-robin schedule for your teams...");
     setGeneratedStream([]);
 
     const createdMatches: any[] = [];
@@ -361,7 +361,7 @@ export default function AutomatedScheduleBuilderModal({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
-      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div role="dialog" aria-modal="true" aria-labelledby="schedule-builder-title" className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div data-tour="builder-header" className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-3">
@@ -372,7 +372,7 @@ export default function AutomatedScheduleBuilderModal({
               <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
                 <span className="normal-case">FlagOS</span> Schedule Setup
               </span>
-              <h3 className="text-base sm:text-xl md:text-2xl font-black text-white uppercase tracking-tight">
+              <h3 id="schedule-builder-title" className="text-base sm:text-xl md:text-2xl font-black text-white uppercase tracking-tight">
                 Build Schedule
               </h3>
             </div>
@@ -757,12 +757,12 @@ export default function AutomatedScheduleBuilderModal({
 
               {/* Overwrite Existing Schedule Warning (if matches exist) */}
               {existingMatchesCount > 0 && (
-                <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-500/50 text-rose-200 text-xs space-y-2 shadow-lg shadow-rose-950/40">
-                  <div className="flex items-center gap-2 font-black text-rose-400 uppercase tracking-wider text-xs">
-                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <div className="p-4 rounded-2xl bg-[var(--tint-danger)] border border-[var(--tint-danger-border)] text-[var(--text-danger)] text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-[var(--text-danger)] text-xs">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>Regenerating will delete your existing schedule</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed text-rose-200/90">
+                  <p className="text-xs leading-relaxed text-[var(--text-primary)]">
                     Generating a new schedule will delete your current <strong>{existingMatchesCount} games</strong>.
                     A single backup copy will be archived for <strong>24 hours</strong> so you can restore it if done accidentally.
                     If you regenerate again later, the previous backup is permanently replaced and a fresh 24-hour countdown starts.

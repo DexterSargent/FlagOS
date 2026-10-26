@@ -46,6 +46,7 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { isRealTeam } from "@/components/TeamAssets";
 import { getSandboxTeams } from "@/lib/demoSandbox";
+import { getReadableTextColor } from "@/lib/teamColors";
 
 /** Blank, built-in ("/..."), uploaded data images and web addresses are all fine. */
 function isAcceptableLogoUrl(value: string | undefined): boolean {
@@ -413,7 +414,7 @@ export default function LeagueCustomizerContent() {
                 </h2>
                 <p className="hidden sm:block text-xs text-neutral-400">
                   {isLeagueAdmin
-                    ? "Manage league branding, operations, and official gameplay rules site-wide"
+                    ? "Set up your league, rules, teams and seasons"
                     : "View official league regulations"}
                 </p>
               </div>
@@ -676,7 +677,7 @@ export default function LeagueCustomizerContent() {
                     type="text"
                     readOnly
                     value={typeof window !== "undefined" ? `${window.location.origin}/league/${activeLeagueId}` : `/league/${activeLeagueId}`}
-                    className="flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-neutral-300 select-all"
+                    className="min-w-0 flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-neutral-300 select-all"
                   />
                   <button
                     type="button"
@@ -785,7 +786,7 @@ export default function LeagueCustomizerContent() {
                     type="text"
                     value={tagline}
                     onChange={(e) => setTagline(e.target.value)}
-                    placeholder="e.g. The Premier 7v7 Non-Contact Flag Circuit"
+                    placeholder="e.g. Sunday 7v7 flag football in Toronto"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-amber-500 text-white text-xs outline-none transition-colors"
                   />
                 </div>
@@ -941,7 +942,7 @@ export default function LeagueCustomizerContent() {
                     className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm shadow-lg transition-transform hover:scale-105"
                     style={{
                       backgroundColor: primaryColor,
-                      color: "#ffffff",
+                      color: getReadableTextColor(primaryColor, "#ffffff"),
                       boxShadow: `0 4px 20px ${primaryColor}40`,
                     }}
                   >
@@ -956,7 +957,7 @@ export default function LeagueCustomizerContent() {
                         className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
                         style={{
                           backgroundColor: `${accentColor}20`,
-                          color: accentColor,
+                          color: "var(--text-primary)",
                           borderColor: `${accentColor}40`,
                         }}
                       >
@@ -1313,7 +1314,7 @@ export default function LeagueCustomizerContent() {
                         : "bg-black/40 border-white/10 text-neutral-400"
                         } ${isLeagueAdmin ? "cursor-pointer hover:text-white hover:border-white/20" : "cursor-default opacity-85"}`}
                     >
-                      <span className="text-base font-black font-mono tracking-tight text-white">
+                      <span className="text-base font-black font-mono tracking-tight text-[var(--text-primary)]">
                         {count}v{count}
                       </span>
                       <span className="text-[10px] uppercase font-bold text-neutral-400">
@@ -1364,7 +1365,7 @@ export default function LeagueCustomizerContent() {
                         : "bg-black/40 border-white/10 text-neutral-400"
                         } ${isLeagueAdmin ? "cursor-pointer hover:border-white/20" : "cursor-default"}`}
                     >
-                      <div className="text-xs font-black uppercase text-white">Halves</div>
+                      <div className="text-xs font-black uppercase text-[var(--text-primary)]">Halves</div>
                       <div className="text-[10px] text-neutral-400 mt-0.5">Traditional 1st & 2nd Half</div>
                     </button>
 
@@ -1377,7 +1378,7 @@ export default function LeagueCustomizerContent() {
                         : "bg-black/40 border-white/10 text-neutral-400"
                         } ${isLeagueAdmin ? "cursor-pointer hover:border-white/20" : "cursor-default"}`}
                     >
-                      <div className="text-xs font-black uppercase text-white">Quarters</div>
+                      <div className="text-xs font-black uppercase text-[var(--text-primary)]">Quarters</div>
                       <div className="text-[10px] text-neutral-400 mt-0.5">4 quarters with short breaks between</div>
                     </button>
                   </div>
@@ -2140,7 +2141,7 @@ export default function LeagueCustomizerContent() {
                   </span>
                 </div>
                 <div className="p-3 rounded-xl bg-black/30 border border-white/5 text-[11px] text-neutral-300 leading-relaxed">
-                  Every active franchise must maintain a minimum of <strong>{rules.minRosterSize} players</strong> and is capped at <strong>{rules.maxRosterSize} players</strong> on their registered roster.
+                  Each team needs at least <strong>{rules.minRosterSize} players</strong> and can register up to <strong>{rules.maxRosterSize} players</strong>.
                 </div>
               </div>
 
@@ -2278,7 +2279,7 @@ export default function LeagueCustomizerContent() {
                 <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
                   <div className="text-[10px] uppercase font-bold text-neutral-400">Base Platform Fee</div>
                   <div className="text-base font-black text-white font-mono">$40.00 / mo</div>
-                  <div className="text-[10px] text-neutral-500">Core circuit & stats engine</div>
+                  <div className="text-[10px] text-neutral-500">Scheduling, standings and league stats</div>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
@@ -2382,8 +2383,8 @@ export default function LeagueCustomizerContent() {
                     className="w-full accent-emerald-400 cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
-                    <span>2 teams ($70/mo)</span>
-                    <span>32 teams ($520/mo)</span>
+                    <span>2 teams ($80/mo)</span>
+                    <span>32 teams ($680/mo)</span>
                   </div>
                 </div>
 
@@ -2409,7 +2410,7 @@ export default function LeagueCustomizerContent() {
                   <span>Add New Team to Subscription (+ $20/mo)</span>
                 </h4>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Provisions a new franchise slot and team record immediately. Monthly cost increases by $20 starting at your next renewal.
+                  Create a team and add a team slot. For paid plans, the monthly total increases by $20 at your next renewal.
                 </p>
               </div>
 
@@ -2443,7 +2444,7 @@ export default function LeagueCustomizerContent() {
                     <span>Current League Teams ({subTeamsList.length})</span>
                   </h4>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Removing a team deletes its franchise and automatically decrements your subscription by $20/mo at your next monthly payment.
+                    Removing a team deletes its team record and reduces paid capacity by one. The $20 monthly reduction applies at your next renewal.
                   </p>
                 </div>
               </div>
@@ -2461,8 +2462,8 @@ export default function LeagueCustomizerContent() {
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-black font-mono text-white shrink-0 tracking-tighter ${(t.shortcode?.length ?? 0) > 3 ? "text-[10px]" : "text-xs"}`}
-                          style={{ backgroundColor: t.primaryColor || "#3ca505" }}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-black font-mono shrink-0 tracking-tighter ${(t.shortcode?.length ?? 0) > 3 ? "text-[10px]" : "text-xs"}`}
+                          style={{ backgroundColor: t.primaryColor || "#3ca505", color: getReadableTextColor(t.primaryColor || "#3ca505", "#ffffff") }}
                         >
                           {t.shortcode ? t.shortcode.slice(0, 4) : t.name.slice(0, 2).toUpperCase()}
                         </div>
@@ -2524,7 +2525,7 @@ export default function LeagueCustomizerContent() {
                       {settings.seasonTitle || "Current Season"}
                     </h3>
                     <p className="text-xs text-neutral-400">
-                      Circuit Lifecycle &amp; Archival Management
+                      Save season results, pause the league or start the next season
                     </p>
                   </div>
                 </div>
@@ -2596,9 +2597,9 @@ export default function LeagueCustomizerContent() {
                     End Season
                   </button>
                 ) : (
-                  <div className="p-4 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-4 animate-in fade-in">
+                  <div className="p-4 rounded-xl bg-purple-500/[0.06] border border-purple-500/30 space-y-4 animate-in fade-in">
                     <div className="space-y-1">
-                      <div className="text-xs font-black uppercase text-purple-200">
+                      <div className="text-xs font-black uppercase text-[var(--text-primary)]">
                         What happens next?
                       </div>
                       <p className="text-xs text-neutral-300">
@@ -2623,7 +2624,7 @@ export default function LeagueCustomizerContent() {
                         }}
                         className="p-3.5 rounded-xl bg-black/60 border border-white/10 hover:border-purple-400 text-left transition-all cursor-pointer group"
                       >
-                        <div className="text-xs font-black uppercase text-white group-hover:text-purple-300">
+                        <div className="text-xs font-black uppercase text-[var(--text-primary)]">
                           1. Pause the League
                         </div>
                         <div className="text-[11px] text-neutral-400 mt-1">
@@ -2643,7 +2644,7 @@ export default function LeagueCustomizerContent() {
                           newSeasonTitle !== null ? "border-cyan-400" : "border-cyan-500/30 hover:border-cyan-400"
                         }`}
                       >
-                        <div className="text-xs font-black uppercase text-white group-hover:text-cyan-300">
+                        <div className="text-xs font-black uppercase text-[var(--text-primary)]">
                           2. Start the Next Season
                         </div>
                         <div className="text-[11px] text-neutral-400 mt-1">

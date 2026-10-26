@@ -567,7 +567,7 @@ export default function PlayoffBracketView({
                 <thead>
                   <tr className="border-b border-white/5 bg-white/[0.01] text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
                     <th className="py-3 px-4">Seed</th>
-                    <th className="py-3 px-4">Franchise</th>
+                    <th className="py-3 px-4">Team</th>
                     <th className="py-3 px-4 text-center">Record</th>
                     <th className="py-3 px-4 text-center">Win %</th>
                     <th className="py-3 px-4 text-center">PF</th>

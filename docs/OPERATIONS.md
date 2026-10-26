@@ -2,6 +2,27 @@
 
 Low-maintenance runbook for the production project `flagfootballleaguemachine`.
 
+## Walkthrough and form checks
+
+Run `npm run audit:contrast -- http://localhost:3001` against a running local app
+(use its actual port). It checks public pages at phone and laptop sizes in both themes.
+For settings, team/roster forms, scheduling dialogs and their available guide steps:
+
+```powershell
+$env:CONTRAST_INTERACTIVE = "1"
+npm run audit:contrast -- http://localhost:3001
+```
+
+Interactive checks use the local demo as league admin and team admin. They open drafts
+but never save, create customer records or change real games. The command fails for
+contrast violations, clipped dialogs or controls overflowing outside an intentional
+horizontal scroll area. Set `CONTRAST_SCREENSHOTS` to a local output directory to save
+screenshots and measured results for visual review. Review those images as well:
+automated contrast checks do not prove that copy, focus order or every custom colour is correct.
+Walkthrough copy follows the [verified copy library](../.agents/verified_copy_library.md)
+and [verified design library](../.agents/verified_design_library.md); describe current
+controls and permissions rather than promising future billing or access behaviour.
+
 ## Backups
 
 A Firestore daily backup schedule already exists (30-day retention).

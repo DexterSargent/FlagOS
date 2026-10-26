@@ -76,7 +76,7 @@ export default function EditPlayoffFormatModal({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fadeIn">
-      <div className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
+      <div role="dialog" aria-modal="true" aria-labelledby="playoff-format-title" className="bg-[#0B0F19] border border-cyan-500/30 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/[0.02]">
           <div className="flex items-center gap-3">
@@ -85,9 +85,9 @@ export default function EditPlayoffFormatModal({
             </div>
             <div>
               <span className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider block">
-                Live Tournament Configuration
+                Playoff Setup
               </span>
-              <h3 className="text-xl font-black text-white uppercase tracking-tight">
+              <h3 id="playoff-format-title" className="text-xl font-black text-white uppercase tracking-tight">
                 Change Playoff Format
               </h3>
             </div>
@@ -96,6 +96,7 @@ export default function EditPlayoffFormatModal({
           <PageGuideButton />
           <button
             onClick={onClose}
+            aria-label="Close playoff format"
             className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -105,7 +106,7 @@ export default function EditPlayoffFormatModal({
         {/* Body */}
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <p className="text-xs text-neutral-300 leading-relaxed">
-            Update how many franchises qualify and whether the tournament operates as <strong>Single Elimination</strong> or <strong>Double Elimination</strong> at any point in the season without affecting regular season scores.
+            Choose how many teams qualify and whether to use <strong>Single Elimination</strong> or <strong>Double Elimination</strong>. Changing the format does not affect regular season scores.
           </p>
 
           {/* Elimination Structure Selector */}
@@ -120,6 +121,7 @@ export default function EditPlayoffFormatModal({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
+                aria-pressed={selectedStructure === "single_elimination"}
                 onClick={() => setSelectedStructure("single_elimination")}
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   selectedStructure === "single_elimination"
@@ -128,7 +130,7 @@ export default function EditPlayoffFormatModal({
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-black uppercase text-white flex items-center gap-1.5">
+                  <span className="text-xs font-black uppercase text-[var(--text-primary)] flex items-center gap-1.5">
                     <Trophy className="w-3.5 h-3.5 text-cyan-400" />
                     Single Elim
                   </span>
@@ -137,12 +139,13 @@ export default function EditPlayoffFormatModal({
                   )}
                 </div>
                 <p className="text-[11px] text-neutral-400 leading-snug">
-                  Traditional knockout path. One loss and a franchise is eliminated.
+                  One loss and the team is eliminated.
                 </p>
               </button>
 
               <button
                 type="button"
+                aria-pressed={selectedStructure === "double_elimination"}
                 onClick={() => setSelectedStructure("double_elimination")}
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
                   selectedStructure === "double_elimination"
@@ -151,7 +154,7 @@ export default function EditPlayoffFormatModal({
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-black uppercase text-white flex items-center gap-1.5">
+                  <span className="text-xs font-black uppercase text-[var(--text-primary)] flex items-center gap-1.5">
                     <Shield className="w-3.5 h-3.5 text-amber-400" />
                     Double Elim
                   </span>
@@ -228,8 +231,8 @@ export default function EditPlayoffFormatModal({
           {/* Live Bracket Structure Preview */}
           <div data-tour="playoff-format-preview" className={`p-4 rounded-2xl border space-y-2 text-xs ${
             selectedStructure === "double_elimination"
-              ? "bg-amber-950/20 border-amber-500/30 text-amber-200"
-              : "bg-cyan-950/20 border-cyan-500/30 text-cyan-200"
+              ? "bg-[var(--tint-warning)] border-[var(--tint-warning-border)] text-[var(--text-primary)]"
+              : "bg-[var(--tint-brand)] border-[var(--tint-brand-border)] text-[var(--text-primary)]"
           }`}>
             <div className="flex items-center gap-2 font-bold">
               <Sparkles className="w-3.5 h-3.5" />
@@ -255,7 +258,7 @@ export default function EditPlayoffFormatModal({
 
             <p className="text-[11px] text-neutral-400 pt-1 leading-relaxed">
               {selectedStructure === "double_elimination"
-                ? `Franchises that lose their first match drop to the Elimination Bracket for a second-chance path to the Grand Championship.`
+                ? `Teams that lose their first game move to the elimination bracket. A second loss eliminates them from the tournament.`
                 : byesCount > 0
                 ? `Seeds #1 through #${byesCount} are automatically placed in the second round, while the remaining seeds play opening knockout matchups.`
                 : `All ${clampedCount} teams begin play in the opening round.`}
