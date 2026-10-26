@@ -412,6 +412,60 @@ describe("secure data write API", () => {
     });
   });
 
+  describe("league deletion", () => {
+    beforeEach(() => {
+      queryResults.clear();
+      batchMock.commit.mockResolvedValue(undefined);
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 1, docs: [{ id: "kept", ref: { path: "teams/kept" } }] }
+        : { exists: false, data: () => undefined });
+    });
+
+    it("deletes games and both play collections while retaining independent teams", async () => {
+      queryResults.set("matches", { docs: [{ id: "m1", ref: { path: "matches/m1" } }] });
+      queryResults.set("plays", { docs: [{ ref: { path: "plays/p1" } }] });
+      queryResults.set("red_plays", { docs: [{ ref: { path: "red_plays/r1" } }] });
+      try {
+        const response = await POST(request({ entity: "delete_league", data: { leagueId: "league-1" } }));
+        expect(response.status).toBe(201);
+        expect(transaction.update).toHaveBeenCalledWith({ path: "teams/kept" }, { leagueId: "" });
+        expect(batchMock.delete.mock.calls.map(([ref]) => ref.path)).toEqual([
+          "plays/p1", "red_plays/r1", "matches/m1",
+        ]);
+        expect(transaction.delete.mock.calls.map(([ref]) => ref.path)).not.toContain("teams/kept");
+      } finally {
+        queryResults.clear();
+      }
+    });
+
+    it("batches large cleanups and supports retry after a failed play batch", async () => {
+      queryResults.set("matches", { docs: [{ id: "m1", ref: { path: "matches/m1" } }] });
+      queryResults.set("plays", { docs: Array.from({ length: 805 }, (_, i) => ({ ref: { path: `plays/p${i}` } })) });
+      batchMock.commit.mockRejectedValueOnce(new Error("Firestore unavailable"));
+      try {
+        const payload = { entity: "delete_league", data: { leagueId: "league-1" } };
+        expect((await POST(request(payload))).status).toBe(500);
+        expect(batchMock.delete.mock.calls.map(([ref]) => ref.path)).not.toContain("matches/m1");
+        vi.clearAllMocks();
+        expect((await POST(request(payload))).status).toBe(201);
+        expect(batchMock.commit).toHaveBeenCalledTimes(4);
+        expect(batchMock.delete).toHaveBeenCalledTimes(806);
+        expect(batchMock.commit.mock.invocationCallOrder.map((commitOrder) =>
+          batchMock.delete.mock.invocationCallOrder.filter((deleteOrder) => deleteOrder < commitOrder).length,
+        )).toEqual([400, 800, 805, 806]);
+        expect(batchMock.delete.mock.calls.at(-1)?.[0]).toEqual({ path: "matches/m1" });
+      } finally {
+        queryResults.clear();
+      }
+    });
+
+    it("rejects league deletion by ordinary customer admins", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "coach@example.com" });
+      expect((await POST(request({ entity: "delete_league", data: { leagueId: "league-1" } }))).status).toBe(403);
+      expect(batchMock.delete).not.toHaveBeenCalled();
+    });
+  });
+
   describe("independent team matches", () => {
     const exhibition = {
       managingTeamId: "falcons", homeTeamId: "falcons",

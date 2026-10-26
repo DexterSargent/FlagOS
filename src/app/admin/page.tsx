@@ -1585,6 +1585,7 @@ export default function PlatformAdminPage() {
 
             <p className="mt-4 text-sm text-neutral-300">
               Are you sure you want to permanently delete <strong className="text-white">"{deletingLeague.name}"</strong>?
+              {" "}All of its games and recorded plays will also be permanently deleted.
             </p>
 
             {teams.filter((t) => t.leagueId === deletingLeague.id).length > 0 && (

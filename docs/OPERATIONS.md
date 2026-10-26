@@ -55,6 +55,14 @@ npx -y firebase-tools@latest apphosting:secrets:set CRON_SECRET --project flagfo
 Then reference it in `apphosting.yaml` under `env` (`- variable: CRON_SECRET` / `secret: CRON_SECRET`).
 Only add `secret:` references after the secret exists, otherwise the build fails.
 
+## Deleting leagues
+
+Platform-admin league deletion preserves member teams as independent teams, but permanently
+removes the league's games and recorded plays (including plays stored without a league ID).
+Cleanup runs in batches of at most 400 deletes; games are removed only after all their plays.
+If a request fails during cleanup, retry the same `delete_league` request with the original
+league ID. It is safe to retry even if the league document has already been removed.
+
 ## Deploys
 
 - App: push to `main` (Firebase App Hosting builds automatically).

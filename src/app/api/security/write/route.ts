@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { FieldValue, Query, Transaction } from "firebase-admin/firestore";
 import { DecodedIdToken } from "firebase-admin/auth";
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
+import { purgeLeagueGames } from "@/lib/purgeLeagueGames";
 import { readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/limitedRequestBody";
 import { accountEmailKey } from "@/lib/accountEmailKey";
 import { validateDepthCharts } from "@/lib/depthChart";
@@ -1514,6 +1515,10 @@ export async function POST(request: Request) {
         createdId = recordRef.id;
       }
     });
+
+    if (requestedEntity === "delete_league") {
+      await purgeLeagueGames(adminDb, String(data.leagueId));
+    }
 
     if (requestedEntity === "delete_team" && data.purge === true) {
       await purgeTeamData(String(data.teamId));

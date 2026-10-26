@@ -220,7 +220,7 @@ export const ADMIN_MANAGE_ADMINS_GUIDE = guide("platform-admin-manage-admins", "
 ]);
 export const ADMIN_DELETE_LEAGUE_GUIDE = guide("platform-admin-delete-league", "Delete League", [
   overview("admin-delete-league-intro", "Permanent deletion", "This is not seasonal archival. Read the confirmation's full impact before proceeding."),
-  step("admin-delete-league", "Confirm or cancel", "Deleting a league is destructive; use the dialog's warning as the source of truth for affected records.", [["Cancel", "Keep the league and close this confirmation."], ["Confirm Delete", "Permanently delete the selected league; its member teams become independent rather than being deleted."]]),
+  step("admin-delete-league", "Confirm or cancel", "Deleting a league is destructive; use the dialog's warning as the source of truth for affected records.", [["Cancel", "Keep the league and close this confirmation."], ["Confirm Delete", "Permanently delete the selected league, its games and recorded plays; its member teams become independent rather than being deleted."]]),
 ]);
 export const ADMIN_DELETE_TEAM_GUIDE = guide("platform-admin-delete-team", "Delete Team", [
   overview("admin-delete-team-intro", "Permanent team deletion", "Check the selected team name and read the warning before making this irreversible change."),
