@@ -12,7 +12,6 @@ import { useLeague } from "@/lib/leagueContext";
 import { useMyMemberships } from "@/lib/useMyMemberships";
 import { accountEmailRequest, confirmAccountOwner, connectAccountEmail } from "@/lib/accountEmails";
 import type { AccountEmailSettings } from "@/lib/accountEmailTypes";
-import SiteControls from "@/components/SiteControls";
 import {
   User,
   Mail,
@@ -25,7 +24,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  ChevronLeft,
   Settings,
   Sparkles,
   Download,
@@ -217,22 +215,6 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#07090E] text-slate-900 dark:text-white transition-colors flex flex-col">
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 dark:border-white/10 bg-white/90 dark:bg-[#07090E]/90 backdrop-blur-md px-4 sm:px-6 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Dashboard</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <SiteControls />
-          </div>
-        </div>
-      </header>
-
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
         {/* Intro */}

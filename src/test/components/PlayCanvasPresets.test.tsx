@@ -669,4 +669,72 @@ describe("PlayCanvas Route Presets Suite", () => {
       expect(finalPlay.notes).toContain("• CB1: Man inside shade, 5yds off");
     });
   });
+
+  describe("Route sorting options", () => {
+    it("defaults to All Routes and provides options for short, intermediate, and deep", async () => {
+      render(<PlayCanvas play={mockOffensePlay} onChange={vi.fn()} />);
+
+      fireEvent.click(screen.getByTestId("route-presets-toggle"));
+      await screen.findByTestId("route-presets-catalog");
+
+      // Verify all 4 sort options exist
+      const allBtn = screen.getByTestId("route-sort-all");
+      const shortBtn = screen.getByTestId("route-sort-short");
+      const intermediateBtn = screen.getByTestId("route-sort-intermediate");
+      const deepBtn = screen.getByTestId("route-sort-deep");
+
+      expect(allBtn).toBeInTheDocument();
+      expect(shortBtn).toBeInTheDocument();
+      expect(intermediateBtn).toBeInTheDocument();
+      expect(deepBtn).toBeInTheDocument();
+
+      // Default should be All Routes
+      expect(allBtn).toHaveAttribute("aria-pressed", "true");
+      expect(shortBtn).toHaveAttribute("aria-pressed", "false");
+      expect(intermediateBtn).toHaveAttribute("aria-pressed", "false");
+      expect(deepBtn).toHaveAttribute("aria-pressed", "false");
+
+      // All routes present
+      expect(screen.getByTestId("catalog-route-slant")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-dig")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-go")).toBeInTheDocument();
+
+      // Click Short: shows short routes like Slant, Out, Hitch; hides deep routes like Go and Post
+      fireEvent.click(shortBtn);
+      expect(shortBtn).toHaveAttribute("aria-pressed", "true");
+      expect(allBtn).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByTestId("catalog-route-slant")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-out")).toBeInTheDocument();
+      expect(screen.queryByTestId("catalog-route-go")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("catalog-route-post")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("catalog-route-dig")).not.toBeInTheDocument();
+
+      // Click Intermediate: shows Dig, Curl, Comeback; hides Slant and Go
+      fireEvent.click(intermediateBtn);
+      expect(intermediateBtn).toHaveAttribute("aria-pressed", "true");
+      expect(shortBtn).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByTestId("catalog-route-dig")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-curl")).toBeInTheDocument();
+      expect(screen.queryByTestId("catalog-route-slant")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("catalog-route-go")).not.toBeInTheDocument();
+
+      // Click Deep: shows Go, Post, Corner, Fade; hides Slant and Dig
+      fireEvent.click(deepBtn);
+      expect(deepBtn).toHaveAttribute("aria-pressed", "true");
+      expect(intermediateBtn).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByTestId("catalog-route-go")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-post")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-corner")).toBeInTheDocument();
+      expect(screen.queryByTestId("catalog-route-slant")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("catalog-route-dig")).not.toBeInTheDocument();
+
+      // Click All Routes: restores all routes
+      fireEvent.click(allBtn);
+      expect(allBtn).toHaveAttribute("aria-pressed", "true");
+      expect(deepBtn).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByTestId("catalog-route-slant")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-dig")).toBeInTheDocument();
+      expect(screen.getByTestId("catalog-route-go")).toBeInTheDocument();
+    });
+  });
 });

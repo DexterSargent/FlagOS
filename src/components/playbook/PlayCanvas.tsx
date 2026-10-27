@@ -21,6 +21,7 @@ import {
   FIELD_POSITION_PRESETS,
   RoutePresetDefinition,
   ROUTE_PRESETS_CATALOG,
+  RouteSortOption,
   PRE_SNAP_MOTION_CATALOG,
   CustomRoutePreset,
   MAX_CUSTOM_ROUTE_PRESETS_PER_TEAM,
@@ -421,6 +422,7 @@ export default function PlayCanvas({
 
   // Route depth control for preset routes (null = use each route's default depth)
   const [routeDepth, setRouteDepth] = useState<number | null>(null);
+  const [routeSort, setRouteSort] = useState<RouteSortOption>("all");
   useEffect(() => {
     setRouteDepth(null);
   }, [selectedPlayerId]);
@@ -4785,6 +4787,8 @@ export default function PlayCanvas({
                   isDemo={isDemo}
                   customPresets={customPresets}
                   playerSwitcher={sheetPlayerSwitcher}
+                  routeSort={routeSort}
+                  onRouteSortChange={setRouteSort}
                   onClose={() => setIsPresetMenuOpen(false)}
                   onApplyPreset={(presetName) => handleApplyPreset(presetName, routeDepth ?? undefined)}
                   onApplyCustomPreset={handleApplyCustomPreset}

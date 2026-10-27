@@ -2,7 +2,14 @@
 
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { Check, Plus, Star, X, Zap } from "lucide-react";
-import { ROUTE_PRESETS_CATALOG, type CustomRoutePreset, type PlayerNode } from "@/lib/playbookTypes";
+import {
+  ROUTE_PRESETS_CATALOG,
+  ROUTE_SORT_OPTIONS,
+  isRouteInDepthCategory,
+  type CustomRoutePreset,
+  type PlayerNode,
+  type RouteSortOption,
+} from "@/lib/playbookTypes";
 import styles from "./PlayCanvas.module.css";
 
 export interface RouteCatalogDrawerProps {
@@ -11,6 +18,8 @@ export interface RouteCatalogDrawerProps {
   isDemo: boolean;
   customPresets: CustomRoutePreset[];
   playerSwitcher?: ReactNode;
+  routeSort?: RouteSortOption;
+  onRouteSortChange?: (sort: RouteSortOption) => void;
   onClose: () => void;
   onApplyPreset: (presetName: string) => void;
   onApplyCustomPreset: (preset: CustomRoutePreset) => void;
@@ -24,6 +33,8 @@ export default function RouteCatalogDrawer({
   isDemo,
   customPresets,
   playerSwitcher,
+  routeSort: routeSortProp,
+  onRouteSortChange,
   onClose,
   onApplyPreset,
   onApplyCustomPreset,
@@ -31,6 +42,30 @@ export default function RouteCatalogDrawer({
   onSaveCurrentRoute,
 }: RouteCatalogDrawerProps) {
   const [showFullDescriptions, setShowFullDescriptions] = useState(false);
+  const [internalSort, setInternalSort] = useState<RouteSortOption>("all");
+  const activeSort = routeSortProp ?? internalSort;
+
+  const handleSortChange = (next: RouteSortOption) => {
+    setInternalSort(next);
+    onRouteSortChange?.(next);
+  };
+
+  const filteredCatalog = ROUTE_PRESETS_CATALOG.filter((rp) =>
+    isRouteInDepthCategory(rp, activeSort)
+  );
+
+  const filteredCustomPresets = customPresets.filter((cp) => {
+    if (activeSort === "all") return true;
+    let depth = 5;
+    if (cp.offsets && cp.offsets.length > 0) {
+      depth = Math.max(...cp.offsets.map((o) => Math.abs(o.dy)));
+    }
+    if (activeSort === "short") return depth <= 6;
+    if (activeSort === "intermediate") return depth > 6 && depth <= 14;
+    if (activeSort === "deep") return depth > 14;
+    return true;
+  });
+
   return (
       <div
         data-tour="route-catalog"
@@ -62,15 +97,52 @@ export default function RouteCatalogDrawer({
           Tap a route to apply it to <strong className="text-neutral-900 dark:text-white">{selectedPlayer.label}</strong>. Adjust route depth with the rail beside the field.
         </p>
 
+        {/* Route Sorting / Depth Options (All Routes, Short, Intermediate, Deep) */}
+        <div className="space-y-1.5" data-testid="route-sort-controls">
+          <div className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
+            <span className="uppercase tracking-wider">Route Depth:</span>
+            <span className="text-[10px] font-mono text-cyan-700 dark:text-cyan-300">
+              {activeSort === "all"
+                ? `All (${ROUTE_PRESETS_CATALOG.length})`
+                : `${filteredCatalog.length} route${filteredCatalog.length === 1 ? "" : "s"}`}
+            </span>
+          </div>
+          <div
+            role="group"
+            aria-label="Filter and sort routes by depth"
+            className="grid grid-cols-4 gap-1 p-1 bg-neutral-100 dark:bg-black/50 rounded-xl border border-neutral-200 dark:border-white/10"
+          >
+            {ROUTE_SORT_OPTIONS.map((opt) => {
+              const isSelected = activeSort === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  data-testid={`route-sort-${opt.id}`}
+                  aria-pressed={isSelected}
+                  onClick={() => handleSortChange(opt.id)}
+                  className={`py-1.5 px-1 sm:px-2 rounded-lg text-[10.5px] sm:text-xs font-bold transition-all text-center cursor-pointer select-none border ${
+                    isSelected
+                      ? "bg-cyan-500 text-black border-cyan-400 font-extrabold shadow-sm"
+                      : "bg-transparent text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white hover:bg-neutral-200/70 dark:hover:bg-white/10 border-transparent"
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Custom Team Presets Section */}
-        {customPresets.length > 0 && (
+        {filteredCustomPresets.length > 0 && (
           <div className="space-y-1.5">
             <div className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 tracking-wider flex items-center gap-1">
               <Star className="w-3 h-3 fill-current text-amber-500 dark:text-amber-400" />
-              <span>Custom Team Presets ({customPresets.length}):</span>
+              <span>Custom Team Presets ({filteredCustomPresets.length}):</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {customPresets.map((cp) => {
+              {filteredCustomPresets.map((cp) => {
                 const isCurrent = selectedPlayer.quickRouteName === cp.name;
                 return (
                   <div key={cp.id} className="relative group">
@@ -108,7 +180,11 @@ export default function RouteCatalogDrawer({
         {/* Standard Catalog Route Tree */}
         <div className="space-y-1.5">
           <div className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400 flex flex-wrap items-center justify-between gap-1">
-            <span>Standard Route Tree ({ROUTE_PRESETS_CATALOG.length})</span>
+            <span>
+              {activeSort === "all"
+                ? `Standard Route Tree (${filteredCatalog.length})`
+                : `${activeSort.charAt(0).toUpperCase() + activeSort.slice(1)} Routes (${filteredCatalog.length})`}
+            </span>
             <button
               type="button"
               onClick={() => setShowFullDescriptions((v) => !v)}
@@ -119,8 +195,9 @@ export default function RouteCatalogDrawer({
               {showFullDescriptions ? "Shorter descriptions" : "Full descriptions"}
             </button>
           </div>
+          {filteredCatalog.length > 0 ? (
           <div className="grid grid-cols-2 gap-2">
-            {ROUTE_PRESETS_CATALOG.map((rp) => {
+            {filteredCatalog.map((rp) => {
               const isCurrent =
                 selectedPlayer.quickRouteName === rp.name ||
                 selectedPlayer.quickRouteName === rp.shortName;
@@ -168,6 +245,11 @@ export default function RouteCatalogDrawer({
               );
             })}
           </div>
+          ) : (
+            <div className="text-center py-6 px-4 text-xs text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-black/30 border border-dashed border-neutral-300 dark:border-white/10 rounded-xl">
+              No routes found in this depth category.
+            </div>
+          )}
         </div>
 
         {/* Bottom add preset shortcut inside menu */}

@@ -686,6 +686,44 @@ export interface RoutePresetDefinition {
   description: string;
 }
 
+export type RouteSortOption = "all" | "short" | "intermediate" | "deep";
+
+export const ROUTE_SORT_OPTIONS: { id: RouteSortOption; label: string }[] = [
+  { id: "all", label: "All Routes" },
+  { id: "short", label: "Short" },
+  { id: "intermediate", label: "Intermediate" },
+  { id: "deep", label: "Deep" },
+];
+
+export function isRouteInDepthCategory(
+  route: RoutePresetDefinition,
+  sort: RouteSortOption
+): boolean {
+  if (sort === "all") return true;
+  if (sort === "short") {
+    return (
+      route.category === "Quick & Short" ||
+      route.shortName === "Drag" ||
+      (route.defaultBreakYards <= 5 && route.category !== "Deep")
+    );
+  }
+  if (sort === "intermediate") {
+    return (
+      route.category === "Intermediate" ||
+      route.shortName === "Wheel" ||
+      (route.defaultBreakYards > 5 && route.defaultBreakYards <= 14 && route.category !== "Deep")
+    );
+  }
+  if (sort === "deep") {
+    return (
+      route.category === "Deep" ||
+      route.shortName === "Wheel" ||
+      route.defaultBreakYards >= 15
+    );
+  }
+  return true;
+}
+
 export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
   {
     name: "Slant",
