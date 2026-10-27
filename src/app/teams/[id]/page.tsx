@@ -66,6 +66,24 @@ import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
 const TeamStatsCustomizerModal = dynamic(() => import("@/components/team/TeamStatsCustomizerModal"));
 
+const STAT_CATEGORY_ICONS: Record<string, typeof Trophy> = {
+  record: Trophy,
+  downs: Target,
+  pats: Zap,
+  offense: Flame,
+  defense: Shield,
+  discipline: Activity,
+};
+
+const STAT_CATEGORY_COLORS: Record<string, string> = {
+  record: "text-amber-400",
+  downs: "text-cyan-400",
+  pats: "text-yellow-400",
+  offense: "text-rose-400",
+  defense: "text-emerald-400",
+  discipline: "text-indigo-400",
+};
+
 const COLOR_PRESETS = [
   { name: "Scarlet & White", primary: "#E31837", secondary: "#FFFFFF", tertiary: "#000000" },
   { name: "Crimson & Gold", primary: "#990000", secondary: "#FFCC00", tertiary: "#111111" },
@@ -835,14 +853,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                       <Trophy className="w-5 h-5" style={{ color: getReadableTextColor(palette.secondary, palette.primary) }} />
                     </div>
                     <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base md:text-lg font-black uppercase tracking-tight text-white">
-                          Season Stats
-                        </h3>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/5 text-neutral-300 border border-white/10 whitespace-nowrap">
-                          {visibleStatIds.length} SHOWN
-                        </span>
-                      </div>
+                      <h3 className="text-base md:text-lg font-black uppercase tracking-tight text-white">
+                        Season Stats
+                      </h3>
                       <p className="text-xs text-neutral-400">
                         Season totals from recorded game stats.
                       </p>
@@ -853,7 +866,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     <button
                       type="button"
                       onClick={() => setIsStatsCustomizerOpen(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/10 hover:border-cyan-500/50 shadow-md cursor-pointer shrink-0"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition-all border border-white/10 hover:border-white/20 cursor-pointer shrink-0"
+                      title="Customize Stats"
                     >
                       <Sliders className="w-3.5 h-3.5 text-[var(--team-ink)]" />
                       <span>Customize Stats</span>
@@ -864,11 +878,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 {/* Stat Cards Grid */}
                 {visibleStatIds.length === 0 ? (
                   <div className="py-8 text-center bg-white/[0.02] border border-dashed border-white/10 rounded-2xl">
-                    <p className="text-sm text-neutral-400 mb-2">No team stats currently selected for display.</p>
+                    <p className="text-sm text-neutral-400 mb-2">No season stats currently available.</p>
                     {canEditTeam && (
                       <button
+                        type="button"
                         onClick={() => setIsStatsCustomizerOpen(true)}
-                        className="text-xs text-[var(--team-ink)] hover:text-[var(--team-ink)] font-bold uppercase tracking-wider"
+                        className="text-xs text-[var(--team-ink)] hover:underline font-bold uppercase tracking-wider cursor-pointer"
                       >
                         Choose stats to show
                       </button>
@@ -880,26 +895,45 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                       const def = TEAM_STAT_DEFINITIONS.find((d) => d.id === statId);
                       if (!def) return null;
                       const value = def.getValue(stats);
+                      const CategoryIcon = STAT_CATEGORY_ICONS[def.category] || Activity;
+                      const categoryColor = STAT_CATEGORY_COLORS[def.category] || "text-neutral-400";
 
                       return (
                         <div
                           key={def.id}
-                          className="p-4 rounded-2xl bg-neutral-900/60 border border-white/5 hover:border-white/15 transition-all flex flex-col justify-between group/card relative overflow-hidden"
+                          title={def.description}
+                          className="group/card relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/80 p-3.5 sm:p-4 shadow-lg backdrop-blur-sm transition-all duration-300 hover:border-white/20 hover:bg-neutral-900 hover:shadow-xl hover:-translate-y-0.5"
                         >
-                          <div className="flex items-center justify-between gap-1 mb-1.5">
-                            <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-neutral-400 truncate">
+                          {/* Top accent line matching team palette */}
+                          <div
+                            className="absolute inset-x-0 top-0 h-0.5 transition-opacity opacity-70 group-hover/card:opacity-100"
+                            style={{ backgroundColor: palette.primary }}
+                            aria-hidden="true"
+                          />
+
+                          {/* Subtle ambient hover glow */}
+                          <div
+                            className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity pointer-events-none"
+                            style={{ background: `linear-gradient(180deg, ${palette.primary}12, transparent 65%)` }}
+                          />
+
+                          {/* Header row: Metric acronym + category icon */}
+                          <div className="flex items-center justify-between gap-1.5 pb-2 mb-2 border-b border-white/5 relative z-10">
+                            <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-neutral-400 truncate">
                               {def.shortLabel}
                             </span>
-                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.2 rounded bg-white/5 text-neutral-400">
-                              {def.category}
-                            </span>
+                            <CategoryIcon className={`w-3.5 h-3.5 ${categoryColor} shrink-0 opacity-80 group-hover/card:opacity-100 transition-opacity`} />
                           </div>
-                          <div className="my-1">
-                            <div className="text-xl md:text-2xl font-black font-mono tracking-tight text-white group-hover/card:text-[var(--team-ink)] transition-colors">
+
+                          {/* Stat value */}
+                          <div className="my-1.5 relative z-10">
+                            <div className="font-mono text-2xl sm:text-3xl font-black tabular-nums tracking-tight text-white group-hover/card:text-white transition-colors">
                               {value}
                             </div>
                           </div>
-                          <div className="text-[11px] text-neutral-400 font-medium leading-relaxed" title={def.description}>
+
+                          {/* Metric description label */}
+                          <div className="text-[11px] font-medium leading-snug text-neutral-400 group-hover/card:text-neutral-300 transition-colors relative z-10 pt-1">
                             {def.id === "record" && stats.playoffRecordFormatted
                               ? `Reg. ${stats.regularRecordFormatted} · Playoffs ${stats.playoffRecordFormatted}`
                               : def.label}

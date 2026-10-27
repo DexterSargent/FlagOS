@@ -93,6 +93,7 @@ import {
   MessageSquare,
   HelpCircle,
   FolderPlus,
+  Ban,
   AlignCenter,
   AlignLeft,
   AlignRight,
@@ -941,31 +942,39 @@ export default function PlayCanvas({
 
     // Requirement: If you select man it should auto show offense, and the db should have a dotted line drawn to whichever receiver is clicked while the db is highlighted.
     if (isDefenderInMan && clickedPlayer.side === "offense" && selectedPlayerId !== playerId) {
-      const currentShade: DefensiveShade = currentSelected.shade || "head_up";
-      const currentCushion = currentSelected.cushionYards ?? 5;
-      const newPos = calculateShadedPosition(clickedPlayer, currentShade, {
-        cushionYards: currentCushion,
-        losY,
-      });
+      let newX = currentSelected.x;
+      let newY = currentSelected.y;
+      if (currentSelected.shade) {
+        const currentCushion = currentSelected.cushionYards ?? 5;
+        const newPos = calculateShadedPosition(clickedPlayer, currentSelected.shade, {
+          cushionYards: currentCushion,
+          losY,
+        });
+        newX = newPos.x;
+        newY = newPos.y;
+      }
 
       const updatedPlayers = play.players.map((p) => {
         if (p.id === selectedPlayerId) {
-          return {
+          const updatedP: PlayerNode = {
             ...p,
             coverageType: "man" as const,
             manTargetId: playerId,
-            shade: currentShade,
-            cushionYards: currentCushion,
-            x: newPos.x,
-            y: newPos.y,
+            shade: currentSelected.shade,
+            cushionYards: currentSelected.cushionYards,
+            x: newX,
+            y: newY,
             route: [],
             zoneId: undefined,
             quickRouteName: "Man",
           };
+          updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+          return updatedP;
         }
         return p;
       });
-      onChange({ ...play, players: updatedPlayers });
+      const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updatedPlayers, play.zones, play.type);
+      onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
       // Strictly keep DB highlighted as requested!
       return;
     }
@@ -1826,18 +1835,19 @@ export default function PlayCanvas({
     setShowOpposingSide(true); // Auto show offense
     setMode("man");
 
-    const currentShade: DefensiveShade = selectedPlayer.shade || "head_up";
-    const currentCushion = selectedPlayer.cushionYards ?? 5;
+    // Shade and cushion are optional; preserve if already set, otherwise leave freeform
+    const currentShade: DefensiveShade | undefined = selectedPlayer.shade;
+    const currentCushion = selectedPlayer.cushionYards;
     let newX = selectedPlayer.x;
     let newY = selectedPlayer.y;
 
-    if (selectedPlayer.manTargetId) {
+    if (selectedPlayer.manTargetId && currentShade) {
       const targetOff = play.players.find(
         (p) => p.id === selectedPlayer.manTargetId && p.side === "offense"
       );
       if (targetOff) {
         const newPos = calculateShadedPosition(targetOff, currentShade, {
-          cushionYards: currentCushion,
+          cushionYards: currentCushion ?? 5,
           losY,
         });
         newX = newPos.x;
@@ -1888,7 +1898,7 @@ export default function PlayCanvas({
           ...p,
           coverageType: "man" as const,
           manTargetId: receiverId,
-          shade: currentShade,
+          shade: selectedPlayer.shade || "head_up",
           cushionYards: currentCushion,
           x: newPos.x,
           y: newPos.y,
@@ -1906,10 +1916,11 @@ export default function PlayCanvas({
     onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
-  // Choose defensive shade (inside, head_up, outside) and adjust DB beginning point
-  const handleSetDefensiveShade = (newShade: DefensiveShade) => {
+  // Choose defensive shade (inside, head_up, outside) or set undefined (freeform)
+  const handleSetDefensiveShade = (newShade: DefensiveShade | undefined) => {
     if (readOnly || !selectedPlayer) return;
 
+    const nextShade: DefensiveShade | undefined = selectedPlayer.shade === newShade ? undefined : newShade;
     const currentCushion = selectedPlayer.cushionYards ?? 5;
     const targetReceiver = selectedPlayer.manTargetId
       ? play.players.find((p) => p.id === selectedPlayer.manTargetId && p.side === "offense")
@@ -1918,8 +1929,8 @@ export default function PlayCanvas({
     let newX = selectedPlayer.x;
     let newY = selectedPlayer.y;
 
-    if (targetReceiver) {
-      const newPos = calculateShadedPosition(targetReceiver, newShade, {
+    if (nextShade && targetReceiver) {
+      const newPos = calculateShadedPosition(targetReceiver, nextShade, {
         cushionYards: currentCushion,
         losY,
       });
@@ -1932,8 +1943,7 @@ export default function PlayCanvas({
         const updatedP: PlayerNode = {
           ...p,
           coverageType: "man" as const,
-          shade: newShade,
-          cushionYards: currentCushion,
+          shade: nextShade,
           x: newX,
           y: newY,
           quickRouteName: "Man",
@@ -1948,28 +1958,32 @@ export default function PlayCanvas({
     onChange({ ...play, players: updatedPlayers, notes: nextPlayNotes });
   };
 
-  // Choose defensive cushion depth (yards between DB and receiver) and adjust DB position
-  const handleSetDefensiveCushion = (newCushion: number) => {
+  // Choose defensive cushion depth (yards between DB and receiver) or set undefined (freeform)
+  const handleSetDefensiveCushion = (newCushion: number | undefined) => {
     if (readOnly || !selectedPlayer) return;
-    const clampedCushion = Math.max(1, Math.min(15, newCushion));
-    const currentShade: DefensiveShade = selectedPlayer.shade || "head_up";
+
+    const nextCushion = newCushion;
+    let newX = selectedPlayer.x;
+    let newY = selectedPlayer.y;
 
     const targetReceiver = selectedPlayer.manTargetId
       ? play.players.find((p) => p.id === selectedPlayer.manTargetId && p.side === "offense")
       : undefined;
 
-    let newX = selectedPlayer.x;
-    let newY = selectedPlayer.y;
-
-    if (targetReceiver) {
-      const newPos = calculateShadedPosition(targetReceiver, currentShade, {
-        cushionYards: clampedCushion,
-        losY,
-      });
-      newX = newPos.x;
-      newY = newPos.y;
-    } else {
-      newY = Math.max(5, Math.round((losY - (clampedCushion * YARD_HEIGHT_PCT)) * 10) / 10);
+    if (nextCushion !== undefined) {
+      const clampedCushion = Math.max(1, Math.min(15, nextCushion));
+      if (selectedPlayer.shade && targetReceiver) {
+        const newPos = calculateShadedPosition(targetReceiver, selectedPlayer.shade, {
+          cushionYards: clampedCushion,
+          losY,
+        });
+        newX = newPos.x;
+        newY = newPos.y;
+      } else if (targetReceiver) {
+        newY = Math.max(5, Math.round((targetReceiver.y - (clampedCushion * YARD_HEIGHT_PCT)) * 10) / 10);
+      } else {
+        newY = Math.max(5, Math.round((losY - (clampedCushion * YARD_HEIGHT_PCT)) * 10) / 10);
+      }
     }
 
     const updatedPlayers = play.players.map((p) => {
@@ -1977,7 +1991,7 @@ export default function PlayCanvas({
         const updatedP: PlayerNode = {
           ...p,
           coverageType: "man" as const,
-          cushionYards: clampedCushion,
+          cushionYards: nextCushion !== undefined ? Math.max(1, Math.min(15, nextCushion)) : undefined,
           x: newX,
           y: newY,
           quickRouteName: "Man",
@@ -2394,21 +2408,96 @@ export default function PlayCanvas({
 
   const systemOpponentPresets = play.type === "defense" ? STANDARD_OFFENSIVE_PRESETS : STANDARD_DEFENSIVE_PRESETS;
 
+  // Retarget man coverage defenders based on positioning rather than player reference/label.
+  // When a receiver alignment changes or a new play is selected, defenders default to the receiver
+  // positioned nearest to them rather than traveling across the field to follow a reference label.
+  const retargetDefenders = (defenders: PlayerNode[], previousOffense: PlayerNode[], nextOffense: PlayerNode[]) => {
+    if (nextOffense.length === 0) return defenders;
+
+    // Filter man coverage defenders that are assigned to a receiver
+    const manDefenders = defenders.filter((d) => d.coverageType === "man" && d.manTargetId);
+    if (manDefenders.length === 0) return defenders;
+
+    // Proximity metric: horizontal alignment across field width is primary, depth is secondary
+    const getDistance = (def: PlayerNode, off: PlayerNode) => {
+      const dx = def.x - off.x;
+      const dy = (def.y - off.y) * 0.75;
+      return Math.hypot(dx, dy);
+    };
+
+    // Build all candidate pairs and greedily match closest pairs
+    type Pair = { defId: string; receiver: PlayerNode; dist: number };
+    const pairs: Pair[] = [];
+    for (const def of manDefenders) {
+      for (const off of nextOffense) {
+        pairs.push({ defId: def.id, receiver: off, dist: getDistance(def, off) });
+      }
+    }
+    pairs.sort((a, b) => a.dist - b.dist);
+
+    const assignments = new Map<string, PlayerNode>();
+    const assignedDefenders = new Set<string>();
+    const assignedReceivers = new Set<string>();
+
+    for (const pair of pairs) {
+      if (!assignedDefenders.has(pair.defId) && !assignedReceivers.has(pair.receiver.id)) {
+        assignedDefenders.add(pair.defId);
+        assignedReceivers.add(pair.receiver.id);
+        assignments.set(pair.defId, pair.receiver);
+      }
+    }
+
+    // Fallback for any unassigned defenders (e.g. if more defenders than receivers)
+    for (const def of manDefenders) {
+      if (!assignments.has(def.id)) {
+        let closest = nextOffense[0];
+        let minDist = Infinity;
+        for (const off of nextOffense) {
+          const d = getDistance(def, off);
+          if (d < minDist) {
+            minDist = d;
+            closest = off;
+          }
+        }
+        assignments.set(def.id, closest);
+      }
+    }
+
+    return defenders.map((defender) => {
+      if (defender.coverageType !== "man" || !defender.manTargetId) return defender;
+      const target = assignments.get(defender.id);
+      if (!target) return defender;
+
+      // If defender has an explicit shade, stay true to the shaded alignment against the new receiver
+      if (defender.shade) {
+        const currentCushion = defender.cushionYards ?? 5;
+        const newPos = calculateShadedPosition(target, defender.shade, {
+          cushionYards: currentCushion,
+          losY,
+        });
+        const updated = {
+          ...defender,
+          manTargetId: target.id,
+          x: newPos.x,
+          y: newPos.y,
+        };
+        updated.notes = generatePlayerAssignmentNote(updated, [...defenders, ...nextOffense], play.zones);
+        return updated;
+      }
+
+      // If no explicit shade (freeform), keep defender's position intact
+      const updated = { ...defender, manTargetId: target.id };
+      updated.notes = generatePlayerAssignmentNote(updated, [...defenders, ...nextOffense], play.zones);
+      return updated;
+    });
+  };
+
   // Populate an opponent play into the opposing side of the field
   const handleSelectOpponentPlay = (opponentPlay: PlayDiagram, sourceBookTitle?: string) => {
     const updateOpponent = (next: PlayDiagram) => {
       if (readOnly) setOpponentPreview({ source: committedPlay, play: next });
       else onChange(next);
     };
-    const retargetDefenders = (defenders: PlayerNode[], previousOffense: PlayerNode[], nextOffense: PlayerNode[]) =>
-      defenders.map((defender) => {
-        if (defender.coverageType !== "man" || !defender.manTargetId) return defender;
-        const index = previousOffense.findIndex((player) => player.id === defender.manTargetId);
-        if (index < 0) return defender;
-        // Keep man locks connected when opponent imports replace receiver IDs.
-        const target = nextOffense.find((player) => player.label === previousOffense[index].label) || nextOffense[index];
-        return { ...defender, manTargetId: target?.id };
-      });
 
     if (play.type === "defense") {
       // Current play is defense: populate offense from opponent play
@@ -2464,9 +2553,24 @@ export default function PlayCanvas({
         losY,
         activeSquadSize
       );
+      const defaultOffense = sanitized
+        .filter((p) => p.side === "offense")
+        .map((p) => (play.type === "defense" ? { ...p, route: [], quickRouteName: undefined, motionPath: undefined, motionName: undefined } : p));
+      const defaultDefense = sanitized
+        .filter((p) => p.side === "defense")
+        .map((p) => (play.type === "offense" ? { ...p, route: [], quickRouteName: undefined, zoneId: undefined } : p));
+      const currentDefense = play.type === "defense" ? sanitized.filter((p) => p.side === "defense") : defaultDefense;
+      const previousOffense = play.players.filter((p) => p.side === "offense");
+      const retargetedDefense = play.type === "defense"
+        ? retargetDefenders(currentDefense, previousOffense, defaultOffense)
+        : currentDefense;
+
       onChange({
         ...play,
-        players: sanitized,
+        players: [
+          ...(play.type === "defense" ? retargetedDefense : sanitized.filter((p) => p.side === "offense")),
+          ...(play.type === "defense" ? defaultOffense : defaultDefense),
+        ],
         zones: play.type === "defense" ? play.zones : [],
       });
     }
@@ -2664,6 +2768,33 @@ export default function PlayCanvas({
                       className="p-1 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Option: No Opposing Play (Clear Scheme) */}
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      data-testid="no-opponent-play-btn"
+                      onClick={handleResetOpponentAlignment}
+                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs transition-colors flex items-center justify-between border cursor-pointer ${
+                        !selectedOpponentPlayTitle
+                          ? "bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold border-amber-500/40 shadow-xs"
+                          : "bg-neutral-100 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-white/10 hover:text-neutral-900 dark:hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Ban className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                        <div>
+                          <span className="font-semibold block">No Opposing Play</span>
+                          <span className="text-[10px] text-neutral-500 dark:text-neutral-400 block">
+                            Default pre-snap alignment without routes or scheme
+                          </span>
+                        </div>
+                      </div>
+                      {!selectedOpponentPlayTitle && (
+                        <Check className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[3] shrink-0" />
+                      )}
                     </button>
                   </div>
 
@@ -3898,11 +4029,59 @@ export default function PlayCanvas({
                     </g>
                   )}
 
-                  {/* Open / Covered indicator during simulation against opponent */}
+                  {/* Open / Covered / Single Coverage indicator during simulation against opponent */}
                   {isShowingOpponent && isOffense && player.route && player.route.length > 0 && (
                     (() => {
                       const defenders = play.players.filter((p) => p.side === "defense");
                       if (defenders.length === 0) return null;
+                      if (!animating && progress === 0) return null;
+
+                      // If receiver is in man-to-man coverage, display SINGLE COVERAGE since the DB mirrors the route
+                      const isManCovered = defenders.some(
+                        (def) => def.coverageType === "man" && def.manTargetId === player.id
+                      );
+                      if (isManCovered) {
+                        return (
+                          <g data-testid={`single-coverage-${player.id}`}>
+                            <circle
+                              cx={px}
+                              cy={py}
+                              r="26"
+                              fill="none"
+                              stroke="#EC4899"
+                              strokeWidth="2.5"
+                              strokeDasharray="4 3"
+                              className="animate-pulse"
+                              opacity="0.9"
+                            />
+                            <g transform={`translate(${px}, ${py - 25})`}>
+                              <rect
+                                x="-46"
+                                y="-9"
+                                width="92"
+                                height="18"
+                                rx="9"
+                                fill="#500724"
+                                stroke="#EC4899"
+                                strokeWidth="1.5"
+                                className="drop-shadow-lg"
+                              />
+                              <text
+                                x="0"
+                                y="3.5"
+                                fill="#FCE7F3"
+                                fontSize="7.5"
+                                fontWeight="900"
+                                textAnchor="middle"
+                                className="select-none pointer-events-none tracking-wide font-sans"
+                              >
+                                SINGLE COVERAGE
+                              </text>
+                            </g>
+                          </g>
+                        );
+                      }
+
                       let minDistanceYards = 999;
                       for (const def of defenders) {
                         const defPos = getAnimatedPlayerPos(def, progress);
@@ -3913,7 +4092,6 @@ export default function PlayCanvas({
                       }
                       const isOpen = minDistanceYards >= 3.5;
                       const isTight = minDistanceYards < 2.2;
-                      if (!animating && progress === 0) return null;
 
                       return (
                         <g>
@@ -4389,7 +4567,7 @@ export default function PlayCanvas({
                   </div>
                   {playerHasMotion(selectedPlayer) && <p className="text-xs text-amber-700 dark:text-amber-300">Pre-snap: {selectedPlayer.motionName || "Motion"}</p>}
                   {selectedPlayer.coverageType === "man" && (
-                    <p className="text-xs">Cover {play.players.find((player) => player.id === selectedPlayer.manTargetId)?.label || "unassigned receiver"} · {(selectedPlayer.shade || "head_up").replace("_", " ")} · {selectedPlayer.cushionYards ?? 5} yd cushion</p>
+                    <p className="text-xs">Cover {play.players.find((player) => player.id === selectedPlayer.manTargetId)?.label || "unassigned receiver"} · {selectedPlayer.shade ? selectedPlayer.shade.replace("_", " ") : (selectedPlayer.cushionYards !== undefined ? `${selectedPlayer.cushionYards} yd cushion` : "Freeform alignment")}{selectedPlayer.shade && selectedPlayer.cushionYards !== undefined ? ` · ${selectedPlayer.cushionYards} yd cushion` : ""}</p>
                   )}
                   <p className="whitespace-pre-wrap text-xs leading-relaxed">{selectedPlayer.notes || "No position notes yet. Use Coach Q&A to ask about your assignment."}</p>
                 </>
@@ -4734,14 +4912,21 @@ export default function PlayCanvas({
                     <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
                       <span className="flex items-center gap-1 text-pink-300 font-black uppercase tracking-wider text-[10px]">
                         <AlignCenter className="w-3 h-3" />
-                        <span>2. Alignment Shade</span>
+                        <span>Alignment Shade (Optional)</span>
                       </span>
                       <span className="text-[10px] text-neutral-400 font-normal">
-                        Sets DB starting leverage
+                        {selectedPlayer.shade ? "Tap active shade to return to freeform" : "Sets DB starting leverage"}
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-4 gap-1.5">
                       {[
+                        {
+                          id: undefined as undefined,
+                          label: "Freeform",
+                          sub: "No shade",
+                          icon: Compass,
+                          testId: "shade-freeform",
+                        },
                         {
                           id: "inside" as const,
                           label: "Inside Shade",
@@ -4764,18 +4949,17 @@ export default function PlayCanvas({
                           testId: "shade-outside",
                         },
                       ].map((item) => {
-                        const currentShade = selectedPlayer.shade || "head_up";
-                        const isCurrent = currentShade === item.id;
+                        const isCurrent = selectedPlayer.shade === item.id;
                         const Icon = item.icon;
                         return (
                           <button
-                            key={item.id}
+                            key={item.id ?? "freeform"}
                             type="button"
                             data-testid={item.testId}
                             disabled={readOnly}
                             onClick={() => handleSetDefensiveShade(item.id)}
                             aria-pressed={isCurrent}
-                            className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all border flex flex-col items-center justify-center gap-0.5 text-center ${
+                            className={`px-1.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex flex-col items-center justify-center gap-0.5 text-center cursor-pointer ${
                               isCurrent
                                 ? "bg-pink-400 text-neutral-950 border-pink-300 shadow-md font-extrabold"
                                 : "bg-black/50 text-neutral-200 hover:bg-neutral-800 hover:text-white border-white/15"
@@ -4804,10 +4988,17 @@ export default function PlayCanvas({
                     <div className="flex items-center justify-between text-[11px] font-bold text-neutral-300">
                       <span className="flex items-center gap-1 text-pink-300 font-black uppercase tracking-wider text-[10px]">
                         <Ruler className="w-3 h-3" />
-                        <span>3. Cushion Depth</span>
+                        <span>Cushion Depth (Optional)</span>
                       </span>
                       {(() => {
-                        const currentCushion = selectedPlayer.cushionYards ?? 5;
+                        const hasExplicit = selectedPlayer.cushionYards !== undefined;
+                        const computedCushion = selectedPlayer.manTargetId
+                          ? (() => {
+                              const targetOff = play.players.find((t) => t.id === selectedPlayer.manTargetId && t.side === "offense");
+                              return targetOff ? Math.max(1, Math.round(((targetOff.y - selectedPlayer.y) / YARD_HEIGHT_PCT) * 10) / 10) : 5;
+                            })()
+                          : 5;
+                        const currentCushion = selectedPlayer.cushionYards ?? computedCushion;
                         const label =
                           currentCushion <= 1
                             ? "Press"
@@ -4820,28 +5011,28 @@ export default function PlayCanvas({
                             : "Deep Off";
                         return (
                           <span className="text-[10px] font-mono text-pink-300 font-bold bg-pink-500/10 px-1.5 py-0.5 rounded border border-pink-500/20">
-                            {currentCushion} {currentCushion === 1 ? "Yard" : "Yards"} ({label})
+                            {hasExplicit ? `${currentCushion} ${currentCushion === 1 ? "Yard" : "Yards"} (${label})` : `Freeform (~${currentCushion} Yds)`}
                           </span>
                         );
                       })()}
                     </div>
 
                     {/* Quick Cushion Presets */}
-                    <div className="grid grid-cols-5 gap-1">
+                    <div className="grid grid-cols-6 gap-1">
                       {[
+                        { yards: undefined as undefined, label: "Freeform", sub: "Manual" },
                         { yards: 1, label: "Press", sub: "1 yd" },
                         { yards: 3, label: "Tight", sub: "3 yds" },
                         { yards: 5, label: "Standard", sub: "5 yds" },
                         { yards: 7, label: "Soft", sub: "7 yds" },
                         { yards: 10, label: "Deep", sub: "10 yds" },
                       ].map((preset) => {
-                        const currentCushion = selectedPlayer.cushionYards ?? 5;
-                        const isCurrent = currentCushion === preset.yards;
+                        const isCurrent = selectedPlayer.cushionYards === preset.yards;
                         return (
                           <button
-                            key={preset.yards}
+                            key={preset.yards ?? "freeform"}
                             type="button"
-                            data-testid={`cushion-preset-${preset.yards}`}
+                            data-testid={preset.yards !== undefined ? `cushion-preset-${preset.yards}` : "cushion-freeform"}
                             disabled={readOnly}
                             onClick={() => handleSetDefensiveCushion(preset.yards)}
                             aria-pressed={isCurrent}
@@ -4908,14 +5099,25 @@ export default function PlayCanvas({
                       <Lock className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                       {selectedPlayer.manTargetId ? (
                         <span>
-                          Locked on <strong className="text-white">{play.players.find((p) => p.id === selectedPlayer.manTargetId)?.label || "Receiver"}</strong> (
-                          {selectedPlayer.shade === "inside"
-                            ? "Inside Shade"
-                            : selectedPlayer.shade === "outside"
-                            ? "Outside Shade"
-                            : "Head Up"}
-                          {" • "}
-                          {selectedPlayer.cushionYards ?? 5} yds cushion)
+                          Locked on <strong className="text-white">{play.players.find((p) => p.id === selectedPlayer.manTargetId)?.label || "Receiver"}</strong>
+                          {selectedPlayer.shade ? (
+                            <>
+                              {" • "}
+                              {selectedPlayer.shade === "inside"
+                                ? "Inside Shade"
+                                : selectedPlayer.shade === "outside"
+                                ? "Outside Shade"
+                                : "Head Up"}
+                            </>
+                          ) : null}
+                          {selectedPlayer.cushionYards !== undefined ? (
+                            <>
+                              {" • "}
+                              {selectedPlayer.cushionYards} yd cushion
+                            </>
+                          ) : (
+                            !selectedPlayer.shade && " • Freeform alignment"
+                          )}
                         </span>
                       ) : (
                         <span className="text-neutral-400">Choose a receiver above or tap on the field to lock.</span>

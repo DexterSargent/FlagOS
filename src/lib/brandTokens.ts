@@ -11,6 +11,7 @@
  */
 
 export const FLAGOS_LOGO = "/flagos-emblem-v2-512.png";
+export const FLAGOS_LOADER_PINWHEEL = "/football_gear_tilted_spin.gif";
 
 // Backward-compatible aliases for legacy imports
 export const FLAGOS_LOGO_LIGHT = FLAGOS_LOGO;

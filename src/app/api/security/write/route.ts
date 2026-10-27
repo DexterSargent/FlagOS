@@ -565,7 +565,7 @@ async function authorizeWrite(
       fail("Only the platform administrator can permanently purge a team.", 403);
     }
     if (isPlatformAdmin(token)) return;
-    if (typeof teamData.leagueId !== "string" ||
+    if (!isDocumentId(teamData.leagueId) ||
       !(await isLeagueAdmin(transaction, teamData.leagueId, token))) {
       fail("Only the league administrator can delete this team.", 403);
     }
@@ -1081,7 +1081,12 @@ export async function POST(request: Request) {
     const authorization = request.headers.get("authorization") || "";
     const idToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
     if (!idToken) return Response.json({ error: "Authentication is required." }, { status: 401 });
-    const token = await adminAuth.verifyIdToken(idToken, true);
+    let token: DecodedIdToken;
+    try {
+      token = await adminAuth.verifyIdToken(idToken, true);
+    } catch {
+      return Response.json({ error: "Your session could not be verified. Sign in again." }, { status: 401 });
+    }
     if (token.email_verified !== true) {
       return Response.json({ error: "Verify your email before creating data." }, { status: 403 });
     }

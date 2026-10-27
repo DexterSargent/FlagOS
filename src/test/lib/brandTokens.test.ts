@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   FLAGOS_LOGO,
+  FLAGOS_LOADER_PINWHEEL,
   FLAGOS_LOGO_LIGHT,
   FLAGOS_LOGO_DARK,
   getFlagOSLogoPath,
@@ -13,6 +14,7 @@ describe("FlagOS Brand Tokens & Logo Architecture", () => {
     expect(FLAGOS_LOGO).toBe("/flagos-emblem-v2-512.png");
     expect(FLAGOS_LOGO_LIGHT).toBe(FLAGOS_LOGO);
     expect(FLAGOS_LOGO_DARK).toBe(FLAGOS_LOGO);
+    expect(FLAGOS_LOADER_PINWHEEL).toBe("/football_gear_tilted_spin.gif");
   });
 
   it("resolves the unified logo file path regardless of active theme", () => {

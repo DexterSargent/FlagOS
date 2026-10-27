@@ -186,7 +186,12 @@ export async function POST(request: Request) {
     const authorization = request.headers.get("authorization") || "";
     const idToken = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
     if (!idToken) fail("Sign in to continue.", 401);
-    const token = await adminAuth.verifyIdToken(idToken, true);
+    let token: DecodedIdToken;
+    try {
+      token = await adminAuth.verifyIdToken(idToken, true);
+    } catch {
+      fail("Your session could not be verified. Sign in again.", 401);
+    }
     if (token.email_verified !== true) fail("Verify your email before continuing.", 403);
     await loadAccountEmails(token);
 

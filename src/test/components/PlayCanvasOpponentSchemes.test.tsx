@@ -407,4 +407,295 @@ describe("PlayCanvas - Opponent Schemes & Rush Toggle", () => {
     // WR1 is running away from the defenders on the right and is OPEN
     expect(screen.getByTestId("open-receiver-off-wr1")).toBeInTheDocument();
   });
+
+  it("retargets man defenders based on spatial positioning rather than receiver labels when an opposing play is selected", () => {
+    const handleChange = vi.fn();
+    // Defense with Left CB at x: 18 and Right CB at x: 82, covering initial offense where X is at x: 15 and Z is at x: 85
+    const defensePlay: PlayDiagram = {
+      id: "def-man-lock",
+      teamId: "team_apex",
+      name: "Man 2-Deep",
+      type: "defense",
+      formation: "Man Cover",
+      situation: "Standard",
+      losY: 65,
+      players: [
+        { id: "cb-left", side: "defense", label: "LCB", role: "Cornerback", x: 18, y: 55, coverageType: "man", manTargetId: "init-x" },
+        { id: "cb-right", side: "defense", label: "RCB", role: "Cornerback", x: 82, y: 55, coverageType: "man", manTargetId: "init-z" },
+        { id: "init-x", side: "offense", label: "X", role: "Wide Receiver", x: 15, y: 65 },
+        { id: "init-z", side: "offense", label: "Z", role: "Wide Receiver", x: 85, y: 65 },
+      ],
+    };
+
+    // Opposing offense where receiver labels are swapped: Z is on the left (x: 15) and X is on the right (x: 85)
+    const opponentSwappedOffense: Playbook = {
+      id: "pb-swapped",
+      teamId: "team_apex",
+      title: "Swapped Formation Book",
+      type: "offense",
+      playersOnField: 5,
+      formations: [],
+      plays: [
+        {
+          id: "play-swapped-verts",
+          teamId: "team_apex",
+          name: "Swapped Verticals",
+          type: "offense",
+          formation: "Swapped 2x1",
+          situation: "Standard",
+          losY: 65,
+          players: [
+            { id: "new-z", side: "offense", label: "Z", role: "Wide Receiver", x: 15, y: 65, route: [{ x: 15, y: 20 }] },
+            { id: "new-x", side: "offense", label: "X", role: "Wide Receiver", x: 85, y: 65, route: [{ x: 85, y: 20 }] },
+            { id: "new-c", side: "offense", label: "C", role: "Center", x: 50, y: 65 },
+            { id: "new-qb", side: "offense", label: "QB", role: "Quarterback", x: 50, y: 74 },
+            { id: "new-h", side: "offense", label: "H", role: "Slot Receiver", x: 30, y: 65 },
+          ],
+        },
+      ],
+      createdAt: "2026-10-01T00:00:00Z",
+      updatedAt: "2026-10-01T00:00:00Z",
+    };
+
+    render(
+      <PlayCanvas
+        play={defensePlay}
+        onChange={handleChange}
+        playbook={mockDefensePlaybook}
+        allPlaybooks={[mockDefensePlaybook, opponentSwappedOffense]}
+      />
+    );
+
+    // Open opponent plays menu
+    fireEvent.click(screen.getByTestId("opponent-play-selector-btn"));
+    // Select the Swapped Verticals play
+    fireEvent.click(screen.getByRole("button", { name: /^Swapped Verticals/ }));
+
+    expect(handleChange).toHaveBeenCalled();
+    const updatedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+
+    const updatedLcb = updatedPlay.players.find((p) => p.id === "cb-left");
+    const updatedRcb = updatedPlay.players.find((p) => p.id === "cb-right");
+
+    const targetedByLcb = updatedPlay.players.find((p) => p.id === updatedLcb?.manTargetId);
+    const targetedByRcb = updatedPlay.players.find((p) => p.id === updatedRcb?.manTargetId);
+
+    // LCB is on the left -> must default to Z (at x: 15), NOT travel across the field to X on the right!
+    expect(targetedByLcb?.label).toBe("Z");
+    expect(targetedByLcb?.x).toBe(15);
+
+    // RCB is on the right -> must default to X (at x: 85), NOT travel across the field to Z on the left!
+    expect(targetedByRcb?.label).toBe("X");
+    expect(targetedByRcb?.x).toBe(85);
+  });
+
+  it("allows selecting 'No Opposing Play' to clear scheme and go back to showing no opposing play", () => {
+    const handleChange = vi.fn();
+    const defensePlay: PlayDiagram = {
+      id: "def-play-scheme-test",
+      teamId: "team_apex",
+      name: "Base Defense",
+      type: "defense",
+      formation: "Base",
+      situation: "Standard",
+      losY: 65,
+      players: [
+        { id: "def-cb", side: "defense", label: "CB", role: "Cornerback", x: 20, y: 55, coverageType: "man", manTargetId: "off-1" },
+        { id: "off-1", side: "offense", label: "WR", role: "Wide Receiver", x: 20, y: 65 },
+      ],
+    };
+
+    const { rerender } = render(
+      <PlayCanvas
+        play={defensePlay}
+        onChange={handleChange}
+        playbook={mockDefensePlaybook}
+        allPlaybooks={[mockDefensePlaybook, mockOffensePlaybook]}
+      />
+    );
+
+    // 1. Select opposing play
+    fireEvent.click(screen.getByTestId("opponent-play-selector-btn"));
+    fireEvent.click(screen.getByRole("button", { name: /Spread 2x1 - Verticals/ }));
+
+    expect(handleChange).toHaveBeenCalled();
+    const withSchemePlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    rerender(
+      <PlayCanvas
+        play={withSchemePlay}
+        onChange={handleChange}
+        playbook={mockDefensePlaybook}
+        allPlaybooks={[mockDefensePlaybook, mockOffensePlaybook]}
+      />
+    );
+
+    // Opponent scheme is now active
+    expect(screen.getByTestId("opponent-play-selector-btn")).toHaveTextContent("Spread 2x1 - Verticals");
+
+    // 2. Open opponent plays menu and select 'No Opposing Play'
+    fireEvent.click(screen.getByTestId("opponent-play-selector-btn"));
+    const noPlayBtn = screen.getByTestId("no-opponent-play-btn");
+    expect(noPlayBtn).toBeInTheDocument();
+    fireEvent.click(noPlayBtn);
+
+    expect(handleChange).toHaveBeenCalled();
+    const clearedPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+
+    // The opposing offensive players have no routes or play scheme attached
+    const clearedOffense = clearedPlay.players.filter((p) => p.side === "offense");
+    for (const player of clearedOffense) {
+      expect(player.route || []).toHaveLength(0);
+    }
+  });
+
+  it("supports freeform shade and cushion depth in man coverage without requiring choices", () => {
+    const handleChange = vi.fn();
+    const defensePlay: PlayDiagram = {
+      id: "def-freeform-test",
+      teamId: "team_apex",
+      name: "Freeform Man Test",
+      type: "defense",
+      formation: "Base",
+      situation: "Standard",
+      losY: 65,
+      players: [
+        { id: "cb-1", side: "defense", label: "CB", role: "Cornerback", x: 22, y: 52 },
+        { id: "wr-x", side: "offense", label: "X", role: "Wide Receiver", x: 20, y: 65 },
+      ],
+    };
+
+    const { rerender } = render(
+      <PlayCanvas
+        play={defensePlay}
+        onChange={handleChange}
+        playbook={mockDefensePlaybook}
+        allPlaybooks={[mockDefensePlaybook]}
+      />
+    );
+
+    // Select defender
+    fireEvent.click(screen.getByRole("button", { name: /CB/i }));
+    // Switch to man coverage
+    fireEvent.click(screen.getByRole("button", { name: /Man/i }));
+
+    const manPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    rerender(
+      <PlayCanvas
+        play={manPlay}
+        onChange={handleChange}
+        playbook={mockDefensePlaybook}
+        allPlaybooks={[mockDefensePlaybook]}
+      />
+    );
+
+    // Controls display optional status
+    expect(screen.getByText("Alignment Shade (Optional)")).toBeInTheDocument();
+    expect(screen.getByText("Cushion Depth (Optional)")).toBeInTheDocument();
+    expect(screen.getByTestId("shade-freeform")).toBeInTheDocument();
+    expect(screen.getByTestId("cushion-freeform")).toBeInTheDocument();
+
+    // Select Freeform shade
+    fireEvent.click(screen.getByTestId("shade-freeform"));
+    const freeformShadePlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const cbWithFreeformShade = freeformShadePlay.players.find((p) => p.id === "cb-1");
+    expect(cbWithFreeformShade?.shade).toBeUndefined();
+
+    // Select Freeform cushion
+    rerender(
+      <PlayCanvas
+        play={freeformShadePlay}
+        onChange={handleChange}
+        playbook={mockDefensePlaybook}
+        allPlaybooks={[mockDefensePlaybook]}
+      />
+    );
+    fireEvent.click(screen.getByTestId("cushion-freeform"));
+    const freeformCushionPlay = handleChange.mock.calls[handleChange.mock.calls.length - 1][0] as PlayDiagram;
+    const cbWithFreeformCushion = freeformCushionPlay.players.find((p) => p.id === "cb-1");
+    expect(cbWithFreeformCushion?.cushionYards).toBeUndefined();
+  });
+
+  it("displays SINGLE COVERAGE tag during simulation for receivers in man coverage instead of calculating open/covered", () => {
+    const playWithManAndZone: PlayDiagram = {
+      id: "play-sim-man",
+      teamId: "team_apex",
+      name: "Sim Test Play",
+      type: "offense",
+      formation: "Trips Right",
+      situation: "Standard",
+      losY: 65,
+      players: [
+        {
+          id: "off-wr1",
+          side: "offense",
+          label: "WR1",
+          role: "Wide Receiver",
+          x: 20,
+          y: 65,
+          route: [
+            { x: 20, y: 65 },
+            { x: 20, y: 35 },
+          ],
+        },
+        {
+          id: "off-wr2",
+          side: "offense",
+          label: "WR2",
+          role: "Wide Receiver",
+          x: 80,
+          y: 65,
+          route: [
+            { x: 80, y: 65 },
+            { x: 80, y: 35 },
+          ],
+        },
+        // Defender 1 is in man coverage on WR1
+        {
+          id: "def-cb1",
+          side: "defense",
+          label: "CB1",
+          role: "Cornerback",
+          x: 20,
+          y: 55,
+          coverageType: "man",
+          manTargetId: "off-wr1",
+        },
+        // Defender 2 is deep safety in zone coverage on right side
+        {
+          id: "def-fs",
+          side: "defense",
+          label: "FS",
+          role: "Safety",
+          x: 50,
+          y: 40,
+          coverageType: "zone",
+        },
+      ],
+    };
+
+    render(
+      <PlayCanvas
+        play={playWithManAndZone}
+        onChange={vi.fn()}
+        playbook={mockOffensePlaybook}
+        allPlaybooks={[mockDefensePlaybook, mockOffensePlaybook]}
+      />
+    );
+
+    // Turn Opponent On
+    fireEvent.click(screen.getByTestId("toggle-opponent-btn"));
+
+    // Run Play
+    fireEvent.click(screen.getByText("Run Play"));
+
+    // WR1 is man-covered -> displays single-coverage tag
+    expect(screen.getByTestId("single-coverage-off-wr1")).toBeInTheDocument();
+    expect(screen.getByText("SINGLE COVERAGE")).toBeInTheDocument();
+    expect(screen.queryByTestId("open-receiver-off-wr1")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("covered-receiver-off-wr1")).not.toBeInTheDocument();
+
+    // WR2 is not man-covered and far from defenders -> displays open receiver
+    expect(screen.getByTestId("open-receiver-off-wr2")).toBeInTheDocument();
+  });
 });
+

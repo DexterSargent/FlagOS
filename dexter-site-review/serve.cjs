@@ -2,7 +2,7 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
-const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".md": "text/plain", ".tsx": "text/plain", ".ts": "text/plain", ".cjs": "text/plain", ".mjs": "text/plain", ".yaml": "text/plain", ".rules": "text/plain", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".ico": "image/x-icon" };
+const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".md": "text/plain", ".tsx": "text/plain", ".ts": "text/plain", ".cjs": "text/plain", ".mjs": "text/plain", ".yaml": "text/plain", ".rules": "text/plain", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif", ".ico": "image/x-icon" };
 function createServer() {
   return http.createServer((request, response) => {
     response.setHeader("X-Content-Type-Options", "nosniff");

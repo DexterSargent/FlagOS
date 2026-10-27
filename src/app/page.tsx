@@ -42,6 +42,7 @@ import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { FlagOSText, renderFlagOS } from "@/components/FlagOSText";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
+import FlagOSLoader from "@/components/FlagOSLoader";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountMenu from "@/components/AccountMenu";
 import SignedInHome from "@/components/home/SignedInHome";
@@ -778,7 +779,7 @@ export default function FlagOSPlatformLandingPage() {
               />
               {isFrameLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-100 dark:bg-[#05070C] text-slate-600 dark:text-neutral-300 pointer-events-none">
-                  <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+                  <FlagOSLoader size={48} label={`Loading ${getFeatureBadge().title}`} />
                   <span className="text-[11px] font-mono uppercase tracking-widest">Loading {getFeatureBadge().title}</span>
                 </div>
               )}

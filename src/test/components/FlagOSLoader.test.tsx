@@ -3,20 +3,17 @@ import { render, screen } from "@testing-library/react";
 import FlagOSLoader from "@/components/FlagOSLoader";
 import FlagOSLogo from "@/components/FlagOSLogo";
 import Loading from "@/app/loading";
-import { FLAGOS_LOGO } from "@/lib/brandTokens";
+import { FLAGOS_LOGO, FLAGOS_LOADER_PINWHEEL } from "@/lib/brandTokens";
 
 describe("FlagOS loading and branding", () => {
-  it("rotates only the gear and respects reduced motion", () => {
+  it("renders the animated football gear pinwheel with accessible status", () => {
     render(<FlagOSLoader label="Loading league" />);
     const status = screen.getByRole("status", { name: "Loading league" });
-    const [gear, football] = status.querySelectorAll("img");
-    expect(gear).toHaveAttribute("src", "/flagos-loading-gear.webp");
-    expect(gear).toHaveClass("motion-safe:animate-spin", "motion-reduce:animate-none");
-    expect(gear).toHaveStyle({ animationDuration: "3s" });
-    expect(football).toHaveAttribute("src", "/flagos-loading-football.webp");
-    expect(football.className).not.toContain("animate");
-    expect(gear).toHaveAttribute("aria-hidden", "true");
-    expect(football).toHaveAttribute("alt", "");
+    const img = status.querySelector("img");
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("src", FLAGOS_LOADER_PINWHEEL);
+    expect(img).toHaveAttribute("aria-hidden", "true");
+    expect(img).toHaveAttribute("alt", "");
   });
 
   it("supports different loading sizes and route transitions", () => {

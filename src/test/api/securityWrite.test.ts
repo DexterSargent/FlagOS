@@ -521,6 +521,25 @@ describe("secure data write API", () => {
       expect(transaction.delete).not.toHaveBeenCalled();
       expect(batchMock.delete).not.toHaveBeenCalled();
     });
+
+    it("refuses an independent team delete by a non-owner with 403 instead of failing", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "stranger@example.com" });
+      transaction.get.mockImplementation(async (ref) => "collection" in ref
+        ? { size: 0 }
+        : ref.path === "teams/wolves"
+          ? { exists: true, data: () => ({ name: "Wolves", leagueId: "" }) }
+          : { exists: false, data: () => undefined });
+      const response = await POST(request({ entity: "delete_team", data: { teamId: "wolves" } }));
+      expect(response.status).toBe(403);
+      expect(transaction.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  it("answers an invalid or expired ID token with 401", async () => {
+    verifyIdTokenMock.mockRejectedValue(new Error("auth/argument-error"));
+    const response = await POST(request({ entity: "league", data: validLeague }));
+    expect(response.status).toBe(401);
+    expect(transaction.create).not.toHaveBeenCalled();
   });
 
   describe("league deletion", () => {

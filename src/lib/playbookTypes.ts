@@ -1096,16 +1096,18 @@ export function generatePlayerAssignmentNote(
 ): string {
   if (player.side === "defense") {
     if (player.coverageType === "man") {
-      const shade = player.shade || "head_up";
+      const shade = player.shade;
       const shadeText =
         shade === "inside"
           ? "inside shade"
           : shade === "outside"
             ? "outside shade"
-            : "head up";
+            : shade === "head_up"
+              ? "head up"
+              : undefined;
 
-      const cushion = player.cushionYards ?? 5;
-      const cushionText = `${cushion}yd${cushion === 1 ? "" : "s"} off`;
+      const cushion = player.cushionYards;
+      const cushionText = cushion !== undefined ? `${cushion}yd${cushion === 1 ? "" : "s"} off` : undefined;
 
       const targetPlayer =
         player.manTargetId && allPlayers
@@ -1113,9 +1115,28 @@ export function generatePlayerAssignmentNote(
           : undefined;
 
       if (targetPlayer) {
-        return `Man ${shadeText}, ${cushionText} on ${targetPlayer.label}`;
+        if (shadeText && cushionText) {
+          return `Man ${shadeText}, ${cushionText} on ${targetPlayer.label}`;
+        }
+        if (shadeText) {
+          return `Man ${shadeText} on ${targetPlayer.label}`;
+        }
+        if (cushionText) {
+          return `Man, ${cushionText} on ${targetPlayer.label}`;
+        }
+        return `Man coverage on ${targetPlayer.label}`;
       }
-      return `Man ${shadeText}, ${cushionText}`;
+
+      if (shadeText && cushionText) {
+        return `Man ${shadeText}, ${cushionText}`;
+      }
+      if (shadeText) {
+        return `Man ${shadeText}`;
+      }
+      if (cushionText) {
+        return `Man, ${cushionText}`;
+      }
+      return "Man coverage";
     }
 
     if (player.coverageType === "rush" || player.label === "RUSH") {
