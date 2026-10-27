@@ -110,6 +110,14 @@ describe("Route-scoped league startup", () => {
     await waitFor(() => expect(state()).toMatchObject({ id: "private-league", name: "Selected Private League", loading: false }));
   });
 
+  it("shows the private lock settings, not demo branding, when a signed-out read is denied", async () => {
+    mocks.getDoc.mockImplementation(async () => { throw Object.assign(new Error("denied"), { code: "permission-denied" }); });
+    window.history.replaceState(null, "", "/schedule?league=private-league");
+    mocks.pathname = "/schedule";
+    render(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "private-league", name: "Private League", demo: false, loading: false }));
+  });
+
   it("forgets the portal after leaving it and never restores a league from storage", async () => {
     localStorage.setItem("flagos_active_league_id", "private-league");
     mocks.pathname = "/league/private-league";

@@ -3,18 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AuthGuard from "@/components/AuthGuard";
 
-const state = vi.hoisted(() => ({ pathname: "/teams/falcons", loading: true, demo: false, push: vi.fn(), visibility: "public", resolved: true }));
+const state = vi.hoisted(() => ({ pathname: "/teams/falcons", loading: true, demo: false, leagueId: "", user: null as null | { email: string }, push: vi.fn(), visibility: "public", resolved: true }));
 vi.mock("next/navigation", () => ({
   usePathname: () => state.pathname,
   useRouter: () => ({ push: state.push }),
 }));
 vi.mock("@/lib/authContext", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/authContext")>(),
-  useAuth: () => ({ user: null, isPlayer: false, isAuthorized: false, loading: state.loading, logout: vi.fn(), needsEmailVerification: false, identityLookupFailed: false }),
-  useAccountAuth: () => ({ user: null, isPlayer: false, isAuthorized: false, loading: state.loading, logout: vi.fn(), needsEmailVerification: false, identityLookupFailed: false }),
+  useAuth: () => ({ user: state.user, isPlayer: false, isAuthorized: false, loading: state.loading, logout: vi.fn(), needsEmailVerification: false, identityLookupFailed: false }),
+  useAccountAuth: () => ({ user: state.user, isPlayer: false, isAuthorized: false, loading: state.loading, logout: vi.fn(), needsEmailVerification: false, identityLookupFailed: false }),
 }));
 vi.mock("@/lib/leagueContext", () => ({
-  useLeague: () => ({ isDemoLeague: state.demo, activeLeagueId: state.demo ? "default" : "" }),
+  useLeague: () => ({ isDemoLeague: state.demo, activeLeagueId: state.demo ? "default" : state.leagueId }),
 }));
 
 vi.mock("@/lib/teamRecord", async (importOriginal) => ({
@@ -29,7 +29,21 @@ describe("independent team public route startup", () => {
     state.visibility = "public";
     state.resolved = true;
     state.demo = false;
+    state.leagueId = "";
+    state.user = null;
     state.push.mockClear();
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  it("does not let a leftover demo flag unlock a real league's pages", () => {
+    state.pathname = "/schedule";
+    state.leagueId = "private-league";
+    state.loading = false;
+    localStorage.setItem("flagos_demo_active", "true");
+    render(<AuthGuard><p>Private league schedule</p></AuthGuard>);
+    expect(screen.queryByText("Private league schedule")).not.toBeInTheDocument();
+    expect(state.push).toHaveBeenCalledWith("/login?redirect=%2Fschedule");
   });
 
   it.each(["/teams/falcons", "/teams/falcons/roster", "/teams/falcons/schedule", "/teams/falcons/stats", "/teams/falcons/matches/game/stat-keeper"])(
@@ -49,6 +63,15 @@ describe("independent team public route startup", () => {
     expect(screen.queryByText("Public team content")).not.toBeInTheDocument();
     expect(screen.getByText("Verifying Authorization")).toBeInTheDocument();
     expect(state.push).not.toHaveBeenCalled();
+  });
+
+  it("lets a verified non-member reach a league-wide page so the page can apply league privacy", () => {
+    state.pathname = "/join";
+    state.leagueId = "public-league";
+    state.loading = false;
+    state.user = { email: "newplayer@example.com" };
+    render(<AuthGuard><p>Join form</p></AuthGuard>);
+    expect(screen.getByText("Join form")).toBeInTheDocument();
   });
 
   it("keeps the private playbook guarded even when a demo league was previously selected", () => {

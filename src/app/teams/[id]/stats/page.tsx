@@ -38,6 +38,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const [statsLoading, setStatsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [teamMissing, setTeamMissing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +46,7 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     setStats([]);
     setTeamStats(null);
     setLoadError(null);
+    setTeamMissing(false);
     const fetchData = async () => {
       try {
         let tObj: any = null;
@@ -63,7 +65,12 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         } else {
           const teamSnap = await getDoc(doc(db, "teams", teamId));
           if (cancelled) return;
-          if (teamSnap.exists()) tObj = { ...teamSnap.data(), id: teamSnap.id };
+          if (!teamSnap.exists()) {
+            setTeamMissing(true);
+            setLoading(false);
+            return;
+          }
+          tObj = { ...teamSnap.data(), id: teamSnap.id };
           const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
           if (tObj) setTeam(tObj);
           setLoading(false);
@@ -281,6 +288,19 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     return (
       <div className="min-h-screen bg-black text-white flex flex-col justify-center items-center font-sans">
         <FlagOSLoader />
+      </div>
+    );
+  }
+
+  if (teamMissing) {
+    return (
+      <div data-tour="team-stats-error" role="alert" className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
+        <Shield className="w-14 h-14 text-neutral-500 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Team Not Found</h2>
+        <p className="text-neutral-400 text-sm mb-6 max-w-md">This team doesn&apos;t exist or has been removed.</p>
+        <Link href="/teams" className="px-6 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white font-black text-xs uppercase tracking-wider">
+          Browse Teams
+        </Link>
       </div>
     );
   }

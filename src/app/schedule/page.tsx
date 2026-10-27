@@ -1154,7 +1154,7 @@ export default function Calendar() {
             <form onSubmit={handleSaveMatch} className="space-y-4">
               <div data-tour="schedule-event-basics" className="space-y-4">
               <div>
-                <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                <label htmlFor="schedule-week-input" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
                   <span>Week Title</span>
                   <FieldHelpTooltip
                     title="Week / Round"
@@ -1162,6 +1162,7 @@ export default function Calendar() {
                   />
                 </label>
                 <input
+                  id="schedule-week-input"
                   type="text"
                   required
                   value={editingMatch.week || ""}
@@ -1230,7 +1231,7 @@ export default function Calendar() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                  <label htmlFor="schedule-date-input" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
                     <span>Date</span>
                     <FieldHelpTooltip
                       title="Game Date"
@@ -1238,6 +1239,7 @@ export default function Calendar() {
                     />
                   </label>
                   <input
+                    id="schedule-date-input"
                     type="text"
                     required
                     value={editingMatch.date || ""}
@@ -1247,7 +1249,7 @@ export default function Calendar() {
                   />
                 </div>
                 <div>
-                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                  <label htmlFor="schedule-time-input" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
                     <span>Time</span>
                     <FieldHelpTooltip
                       title="Kickoff Time"
@@ -1255,6 +1257,7 @@ export default function Calendar() {
                     />
                   </label>
                   <input
+                    id="schedule-time-input"
                     type="text"
                     required
                     value={editingMatch.time || ""}
@@ -1266,7 +1269,7 @@ export default function Calendar() {
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                <label htmlFor="schedule-location-input" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
                   <span>Location</span>
                   <FieldHelpTooltip
                     title="Pitch / Venue"
@@ -1274,6 +1277,7 @@ export default function Calendar() {
                   />
                 </label>
                 <input
+                  id="schedule-location-input"
                   type="text"
                   required
                   value={editingMatch.location || ""}

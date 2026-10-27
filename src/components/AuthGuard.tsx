@@ -36,6 +36,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const isPublicTeamRoute = isCustomerTeamRoute && routeTeam?.visibility === "public" &&
     /^\/teams\/[^/]+(?:\/(?:schedule|roster|stats)|\/matches\/[^/]+\/stat-keeper)?\/?$/.test(pathname);
   const awaitingTeam = isCustomerTeamRoute && !routeTeam && !routeTeamResolved;
+  const isRealLeagueRoute = !routeTeamId && Boolean(activeLeagueId) && activeLeagueId !== "default" && activeLeagueId !== "demo";
 
   // Synchronous client/server evaluation:
   // Is this the interactive demo sandbox where all features should be explored without signing in?
@@ -55,8 +56,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       return true;
     }
 
-    // 3. Client-side storage or query parameter (read after hydration)
-    if (demoFlag) return true;
+    // 3. Client-side storage or query parameter (read after hydration). The stored flag outlives
+    // the demo visit, so it must never unlock a real league the route has selected.
+    if (demoFlag && !activeLeagueId) return true;
 
     return false;
   }, [pathname, isDemoLeague, activeLeagueId, isCustomerTeamRoute, demoFlag]);
@@ -185,6 +187,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Case 2: User is signed in with an unauthorized email
   // (e.g. personal email that is not an admin, not a coach, and not in any player roster)
+  // League-wide pages decide per league: public leagues are open to any verified account and
+  // private ones show PrivateLeagueAccessDenied, so a non-member can still browse and join.
+  if (!isAuthorized && isRealLeagueRoute) {
+    return <>{children}</>;
+  }
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 md:p-12 relative overflow-hidden font-sans selection:bg-amber-500/30 selection:text-amber-200">

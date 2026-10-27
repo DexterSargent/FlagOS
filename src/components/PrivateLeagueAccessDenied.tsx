@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, ShieldAlert, ArrowLeft, LogIn } from "lucide-react";
@@ -12,6 +13,10 @@ export default function PrivateLeagueAccessDenied({
 }) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const [loginHref, setLoginHref] = useState("/login");
+  useEffect(() => {
+    setLoginHref(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+  }, []);
 
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4 py-12 relative overflow-hidden">
@@ -51,7 +56,7 @@ export default function PrivateLeagueAccessDenied({
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
-            href="/login"
+            href={loginHref}
             className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
           >
             <LogIn className="w-4 h-4" />
