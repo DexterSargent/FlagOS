@@ -66,7 +66,7 @@ export default function EmailVerificationNotice() {
       <button
         type="button"
         onClick={logout}
-        className="w-full py-1 text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white text-xs font-bold transition-colors cursor-pointer"
+        className="w-full py-2.5 min-h-[44px] text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white text-xs font-bold transition-colors cursor-pointer"
       >
         Sign out
       </button>
