@@ -96,15 +96,12 @@ describe("GlobalShell", () => {
     expect(screen.queryByText("League Footer")).not.toBeInTheDocument();
   });
 
-  it("omits the league header and footer when logged in as an individual team coach/admin", () => {
+  it.each([
+    ["coach/team admin", { role: "team_admin", managedTeamId: "york_lions", playerTeamId: null }],
+    ["rostered player", { role: "player", managedTeamId: null, playerTeamId: "york_lions" }],
+  ])("keeps the league header and footer on league pages for a %s", async (_label, auth) => {
     usePathnameMock.mockReturnValue("/schedule");
-    mockUseAuth.mockReturnValue({
-      role: "team_admin",
-      isLeagueAdmin: false,
-      isPlatformAdmin: false,
-      managedTeamId: "york_lions",
-      playerTeamId: null,
-    });
+    mockUseAuth.mockReturnValue({ isLeagueAdmin: false, isPlatformAdmin: false, ...auth });
 
     render(
       <GlobalShell>
@@ -112,28 +109,9 @@ describe("GlobalShell", () => {
       </GlobalShell>
     );
 
-    expect(screen.queryByText("League Header")).not.toBeInTheDocument();
-    expect(screen.queryByText("League Footer")).not.toBeInTheDocument();
-  });
-
-  it("omits the league header and footer when logged in as a rostered player", () => {
-    usePathnameMock.mockReturnValue("/schedule");
-    mockUseAuth.mockReturnValue({
-      role: "player",
-      isLeagueAdmin: false,
-      isPlatformAdmin: false,
-      managedTeamId: null,
-      playerTeamId: "york_lions",
-    });
-
-    render(
-      <GlobalShell>
-        <div>Schedule content</div>
-      </GlobalShell>
-    );
-
-    expect(screen.queryByText("League Header")).not.toBeInTheDocument();
-    expect(screen.queryByText("League Footer")).not.toBeInTheDocument();
+    expect(await screen.findByText("League Header")).toBeInTheDocument();
+    expect(screen.getByText("League Footer")).toBeInTheDocument();
+    expect(screen.queryByText("Site Header")).not.toBeInTheDocument();
   });
 
   it("keeps the league header and footer when actively in a specific league", async () => {
@@ -160,26 +138,6 @@ describe("GlobalShell", () => {
 
     expect(await screen.findByText("League Header")).toBeInTheDocument();
     expect(screen.getByText("League Footer")).toBeInTheDocument();
-  });
-
-  it("gives league pages the site header and Powered by FlagOS footer for team users", async () => {
-    usePathnameMock.mockReturnValue("/schedule");
-    mockUseAuth.mockReturnValue({
-      role: "team_admin",
-      isLeagueAdmin: false,
-      isPlatformAdmin: false,
-      managedTeamId: "york_lions",
-      playerTeamId: null,
-    });
-
-    render(
-      <GlobalShell>
-        <div>Schedule content</div>
-      </GlobalShell>
-    );
-
-    expect(await screen.findByText("Site Header")).toBeInTheDocument();
-    expect(screen.getByText("Powered by FlagOS")).toBeInTheDocument();
   });
 
   it.each(["/profile", "/account", "/login", "/admin", "/leagues"])(

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Lock, ShieldAlert, ArrowLeft, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 
@@ -12,7 +11,6 @@ export default function PrivateLeagueAccessDenied({
   leagueName?: string;
 }) {
   const { user, logout } = useAuth();
-  const router = useRouter();
   const [loginHref, setLoginHref] = useState("/login");
   useEffect(() => {
     setLoginHref(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
@@ -47,7 +45,7 @@ export default function PrivateLeagueAccessDenied({
             Currently signed in as: <strong className="text-white">{user.email || "Unknown"}</strong>
             <button
               onClick={() => logout()}
-              className="block mx-auto mt-2 text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
+              className="block mx-auto mt-1 px-3 py-2 min-h-[44px] text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer"
             >
               Sign out to switch accounts
             </button>
@@ -55,23 +53,23 @@ export default function PrivateLeagueAccessDenied({
         ) : null}
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            href={loginHref}
-            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>Sign In With Email</span>
-          </Link>
+          {!user && (
+            <Link
+              href={loginHref}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In With Email</span>
+            </Link>
+          )}
 
-          <button
-            onClick={() => {
-              router.push("/league/default");
-            }}
+          <Link
+            href="/leagues"
             className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Return to Demo</span>
-          </button>
+            <span>Browse Leagues</span>
+          </Link>
         </div>
       </div>
     </div>

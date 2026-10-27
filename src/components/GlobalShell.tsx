@@ -12,13 +12,11 @@ const LeagueFooter = dynamic(() => import("./LeagueFooter"));
 const SiteHeader = dynamic(() => import("./SiteHeader"));
 const PoweredByFooter = dynamic(() => import("./PoweredByFooter"));
 
-import { useAuth } from "@/lib/authContext";
 import { ShellChromeContext } from "@/lib/shellChrome";
 import { PageGuideProvider } from "@/lib/pageGuide";
 
 function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { role, isLeagueAdmin, isPlatformAdmin, managedTeamId, playerTeamId } = useAuth();
 
   // Always initialize to false so server HTML matches the first client render.
   // The real embedded state is determined in useEffect (client-only). Reading the query from
@@ -49,15 +47,6 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   // The league-wide /teams directory is a league page and keeps the league header/footer.
   const isTeamRoute = Boolean(pathname?.startsWith("/teams/"));
 
-  // User is logged in as an individual team (coach/team admin or rostered player, not a league commissioner)
-  const isLoggedInAsIndividualTeam =
-    !isLeagueAdmin &&
-    !isPlatformAdmin &&
-    (role === "team_admin" ||
-      role === "player" ||
-      Boolean(managedTeamId) ||
-      Boolean(playerTeamId));
-
   // Specific league routes where league navigation is relevant
   const isLeagueRoute = Boolean(
     pathname === "/league" ||
@@ -73,15 +62,14 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   // League navigation (header and footer) should ONLY appear if:
   // 1. Not in chrome-less views (iframe embed, login, play-by-play, landing, pricing, my-story)
   // 2. Not on an individual team page or team portal (/teams/...)
-  // 3. User is NOT logged in as an individual team (they manage or play for a team, not the league)
-  // 4. Actively in a specific league route
+  // 3. Actively in a specific league route. Every visitor gets it, whatever role they hold elsewhere,
+  //    because one account can coach, play in or run any number of leagues.
   const showLeagueNav =
     !hideChrome &&
     !isLandingPage &&
     !isPricingPage &&
     !isMyStoryPage &&
     !isTeamRoute &&
-    !isLoggedInAsIndividualTeam &&
     !suppressLeagueNav &&
     isLeagueRoute;
 

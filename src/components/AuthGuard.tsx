@@ -154,8 +154,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   // requires a verified email, so explain that instead of claiming the email isn't registered.
   if (!isAuthorized && needsEmailVerification) {
     return (
-      <div className="dark min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 md:p-12 font-sans">
-        <div className="bg-neutral-900/90 border border-amber-500/30 p-8 md:p-10 rounded-[2rem] shadow-2xl flex flex-col items-center max-w-md w-full text-center space-y-5">
+      <div className="min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-white flex flex-col items-center justify-center p-6 md:p-12 font-sans">
+        <div className="bg-white dark:bg-neutral-900/90 border border-amber-300 dark:border-amber-500/30 p-8 md:p-10 rounded-[2rem] shadow-2xl flex flex-col items-center max-w-md w-full text-center space-y-5">
           <h1 className="text-2xl font-black uppercase tracking-tight">One more step</h1>
           <EmailVerificationNotice />
         </div>
