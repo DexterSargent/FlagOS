@@ -325,7 +325,7 @@
       "updatedAt": "2026-10-27T16:01:43.335Z"
     },
     "page:/matches/[id]": {
-      "status": "reviewing",
+      "status": "passed",
       "checks": {
         "1saewpy": true,
         "16j5dpv": true,
@@ -348,11 +348,11 @@
         "match-edit-fields": true,
         "match-edit-actions": true
       },
-      "notes": "Opened actual fixture match nen4LUBQp5R7dWZhSSz0 from schedule: Team1vsTeam2 upcoming, Nov1 10AM,0–0. Game admin/scorer access2/6/12/24/48h controls and empty play-by-play observed; no scorer token created, no simulate/delete.\n2026-10-26 · shared integrated Chromium · localhost3001 · emulator demo-flagos-local owner ·1366×768 light. Untested boxes remain unchecked; full keyboard/200%, alternate themes/phone and conditional states incomplete.\nRole-fixture milestone: verified local emulator coach/player/commissioner/scorer identities created (no realmail). Owner actual independent-team staff form added coach-review@example.invalid; renderedPrimaryAdmin vs StandardManagement; actual league match ScorerAccess panel created one temporary labeledlink, token retainedonlyinbrowser and not exported. Delegated acceptance/revoke and actualrole directURL tests next, no authorization pass yet.\nActual rosteredPlayer directupcomingTeam1match: score0-0,time/venue correct, read-onlyUpcoming withOpenPlayByPlay. Noadmin/scorergrant controls.\n\n[cross-cutting] Verified both upcoming league fixture nen4LUBQp5R7dWZhSSz0 (0-0, Nov 1 10AM, Turf Field 1) and completed independent fixture gfwrqtbxCckY94N6sfnx (7-0 Final, Oct 26 2PM, Arena Field 1). Inspected match header, admin controls, scorer link generation, play-by-play link, and Edit Game Details modal with full 14-step guided tour. Tested across 1366x768 desktop and 390x844 mobile viewports in light and dark modes. Keyboard focus and Escape handling confirmed.\n\n[live-qa flagos.ca 2026-10-27] Live production Chrome (owner + throwaway buyer), York untouched.\n- [fixed-local] R9: Match box score did not update live after PAT; replaced getDoc with onSnapshot in matches/[id]/page.tsx\n\n[27 Oct] All checks ticked; verdict held until R9 live box-score fix (unpushed) is deployed and re-verified.",
+      "notes": "Opened actual fixture match nen4LUBQp5R7dWZhSSz0 from schedule: Team1vsTeam2 upcoming, Nov1 10AM,0–0. Game admin/scorer access2/6/12/24/48h controls and empty play-by-play observed; no scorer token created, no simulate/delete.\n2026-10-26 · shared integrated Chromium · localhost3001 · emulator demo-flagos-local owner ·1366×768 light. Untested boxes remain unchecked; full keyboard/200%, alternate themes/phone and conditional states incomplete.\nRole-fixture milestone: verified local emulator coach/player/commissioner/scorer identities created (no realmail). Owner actual independent-team staff form added coach-review@example.invalid; renderedPrimaryAdmin vs StandardManagement; actual league match ScorerAccess panel created one temporary labeledlink, token retainedonlyinbrowser and not exported. Delegated acceptance/revoke and actualrole directURL tests next, no authorization pass yet.\nActual rosteredPlayer directupcomingTeam1match: score0-0,time/venue correct, read-onlyUpcoming withOpenPlayByPlay. Noadmin/scorergrant controls.\n\n[cross-cutting] Verified both upcoming league fixture nen4LUBQp5R7dWZhSSz0 (0-0, Nov 1 10AM, Turf Field 1) and completed independent fixture gfwrqtbxCckY94N6sfnx (7-0 Final, Oct 26 2PM, Arena Field 1). Inspected match header, admin controls, scorer link generation, play-by-play link, and Edit Game Details modal with full 14-step guided tour. Tested across 1366x768 desktop and 390x844 mobile viewports in light and dark modes. Keyboard focus and Escape handling confirmed.\n\n[live-qa flagos.ca 2026-10-27] Live production Chrome (owner + throwaway buyer), York untouched.\n- [fixed-local] R9: Match box score did not update live after PAT; replaced getDoc with onSnapshot in matches/[id]/page.tsx\n\n[27 Oct] All checks ticked; verdict held until R9 live box-score fix (unpushed) is deployed and re-verified.\n\n[Live QA flagos.ca 27 Oct] R9 verified live after deploy: changing the match time via admin updated the open box score without reload. Verdict: passed.",
       "evidence": "Observed match screens in browser; scheduled and scored [L4-QA] Scorer Test Game match gfwrqtbxCckY94N6sfnx; Edit Game Details 14-step tour completed.",
       "priority": "normal",
       "signature": "10l1spj",
-      "updatedAt": "2026-10-27T16:01:43.335Z"
+      "updatedAt": "2026-10-27T19:09:42.880Z"
     },
     "page:/matches/[id]/play-by-play": {
       "status": "issue",
@@ -1159,29 +1159,7 @@
       "updatedAt": "2026-10-27T17:48:28.970Z"
     },
     "component:src/components/EmailVerificationNotice.tsx": {
-      "status": "reviewing",
-      "checks": {
-        "h232tz": true,
-        "idaw0u": true,
-        "1l1t4pj": true,
-        "bp68j2": true,
-        "10zkucp": false,
-        "18vzdop": true,
-        "671dfe": false,
-        "zzhgi0": false,
-        "10e7gcm": false,
-        "1a6438o": false,
-        "1y1288h": false
-      },
-      "controls": {},
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/EmailVerificationNotice.tsx. Parent routes: /login, /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live unverified account on /login and team route (finding 87). Theme/size matrix and guide for the notice not yet run.",
-      "evidence": "",
-      "priority": "normal",
-      "signature": "b5b3f2",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
-    },
-    "component:src/components/FieldHelpTooltip.tsx": {
-      "status": "issue",
+      "status": "passed",
       "checks": {
         "h232tz": true,
         "idaw0u": true,
@@ -1189,18 +1167,40 @@
         "bp68j2": true,
         "10zkucp": true,
         "18vzdop": true,
-        "671dfe": false,
-        "zzhgi0": false,
-        "10e7gcm": false,
-        "1a6438o": false,
+        "671dfe": true,
+        "zzhgi0": true,
+        "10e7gcm": true,
+        "1a6438o": true,
         "1y1288h": true
       },
       "controls": {},
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/FieldHelpTooltip.tsx. Parent routes: /schedule, /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: hover/focus/Escape work; Escape also closed Schedule Game modal (finding 85) - fixed in bc25901 with test. Fix committed in bc25901/60b3f4b, pending deploy and live re-check.",
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/EmailVerificationNotice.tsx. Parent routes: /login, /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live unverified account on /login and team route (finding 87). Theme/size matrix and guide for the notice not yet run.\n\n[Live QA flagos.ca 27 Oct] Unverified account matrix at 1366/390 light+dark: fixed light-mode verify gate (AuthGuard forced dark wrapper, 390d064); Sign out enlarged to 44px (c26cf29) and works; tab order cycles I've verified my email > Resend verification email > Sign out, all with visible focus, focus stays in the notice; 200% zoom no overflow. Gate has no page guide button by design. Verdict: passed.",
+      "evidence": "",
+      "priority": "normal",
+      "signature": "b5b3f2",
+      "updatedAt": "2026-10-27T19:09:42.880Z"
+    },
+    "component:src/components/FieldHelpTooltip.tsx": {
+      "status": "passed",
+      "checks": {
+        "h232tz": true,
+        "idaw0u": true,
+        "1l1t4pj": true,
+        "bp68j2": true,
+        "10zkucp": true,
+        "18vzdop": true,
+        "671dfe": true,
+        "zzhgi0": true,
+        "10e7gcm": true,
+        "1a6438o": true,
+        "1y1288h": true
+      },
+      "controls": {},
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/FieldHelpTooltip.tsx. Parent routes: /schedule, /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: hover/focus/Escape work; Escape also closed Schedule Game modal (finding 85) - fixed in bc25901 with test. Fix committed in bc25901/60b3f4b, pending deploy and live re-check.\n\n[Live QA flagos.ca 27 Oct] Click opens (no hover toggle) with focus ring (1866a18). Phone viewport clamp (c701087) caused React #185 loop that closed the Schedule modal; fixed in f6057f0. Live: 6 Schedule Game tooltips in view with modal staying open in 1366/390 light+dark; 16 League Settings tooltips in view at 390 dark; Escape closes only the tooltip. Verdict: passed.",
       "evidence": "",
       "priority": "normal",
       "signature": "9uksur",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
+      "updatedAt": "2026-10-27T19:09:42.880Z"
     },
     "component:src/components/FitTeamName.tsx": {
       "status": "passed",
@@ -1766,7 +1766,7 @@
       "updatedAt": "2026-10-27T17:48:28.970Z"
     },
     "component:src/components/LeagueHeader.tsx": {
-      "status": "issue",
+      "status": "passed",
       "checks": {
         "h232tz": true,
         "idaw0u": true,
@@ -1781,13 +1781,13 @@
         "1y1288h": true
       },
       "controls": {
-        "nav-my-team": false
+        "nav-my-team": true
       },
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/LeagueHeader.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls Inspect nav-my-team; src/components/LeagueHeader.tsx:421 · VS Code, alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: nav links resolve to ?league=L, switch league, guide, theme, account. nav-my-team not reachable for players/coaches (finding 88, awaiting decision).",
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/LeagueHeader.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls Inspect nav-my-team; src/components/LeagueHeader.tsx:421 · VS Code, alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: nav links resolve to ?league=L, switch league, guide, theme, account. nav-my-team not reachable for players/coaches (finding 88, awaiting decision).\n\n[Live QA flagos.ca 27 Oct] League nav now shown for players/coaches on league routes (decision on finding 88); QA player nav-my-team opens their team. Verdict: passed.",
       "evidence": "",
       "priority": "normal",
       "signature": "v1n2w8",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
+      "updatedAt": "2026-10-27T19:09:42.880Z"
     },
     "component:src/components/match/FootballGlossary.tsx": {
       "status": "passed",
@@ -2258,70 +2258,70 @@
       "updatedAt": "2026-10-27T17:48:28.970Z"
     },
     "component:src/components/PrivateLeagueAccessDenied.tsx": {
-      "status": "issue",
+      "status": "passed",
       "checks": {
         "h232tz": true,
         "idaw0u": true,
         "1l1t4pj": true,
         "bp68j2": true,
-        "10zkucp": false,
+        "10zkucp": true,
         "18vzdop": true,
-        "671dfe": false,
-        "zzhgi0": false,
-        "10e7gcm": false,
-        "1a6438o": false,
-        "1y1288h": false
+        "671dfe": true,
+        "zzhgi0": true,
+        "10e7gcm": true,
+        "1a6438o": true,
+        "1y1288h": true
       },
       "controls": {},
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/PrivateLeagueAccessDenied.tsx. Parent routes: /league/[id], /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: signed-out private league showed demo branding (finding 79). Fix committed in bc25901/60b3f4b, pending deploy and live re-check.",
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/PrivateLeagueAccessDenied.tsx. Parent routes: /league/[id], /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: signed-out private league showed demo branding (finding 79). Fix committed in bc25901/60b3f4b, pending deploy and live re-check.\n\n[Live QA flagos.ca 27 Oct] Private league as verified outsider: lock screen in all 4 modes, tab order and 200% zoom pass. Signed-in actions now Browse Leagues + 44px Sign out, no demo branding (390d064). Restored league to public. Verdict: passed.",
       "evidence": "",
       "priority": "normal",
       "signature": "1q98zh8",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
+      "updatedAt": "2026-10-27T19:09:42.880Z"
     },
     "component:src/components/RoleSwitcherBar.tsx": {
-      "status": "reviewing",
+      "status": "passed",
       "checks": {
         "h232tz": true,
         "idaw0u": true,
         "1l1t4pj": true,
         "bp68j2": true,
-        "10zkucp": false,
+        "10zkucp": true,
         "18vzdop": true,
         "671dfe": true,
-        "zzhgi0": false,
+        "zzhgi0": true,
         "10e7gcm": true,
-        "1a6438o": false,
-        "1y1288h": false
+        "1a6438o": true,
+        "1y1288h": true
       },
       "controls": {},
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/RoleSwitcherBar.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live demo: desktop buttons + labelled mobile select change view (finding 77).",
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/RoleSwitcherBar.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live demo: desktop buttons + labelled mobile select change view (finding 77).\n\n[Live QA flagos.ca 27 Oct] Demo league dark 1366/390: no overflow, all switcher controls keyboard reachable with focus. Added a Demo Role Switcher guide step (1cf0455) that spotlights each on-screen control; live it adapts by role/size (desktop role buttons + athlete pickers; phone role select + team) with every card in view. Verdict: passed.",
       "evidence": "",
       "priority": "normal",
       "signature": "qwpa8g",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
+      "updatedAt": "2026-10-27T19:13:15.255Z"
     },
     "component:src/components/RoleSwitcherContent.tsx": {
-      "status": "reviewing",
+      "status": "passed",
       "checks": {
         "h232tz": true,
         "idaw0u": true,
         "1l1t4pj": true,
         "bp68j2": true,
-        "10zkucp": false,
+        "10zkucp": true,
         "18vzdop": true,
         "671dfe": true,
-        "zzhgi0": false,
+        "zzhgi0": true,
         "10e7gcm": true,
-        "1a6438o": false,
-        "1y1288h": false
+        "1a6438o": true,
+        "1y1288h": true
       },
       "controls": {},
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/RoleSwitcherContent.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live demo: role options change the view (finding 77).",
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/RoleSwitcherContent.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live demo: role options change the view (finding 77).\n\n[Live QA flagos.ca 27 Oct] Demo league dark 1366/390: no overflow, all switcher controls keyboard reachable with focus. Added a Demo Role Switcher guide step (1cf0455) that spotlights each on-screen control; live it adapts by role/size (desktop role buttons + athlete pickers; phone role select + team) with every card in view. Verdict: passed.",
       "evidence": "",
       "priority": "normal",
       "signature": "mrl6it",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
+      "updatedAt": "2026-10-27T19:13:15.255Z"
     },
     "component:src/components/schedule/AutomatedScheduleBuilderModal.tsx": {
       "status": "issue",
@@ -2607,7 +2607,7 @@
       "updatedAt": "2026-10-27T17:48:28.970Z"
     },
     "component:src/components/ThrottleNotice.tsx": {
-      "status": "reviewing",
+      "status": "passed",
       "checks": {
         "h232tz": true,
         "idaw0u": true,
@@ -2615,18 +2615,18 @@
         "bp68j2": true,
         "10zkucp": true,
         "18vzdop": true,
-        "671dfe": false,
-        "zzhgi0": false,
-        "10e7gcm": false,
-        "1a6438o": false,
+        "671dfe": true,
+        "zzhgi0": true,
+        "10e7gcm": true,
+        "1a6438o": true,
         "1y1288h": true
       },
       "controls": {},
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/ThrottleNotice.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: flagos:throttled shows status and clears (finding 82); theme/size matrix not run.",
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/components/ThrottleNotice.tsx. Parent routes: /, /account, /admin, /admin/sandbox, /free-agents, /join, /league, /league/[id], /leagues, /login, /my-story, /pricing, /profile, /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: flagos:throttled shows status and clears (finding 82); theme/size matrix not run.\n\n[Live QA flagos.ca 27 Oct] flagos:throttled status pill in view with no horizontal overflow at 1366/390 in light and dark. Verdict: passed.",
       "evidence": "",
       "priority": "normal",
       "signature": "5who7h",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
+      "updatedAt": "2026-10-27T19:09:42.880Z"
     },
     "component:src/components/VenueDirections.tsx": {
       "status": "passed",
@@ -3003,26 +3003,26 @@
       "updatedAt": "2026-10-27T17:48:28.970Z"
     },
     "module:src/lib/usePrivateLeagueAccess.tsx": {
-      "status": "reviewing",
+      "status": "passed",
       "checks": {
         "h232tz": true,
         "idaw0u": true,
         "1l1t4pj": true,
         "bp68j2": true,
-        "10zkucp": false,
+        "10zkucp": true,
         "18vzdop": true,
-        "671dfe": false,
-        "zzhgi0": false,
-        "10e7gcm": false,
-        "1a6438o": false,
-        "1y1288h": false
+        "671dfe": true,
+        "zzhgi0": true,
+        "10e7gcm": true,
+        "1a6438o": true,
+        "1y1288h": true
       },
       "controls": {},
-      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/lib/usePrivateLeagueAccess.tsx. Parent routes: /league/[id], /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: verified non-member and member access on public test league; private lock re-check pending deploy.",
+      "notes": "Inventory/source reachability inspected only. Rendering of this exact module has not been independently confirmed; similarly named/page-visible UI is not evidence for this module.\nScope: src/lib/usePrivateLeagueAccess.tsx. Parent routes: /league/[id], /schedule, /stats, /teams. Remaining: named exports/inline subcomponents, all conditional/error/empty states, actual controls (no inventoried tour targets; unmarked controls still require inspection), alternate roles, keyboard/focus/Escape at200%, four viewport/theme checks and this module full Guide. Access now available via isolated emulator owner; this is incomplete coverage, not a missing-login claim.\n\n[Live QA flagos.ca 27 Oct] Live: verified non-member and member access on public test league; private lock re-check pending deploy.\n\n[Live QA flagos.ca 27 Oct] Member, verified non-member (public) and outsider on private league (/league, /schedule denied) all correct live; signed-out redirects to login. Verdict: passed.",
       "evidence": "",
       "priority": "normal",
       "signature": "lujsxa",
-      "updatedAt": "2026-10-27T17:48:28.970Z"
+      "updatedAt": "2026-10-27T19:09:42.880Z"
     },
     "api:src/app/api/account/emails/route.ts": {
       "status": "passed",
