@@ -17,6 +17,7 @@ import {
 } from "@/lib/leagueSeasons";
 import { isRealTeam } from "@/components/TeamAssets";
 import { SCORER_GRANTS_COLLECTION, scorerGrantDocId, timestampMillis } from "@/lib/scorerAccess";
+import { GAME_SUMMARY_COLLECTION } from "@/lib/teamStatSummaryService";
 import { MAX_ROSTER_HARD_CAP, rosterHardCap } from "@/lib/rosterLimits";
 
 import { isValidPublicEmail, validatePlayerInfo, validateVenues } from "@/lib/leaguePublicProfile";
@@ -1052,13 +1053,14 @@ async function lookupAuditNames(data: Record<string, unknown>): Promise<{ league
  */
 async function purgeTeamData(teamId: string): Promise<void> {
   const refs: FirebaseFirestore.DocumentReference[] = [adminDb.doc(`team_depth_charts/${teamId}`)];
-  const [players, meta, matches] = await Promise.all([
+  const [players, meta, matches, statSummaries] = await Promise.all([
     adminDb.collection("players").where("teamId", "==", teamId).get(),
     adminDb.collection(`teams/${teamId}/meta`).get(),
     adminDb.collection("matches").where("managingTeamId", "==", teamId).get(),
+    adminDb.collection(GAME_SUMMARY_COLLECTION).where("teamId", "==", teamId).get(),
   ]);
   for (const player of players.docs) refs.push(player.ref, adminDb.doc(`player_private/${player.id}`));
-  refs.push(...meta.docs.map((entry) => entry.ref));
+  refs.push(...meta.docs.map((entry) => entry.ref), ...statSummaries.docs.map((entry) => entry.ref));
   const ownMatches = matches.docs.filter((match) => match.get("isStandalone") === true || !match.get("leagueId"));
   for (const match of ownMatches) {
     refs.push(match.ref);

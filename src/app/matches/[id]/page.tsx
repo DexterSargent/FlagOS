@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ShieldAlert, Clock, MapPin, Edit2, Trash2, X, Zap } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { useLeagueArchived, useTeamSeasonArchived } from "@/lib/useLeagueArchived";
@@ -163,28 +163,28 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   };
 
   useEffect(() => {
-    const fetchMatch = async () => {
-      if (isDemo) {
+    if (isDemo) {
+      const fetchMatch = () => {
         const m = getSandboxMatch(matchId);
         if (m) setMatchData(m);
         setLoading(false);
-        return;
-      }
-      try {
-        const docSnap = await getDoc(doc(db, "matches", matchId));
-        if (docSnap.exists()) {
-          setMatchData({ ...docSnap.data(), id: docSnap.id });
-        }
-      } catch (error) {
-        console.error("Error fetching match:", error);
-      }
-      setLoading(false);
-    };
-    fetchMatch();
-    if (isDemo) {
+      };
+      fetchMatch();
       const unsub = subscribeDemoSandbox(() => fetchMatch());
       return () => unsub();
     }
+    // Live subscription so the box score follows scoring from the stat keeper without a reload.
+    return onSnapshot(
+      doc(db, "matches", matchId),
+      (docSnap) => {
+        setMatchData(docSnap.exists() ? { ...docSnap.data(), id: docSnap.id } : null);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching match:", error);
+        setLoading(false);
+      },
+    );
   }, [matchId, isDemo]);
 
   if (isDenied) {

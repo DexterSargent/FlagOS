@@ -187,14 +187,18 @@ export default function LeagueCustomizerContent() {
   const handleQuickRemoveTeam = async (teamId: string, teamName: string) => {
     const nextCount = Math.max(2, (subscription?.teamCount ?? 8) - 1);
     const confirmed = window.confirm(
-      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}Remove "${teamName}" from the league and reduce your subscription by $20/month starting at your next monthly payment (new cost: $${40 + nextCount * 20}/mo)?`
+      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}${isComplimentary
+        ? `Remove "${teamName}" from the league and reduce capacity to ${nextCount} teams? No charges apply.`
+        : `Remove "${teamName}" from the league and reduce your subscription by $20/month starting at your next monthly payment (new cost: $${40 + nextCount * 20}/mo)?`}`
     );
     if (!confirmed) return;
     setIsUpdatingSub(true);
     setSubSuccessMsg("");
     try {
       await removeTeamFromSubscription(teamId);
-      setSubSuccessMsg(`Removed "${teamName}" and reduced subscription to ${nextCount} teams ($${40 + nextCount * 20}/mo at next payment).`);
+      setSubSuccessMsg(isComplimentary
+        ? `Removed "${teamName}" and reduced capacity to ${nextCount} teams.`
+        : `Removed "${teamName}" and reduced subscription to ${nextCount} teams ($${40 + nextCount * 20}/mo at next payment).`);
       setTimeout(() => setSubSuccessMsg(""), 5000);
       await loadSubTeams();
     } catch (e) {
@@ -2434,6 +2438,7 @@ export default function LeagueCustomizerContent() {
                     step={1}
                     value={targetTeamCount}
                     onChange={(e) => setTargetTeamCount(Number(e.target.value))}
+                    aria-label="Team capacity"
                     className="w-full accent-emerald-400 cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
@@ -2474,6 +2479,7 @@ export default function LeagueCustomizerContent() {
                   value={newSubTeamName}
                   onChange={(e) => setNewSubTeamName(e.target.value)}
                   placeholder={`e.g. Team ${(subscription?.teamCount ?? 8) + 1} or Thunderbirds`}
+                  aria-label="New team name"
                   className="flex-1 px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-cyan-400 text-white text-xs outline-none transition-colors"
                 />
 
@@ -2498,7 +2504,9 @@ export default function LeagueCustomizerContent() {
                     <span>Current League Teams ({subTeamsList.length})</span>
                   </h4>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Removing a team deletes its team record and reduces paid capacity by one. The $20 monthly reduction applies at your next renewal.
+                    {isComplimentary
+                      ? "Removing a team deletes its team record and reduces capacity by one. No charges apply."
+                      : "Removing a team deletes its team record and reduces paid capacity by one. The $20 monthly reduction applies at your next renewal."}
                   </p>
                 </div>
               </div>
@@ -2534,10 +2542,11 @@ export default function LeagueCustomizerContent() {
                         disabled={isUpdatingSub}
                         onClick={() => handleQuickRemoveTeam(t.id, t.name)}
                         className="px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-[11px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
-                        title="Remove team and lower monthly fee"
+                        title={isComplimentary ? "Remove team" : "Remove team and lower monthly fee"}
+                        aria-label={`Remove ${t.name}${isComplimentary ? "" : " (-$20/mo)"}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Remove (-$20/mo)</span>
+                        <span>{isComplimentary ? "Remove" : "Remove (-$20/mo)"}</span>
                       </button>
                     </div>
                   ))}
@@ -2549,7 +2558,7 @@ export default function LeagueCustomizerContent() {
             <div data-tour="settings-subscription-close" className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
               <div className="text-[11px] text-neutral-400 flex items-center gap-2 font-mono">
                 <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Adjusted fees apply at your next billing statement on {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.</span>
+                <span>{isComplimentary ? "Complimentary organization: team changes never add charges." : <>Adjusted fees apply at your next billing statement on {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined,                 { month: "short", day: "numeric" })}.</>}</span>
               </div>
               <button
                 type="button"

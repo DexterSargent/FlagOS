@@ -377,6 +377,17 @@ export default function PlayerProfilePage() {
     })),
   ];
   const showNoProfile = needsLeaguePick || (!loading && !awaitingLeague && profileTarget !== "pending" && (!isDemoLeague || !!teamProfileId) && !selectedPlayer);
+  const soleRosterHref = needsLeaguePick && !membershipsLoading && rosterChoices.length === 1 ? rosterChoices[0].href : null;
+  useEffect(() => {
+    if (soleRosterHref) window.location.replace(soleRosterHref);
+  }, [soleRosterHref]);
+  if (soleRosterHref) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
+        <FlagOSLoader />
+      </div>
+    );
+  }
   if (!showNoProfile && (loading || awaitingLeague || (!!user && membershipsLoading) || (!!user && profileTarget === "pending"))) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">

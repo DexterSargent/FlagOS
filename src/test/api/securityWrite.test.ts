@@ -485,6 +485,7 @@ describe("secure data write API", () => {
 
     it("lets the platform owner delete an independent team and purge its data", async () => {
       queryResults.set("players", { docs: [{ id: "p1", ref: { path: "players/p1" } }] });
+      queryResults.set("team_stat_game_summaries", { docs: [{ id: "wolves__m1", ref: { path: "team_stat_game_summaries/wolves__m1" } }] });
       queryResults.set("matches", { docs: [
         { id: "m1", ref: { path: "matches/m1" }, get: (field: string) => field === "isStandalone" },
         { id: "m2", ref: { path: "matches/m2" }, get: (field: string) => field === "leagueId" ? "league-1" : false },
@@ -500,7 +501,7 @@ describe("secure data write API", () => {
         expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "teams/wolves" }));
         const purged = batchMock.delete.mock.calls.map(([ref]) => ref.path);
         expect(purged).toEqual(expect.arrayContaining([
-          "team_depth_charts/wolves", "players/p1", "player_private/p1", "matches/m1",
+          "team_depth_charts/wolves", "players/p1", "player_private/p1", "matches/m1", "team_stat_game_summaries/wolves__m1",
         ]));
         expect(purged).not.toContain("matches/m2");
         expect(batchMock.commit).toHaveBeenCalled();
