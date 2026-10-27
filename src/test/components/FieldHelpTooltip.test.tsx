@@ -39,13 +39,21 @@ describe("FieldHelpTooltip", () => {
 
   it("shifts the bubble back inside the viewport near the right edge", () => {
     const original = HTMLElement.prototype.getBoundingClientRect;
+    const originalWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
+    const rect = (left: number, width: number) =>
+      ({ left, right: left + width, top: 0, bottom: 18, width, height: 18, x: left, y: 0, toJSON: () => ({}) }) as DOMRect;
     HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
-      if (this.getAttribute("role") === "tooltip") {
-        const shift = Number(/calc\(-50% \+ (-?[\d.]+)px\)/.exec(this.style.transform)?.[1] || 0);
-        return { left: 300 + shift, right: 556 + shift, top: 0, bottom: 80, width: 256, height: 80, x: 300 + shift, y: 0, toJSON: () => ({}) } as DOMRect;
-      }
+      // The entry animation overrides the inline transform, so the bubble's rect never reflects the shift.
+      if (this.getAttribute("role") === "tooltip") return rect(300, 256);
+      if (this.querySelector(":scope > button")) return rect(420, 16);
       return original.call(this);
     };
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      get() {
+        return this.getAttribute("role") === "tooltip" ? 256 : 0;
+      },
+    });
     Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, value: 390 });
     try {
       render(<FieldHelpTooltip content="Help text" />);
@@ -54,6 +62,7 @@ describe("FieldHelpTooltip", () => {
       expect(tip.style.transform).toBe("translateX(calc(-50% + -174px))");
     } finally {
       HTMLElement.prototype.getBoundingClientRect = original;
+      if (originalWidth) Object.defineProperty(HTMLElement.prototype, "offsetWidth", originalWidth);
       Object.defineProperty(document.documentElement, "clientWidth", { configurable: true, value: 0 });
     }
   });

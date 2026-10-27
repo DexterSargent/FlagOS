@@ -19,21 +19,28 @@ export default function FieldHelpTooltip({
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [shiftX, setShiftX] = useState(0);
 
-  // Keep the bubble inside the viewport when the icon sits near a screen edge (phones).
+  // Keep the bubble inside the viewport near a screen edge (phones). Measured from the anchor and the
+  // untransformed width so the entry animation's transform can't feed back into it.
   useLayoutEffect(() => {
     const tip = tooltipRef.current;
-    if (!isOpen || !tip) return;
+    const anchor = containerRef.current;
+    if (!isOpen || !tip || !anchor) {
+      setShiftX(0);
+      return;
+    }
     const margin = 8;
-    const rect = tip.getBoundingClientRect();
-    const naturalLeft = rect.left - shiftX;
-    const naturalRight = rect.right - shiftX;
+    const width = tip.offsetWidth;
+    const anchorRect = anchor.getBoundingClientRect();
     const viewport = document.documentElement.clientWidth;
-    if (!rect.width || !viewport) return;
+    if (!width || !viewport) return;
+    const center = anchorRect.left + anchorRect.width / 2;
+    const naturalLeft = center - width / 2;
+    const naturalRight = center + width / 2;
     let next = 0;
     if (naturalRight > viewport - margin) next = viewport - margin - naturalRight;
     if (naturalLeft + next < margin) next = margin - naturalLeft;
-    if (Math.abs(next - shiftX) > 0.5) setShiftX(next);
-  }, [isOpen, shiftX]);
+    setShiftX(next);
+  }, [isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
