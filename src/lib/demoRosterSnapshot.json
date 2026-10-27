@@ -4,7 +4,7 @@
   "sourceUrl": "https://github.com/nflverse/nflverse-data/releases/tag/rosters",
   "rosterUrl": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2026.csv",
   "depthChartUrl": "https://github.com/nflverse/nflverse-data/releases/download/depth_charts/depth_charts_2026.csv.gz",
-  "sourceUpdatedAt": "2026-10-26T14:13:06.000Z",
+  "sourceUpdatedAt": "2026-10-27T13:10:49.000Z",
   "players": [
     {
       "id": "nfl_00-0034857",
@@ -36,6 +36,20 @@
       "sourceStatus": "ACT"
     },
     {
+      "id": "nfl_00-0034827",
+      "teamId": "team_buf",
+      "playerName": "DJ Moore",
+      "number": "2",
+      "position": "WR",
+      "positions": [
+        "WR"
+      ],
+      "status": "Active",
+      "nflId": "00-0034827",
+      "nflPosition": "WR",
+      "sourceStatus": "ACT"
+    },
+    {
       "id": "nfl_00-0037261",
       "teamId": "team_buf",
       "playerName": "Khalil Shakir",
@@ -46,20 +60,6 @@
       ],
       "status": "Active",
       "nflId": "00-0037261",
-      "nflPosition": "WR",
-      "sourceStatus": "ACT"
-    },
-    {
-      "id": "nfl_00-0039901",
-      "teamId": "team_buf",
-      "playerName": "Keon Coleman",
-      "number": "0",
-      "position": "WR",
-      "positions": [
-        "WR"
-      ],
-      "status": "Active",
-      "nflId": "00-0039901",
       "nflPosition": "WR",
       "sourceStatus": "ACT"
     },
@@ -93,16 +93,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0040724",
+      "id": "nfl_00-0035230",
       "teamId": "team_buf",
-      "playerName": "T.J. Sanders",
-      "number": "98",
+      "playerName": "Ed Oliver",
+      "number": "91",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0040724",
+      "nflId": "00-0035230",
       "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
@@ -121,16 +121,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0040132",
+      "id": "nfl_00-0040724",
       "teamId": "team_buf",
-      "playerName": "Landon Jackson",
-      "number": "94",
+      "playerName": "T.J. Sanders",
+      "number": "98",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0040132",
+      "nflId": "00-0040724",
       "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
@@ -249,16 +249,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0041159",
+      "id": "nfl_00-0038603",
       "teamId": "team_mia",
-      "playerName": "Rodney McGraw",
-      "number": "59",
+      "playerName": "Rob Beal Jr.",
+      "number": "51",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0041159",
+      "nflId": "00-0038603",
       "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
@@ -335,31 +335,31 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0037253",
+      "id": "nfl_00-0034778",
       "teamId": "team_ne",
-      "playerName": "Marcus Jones",
-      "number": "25",
+      "playerName": "Carlton Davis III",
+      "number": "7",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0037253",
+      "nflId": "00-0034778",
       "nflPosition": "CB",
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0037638",
+      "id": "nfl_00-0035678",
       "teamId": "team_ne",
-      "playerName": "Benton Whitley",
-      "number": "42",
+      "playerName": "Dre'Mont Jones",
+      "number": "5",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0037638",
-      "nflPosition": "DE",
+      "nflId": "00-0035678",
+      "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
     {
@@ -377,16 +377,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0035678",
+      "id": "nfl_00-0040574",
       "teamId": "team_ne",
-      "playerName": "Dre'Mont Jones",
-      "number": "5",
+      "playerName": "Elijah Ponder",
+      "number": "91",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0035678",
+      "nflId": "00-0040574",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -405,17 +405,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0039794",
+      "id": "nfl_00-0038120",
       "teamId": "team_nye",
-      "playerName": "Braelon Allen",
-      "number": "0",
+      "playerName": "Breece Hall",
+      "number": "20",
       "position": "RB",
       "positions": [
         "RB",
         "ATH"
       ],
       "status": "Active",
-      "nflId": "00-0039794",
+      "nflId": "00-0038120",
       "nflPosition": "RB",
       "sourceStatus": "ACT"
     },
@@ -519,16 +519,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0035993",
+      "id": "nfl_00-0034796",
       "teamId": "team_bal",
-      "playerName": "Tyler Huntley",
-      "number": "5",
+      "playerName": "Lamar Jackson",
+      "number": "8",
       "position": "QB",
       "positions": [
         "QB"
       ],
       "status": "Active",
-      "nflId": "00-0035993",
+      "nflId": "00-0034796",
       "nflPosition": "QB",
       "sourceStatus": "ACT"
     },
@@ -605,6 +605,34 @@
       "sourceStatus": "ACT"
     },
     {
+      "id": "nfl_00-0036081",
+      "teamId": "team_bal",
+      "playerName": "Broderick Washington",
+      "number": "96",
+      "position": "RUSH",
+      "positions": [
+        "RUSH"
+      ],
+      "status": "Active",
+      "nflId": "00-0036081",
+      "nflPosition": "DE",
+      "sourceStatus": "ACT"
+    },
+    {
+      "id": "nfl_00-0036302",
+      "teamId": "team_bal",
+      "playerName": "Jaylinn Hawkins",
+      "number": "21",
+      "position": "DB",
+      "positions": [
+        "DB"
+      ],
+      "status": "Active",
+      "nflId": "00-0036302",
+      "nflPosition": "FS",
+      "sourceStatus": "ACT"
+    },
+    {
       "id": "nfl_00-0033935",
       "teamId": "team_bal",
       "playerName": "Trey Hendrickson",
@@ -615,34 +643,6 @@
       ],
       "status": "Active",
       "nflId": "00-0033935",
-      "nflPosition": "OLB",
-      "sourceStatus": "ACT"
-    },
-    {
-      "id": "nfl_00-0040688",
-      "teamId": "team_bal",
-      "playerName": "Malaki Starks",
-      "number": "24",
-      "position": "DB",
-      "positions": [
-        "DB"
-      ],
-      "status": "Active",
-      "nflId": "00-0040688",
-      "nflPosition": "FS",
-      "sourceStatus": "ACT"
-    },
-    {
-      "id": "nfl_00-0040722",
-      "teamId": "team_bal",
-      "playerName": "Mike Green",
-      "number": "15",
-      "position": "RUSH",
-      "positions": [
-        "RUSH"
-      ],
-      "status": "Active",
-      "nflId": "00-0040722",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -1216,17 +1216,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0038394",
+      "id": "nfl_00-0040128",
       "teamId": "team_ind",
-      "playerName": "Will Mallory",
-      "number": "86",
+      "playerName": "Tyler Warren",
+      "number": "84",
       "position": "ATH",
       "positions": [
         "ATH",
         "TE"
       ],
       "status": "Active",
-      "nflId": "00-0038394",
+      "nflId": "00-0040128",
       "nflPosition": "TE",
       "sourceStatus": "ACT"
     },
@@ -1387,17 +1387,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0033038",
+      "id": "nfl_00-0041055",
       "teamId": "team_jax",
-      "playerName": "Eric Murray",
-      "number": "29",
+      "playerName": "Jalen Huskey",
+      "number": "22",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0033038",
-      "nflPosition": "SS",
+      "nflId": "00-0041055",
+      "nflPosition": "FS",
       "sourceStatus": "ACT"
     },
     {
@@ -1572,6 +1572,20 @@
       "sourceStatus": "ACT"
     },
     {
+      "id": "nfl_00-0039067",
+      "teamId": "team_kc",
+      "playerName": "Rashee Rice",
+      "number": "4",
+      "position": "WR",
+      "positions": [
+        "WR"
+      ],
+      "status": "Active",
+      "nflId": "00-0039067",
+      "nflPosition": "WR",
+      "sourceStatus": "ACT"
+    },
+    {
       "id": "nfl_00-0039894",
       "teamId": "team_kc",
       "playerName": "Xavier Worthy",
@@ -1582,20 +1596,6 @@
       ],
       "status": "Active",
       "nflId": "00-0039894",
-      "nflPosition": "WR",
-      "sourceStatus": "ACT"
-    },
-    {
-      "id": "nfl_00-0040646",
-      "teamId": "team_kc",
-      "playerName": "Jalen Royals",
-      "number": "11",
-      "position": "WR",
-      "positions": [
-        "WR"
-      ],
-      "status": "Active",
-      "nflId": "00-0040646",
       "nflPosition": "WR",
       "sourceStatus": "ACT"
     },
@@ -1685,17 +1685,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036158",
+      "id": "nfl_00-0041496",
       "teamId": "team_den",
-      "playerName": "J.K. Dobbins",
-      "number": "27",
+      "playerName": "Jonah Coleman",
+      "number": "20",
       "position": "RB",
       "positions": [
         "RB",
         "ATH"
       ],
       "status": "Active",
-      "nflId": "00-0036158",
+      "nflId": "00-0041496",
       "nflPosition": "RB",
       "sourceStatus": "ACT"
     },
@@ -1743,16 +1743,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0037384",
+      "id": "nfl_00-0036874",
       "teamId": "team_den",
-      "playerName": "Ja'Quan McMillian",
-      "number": "29",
+      "playerName": "Pat Surtain II",
+      "number": "2",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0037384",
+      "nflId": "00-0036874",
       "nflPosition": "CB",
       "sourceStatus": "ACT"
     },
@@ -1999,16 +1999,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0039366",
+      "id": "nfl_00-0034356",
       "teamId": "team_lac",
-      "playerName": "Tarheeb Still",
-      "number": "4",
+      "playerName": "Donte Jackson",
+      "number": "26",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0039366",
+      "nflId": "00-0034356",
       "nflPosition": "CB",
       "sourceStatus": "ACT"
     },
@@ -2525,16 +2525,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0033947",
+      "id": "nfl_00-0035279",
       "teamId": "team_was",
-      "playerName": "Deatrich Wise",
-      "number": "91",
+      "playerName": "Charles Omenihu",
+      "number": "90",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0033947",
+      "nflId": "00-0035279",
       "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
@@ -2553,17 +2553,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0034373",
+      "id": "nfl_00-0033947",
       "teamId": "team_was",
-      "playerName": "Dorance Armstrong",
-      "number": "92",
+      "playerName": "Deatrich Wise",
+      "number": "91",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0034373",
-      "nflPosition": "OLB",
+      "nflId": "00-0033947",
+      "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
     {
@@ -2653,16 +2653,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036337",
+      "id": "nfl_00-0035647",
       "teamId": "team_chi",
-      "playerName": "James Lynch",
-      "number": "97",
+      "playerName": "Montez Sweat",
+      "number": "98",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0036337",
+      "nflId": "00-0035647",
       "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
@@ -2681,16 +2681,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0039461",
+      "id": "nfl_00-0036337",
       "teamId": "team_chi",
-      "playerName": "Jamree Kromah",
-      "number": "59",
+      "playerName": "James Lynch",
+      "number": "97",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0039461",
+      "nflId": "00-0036337",
       "nflPosition": "DE",
       "sourceStatus": "ACT"
     },
@@ -2795,16 +2795,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0032803",
+      "id": "nfl_00-0040914",
       "teamId": "team_det",
-      "playerName": "Jalen Mills",
-      "number": "27",
+      "playerName": "Bishop Fitzgerald",
+      "number": "34",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0032803",
+      "nflId": "00-0040914",
       "nflPosition": "FS",
       "sourceStatus": "ACT"
     },
@@ -2965,17 +2965,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0033293",
+      "id": "nfl_00-0037525",
       "teamId": "team_min",
-      "playerName": "Aaron Jones",
-      "number": "33",
+      "playerName": "Jordan Mason",
+      "number": "27",
       "position": "RB",
       "positions": [
         "RB",
         "ATH"
       ],
       "status": "Active",
-      "nflId": "00-0033293",
+      "nflId": "00-0037525",
       "nflPosition": "RB",
       "sourceStatus": "ACT"
     },
@@ -3293,16 +3293,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0037007",
+      "id": "nfl_00-0036934",
       "teamId": "team_car",
-      "playerName": "Patrick Jones II",
-      "number": "91",
+      "playerName": "Jaelan Phillips",
+      "number": "5",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0037007",
+      "nflId": "00-0036934",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -3321,16 +3321,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036305",
+      "id": "nfl_00-0037007",
       "teamId": "team_car",
-      "playerName": "Trevis Gipson",
-      "number": "52",
+      "playerName": "Patrick Jones II",
+      "number": "91",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0036305",
+      "nflId": "00-0037007",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -3492,6 +3492,20 @@
       "sourceStatus": "ACT"
     },
     {
+      "id": "nfl_00-0040129",
+      "teamId": "team_tb",
+      "playerName": "Emeka Egbuka",
+      "number": "2",
+      "position": "WR",
+      "positions": [
+        "WR"
+      ],
+      "status": "Active",
+      "nflId": "00-0040129",
+      "nflPosition": "WR",
+      "sourceStatus": "ACT"
+    },
+    {
       "id": "nfl_00-0033921",
       "teamId": "team_tb",
       "playerName": "Chris Godwin Jr.",
@@ -3502,20 +3516,6 @@
       ],
       "status": "Active",
       "nflId": "00-0033921",
-      "nflPosition": "WR",
-      "sourceStatus": "ACT"
-    },
-    {
-      "id": "nfl_00-0041048",
-      "teamId": "team_tb",
-      "playerName": "Ted Hurst III",
-      "number": "17",
-      "position": "WR",
-      "positions": [
-        "WR"
-      ],
-      "status": "Active",
-      "nflId": "00-0041048",
       "nflPosition": "WR",
       "sourceStatus": "ACT"
     },
@@ -3563,16 +3563,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036993",
+      "id": "nfl_00-0036411",
       "teamId": "team_tb",
-      "playerName": "Ifeatu Melifonwu",
-      "number": "5",
+      "playerName": "Antoine Winfield Jr.",
+      "number": "31",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0036993",
+      "nflId": "00-0036411",
       "nflPosition": "FS",
       "sourceStatus": "ACT"
     },
@@ -3605,17 +3605,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0037263",
+      "id": "nfl_00-0041027",
       "teamId": "team_ari",
-      "playerName": "Tyler Allgeier",
-      "number": "22",
+      "playerName": "Jeremiyah Love",
+      "number": "4",
       "position": "RB",
       "positions": [
         "RB",
         "ATH"
       ],
       "status": "Active",
-      "nflId": "00-0037263",
+      "nflId": "00-0041027",
       "nflPosition": "RB",
       "sourceStatus": "ACT"
     },
@@ -3691,16 +3691,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0039864",
+      "id": "nfl_00-0035378",
       "teamId": "team_ari",
-      "playerName": "Dadrion Taylor-Demerson",
-      "number": "42",
+      "playerName": "Andrew Wingard",
+      "number": "28",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0039864",
+      "nflId": "00-0035378",
       "nflPosition": "FS",
       "sourceStatus": "ACT"
     },
@@ -3791,16 +3791,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0037195",
+      "id": "nfl_00-0037191",
       "teamId": "team_lar",
-      "playerName": "Jaylen Watson",
-      "number": "35",
+      "playerName": "Trent McDuffie",
+      "number": "22",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0037195",
+      "nflId": "00-0037191",
       "nflPosition": "CB",
       "sourceStatus": "ACT"
     },
@@ -3876,16 +3876,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0034775",
+      "id": "nfl_00-0040172",
       "teamId": "team_sf",
-      "playerName": "Christian Kirk",
-      "number": "3",
+      "playerName": "Jordan Watkins",
+      "number": "17",
       "position": "WR",
       "positions": [
         "WR"
       ],
       "status": "Active",
-      "nflId": "00-0034775",
+      "nflId": "00-0040172",
       "nflPosition": "WR",
       "sourceStatus": "ACT"
     },
