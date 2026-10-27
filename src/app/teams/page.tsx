@@ -69,6 +69,8 @@ const getShorthand = (name: string) => {
   if (name.includes("Team")) return name.replace("Team ", "T");
   if (name === "Free Agent") return "FA";
   return name.substring(0, 3).toUpperCase();
+};
+
 function localMatchDate(value: string | number | Date): Date {
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
     return new Date(`${value.trim()}T12:00:00`);

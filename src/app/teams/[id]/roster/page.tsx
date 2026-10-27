@@ -303,17 +303,17 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   };
 
   useEffect(() => {
-    if (!selectedPlayerForStats && !isAddPlayerOpen && !editingPlayer) return;
+    if (!selectedPlayerForStats && !isAddModalOpen && !editingPlayer) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSelectedPlayerForStats(null);
-        setIsAddPlayerOpen(false);
+        setIsAddModalOpen(false);
         setEditingPlayer(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedPlayerForStats, isAddPlayerOpen, editingPlayer]);
+  }, [selectedPlayerForStats, isAddModalOpen, editingPlayer]);
 
   useEffect(() => {
     setPrivateRosterReady(false);
