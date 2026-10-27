@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { HelpCircle } from "lucide-react";
 
 interface FieldHelpTooltipProps {
@@ -16,6 +16,24 @@ export default function FieldHelpTooltip({
 }: FieldHelpTooltipProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [shiftX, setShiftX] = useState(0);
+
+  // Keep the bubble inside the viewport when the icon sits near a screen edge (phones).
+  useLayoutEffect(() => {
+    const tip = tooltipRef.current;
+    if (!isOpen || !tip) return;
+    const margin = 8;
+    const rect = tip.getBoundingClientRect();
+    const naturalLeft = rect.left - shiftX;
+    const naturalRight = rect.right - shiftX;
+    const viewport = document.documentElement.clientWidth;
+    if (!rect.width || !viewport) return;
+    let next = 0;
+    if (naturalRight > viewport - margin) next = viewport - margin - naturalRight;
+    if (naturalLeft + next < margin) next = margin - naturalLeft;
+    if (Math.abs(next - shiftX) > 0.5) setShiftX(next);
+  }, [isOpen, shiftX]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
@@ -76,8 +94,10 @@ export default function FieldHelpTooltip({
 
       {isOpen && (
         <div
+          ref={tooltipRef}
           role="tooltip"
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 max-w-[85vw] p-3 rounded-xl bg-neutral-900/95 border border-cyan-500/30 text-neutral-200 text-xs shadow-2xl backdrop-blur-md z-50 pointer-events-auto animate-in fade-in zoom-in-95 duration-150 leading-relaxed font-sans normal-case tracking-normal"
+          style={{ transform: `translateX(calc(-50% + ${shiftX}px))` }}
+          className="absolute bottom-full left-1/2 mb-2 w-64 max-w-[85vw] p-3 rounded-xl bg-neutral-900/95 border border-cyan-500/30 text-neutral-200 text-xs shadow-2xl backdrop-blur-md z-50 pointer-events-auto animate-in fade-in zoom-in-95 duration-150 leading-relaxed font-sans normal-case tracking-normal"
         >
           {title && (
             <div className="font-bold text-cyan-300 uppercase font-mono text-[10px] tracking-wider mb-1 flex items-center gap-1.5">
@@ -86,7 +106,10 @@ export default function FieldHelpTooltip({
           )}
           <p className="text-[11px] text-neutral-300 leading-snug font-normal">{content}</p>
           {/* Subtle Tooltip Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-neutral-900/95 pointer-events-none" />
+          <div
+            style={{ left: `calc(50% - ${shiftX}px)` }}
+            className="absolute top-full -translate-x-1/2 -mt-1 border-4 border-transparent border-t-neutral-900/95 pointer-events-none"
+          />
         </div>
       )}
     </div>
