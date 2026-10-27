@@ -53,6 +53,5 @@ export function isDemoLeaguePagePath(pathname: string | null): boolean {
   return pathname === "/league" || pathname.startsWith("/league/") ||
     pathname === "/schedule" || pathname === "/stats" ||
     pathname === "/teams" || pathname.startsWith("/teams/") ||
-    pathname.startsWith("/matches/") || pathname === "/join" || pathname.startsWith("/join/") ||
-    pathname === "/admin/sandbox";
+    pathname.startsWith("/matches/") || pathname === "/join" || pathname.startsWith("/join/");
 }

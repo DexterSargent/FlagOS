@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import LeagueCustomizerContent from "@/components/LeagueCustomizerContent";
 import { PageGuideProvider, useActivePageGuide, usePageGuide } from "@/lib/pageGuide";
-import { LEAGUE_SETTINGS_GUIDES, LEAGUE_RULES_VIEW_GUIDE, ADMIN_CONSOLE_GUIDES, ADMIN_SANDBOX_GUIDE } from "@/lib/walkthroughs/admin";
+import { LEAGUE_SETTINGS_GUIDES, LEAGUE_RULES_VIEW_GUIDE, ADMIN_CONSOLE_GUIDES, ADMIN_OVERVIEW_GUIDE } from "@/lib/walkthroughs/admin";
 
 const { league, auth } = vi.hoisted(() => ({
   league: {
@@ -18,7 +18,7 @@ vi.mock("@/lib/firebase", () => ({ db: {} }));
 vi.mock("@/lib/demoSandbox", () => ({ getSandboxTeams: () => [] }));
 
 function ParentGuide() {
-  usePageGuide(ADMIN_SANDBOX_GUIDE);
+  usePageGuide(ADMIN_OVERVIEW_GUIDE);
   const guide = useActivePageGuide();
   return <output data-testid="active-guide">{guide?.id}</output>;
 }
@@ -41,7 +41,7 @@ describe("League Settings page guides", () => {
     }
     league.isCustomizerOpen = false;
     view.rerender(<Fixture />);
-    await waitFor(() => expect(screen.getByTestId("active-guide")).toHaveTextContent(ADMIN_SANDBOX_GUIDE.id));
+    await waitFor(() => expect(screen.getByTestId("active-guide")).toHaveTextContent(ADMIN_OVERVIEW_GUIDE.id));
   });
   it("uses the read-only rules guide for non-commissioners", () => {
     auth.isLeagueAdmin = false;
@@ -50,7 +50,7 @@ describe("League Settings page guides", () => {
     expect(screen.queryByRole("button", { name: /^League Branding$/ })).not.toBeInTheDocument();
   });
   it("keeps every guide overview-first, uniquely identified and readable", () => {
-    for (const guide of [...Object.values(LEAGUE_SETTINGS_GUIDES), LEAGUE_RULES_VIEW_GUIDE, ...Object.values(ADMIN_CONSOLE_GUIDES), ADMIN_SANDBOX_GUIDE]) {
+    for (const guide of [...Object.values(LEAGUE_SETTINGS_GUIDES), LEAGUE_RULES_VIEW_GUIDE, ...Object.values(ADMIN_CONSOLE_GUIDES)]) {
       expect(guide.steps[0].targetSelector).toBe("");
       expect(new Set(guide.steps.map((step) => step.id)).size).toBe(guide.steps.length);
       for (const step of guide.steps) expect(step.details?.length ?? 0).toBeLessThanOrEqual(8);

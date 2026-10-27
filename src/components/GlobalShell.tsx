@@ -37,14 +37,13 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   // Views that skip the league header/footer entirely:
   // 1. Embedded preview iframe (e.g. interactive landing feature frame)
   // 2. Play-by-play views (they render their own controls inside the console header)
-  // 3. Login portal and admin sandbox (they get the minimal site header instead)
+  // 3. Login portal (it gets the minimal site header instead)
   const isPlayByPlay = pathname ? pathname.includes("/play-by-play") : false;
   const isLogin = pathname === "/login";
-  const isAdminSandbox = pathname === "/admin/sandbox";
   const isLandingPage = pathname === "/" || pathname === "" || pathname === null;
   const isPricingPage = pathname === "/pricing";
   const isMyStoryPage = pathname === "/my-story";
-  const hideChrome = isEmbedded || isPlayByPlay || isLogin || isAdminSandbox;
+  const hideChrome = isEmbedded || isPlayByPlay || isLogin;
 
   // Individual team portals (team hub, roster, playbook, schedule, stats) carry their own team nav.
   // The league-wide /teams directory is a league page and keeps the league header/footer.
@@ -72,7 +71,7 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
   );
 
   // League navigation (header and footer) should ONLY appear if:
-  // 1. Not in chrome-less views (iframe embed, login, play-by-play, admin sandbox, landing, pricing, my-story)
+  // 1. Not in chrome-less views (iframe embed, login, play-by-play, landing, pricing, my-story)
   // 2. Not on an individual team page or team portal (/teams/...)
   // 3. User is NOT logged in as an individual team (they manage or play for a team, not the league)
   // 4. Actively in a specific league route

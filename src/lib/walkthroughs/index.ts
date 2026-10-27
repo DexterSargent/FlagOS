@@ -27,7 +27,7 @@ import {
   PROFILE_WALKTHROUGH,
   FREE_AGENTS_WALKTHROUGH,
 } from "./public";
-import { ADMIN_OVERVIEW_GUIDE, ADMIN_SANDBOX_GUIDE } from "./admin";
+import { ADMIN_OVERVIEW_GUIDE } from "./admin";
 
 export const ALL_WALKTHROUGHS: Record<string, ToolWalkthrough> = Object.fromEntries(
   [
@@ -54,7 +54,6 @@ export const ALL_WALKTHROUGHS: Record<string, ToolWalkthrough> = Object.fromEntr
     PROFILE_WALKTHROUGH,
     FREE_AGENTS_WALKTHROUGH,
     ADMIN_OVERVIEW_GUIDE,
-    ADMIN_SANDBOX_GUIDE,
   ].map((w) => [w.id, w])
 );
 
@@ -68,7 +67,6 @@ const ROUTES: Array<[RegExp, ToolWalkthrough]> = [
   [/^\/join(\/|$)/, JOIN_LEAGUE_WALKTHROUGH],
   [/^\/account\/?$/, ACCOUNT_WALKTHROUGH],
   [/^\/profile\/?$/, PROFILE_WALKTHROUGH],
-  [/^\/admin\/sandbox\/?$/, ADMIN_SANDBOX_GUIDE],
   [/^\/admin\/?$/, ADMIN_OVERVIEW_GUIDE],
   [/^\/teams\/[^/]+\/playbook/, PLAY_DESIGNER_WALKTHROUGH],
   [/^\/teams\/[^/]+\/matches\/[^/]+\/stat-keeper/, ASYNC_STAT_KEEPER_WALKTHROUGH],

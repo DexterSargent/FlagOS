@@ -258,9 +258,3 @@ export const ADMIN_BILLING_GUIDE = guide("platform-admin-billing", "Customer Bil
   step("admin-billing-fees", "Monthly fees", "League plans use a base plus per-team calculation; independent teams use a single monthly fee.", [["Base / mo", "Set the league's base monthly fee."], ["Per team", "Set its monthly per-team charge."], ["Teams", "Set the billed team count and review Total."], ["Monthly fee (CAD)", "For an independent team, set its monthly charge."]]),
   step("admin-billing-save", "Renewal and saving", "Check the renewal date before applying the terms.", [["Next renewal", "Choose the next billing date."], ["Save billing", "Apply the plan changes."], ["Cancel / Close", "Close without saving this draft."]]),
 ]);
-export const ADMIN_SANDBOX_GUIDE = guide("platform-admin-sandbox", "Admin Sandbox", [
-  overview("admin-sandbox-intro", "Database test tools: use with care", "Owner-only tools write to the connected database. This page is not an isolated browser demo: do not use it on real customer matches."),
-  step("admin-sandbox-home", "Return home", "Leave the tools without changing any records.", [["Dashboard", "Return to the site homepage."]]),
-  step("admin-sandbox-generate", "Generate sample match activity", "Read the browser confirmation before continuing. Players are needed on both teams to generate plays.", [["Generate Fake Plays & Complete Matches", "Select up to the first two matches, generate up to ten random fake plays for each and mark the matches completed with generated scores."]]),
-  step("admin-sandbox-wipe", "Remove marked test data", "This only finds records marked as fake; it is not a full database reset or a backup restore.", [["Wipe Fake Data & Reset Matches", "Confirm deleting up to 500 marked fake plays and resetting up to 512 marked matches to scheduled with zero scores. It does not restore their earlier scores."]]),
-]);

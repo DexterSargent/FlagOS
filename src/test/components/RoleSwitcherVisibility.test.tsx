@@ -14,7 +14,7 @@ describe("Role switcher visibility", () => {
     state.league = { isDemoLeague: true, loading: false };
   });
 
-  it.each(["/schedule", "/stats", "/teams", "/league/default", "/teams/team_kc", "/admin/sandbox"])(
+  it.each(["/schedule", "/stats", "/teams", "/league/default", "/teams/team_kc"])(
     "shows on demo league page %s",
     (path) => {
       state.pathname = path;
