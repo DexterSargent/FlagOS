@@ -4,6 +4,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from
 import { X, ChevronLeft, ChevronRight, CheckCircle, Lightbulb, Crosshair } from "lucide-react";
 import { createPortal } from "react-dom";
 import { ToolWalkthrough, WalkthroughStep } from "@/lib/walkthroughData";
+import { DEMO_ROLE_SWITCHER_STEP } from "@/lib/walkthroughs/demo";
 
 interface WalkthroughModalProps {
   walkthrough: ToolWalkthrough;
@@ -148,9 +149,12 @@ export function findStepTarget(step: WalkthroughStep): HTMLElement | null {
  * Controls this viewer doesn't have on screen are left out.
  */
 export function getAvailableSteps(steps: WalkthroughStep[]): WalkthroughStep[] {
-  const available = steps.filter((step) => !step.targetSelector || findVisibleTarget(step.targetSelector));
+  const withDemo = !steps.some((step) => step.id === DEMO_ROLE_SWITCHER_STEP.id) && findVisibleTarget(DEMO_ROLE_SWITCHER_STEP.targetSelector)
+    ? [...steps, DEMO_ROLE_SWITCHER_STEP]
+    : steps;
+  const available = withDemo.filter((step) => !step.targetSelector || findVisibleTarget(step.targetSelector));
   const skipped: string[] = [];
-  const result = (available.length > 0 ? available : steps).flatMap((step) => {
+  const result = (available.length > 0 ? available : withDemo).flatMap((step) => {
     const { details = [], ...area } = step;
     const controls = details
       .filter((d) => !d.requiresSelector || findVisibleTarget(d.requiresSelector))

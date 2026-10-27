@@ -177,7 +177,7 @@ export default function RoleSwitcherContent() {
 
   if (isCollapsed) {
     return (
-      <aside aria-label="Role Switcher" className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+      <aside aria-label="Role Switcher" data-tour="demo-role-switcher" className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
         <ThemeToggle size="md" />
         {isDemoLeague && (
           <Link
@@ -191,6 +191,7 @@ export default function RoleSwitcherContent() {
         )}
         <button
           onClick={() => setIsCollapsed(false)}
+          aria-expanded={false}
           className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-neutral-900/95 border border-cyan-500/40 text-white shadow-[0_0_25px_rgba(var(--league-primary-rgb),0.35)] backdrop-blur-md hover:border-cyan-400 transition-all text-xs font-bold"
         >
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
@@ -215,6 +216,7 @@ export default function RoleSwitcherContent() {
   return (
     <aside
       aria-label="Role Switcher"
+      data-tour="demo-role-switcher"
       ref={roleSwitcherRef}
       className="sticky top-0 shrink-0 flex flex-row z-[60] bg-[#070A11]/95 border-b border-cyan-500/30 px-2 sm:px-3 lg:px-4 py-1 backdrop-blur-md shadow-xl shadow-black/60 text-xs [&_button]:min-h-10 [&_select]:min-h-10"
     >

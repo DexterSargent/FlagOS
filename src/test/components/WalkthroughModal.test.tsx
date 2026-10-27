@@ -109,6 +109,23 @@ describe("Walkthrough System", () => {
     visible.remove();
   });
 
+  it("appends the demo role switcher step with its on-screen controls only while the switcher is shown", () => {
+    const bar = document.createElement("aside");
+    bar.setAttribute("data-tour", "demo-role-switcher");
+    bar.innerHTML = '<a href="/">Exit Demo</a><button aria-label="League Admin"></button><button aria-label="Player"></button><select aria-label="Demo team"></select>';
+    document.body.appendChild(bar);
+    const hidden = bar.querySelector("select")!;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const size = bar.contains(this) && this !== hidden ? 40 : 0;
+      return { top: 0, left: 0, bottom: size, right: size, width: size, height: size, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+
+    const ids = getAvailableSteps(PLAYBOOK_STUDIO_WALKTHROUGH.steps).map((s) => s.id);
+    expect(ids.slice(-4)).toEqual(["demo-role-switcher", "demo-role-switcher--0", "demo-role-switcher--3", "demo-role-switcher--5"]);
+    bar.remove();
+    expect(getAvailableSteps(PLAYBOOK_STUDIO_WALKTHROUGH.steps).map((s) => s.id)).not.toContain("demo-role-switcher");
+  });
+
   it("the header Guide opens the tour registered by the current page, letting a nested tool override it", () => {
     function Register({ walkthrough, priority }: { walkthrough: ToolWalkthrough; priority?: number }) {
       usePageGuide(walkthrough, priority);
