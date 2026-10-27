@@ -2933,21 +2933,6 @@ export default function PlayCanvas({
 
           </div>
 
-          {/* Legal Alignment Status Badge */}
-          {alignmentIssues.length === 0 ? (
-            <div className="hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Legal</span>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-red-500/15 border border-red-500/40 text-red-600 dark:text-red-400 text-xs font-bold cursor-pointer"
-              title={alignmentIssues.map((i) => i.warning).join("\n")}
-            >
-              <AlertTriangle className="w-3.5 h-3.5 animate-pulse text-red-500 dark:text-red-400" />
-              <span>{alignmentIssues.length}<span className="hidden sm:inline"> Warning{alignmentIssues.length > 1 ? "s" : ""}</span></span>
-            </div>
-          )}
           {!readOnly && (
             <button
               ref={toolbarMoreRef}
