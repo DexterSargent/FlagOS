@@ -114,6 +114,22 @@ export default function PlatformAdminPage() {
   const [deletingLeague, setDeletingLeague] = useState<ManagedRecord | null>(null);
   const [deleteLeagueTeams, setDeleteLeagueTeams] = useState(true);
   const [deletingTeam, setDeletingTeam] = useState<ManagedRecord | null>(null);
+  const anyAdminModalOpen = Boolean(editingLeague || adminManagingLeague || deletingLeague || deletingTeam);
+
+  useEffect(() => {
+    if (!anyAdminModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      // Leave Escape to an open page guide; it closes itself first.
+      if (document.querySelector("[data-walkthrough-overlay]")) return;
+      setEditingLeague(null);
+      setAdminManagingLeague(null);
+      setDeletingLeague(null);
+      setDeletingTeam(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [anyAdminModalOpen]);
 
   // Form states for Editing League
   const [editForm, setEditForm] = useState({
@@ -1084,6 +1100,7 @@ export default function PlatformAdminPage() {
                         <button
                           type="button"
                           onClick={() => openDeleteModal(league)}
+                          aria-label={`Delete league ${league.name}`}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/15"
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -1161,7 +1178,7 @@ export default function PlatformAdminPage() {
                                       <div className="flex items-center gap-3">
                                         <button
                                           type="button"
-                                          onClick={() => { setError(""); setDeletingTeam(team); }}
+                                          onClick={() => { setError(""); setDeletingTeam(team); }} aria-label={`Delete team ${team.name}`}
                                           className="inline-flex items-center gap-1 text-xs font-bold text-red-300 hover:text-red-200"
                                         >
                                           <Trash2 className="h-3 w-3" /> Delete
@@ -1287,7 +1304,7 @@ export default function PlatformAdminPage() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => { setError(""); setDeletingTeam(team); }}
+                            onClick={() => { setError(""); setDeletingTeam(team); }} aria-label={`Delete team ${team.name}`}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/15"
                           >
                             <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -1362,6 +1379,7 @@ export default function PlatformAdminPage() {
               <button
                 type="button"
                 onClick={() => setEditingLeague(null)}
+                aria-label="Close edit league"
                 className="rounded-lg p-1.5 text-neutral-400 hover:bg-white/10 hover:text-white"
               >
                 <X className="h-5 w-5" />
@@ -1375,6 +1393,7 @@ export default function PlatformAdminPage() {
                   id="edit-league-name"
                   type="text"
                   required
+                  autoFocus
                   value={editForm.name}
                   onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
                   className="w-full rounded-xl border border-white/10 bg-neutral-950 px-3.5 py-2.5 text-sm text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none"
@@ -1438,15 +1457,17 @@ export default function PlatformAdminPage() {
 
               <div data-tour="admin-edit-colours" className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Primary Color</label>
+                  <label htmlFor="edit-league-primary-hex" className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Primary Color</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
+                      aria-label="Primary color picker"
                       value={editForm.primaryColor}
                       onChange={(e) => setEditForm((f) => ({ ...f, primaryColor: e.target.value }))}
                       className="h-9 w-10 cursor-pointer rounded-lg border-0 bg-transparent p-0"
                     />
                     <input
+                      id="edit-league-primary-hex"
                       type="text"
                       value={editForm.primaryColor}
                       onChange={(e) => setEditForm((f) => ({ ...f, primaryColor: e.target.value }))}
@@ -1455,15 +1476,17 @@ export default function PlatformAdminPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Accent Color</label>
+                  <label htmlFor="edit-league-accent-hex" className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Accent Color</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
+                      aria-label="Accent color picker"
                       value={editForm.accentColor}
                       onChange={(e) => setEditForm((f) => ({ ...f, accentColor: e.target.value }))}
                       className="h-9 w-10 cursor-pointer rounded-lg border-0 bg-transparent p-0"
                     />
                     <input
+                      id="edit-league-accent-hex"
                       type="text"
                       value={editForm.accentColor}
                       onChange={(e) => setEditForm((f) => ({ ...f, accentColor: e.target.value }))}
@@ -1525,6 +1548,7 @@ export default function PlatformAdminPage() {
               <button
                 type="button"
                 onClick={() => setAdminManagingLeague(null)}
+                aria-label="Close manage admins"
                 className="rounded-lg p-1.5 text-neutral-400 hover:bg-white/10 hover:text-white"
               >
                 <X className="h-5 w-5" />
@@ -1562,10 +1586,12 @@ export default function PlatformAdminPage() {
 
             {/* Add New Admin Form */}
             <form data-tour="admin-admins-add" onSubmit={handleAddAdmin} className="mt-6 border-t border-white/10 pt-4">
-              <label className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Add New Admin</label>
+              <label htmlFor="manage-admins-email" className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">Add New Admin</label>
               <div className="flex gap-2">
                 <input
+                  id="manage-admins-email"
                   type="email"
+                  autoFocus
                   value={newAdminEmail}
                   onChange={(e) => {
                     setNewAdminEmail(e.target.value);

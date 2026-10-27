@@ -26,6 +26,8 @@ export default function FieldHelpTooltip({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Claim the key so an enclosing dialog stays open.
+        event.preventDefault();
         setIsOpen(false);
       }
     };

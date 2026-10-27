@@ -148,7 +148,7 @@ export default function JoinLeague() {
             <Check className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-2xl font-black uppercase text-white">You&apos;re Registered</h2>
+            <h1 className="text-2xl font-black uppercase text-white">You&apos;re Registered</h1>
             <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
               {name.trim() || "You"} {name.trim() ? "is" : "are"} now in the {settings.leagueName || "league"} free-agent pool.
               {isDemoLeague ? " (Demo: this is only saved in this browser session.)" : ""}
@@ -187,9 +187,9 @@ export default function JoinLeague() {
             <span className="px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 text-[10px] font-mono font-bold uppercase tracking-wider">
               {isLeagueAdmin ? "League Administrator" : role === "team_admin" ? "Team Administrator" : "Rostered Player"}
             </span>
-            <h2 className="text-2xl font-black uppercase text-white mt-3">
+            <h1 className="text-2xl font-black uppercase text-white mt-3">
               {isPlayer ? "Already In The League" : "Role Already Assigned"}
-            </h2>
+            </h1>
             <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
               {isPlayer ? (
                 <>You are already registered in the league as <strong>#{playerData?.number || "00"} {playerData?.playerName || "Player"}</strong>. You do not need to register again.</>
@@ -234,7 +234,7 @@ export default function JoinLeague() {
             <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold uppercase tracking-wider">
               Registration Closed
             </span>
-            <h2 data-tour="join-status" className="text-2xl font-black uppercase text-white mt-3">Player Registration Closed</h2>
+            <h1 data-tour="join-status" className="text-2xl font-black uppercase text-white mt-3">Player Registration Closed</h1>
             <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
               Online free agent registration is currently disabled by the league commissioner. Please contact the league office or check back for upcoming tournament sign-ups.
             </p>

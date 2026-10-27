@@ -1101,10 +1101,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             <form data-tour="team-edit-names" onSubmit={handleSaveTeam} className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
                 <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                <label htmlFor="team-edit-name" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Team Name
                 </label>
                 <input
+                  id="team-edit-name"
                   type="text"
                   required
                   value={editName}
@@ -1115,10 +1116,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                <label htmlFor="team-edit-shortcode" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Shortcode (Abbreviation)
                 </label>
                 <input
+                  id="team-edit-shortcode"
                   type="text"
                   maxLength={5}
                   value={editShortcode}
@@ -1239,6 +1241,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                         type="file"
                         ref={fileInputRef}
                         accept="image/*"
+                        aria-label="Upload team logo"
                         className="hidden"
                         onChange={handleFileUpload}
                       />
@@ -1258,8 +1261,9 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 </div>
 
                 <div>
-                  <label className="block text-[11px] text-neutral-400 mb-1">Or Paste Image URL (Optional)</label>
+                  <label htmlFor="team-edit-logo-url" className="block text-[11px] text-neutral-400 mb-1">Or Paste Image URL (Optional)</label>
                   <input
+                    id="team-edit-logo-url"
                     type="text"
                     value={editLogoUrl}
                     onChange={(e) => setEditLogoUrl(e.target.value)}
@@ -1287,6 +1291,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                             : "bg-neutral-900 border-white/5 text-neutral-400 hover:text-white hover:bg-white/5"
                             }`}
                           title={item.label}
+                          aria-label={`Use ${item.label} icon`}
+                          aria-pressed={isSelected}
                         >
                           <IconComp className="w-5 h-5" />
                         </button>

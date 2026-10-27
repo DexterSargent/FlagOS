@@ -678,15 +678,16 @@ export default function TeamsPage() {
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
+                      aria-label="Team name"
                       className="bg-neutral-800 text-white rounded-lg px-3 py-1 text-2xl font-bold w-64 border border-white/10"
                       value={editTeamNameValue}
                       onChange={(e) => setEditTeamNameValue(e.target.value)}
                       autoFocus
                     />
-                    <button onClick={handleUpdateTeam} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
+                    <button onClick={handleUpdateTeam} aria-label="Save team name" className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
                       <Check className="w-5 h-5" />
                     </button>
-                    <button onClick={() => setIsEditingTeamName(false)} className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
+                    <button onClick={() => setIsEditingTeamName(false)} aria-label="Cancel editing team name" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -718,16 +719,16 @@ export default function TeamsPage() {
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="Team Name"
+                    placeholder="Team Name" aria-label="New team name"
                     className="bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-cyan-400"
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
                     autoFocus
                   />
-                  <button onClick={handleAddTeam} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
+                  <button onClick={handleAddTeam} aria-label="Add team" className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
                     <Check className="w-5 h-5" />
                   </button>
-                  <button onClick={() => setIsAddingTeam(false)} className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
+                  <button onClick={() => setIsAddingTeam(false)} aria-label="Cancel adding team" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -967,7 +968,7 @@ export default function TeamsPage() {
                     <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Search free agents by name, position, experience..."
+                      placeholder="Search free agents by name, position, experience..." aria-label="Search free agents"
                       value={freeAgentSearch}
                       onChange={(e) => setFreeAgentSearch(e.target.value)}
                       className="w-full bg-black/60 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-neutral-500 outline-none focus:border-cyan-400"
@@ -1096,6 +1097,7 @@ export default function TeamsPage() {
                                   ) : (
                                     <div className="flex items-center justify-end gap-2">
                                       <select
+                                        aria-label={`Team for ${player.playerName || "free agent"}`}
                                         value={selectedTeam}
                                         onChange={(e) =>
                                           setSelectedAssignTeamId({
@@ -1175,7 +1177,7 @@ export default function TeamsPage() {
                   <div className="px-6 py-4 bg-neutral-950 border-b border-white/5 flex flex-col gap-3">
                     <input
                       type="text"
-                      placeholder="New Player Name..."
+                      placeholder="New Player Name..." aria-label="New player name"
                       value={newPlayerName}
                       onChange={(e) => setNewPlayerName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
@@ -1214,6 +1216,7 @@ export default function TeamsPage() {
                               editingPlayerId === player.id ? (
                                 <div className="flex items-center gap-2">
                                   <select
+                                    aria-label={`Move ${player.playerName} to team`}
                                     value={editTeamId}
                                     onChange={(e) => setEditTeamId(e.target.value)}
                                     className="bg-black border border-white/10 rounded-lg px-2 py-1 text-xs focus:outline-none max-w-[100px]"

@@ -112,7 +112,7 @@ export default function LeagueCustomizerContent() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !e.defaultPrevented) {
         const hasGuideOpen = Boolean(document.querySelector('.walkthrough-modal, [class*="walkthrough"]'));
         if (!hasGuideOpen) {
           closeCustomizer();

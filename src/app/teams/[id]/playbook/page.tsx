@@ -806,7 +806,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   if ((!team && !isDemoMode && !isDemoTeam) || (team && !isRealTeam(team)) || teamId === "team_free_agents") {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
-        <h2 className="text-3xl font-black mb-4">Team Not Found</h2>
+        <h1 className="text-3xl font-black mb-4">Team Not Found</h1>
         <p className="text-neutral-400 mb-6 max-w-md">
           This team could not be found. The free-agent pool does not have a team playbook.
         </p>
@@ -840,9 +840,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <span className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-mono font-bold uppercase tracking-wider">
                 Private Team Playbook
               </span>
-              <h2 className="text-2xl font-black uppercase text-white mt-3">
+              <h1 className="text-2xl font-black uppercase text-white mt-3">
                 League Admin Access Restricted
-              </h2>
+              </h1>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
                 League admin access does not include team playbooks. Only that team&apos;s coaches and rostered players can view its plays and schemes.
               </p>
@@ -891,7 +891,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
                 Opponent Playbook Confidential
               </span>
-              <h2 className="text-2xl font-black uppercase text-white mt-3">Coach Access Restricted</h2>
+              <h1 className="text-2xl font-black uppercase text-white mt-3">Coach Access Restricted</h1>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
                 You can manage your own team&apos;s playbooks. To open another team&apos;s plays, you need to be on that team&apos;s coaching staff or roster.
               </p>
@@ -934,7 +934,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
                 Opponent Playbook Protected
               </span>
-              <h2 className="text-2xl font-black uppercase text-white mt-3">This Playbook Is Private</h2>
+              <h1 className="text-2xl font-black uppercase text-white mt-3">This Playbook Is Private</h1>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
                 As a rostered player, you only have view access to the playbooks of your own team. Opponent team playbooks and strategic formations are strictly restricted.
               </p>
@@ -975,7 +975,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
               <span className="px-3 py-1 rounded-full bg-[var(--surface)] border border-cyan-500/30 text-[var(--team-ink)] text-xs font-mono font-bold uppercase tracking-wider">
                 Protected Playbook
               </span>
-              <h2 className="text-2xl font-black uppercase text-white mt-3">{teamName} Playbook Confidential</h2>
+              <h1 className="text-2xl font-black uppercase text-white mt-3">{teamName} Playbook Confidential</h1>
               <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
                 Playbooks and strategic formations are private assets restricted to rostered players and verified coaching staff of {teamName}. Please sign in with your verified coach or player account to access this playbook.
               </p>

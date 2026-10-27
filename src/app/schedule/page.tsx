@@ -235,7 +235,7 @@ export default function Calendar() {
   useEffect(() => {
     if (!isModalOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !e.defaultPrevented) {
         setIsModalOpen(false);
         setMatchSaveError(null);
       }

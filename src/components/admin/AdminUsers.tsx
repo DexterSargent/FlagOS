@@ -165,6 +165,7 @@ export default function AdminUsers({
                       type="button"
                       onClick={() => void toggle(user)}
                       disabled={pendingUid === user.uid}
+                      aria-label={`${user.disabled ? "Enable" : "Disable"} account ${user.email || user.uid}`}
                       className={`${ghostButtonClass} ${user.disabled ? "" : "hover:border-rose-500/40 hover:text-rose-200"}`}
                     >
                       {pendingUid === user.uid ? (

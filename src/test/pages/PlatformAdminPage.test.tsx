@@ -244,6 +244,24 @@ describe("Platform management page", () => {
     expect(await screen.findByText("Updated League Title")).toBeInTheDocument();
   });
 
+  it("labels customer dialog fields and closes them with Escape", async () => {
+    render(<PlatformAdminPage />);
+    expect(await screen.findByText("Customer League")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Edit/i }));
+    expect(screen.getByLabelText("League Name")).toHaveFocus();
+    expect(screen.getByLabelText("Primary color picker")).toBeInTheDocument();
+    expect(screen.getByLabelText("Accent Color")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("heading", { name: "Edit League" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Admins/i }));
+    expect(screen.getByLabelText("Add New Admin")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Close manage admins" })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("heading", { name: "Manage Admins" })).not.toBeInTheDocument();
+  });
+
   it("allows adding and removing admins for a league", async () => {
     render(<PlatformAdminPage />);
 
@@ -288,8 +306,8 @@ describe("Platform management page", () => {
 
     expect(await screen.findByText("Customer League")).toBeInTheDocument();
 
-    // Click Delete button on league card (the first Delete belongs to the league column)
-    fireEvent.click(screen.getAllByRole("button", { name: /^Delete$/i })[0]);
+    // Each delete button names the record it removes.
+    fireEvent.click(screen.getByRole("button", { name: "Delete league Customer League" }));
 
     // Confirmation dialog opens
     expect(screen.getByRole("heading", { name: "Delete League" })).toBeInTheDocument();
@@ -314,7 +332,7 @@ describe("Platform management page", () => {
   it("can explicitly retain member teams without provisioning billing", async () => {
     render(<PlatformAdminPage />);
     await screen.findByText("Customer League");
-    fireEvent.click(screen.getAllByRole("button", { name: /^Delete$/i })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Delete league Customer League" }));
     fireEvent.click(screen.getByRole("radio", { name: /Keep member teams/ }));
     expect(screen.getByText(/does not create independent billing accounts/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Confirm Delete/i }));
@@ -328,8 +346,7 @@ describe("Platform management page", () => {
     render(<PlatformAdminPage />);
 
     expect(await screen.findByText("Customer Team")).toBeInTheDocument();
-    const deleteButtons = screen.getAllByRole("button", { name: /^Delete$/i });
-    fireEvent.click(deleteButtons[deleteButtons.length - 1]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete team Customer Team" }).at(-1)!);
 
     expect(screen.getByRole("heading", { name: "Delete Team" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Delete Team" }));
