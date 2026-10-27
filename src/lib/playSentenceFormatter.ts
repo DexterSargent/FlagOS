@@ -250,8 +250,13 @@ export function formatPlaySentence(
         : context.awayTeamName
       : undefined;
 
-  // 1. If play already has a pre-formatted coherent statement, use it
-  if (play.playStatement && typeof play.playStatement === "string" && play.playStatement.trim().length > 0) {
+  // 1. If play already has a pre-formatted coherent statement, use it (unless it contains a stale PAT pending marker that was resolved)
+  if (
+    play.playStatement &&
+    typeof play.playStatement === "string" &&
+    play.playStatement.trim().length > 0 &&
+    !(play.playStatement.includes("(PAT pending)") && !play.conversionPending)
+  ) {
     return replacePlaceholderInText(play.playStatement, possessionTeamName);
   }
 

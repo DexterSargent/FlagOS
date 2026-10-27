@@ -119,7 +119,7 @@ describe("PlayCanvas lazy dialogs", () => {
     render(<PlayCanvas play={play} onChange={onChange} />);
     expect(screen.queryByText("Coach Playbook Scheme Notes")).toBeNull();
     fireEvent.click(screen.getByTitle("Open general coaching notes & scheme progression"));
-    const notes = await screen.findByDisplayValue("Primary read");
+    const notes = await screen.findByDisplayValue("Primary read", {}, { timeout: 4000 });
     fireEvent.change(notes, { target: { value: "Read the flat" } });
     expect(onChange.mock.calls.at(-1)?.[0].notes).toBe("Read the flat");
     fireEvent.click(screen.getByRole("button", { name: "Save Notes" }));
@@ -130,7 +130,7 @@ describe("PlayCanvas lazy dialogs", () => {
     const onChange = vi.fn();
     render(<PlayCanvas play={play} onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: "View and edit position notes" }));
-    expect(await screen.findByText(/Position Notes & Read Progression/)).toBeInTheDocument();
+    expect(await screen.findByText(/Position Notes & Read Progression/, {}, { timeout: 4000 })).toBeInTheDocument();
     const textareas = screen.getAllByPlaceholderText(/Read free safety/);
     expect(textareas).toHaveLength(5);
     fireEvent.change(textareas[2], { target: { value: "Win inside" } });

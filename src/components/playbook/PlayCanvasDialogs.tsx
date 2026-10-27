@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import { usePageGuide } from "@/lib/pageGuide";
 import { SAVE_ROUTE_PRESET_WALKTHROUGH, POSITION_NOTES_WALKTHROUGH, PLAY_NOTES_WALKTHROUGH } from "@/lib/walkthroughData";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
@@ -26,9 +27,18 @@ export function SaveRoutePresetDialog({
   onClose,
 }: SaveRoutePresetDialogProps) {
   usePageGuide(SAVE_ROUTE_PRESET_WALKTHROUGH, 2);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
       <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div data-tour="save-route-preset-fields" className="bg-[#0B0F19] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="save-preset-title" data-tour="save-route-preset-fields" className="bg-[#0B0F19] border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
@@ -36,7 +46,7 @@ export function SaveRoutePresetDialog({
               </div>
               <div>
                 <PageGuideButton />
-                <h3 className="text-sm font-black uppercase text-white">Save Route Preset</h3>
+                <h3 id="save-preset-title" className="text-sm font-black uppercase text-white">Save Route Preset</h3>
                 <span className="text-[10px] text-neutral-400 font-mono">
                   {customPresetCount}/20 custom presets for this team
                 </span>
@@ -45,6 +55,7 @@ export function SaveRoutePresetDialog({
             <button
               type="button"
               onClick={onClose}
+              aria-label="Close"
               className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
             >
               <X className="w-4 h-4" />
@@ -124,9 +135,18 @@ export function PositionNotesDialog({
   onClose,
 }: PositionNotesDialogProps) {
   usePageGuide(POSITION_NOTES_WALKTHROUGH, 2);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
       <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div data-tour="position-notes-fields" className="bg-[#0B0F19] border border-cyan-500/40 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] flex flex-col">
+        <div role="dialog" aria-modal="true" aria-labelledby="position-notes-title" data-tour="position-notes-fields" className="bg-[#0B0F19] border border-cyan-500/40 rounded-3xl p-6 max-w-2xl w-full shadow-2xl space-y-4 max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] flex flex-col">
           <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
@@ -134,7 +154,7 @@ export function PositionNotesDialog({
               </div>
               <div>
                 <PageGuideButton />
-                <h3 className="text-base font-black uppercase text-white tracking-wide">
+                <h3 id="position-notes-title" className="text-base font-black uppercase text-white tracking-wide">
                   {playName} • Position Notes & Read Progression
                 </h3>
                 <span className="text-[10px] text-neutral-400 font-mono">
@@ -145,6 +165,7 @@ export function PositionNotesDialog({
             <button
               type="button"
               onClick={onClose}
+              aria-label="Close"
               className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
             >
               <X className="w-4 h-4" />
@@ -179,6 +200,7 @@ export function PositionNotesDialog({
                   rows={2}
                   disabled={readOnly}
                   value={p.notes || ""}
+                  aria-label={`${p.label} (${p.role}) coaching notes`}
                   onChange={(e) => onUpdatePlayerNotes(p.id, e.target.value)}
                   placeholder={`e.g. Read free safety: if shading outside, break 2 steps inside. Checkdown option.`}
                   className="w-full p-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none resize-none leading-relaxed"
@@ -210,9 +232,18 @@ interface PlayNotesDialogProps {
 
 export function PlayNotesDialog({ notes, readOnly, onNotesChange, onClose }: PlayNotesDialogProps) {
   usePageGuide(PLAY_NOTES_WALKTHROUGH, 2);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
       <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-        <div data-tour="play-notes-fields" className="bg-[#0B0F19] border border-white/20 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="play-notes-title" data-tour="play-notes-fields" className="bg-[#0B0F19] border border-white/20 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
@@ -220,7 +251,7 @@ export function PlayNotesDialog({ notes, readOnly, onNotesChange, onClose }: Pla
               </div>
               <div>
                 <PageGuideButton />
-                <h3 className="text-sm font-black uppercase text-white">Coach Playbook Scheme Notes</h3>
+                <h3 id="play-notes-title" className="text-sm font-black uppercase text-white">Coach Playbook Scheme Notes</h3>
                 <span className="text-[10px] text-neutral-400 font-mono">
                   High-level concept, QB progression & situational rules
                 </span>
@@ -229,6 +260,7 @@ export function PlayNotesDialog({ notes, readOnly, onNotesChange, onClose }: Pla
             <button
               type="button"
               onClick={onClose}
+              aria-label="Close"
               className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10"
             >
               <X className="w-4 h-4" />
@@ -239,6 +271,7 @@ export function PlayNotesDialog({ notes, readOnly, onNotesChange, onClose }: Pla
             rows={5}
             disabled={readOnly}
             value={notes}
+            aria-label="Coach playbook scheme notes"
             onChange={(e) => onNotesChange(e.target.value)}
             placeholder="e.g. Read safety rotation: if Cover 2, look to split the safeties with X. Checkdown to RB on 3rd step. Use in 3rd & long or 2-minute drill."
             className="w-full p-3.5 rounded-2xl bg-black/60 border border-white/10 focus:border-cyan-500 text-white text-xs outline-none resize-none leading-relaxed"

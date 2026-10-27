@@ -25,7 +25,7 @@ const readEmbeddedFlag = () => {
 };
 
 export function useLeagueDashboardData(leagueIdParam?: string) {
-  const { settings, activeLeagueId, switchLeague, isDemoLeague, subscription, currentSeasonId } = useLeague();
+  const { settings, activeLeagueId, isDemoLeague, subscription, currentSeasonId } = useLeague();
 
   const isEmbedded = useSyncExternalStore(
     noopSubscribe,
@@ -34,12 +34,6 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   );
 
   const isEffectiveDemo = isDemoLeague || isEmbedded || leagueIdParam === "default" || leagueIdParam === "demo";
-
-  useEffect(() => {
-    if (leagueIdParam && leagueIdParam !== activeLeagueId) {
-      switchLeague(leagueIdParam);
-    }
-  }, [leagueIdParam, activeLeagueId, switchLeague]);
 
   const {
     user,

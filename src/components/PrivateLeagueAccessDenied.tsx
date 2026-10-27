@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, ShieldAlert, ArrowLeft, LogIn } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
-import { useLeague } from "@/lib/leagueContext";
 
 export default function PrivateLeagueAccessDenied({
   leagueName = "Private League",
@@ -12,7 +11,6 @@ export default function PrivateLeagueAccessDenied({
   leagueName?: string;
 }) {
   const { user, logout } = useAuth();
-  const { switchLeague } = useLeague();
   const router = useRouter();
 
   return (
@@ -62,7 +60,6 @@ export default function PrivateLeagueAccessDenied({
 
           <button
             onClick={() => {
-              void switchLeague("default");
               router.push("/league/default");
             }}
             className="w-full sm:w-auto px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"

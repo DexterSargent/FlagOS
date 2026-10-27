@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import {
@@ -15,7 +15,7 @@ import { createSecureRecord } from "./secureWrites";
 import { applySeatChange, formatCad, previewSeatChange } from "./billingClient";
 import { getCurrentSeasonId, getLeagueSeasons, type LeagueSeason } from "./leagueSeasons";
 import { notifyDataChanged } from "./leagueDataCache";
-import { useAuth } from "./authContext";
+import { PortalIdentityScope, useAuth } from "./authContext";
 import { useMyMemberships, type LeagueMembership } from "./useMyMemberships";
 import { LEAGUE_ACCESS_GRANTED_EVENT } from "./leagueAccess";
 import {
@@ -145,9 +145,21 @@ export interface PlayoffFormat {
  *   12 teams -> 8 team playoff
  *   16 teams -> 16 team playoff
  */
+/** League-wide portal pages that name their league with `?league=` instead of a path segment. */
+const LEAGUE_WIDE_PATHS = ["/league", "/schedule", "/stats", "/teams", "/join", "/profile"];
+
+export function isLeagueWidePath(pathname: string | null | undefined): boolean {
+  return !!pathname && LEAGUE_WIDE_PATHS.includes(pathname);
+}
+
+/** Link to a league-wide portal page that stays on the league being viewed. */
+export function leaguePageHref(path: string, leagueId: string | null | undefined): string {
+  return leagueId && !checkIsDemoLeague(leagueId) ? `${path}?league=${encodeURIComponent(leagueId)}` : path;
+}
+
 /** League-scoped schedule link so the schedule opens on the league being viewed. */
 export function leagueScheduleHref(leagueId: string | null | undefined): string {
-  return leagueId && !checkIsDemoLeague(leagueId) ? `/schedule?league=${encodeURIComponent(leagueId)}` : "/schedule";
+  return leaguePageHref("/schedule", leagueId);
 }
 
 export function getNearestSimplePlayoffBracket(totalTeams: number): number {
@@ -362,9 +374,13 @@ interface LeagueContextType {
   openCustomizer: () => void;
   closeCustomizer: () => void;
   loading: boolean;
+  /** League whose portal is being browsed right now (from the URL); "default" (demo) elsewhere. */
   activeLeagueId: string;
+  /** League portal open in the current URL (demo included); null on pages outside any league portal. */
+  portalLeagueId: string | null;
   userLeagues: UserLeagueSummary[];
   publicLeagues: UserLeagueSummary[];
+  /** Opens another league's portal (navigates; nothing is remembered between visits). */
   switchLeague: (leagueId: string) => Promise<void>;
   createLeague: (data: {
     name: string;
@@ -471,6 +487,7 @@ const LeagueContext = createContext<LeagueContextType>({
   closeCustomizer: () => { },
   loading: true,
   activeLeagueId: "default",
+  portalLeagueId: null,
   userLeagues: [],
   publicLeagues: [],
   switchLeague: async () => { },
@@ -496,7 +513,8 @@ const LeagueContext = createContext<LeagueContextType>({
 });
 
 const LEAGUE_NOT_FOUND = "not_found" as const;
-const ACTIVE_LEAGUE_KEY = "flagos_active_league_id";
+// Retired keys from when a league selection was remembered across visits.
+const LEGACY_ACTIVE_LEAGUE_KEYS = ["flagos_active_league_id", "flagos_active_league_owner"];
 const USER_LEAGUES_KEY = "flagos_user_leagues";
 
 function persistUserLeagues(leagues: UserLeagueSummary[]) {
@@ -527,18 +545,22 @@ export function reconcileUserLeagues(previous: UserLeagueSummary[], memberships:
   return [demo, ...leagues];
 }
 
-const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
+const SelectedLeagueProvider = ({ pathname, routeLeagueId, suspended, children }: {
+  pathname: string | null;
   /** League required by the current route (league dashboard, league-owned team or match). */
   routeLeagueId: string | null;
   /** True while the route belongs to an independent team or is still resolving its owner. */
   suspended: boolean;
   children: React.ReactNode;
 }) => {
+  const router = useRouter();
   const settingsRequest = useRef(0);
   const loadedLeagueRef = useRef<string | null>(null);
   const routeLeagueRef = useRef(routeLeagueId);
   const [settings, setSettings] = useState<LeagueSettings>(DEFAULT_LEAGUE_SETTINGS);
-  const [selectedLeagueId, setSelectedLeagueId] = useState<string>("default");
+  // The league portal being browsed. Held in memory only while the user stays inside that portal.
+  const [portalLeagueId, setPortalLeagueId] = useState<string | null>(null);
+  const portalLeagueRef = useRef(portalLeagueId);
   const [hydrated, setHydrated] = useState(false);
   const [userLeagues, setUserLeagues] = useState<UserLeagueSummary[]>(DEFAULT_USER_LEAGUES);
   const [subscription, setSubscription] = useState<LeagueSubscriptionInfo | null>(DEFAULT_LEAGUE_SUBSCRIPTION);
@@ -546,7 +568,8 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   useEffect(() => {
     routeLeagueRef.current = routeLeagueId;
     userLeaguesRef.current = userLeagues;
-  }, [routeLeagueId, userLeagues]);
+    portalLeagueRef.current = portalLeagueId;
+  }, [routeLeagueId, userLeagues, portalLeagueId]);
   const { user, loading: authLoading, setActiveLeagueCommissioner } = useAuth();
   const { data: memberships } = useMyMemberships(user?.emailVerified ? user.uid : null);
 
@@ -554,8 +577,9 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   const [loading, setLoading] = useState(true);
   const [loadedLeagueId, setLoadedLeagueId] = useState<string | null>(null);
 
-  // The route always wins over the stored selection so league-owned pages never show another league.
-  const activeLeagueId = routeLeagueId || selectedLeagueId;
+  // Only the portal being browsed is active; accounts never carry a "my league" between pages.
+  const browsingLeagueId = routeLeagueId || portalLeagueId;
+  const activeLeagueId = browsingLeagueId || "default";
 
   const memberLeagueIds = useMemo(
     () => (memberships ? memberships.leagues.map((league) => league.id) : null),
@@ -728,16 +752,10 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   };
 
   useEffect(() => {
-    // Restore the stored league selection and switcher list.
+    // Restore the cached switcher list and drop the retired "remembered league" keys.
     if (typeof window !== "undefined") {
       try {
-        // A league-scoped schedule link (see leagueScheduleHref) wins over the stored selection.
-        const linkedLeagueId = window.location.pathname === "/schedule"
-          ? new URLSearchParams(window.location.search).get("league")
-          : null;
-        const savedLeagueId = linkedLeagueId || localStorage.getItem(ACTIVE_LEAGUE_KEY);
-        if (savedLeagueId) setSelectedLeagueId(savedLeagueId);
-        if (linkedLeagueId) localStorage.setItem(ACTIVE_LEAGUE_KEY, linkedLeagueId);
+        for (const key of LEGACY_ACTIVE_LEAGUE_KEYS) localStorage.removeItem(key);
 
         const savedUserLeagues = localStorage.getItem(USER_LEAGUES_KEY);
         if (savedUserLeagues) {
@@ -757,18 +775,34 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
         console.error("Failed to read league settings from cache:", err);
       }
     }
-    setHydrated(true);
   }, []);
 
-  // Visiting a league-owned route makes that league the selection for league-wide pages.
-  // Only route changes drive this, so an explicit switch is never reverted by the current URL.
+  // The URL alone decides the active league: a league-owned route, or `?league=` on a league-wide
+  // page. Moving between league-wide pages keeps the portal (and writes it into the URL); leaving
+  // the portal for any other page forgets it.
   useEffect(() => {
-    if (!hydrated || suspended || !routeLeagueId) return;
-    setSelectedLeagueId(routeLeagueId);
-    try {
-      localStorage.setItem(ACTIVE_LEAGUE_KEY, routeLeagueId);
-    } catch {}
-  }, [hydrated, suspended, routeLeagueId]);
+    let next: string | null = null;
+    if (routeLeagueId) {
+      next = routeLeagueId;
+    } else if (isLeagueWidePath(pathname)) {
+      const params = new URLSearchParams(window.location.search);
+      const linked = params.get("league");
+      const current = portalLeagueRef.current;
+      if (linked) next = linked;
+      else if (params.get("demo") === "true" || params.get("embed") === "true") next = "default";
+      else if (params.get("team")) next = null;
+      else if (current && checkIsDemoLeague(current)) next = current;
+      else if (current) {
+        next = current;
+        const url = new URL(window.location.href);
+        url.searchParams.set("league", next);
+        window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+    }
+    portalLeagueRef.current = next;
+    setPortalLeagueId(next);
+    setHydrated(true);
+  }, [pathname, routeLeagueId]);
 
   // Load the active league's settings whenever it changes.
   useEffect(() => {
@@ -794,11 +828,9 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
         try {
           localStorage.removeItem(`league_settings_${leagueId}`);
         } catch {}
-        setSelectedLeagueId("default");
-        try {
-          localStorage.setItem(ACTIVE_LEAGUE_KEY, "default");
-        } catch {}
-        if (!routeLeagueRef.current) return;
+        if (checkIsDemoLeague(leagueId)) return;
+        portalLeagueRef.current = null;
+        setPortalLeagueId(null);
         // The URL still names the missing league: never show another league's settings under it.
         setSettings({ ...DEFAULT_LEAGUE_SETTINGS, leagueName: "League Not Found", tagline: "This league no longer exists." });
         setSubscription(null);
@@ -832,12 +864,17 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
   }, [hydrated, authLoading, user, memberships]);
 
   const switchLeague = useCallback(async (leagueId: string) => {
-    if (!leagueId) return;
-    setSelectedLeagueId(leagueId);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(ACTIVE_LEAGUE_KEY, leagueId);
+    if (!leagueId || typeof window === "undefined") return;
+    const path = window.location.pathname;
+    // League-wide pages stay put and swap their `?league=`; everywhere else opens the league's portal.
+    if (isLeagueWidePath(path) && path !== "/league") {
+      portalLeagueRef.current = leagueId;
+      setPortalLeagueId(leagueId);
+      router.replace(leaguePageHref(path, leagueId));
+      return;
     }
-  }, []);
+    router.push(`/league/${encodeURIComponent(leagueId)}`);
+  }, [router]);
 
   const createLeague = async (data: {
     name: string;
@@ -954,10 +991,10 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
     setSettings(newLeagueSettings);
     loadedLeagueRef.current = newLeagueId;
     setLoadedLeagueId(newLeagueId);
-    setSelectedLeagueId(newLeagueId);
+    portalLeagueRef.current = newLeagueId;
+    setPortalLeagueId(newLeagueId);
 
     if (typeof window !== "undefined") {
-      localStorage.setItem(ACTIVE_LEAGUE_KEY, newLeagueId);
       localStorage.setItem(USER_LEAGUES_KEY, JSON.stringify(updatedUserLeagues));
       localStorage.setItem(`league_settings_${newLeagueId}`, JSON.stringify(newLeagueSettings));
     }
@@ -1282,6 +1319,7 @@ const SelectedLeagueProvider = ({ routeLeagueId, suspended, children }: {
         closeCustomizer,
         loading: loading || loadedLeagueId !== activeLeagueId,
         activeLeagueId,
+        portalLeagueId: browsingLeagueId,
         userLeagues,
         publicLeagues: userLeagues.filter((l) => l.visibility !== "private"),
         switchLeague,
@@ -1349,6 +1387,7 @@ function IndependentTeamLeague({ teamId, team, loading, enabled = true, children
       ...league,
       settings: independentTeamSettings(team, teamId),
       activeLeagueId: "",
+      portalLeagueId: null,
       isDemoLeague: false,
       loading,
       subscription: null,
@@ -1391,7 +1430,7 @@ export function TeamLeagueScope({ teamId, children }: { teamId: string; children
 type CustomerRouteScope =
   | { kind: "none" }
   | { kind: "league"; leagueId: string }
-  | { kind: "selected" }
+  | { kind: "demo" }
   | { kind: "independent"; teamId: string; team: TeamRecord | null; loading: boolean };
 
 // Real team and match routes resolve their owning team before choosing a league context so
@@ -1425,7 +1464,7 @@ function useCustomerRouteScope(routeTeamId: string | null, matchId: string | nul
   if (team && !isStandaloneTeam(team) && typeof team.leagueId === "string" && team.leagueId) {
     return { kind: "league", leagueId: team.leagueId };
   }
-  if (!!matchId && currentMatchTeam.resolved && !customerTeam) return { kind: "selected" };
+  if (!!matchId && currentMatchTeam.resolved && !customerTeam) return { kind: "demo" };
   return {
     kind: "independent",
     teamId: teamId || "",
@@ -1458,21 +1497,41 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   if (leagueRouteId) routeLeagueId = leagueRouteId;
   else if (teamId && !customerTeamId) routeLeagueId = "default";
   else if (scope.kind === "league") routeLeagueId = scope.leagueId;
+  else if (scope.kind === "demo") routeLeagueId = "default";
   const independent = scope.kind === "independent" ? scope : null;
 
-  // A single provider stays mounted across navigation so the selection never resets mid-session.
+  // A single provider stays mounted across navigation so moving within a portal keeps its league.
   return (
-    <SelectedLeagueProvider routeLeagueId={routeLeagueId} suspended={Boolean(independent)}>
+    <SelectedLeagueProvider pathname={pathname} routeLeagueId={routeLeagueId} suspended={Boolean(independent)}>
       <IndependentTeamLeague
         enabled={Boolean(independent)}
         teamId={independent?.teamId || ""}
         team={independent?.team || null}
         loading={independent?.loading ?? false}
       >
-        {children}
+        <PortalIdentityBoundary routeTeamId={teamId || independent?.teamId || null}>{children}</PortalIdentityBoundary>
       </IndependentTeamLeague>
     </SelectedLeagueProvider>
   );
+}
+
+/** Scopes the signed-in identity to the team or league portal in the URL (nothing outside a portal). */
+function PortalIdentityBoundary({ routeTeamId, children }: { routeTeamId: string | null; children: React.ReactNode }) {
+  const { portalLeagueId } = useContext(LeagueContext);
+  const { user, userProfile } = useAuth();
+  const { data: memberships } = useMyMemberships(user?.emailVerified ? user.uid : null);
+  const teamKey = useMemo(() => {
+    if (routeTeamId) return routeTeamId;
+    if (!portalLeagueId) return "";
+    const ids = new Set<string>();
+    memberships?.leagues.find((league) => league.id === portalLeagueId)?.teams.forEach((team) => ids.add(team.id));
+    userProfile?.playerRecords?.forEach((record) => {
+      if (record.leagueId === portalLeagueId && record.teamId) ids.add(record.teamId);
+    });
+    return [...ids].sort().join(",");
+  }, [routeTeamId, portalLeagueId, memberships, userProfile]);
+  const teamIds = useMemo(() => (teamKey ? teamKey.split(",") : []), [teamKey]);
+  return <PortalIdentityScope teamIds={teamIds}>{children}</PortalIdentityScope>;
 }
 
 export const useLeague = () => useContext(LeagueContext);

@@ -4,7 +4,7 @@ import FlagOSLoader from "@/components/FlagOSLoader";
 import { usePageGuide } from "@/lib/pageGuide";
 import { LOGIN_WALKTHROUGH } from "@/lib/walkthroughs/public";
 
-import { useAuth } from "@/lib/authContext";
+import { portalHomePath, useAuth } from "@/lib/authContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -39,8 +39,12 @@ export default function LoginPage() {
     needsEmailVerification,
   } = useAuth();
   const router = useRouter();
-  const portalTeamId = userProfile?.managedTeamId || userProfile?.playerTeamId;
-  const portalPath = portalTeamId && portalTeamId !== "team_free_agents" ? `/teams/${portalTeamId}` : "/";
+  const portalPath = userProfile
+    ? portalHomePath(
+      (userProfile.managedTeamIds || (userProfile.managedTeamId ? [userProfile.managedTeamId] : [])).map((id) => ({ id })),
+      userProfile.playerRecords || (userProfile.playerTeamId ? [{ teamId: userProfile.playerTeamId }] : []),
+    )
+    : "/";
 
   const [teams, setTeams] = useState<any[]>([]);
   const [players, setPlayers] = useState<any[]>([]);
@@ -219,7 +223,7 @@ export default function LoginPage() {
             </span>
           ) : (
             <span className="flex items-center gap-1.5 text-neutral-400 font-medium">
-              <User className="w-3.5 h-3.5" /> Spectator
+              <User className="w-3.5 h-3.5" /> {user ? "Signed In" : "Spectator"}
             </span>
           )}
         </div>

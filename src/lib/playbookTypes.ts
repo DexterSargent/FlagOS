@@ -202,6 +202,7 @@ export interface PlayerNode {
   manTargetId?: string; // id of offensive player to mirror / lock
   zoneId?: string; // id of zone to drop into
   notes?: string; // Coaching notes & assignment instructions for this specific position
+  hasCustomNotes?: boolean; // True if notes were manually authored by coach
 }
 
 /**

@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
 const { execFileSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
 
 const root = path.resolve(__dirname, "..");
 const slash = (value) => value.split(path.sep).join("/");
@@ -45,7 +46,15 @@ function analyze(file) {
     }
     if (ts.isFunctionDeclaration(node) && node.name) {
       if (/^[A-Z]/.test(node.name.text)) symbols.push({ name: node.name.text, line: line(node) });
-      if (/^(GET|POST|PUT|PATCH|DELETE)$/.test(node.name.text)) methods.push(node.name.text);
+      if (/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(node.name.text)) methods.push(node.name.text);
+    }
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+      const value = node.initializer;
+      if (/^[A-Z]/.test(node.name.text) && (ts.isArrowFunction(value) || ts.isFunctionExpression(value) ||
+        ts.isCallExpression(value) && /^(memo|forwardRef|dynamic)$/.test(value.expression.getText(ast).split(".").pop()))) {
+        symbols.push({ name: node.name.text, line: line(node) });
+      }
+      if (/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(node.name.text)) methods.push(node.name.text);
     }
     if (ts.isJsxAttribute(node) && node.name.getText(ast) === "data-tour") {
       const value = node.initializer && ts.isStringLiteral(node.initializer)
@@ -59,7 +68,7 @@ function analyze(file) {
     ts.forEachChild(node, visit);
   }
   visit(ast);
-  return { path: file, imports: [...imports].sort(), controls, symbols, methods, headings, lines: text.split("\n").length };
+  return { path: file, fingerprint: createHash("sha256").update(text).digest("hex"), imports: [...imports].sort(), controls, symbols, methods, headings, lines: text.split("\n").length };
 }
 const sources = production.map(analyze);
 const byPath = new Map(sources.map((source) => [source.path, source]));

@@ -303,6 +303,19 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   };
 
   useEffect(() => {
+    if (!selectedPlayerForStats && !isAddPlayerOpen && !editingPlayer) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedPlayerForStats(null);
+        setIsAddPlayerOpen(false);
+        setEditingPlayer(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedPlayerForStats, isAddPlayerOpen, editingPlayer]);
+
+  useEffect(() => {
     setPrivateRosterReady(false);
     setSeasonTeamStats(null);
     setLoadError("");
@@ -910,10 +923,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
             <form data-tour="team-add-player-identity" onSubmit={handleAddPlayer} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                <label htmlFor="add-player-name" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Player Name *
                 </label>
                 <input
+                  id="add-player-name"
                   type="text"
                   required
                   value={newPlayerName}
@@ -925,10 +939,11 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                <label htmlFor="add-player-jersey" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Jersey Number
                 </label>
                 <input
+                  id="add-player-jersey"
                   type="text"
                   value={newPlayerNumber}
                   onChange={(e) => setNewPlayerNumber(e.target.value)}
@@ -938,11 +953,12 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
 
               <div data-tour="team-add-player-access">
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
+                <label htmlFor="add-player-emails" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
                   <span>Player Emails</span>
                   <span className="text-[10px] text-neutral-400 normal-case tracking-normal">Optional · comma-separated</span>
                 </label>
                 <input
+                  id="add-player-emails"
                   type="text"
                   value={newPlayerEmails}
                   onChange={(e) => setNewPlayerEmails(e.target.value)}
@@ -1129,10 +1145,12 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Individual Player Stats Modal */}
       {selectedPlayerForStats && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div role="dialog" aria-modal="true" aria-labelledby="player-stats-modal-title" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative">
             <button
+              type="button"
               onClick={() => setSelectedPlayerForStats(null)}
+              aria-label="Close"
               className="absolute top-6 right-6 text-neutral-400 hover:text-white p-2 rounded-full hover:bg-white/5"
             >
               <X className="w-5 h-5" />
@@ -1144,7 +1162,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
               <div>
                 <PageGuideButton className="mb-2" />
-                <h2 className="text-2xl font-black">{selectedPlayerForStats.playerName}</h2>
+                <h2 id="player-stats-modal-title" className="text-2xl font-black">{selectedPlayerForStats.playerName}</h2>
                 <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="text-xs text-neutral-400">{teamName}</span>
                   {(selectedPlayerForStats.position || (selectedPlayerForStats.positions && selectedPlayerForStats.positions[0])) && (

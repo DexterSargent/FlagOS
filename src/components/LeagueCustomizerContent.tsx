@@ -108,6 +108,21 @@ export default function LeagueCustomizerContent() {
     }
   }, [subscription?.teamCount]);
 
+  const isComplimentary = subscription?.paymentMethod === "complimentary";
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        const hasGuideOpen = Boolean(document.querySelector('.walkthrough-modal, [class*="walkthrough"]'));
+        if (!hasGuideOpen) {
+          closeCustomizer();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeCustomizer]);
+
   const loadSubTeams = async () => {
     setLoadingSubTeams(true);
     try {
@@ -2299,8 +2314,12 @@ export default function LeagueCustomizerContent() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
                   <div className="text-[10px] uppercase font-bold text-neutral-400">Base Platform Fee</div>
-                  <div className="text-base font-black text-white font-mono">$40.00 / mo</div>
-                  <div className="text-[10px] text-neutral-500">Scheduling, standings and league stats</div>
+                  <div className="text-base font-black text-white font-mono">
+                    {isComplimentary ? "$0.00 / mo" : "$40.00 / mo"}
+                  </div>
+                  <div className="text-[10px] text-neutral-500">
+                    {isComplimentary ? "Complimentary platform allowance" : "Scheduling, standings and league stats"}
+                  </div>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
@@ -2308,17 +2327,21 @@ export default function LeagueCustomizerContent() {
                     Team Slots ({targetTeamCount} teams)
                   </div>
                   <div className="text-base font-black text-emerald-400 font-mono">
-                    ${targetTeamCount * 20}.00 / mo
+                    {isComplimentary ? "$0.00 / mo" : `$${targetTeamCount * 20}.00 / mo`}
                   </div>
-                  <div className="text-[10px] text-neutral-500">{targetTeamCount} × $20.00/team per month</div>
+                  <div className="text-[10px] text-neutral-500">
+                    {isComplimentary ? "Included complimentary" : `${targetTeamCount} × $20.00/team per month`}
+                  </div>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-neutral-900 border border-white/5 space-y-1">
                   <div className="text-[10px] uppercase font-bold text-neutral-400">Adjusted Total Monthly</div>
                   <div className="text-base font-black text-cyan-400 font-mono">
-                    ${40 + targetTeamCount * 20}.00 / mo
+                    {isComplimentary ? "$0.00 / mo" : `$${40 + targetTeamCount * 20}.00 / mo`}
                   </div>
-                  <div className="text-[10px] text-neutral-500">Next bill on renewal date</div>
+                  <div className="text-[10px] text-neutral-500">
+                    {isComplimentary ? "Complimentary — no charges apply" : "Next bill on renewal date"}
+                  </div>
                 </div>
               </div>
 
@@ -2327,18 +2350,28 @@ export default function LeagueCustomizerContent() {
                 <div className="flex items-center gap-2">
                   <Info className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span>
-                    Next Monthly Billing Cycle:{" "}
-                    <strong className="text-white font-mono">
-                      {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </strong>
+                    {isComplimentary ? (
+                      <>Account Type: <strong className="text-emerald-400 font-bold">Complimentary Organization (No Charges Apply)</strong></>
+                    ) : (
+                      <>
+                        Next Monthly Billing Cycle:{" "}
+                        <strong className="text-white font-mono">
+                          {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </strong>
+                      </>
+                    )}
                   </span>
                 </div>
                 <span className="text-[11px] text-neutral-400">
-                  Rate at next payment: <strong className="text-cyan-300 font-mono">${40 + targetTeamCount * 20}/mo</strong>
+                  {isComplimentary ? (
+                    <strong className="text-emerald-300 font-mono">Complimentary, $0/mo</strong>
+                  ) : (
+                    <>Rate at next payment: <strong className="text-cyan-300 font-mono">${40 + targetTeamCount * 20}/mo</strong></>
+                  )}
                 </span>
               </div>
             </div>
@@ -2349,10 +2382,10 @@ export default function LeagueCustomizerContent() {
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
                     <SlidersHorizontal className="w-4 h-4 text-emerald-400" />
-                    <span>Adjust Paid Team Slots</span>
+                    <span>{isComplimentary ? "Adjust Team Capacity" : "Adjust Paid Team Slots"}</span>
                   </h4>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Add or remove team capacity. Adjusts your monthly cost by $20 per team at next renewal.
+                    {isComplimentary ? "Add or remove team capacity. Adjusts your complimentary team allowance." : "Add or remove team capacity. Adjusts your monthly cost by $20 per team at next renewal."}
                   </p>
                 </div>
 
@@ -2377,7 +2410,7 @@ export default function LeagueCustomizerContent() {
                   <div className="px-5 py-2 rounded-xl bg-neutral-900 border border-white/10 text-center min-w-[130px]">
                     <div className="text-lg font-black text-white font-mono">{targetTeamCount} Teams</div>
                     <div className="text-[10px] text-neutral-400 font-mono">
-                      ${40 + targetTeamCount * 20}/mo
+                      {isComplimentary ? "Complimentary" : `$${40 + targetTeamCount * 20}/mo`}
                     </div>
                   </div>
 
@@ -2404,8 +2437,8 @@ export default function LeagueCustomizerContent() {
                     className="w-full accent-emerald-400 cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
-                    <span>2 teams ($80/mo)</span>
-                    <span>32 teams ($680/mo)</span>
+                    <span>{isComplimentary ? "2 teams (Complimentary)" : "2 teams ($80/mo)"}</span>
+                    <span>{isComplimentary ? "32 teams (Complimentary)" : "32 teams ($680/mo)"}</span>
                   </div>
                 </div>
 
@@ -2417,7 +2450,7 @@ export default function LeagueCustomizerContent() {
                     onClick={() => handleUpdateSubscriptionCount(targetTeamCount)}
                     className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer"
                   >
-                    {isUpdatingSub ? "Updating..." : `Confirm ${targetTeamCount} Teams ($${40 + targetTeamCount * 20}/mo)`}
+                    {isUpdatingSub ? "Updating..." : isComplimentary ? `Confirm ${targetTeamCount} Teams (Complimentary)` : `Confirm ${targetTeamCount} Teams ($${40 + targetTeamCount * 20}/mo)`}
                   </button>
                 )}
               </div>
@@ -2428,10 +2461,10 @@ export default function LeagueCustomizerContent() {
               <div>
                 <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
                   <Plus className="w-4 h-4 text-cyan-400" />
-                  <span>Add New Team to Subscription (+ $20/mo)</span>
+                  <span>Add New Team to Subscription {isComplimentary ? "(Complimentary)" : "(+ $20/mo)"}</span>
                 </h4>
                 <p className="text-xs text-neutral-400 mt-0.5">
-                  Create a team and add a team slot. For paid plans, the monthly total increases by $20 at your next renewal.
+                  {isComplimentary ? "Create a team and add a team slot. No extra charges apply for complimentary organizations." : "Create a team and add a team slot. For paid plans, the monthly total increases by $20 at your next renewal."}
                 </p>
               </div>
 
@@ -2451,7 +2484,7 @@ export default function LeagueCustomizerContent() {
                   className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>{isSubmittingNewTeam ? "Adding..." : "Add Team to Subscription (+$20/mo)"}</span>
+                  <span>{isSubmittingNewTeam ? "Adding..." : isComplimentary ? "Add Team (Complimentary)" : "Add Team to Subscription (+$20/mo)"}</span>
                 </button>
               </div>
             </div>

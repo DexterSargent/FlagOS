@@ -55,6 +55,15 @@ export default function PrintArmbandModal({
     }
   }, [playbook]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   usePageGuide(isOpen ? PRINT_ARMBAND_WALKTHROUGH : null, 2);
   if (!isOpen) return null;
   if (!mounted) return null;
@@ -249,7 +258,7 @@ export default function PrintArmbandModal({
 
       {/* Screen Backdrop */}
       <div className="print-modal-backdrop fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-        <div className="print-modal-dialog bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-5xl max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] flex flex-col shadow-2xl overflow-hidden relative">
+        <div role="dialog" aria-modal="true" aria-labelledby="print-modal-title" className="print-modal-dialog bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-5xl max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] flex flex-col shadow-2xl overflow-hidden relative">
           
           {/* Modal Top Control Bar (Hidden during print) */}
           <div data-tour="print-actions" className="no-print p-4 sm:p-6 border-b border-white/10 flex flex-wrap items-center justify-between gap-4 bg-[#0E1422]">
@@ -263,7 +272,7 @@ export default function PrintArmbandModal({
                 </span>
               </div>
               <PageGuideButton />
-            <h2 className="text-lg sm:text-xl font-black uppercase text-white mt-1">
+            <h2 id="print-modal-title" className="text-lg sm:text-xl font-black uppercase text-white mt-1">
                 Armband Cards &amp; Playbook Printing
               </h2>
             </div>
@@ -390,6 +399,10 @@ export default function PrintArmbandModal({
                 return (
                   <button
                     key={play.id}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    aria-pressed={isSelected}
                     data-tour="print-play-choices"
                     onClick={() => handleTogglePlay(play.id)}
                     className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${

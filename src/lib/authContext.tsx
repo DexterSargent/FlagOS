@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { FirebaseError } from "firebase/app";
 import {
   onAuthStateChanged,
@@ -55,15 +55,28 @@ async function getSuccessfulLoginResult(user: User): Promise<LoginResult> {
   if (!user.emailVerified || !user.email) return { success: true };
   try {
     const { teams, players } = await requestIdentityLookup(user.uid);
-    const team = teams.find((entry) => entry.id !== "team_free_agents");
-    if (team) return { success: true, defaultPath: `/teams/${team.id}` };
-    const player = players.find((entry) => typeof entry.teamId === "string" && entry.teamId && entry.teamId !== "team_free_agents");
-    if (player) return { success: true, defaultPath: `/teams/${player.teamId}` };
-    const freeAgent = players.find((entry) => typeof entry.leagueId === "string" && entry.leagueId);
-    return { success: true, defaultPath: freeAgent ? `/league/${freeAgent.leagueId}` : "/" };
+    return { success: true, defaultPath: portalHomePath(teams, players) };
   } catch {
     return { success: true };
   }
+}
+
+/** Opens the account's only portal directly; several portals land on the account hub to pick one. */
+export function portalHomePath(
+  teams: Array<{ id: string }>,
+  players: Array<Record<string, unknown>>,
+): string {
+  const portals = new Set<string>();
+  teams.forEach((team) => { if (team.id && team.id !== "team_free_agents") portals.add(`/teams/${team.id}`); });
+  players.forEach((player) => {
+    if (typeof player.teamId === "string" && player.teamId && player.teamId !== "team_free_agents") {
+      portals.add(`/teams/${player.teamId}`);
+    } else if (typeof player.leagueId === "string" && player.leagueId) {
+      portals.add(`/league/${player.leagueId}`);
+    }
+  });
+  if (portals.size === 1) return [...portals][0];
+  return portals.size > 1 ? "/account" : "/";
 }
 
 const getAuthErrorMessage = (error: unknown): string => {
@@ -145,6 +158,8 @@ export interface UserProfile {
   playerId?: string;
   playerTeamId?: string;
   playerData?: any;
+  /** Every roster spot this account holds (all leagues and independent teams). */
+  playerRecords?: Array<{ id: string; teamId?: string; leagueId?: string; [key: string]: any }>;
 }
 
 interface AuthContextType {
@@ -183,9 +198,11 @@ interface AuthContextType {
   setDevRole: (role: UserRole, teamId?: string, playerId?: string) => void;
   /** Set by the league provider when the account commissions the active league (server-verified membership). */
   setActiveLeagueCommissioner: (isCommissioner: boolean) => void;
+  /** Demo persona or embedded preview: identity is simulated and never narrowed to a portal. */
+  simulatedIdentity: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({
+const DEFAULT_AUTH: AuthContextType = {
   user: null,
   userProfile: null,
   role: "user",
@@ -217,7 +234,50 @@ const AuthContext = createContext<AuthContextType>({
   bypassLogin: () => { },
   setDevRole: () => { },
   setActiveLeagueCommissioner: () => { },
-});
+  simulatedIdentity: false,
+};
+const AuthContext = createContext<AuthContextType>(DEFAULT_AUTH);
+const AccountAuthContext = createContext<AuthContextType>(DEFAULT_AUTH);
+
+/**
+ * Narrows "your team / your player" to the portal being browsed. An account can coach, play and
+ * commission across many leagues and teams, so it never has one global team: `teamIds` are the
+ * account-relevant teams of the current portal (empty outside any portal).
+ */
+export function scopeAuthToPortal(base: AuthContextType, teamIds: string[]): AuthContextType {
+  if (base.simulatedIdentity) return base;
+  const profile = base.userProfile;
+  const records = profile?.playerRecords?.length
+    ? profile.playerRecords
+    : profile?.playerData ? [profile.playerData] : [];
+  const player = records.find((record) => !!record?.teamId && teamIds.includes(record.teamId)) || null;
+  const managedIds = new Set([...(profile?.managedTeamIds || []), ...(profile?.managedTeamId ? [profile.managedTeamId] : [])]);
+  const managedTeamId = teamIds.find((id) => managedIds.has(id)) || null;
+  const role: UserRole = base.role === "league_admin"
+    ? "league_admin"
+    : managedTeamId ? "team_admin" : player ? "player" : "user";
+  const isPlayer = role === "player";
+  const teamId = isPlayer ? player?.teamId || null : managedTeamId;
+  return {
+    ...base,
+    role,
+    isPlayer,
+    isAdmin: base.isLeagueAdmin || role === "team_admin",
+    isTeamAdmin: (id?: string) => (id ? base.isTeamAdmin(id) : base.isPlatformAdmin || !!managedTeamId),
+    playerId: isPlayer ? player?.id || null : null,
+    playerTeamId: teamId,
+    managedTeamId: teamId,
+    playerData: isPlayer ? player : null,
+    isAuthorized: !!base.user && (base.isLeagueAdmin || isPlayer || !!managedTeamId),
+    canRegisterAsPlayer: !base.isLeagueAdmin && !player && !managedTeamId,
+  };
+}
+
+export function PortalIdentityScope({ teamIds, children }: { teamIds: string[]; children: React.ReactNode }) {
+  const base = useContext(AuthContext);
+  const value = useMemo(() => scopeAuthToPortal(base, teamIds), [base, teamIds]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -370,6 +430,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // A failed or throttled lookup says nothing about membership; keep the last known profile.
           if (lookup && !lookupResult) throw new Error("Identity lookup failed.");
           const managedTeamIds = (lookupResult?.teams || []).map((team) => team.id);
+          const playerRecords = (lookupResult?.players || []).filter(
+            (player) => typeof player.teamId === "string" && player.teamId && player.teamId !== "team_free_agents",
+          );
 
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
@@ -385,6 +448,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               data.playerTeamId = matchingPlayer.teamId;
               data.playerData = matchingPlayer;
             }
+            data.playerRecords = playerRecords;
             if (matchingTeam) {
               data.managedTeamId = matchingTeam.id;
               data.managedTeamIds = managedTeamIds;
@@ -418,6 +482,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               playerId: matchingPlayer?.id,
               playerTeamId: matchingPlayer?.teamId,
               playerData: matchingPlayer,
+              playerRecords,
               managedTeamId: matchingTeam?.id,
               managedTeamIds: matchingTeam ? managedTeamIds : undefined,
             };
@@ -779,9 +844,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     !userProfile?.playerTeamId &&
     !userProfile?.playerId;
 
-  return (
-    <AuthContext.Provider
-      value={{
+  const accountValue: AuthContextType = {
         user,
         userProfile,
         role: effectiveRole,
@@ -813,11 +876,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         bypassLogin,
         setDevRole,
         setActiveLeagueCommissioner,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+        simulatedIdentity: Boolean(lockedEmbedRole || devRole),
+  };
+
+  return (
+    <AccountAuthContext.Provider value={accountValue}>
+      <AuthContext.Provider value={accountValue}>
+        {children}
+      </AuthContext.Provider>
+    </AccountAuthContext.Provider>
   );
 };
 
+/** Identity narrowed to the portal being browsed (see PortalIdentityScope). */
 export const useAuth = () => useContext(AuthContext);
+
+/** Whole-account identity across every league and team, for account-level checks. */
+export const useAccountAuth = () => useContext(AccountAuthContext);

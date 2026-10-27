@@ -102,6 +102,12 @@ export default function PlatformAdminPage() {
   const [search, setSearch] = useState("");
   const [updatingLeagueId, setUpdatingLeagueId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login?redirect=/admin");
+    }
+  }, [authLoading, user, router]);
+
   // Modal states
   const [editingLeague, setEditingLeague] = useState<ManagedRecord | null>(null);
   const [adminManagingLeague, setAdminManagingLeague] = useState<ManagedRecord | null>(null);
@@ -732,10 +738,28 @@ export default function PlatformAdminPage() {
     }
   };
 
-  if (authLoading || (!user && !isPlatformAdmin)) {
+  if (authLoading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center bg-neutral-950 text-neutral-300">
         <FlagOSLoader label="Checking access" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center bg-neutral-950 px-6 text-white">
+        <section className="max-w-md rounded-3xl border border-amber-500/20 bg-neutral-900 p-8 text-center">
+          <LockKeyhole className="mx-auto h-9 w-9 text-amber-400" />
+          <h1 className="mt-4 text-xl font-black">Sign in required</h1>
+          <p className="mt-2 text-sm text-neutral-400">Please sign in to access the FlagOS platform administration console.</p>
+          <Link href="/login?redirect=/admin" className="mt-6 inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-bold text-black hover:bg-cyan-400">
+            Sign in
+          </Link>
+          <Link href="/" className="mt-3 block text-xs font-bold text-neutral-400 hover:text-white">
+            Return to FlagOS
+          </Link>
+        </section>
       </div>
     );
   }

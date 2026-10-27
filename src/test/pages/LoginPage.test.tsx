@@ -10,9 +10,13 @@ const { createAccountMock, loginWithEmailAndPasswordMock, routerPushMock, sendPa
   useAuthMock: vi.fn(),
 }));
 
-vi.mock("@/lib/authContext", () => ({
-  useAuth: useAuthMock,
-}));
+vi.mock("@/lib/authContext", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/authContext")>();
+  return {
+    ...actual,
+    useAuth: useAuthMock,
+  };
+});
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPushMock }),

@@ -10,11 +10,12 @@ export default function LeagueRedirectPage() {
   const { activeLeagueId } = useLeague();
 
   useEffect(() => {
-    router.replace(`/league/${activeLeagueId || "default"}`);
+    const requested = new URLSearchParams(window.location.search).get("league");
+    router.replace(`/league/${requested || activeLeagueId || "default"}`);
   }, [activeLeagueId, router]);
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex items-center justify-center font-sans">
       <FlagOSLoader />
     </div>
   );

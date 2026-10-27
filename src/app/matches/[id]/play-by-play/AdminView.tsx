@@ -827,8 +827,8 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     setIsOutcomeOpen(true);
     // IFAF Rule: Ball has been snapped, stop play clock immediately
     setIsPlayClockRunning(false);
-    // If game clock was stopped (e.g. inside 2 minutes or start of half), start game clock on the snap
-    if (!isGameClockRunning && gameClock > 0) {
+    // If game clock was stopped (e.g. inside 2 minutes or start of half), start game clock on the snap (unless waiting for snap button on first play)
+    if (!isGameClockRunning && gameClock > 0 && !isFirstPlayOfHalf) {
       setIsGameClockRunning(true);
     }
     setPlayType(type);
@@ -1163,8 +1163,10 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
 
     const pending = pendingTdRef.current;
     pendingTdRef.current = null;
+    const basePlay = pending ? { ...pending.play } : buildPlayData(playResult);
+    delete basePlay.playStatement;
     const finalPlay: any = {
-      ...(pending ? { ...pending.play } : buildPlayData(playResult)),
+      ...basePlay,
       conversionPending: false,
       conversionAttempt: convPts,
       conversionSuccess,
@@ -1922,9 +1924,9 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                 </div>
                 <div className="flex flex-col flex-1 min-h-0 gap-2.5 w-full">
                   {!isOutcomeOpen && outcome && (
-                    <button type="button" aria-label={`Play Outcome: ${outcome}. Click to change`} onClick={() => setIsOutcomeOpen(true)}
+                    <button type="button" aria-label={`Play Outcome: ${outcome === 'Incomplete_Menu' || outcome === 'Missed' || outcome === 'PBU' ? 'Incomplete' : outcome}. Click to change`} onClick={() => setIsOutcomeOpen(true)}
                       className="min-h-10 shrink-0 rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-left text-xs font-bold text-white">
-                      Play Outcome: {outcome === "Missed" ? "Incomplete" : outcome} · Change
+                      Play Outcome: {outcome === "Missed" || outcome === "Incomplete_Menu" || outcome === "PBU" ? "Incomplete" : outcome} · Change
                     </button>
                   )}
                   {isOutcomeOpen && <div data-tour="play-outcome-selector" className={`grid ${playType === 'Pass' ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'} gap-1.5 p-1.5 md:p-2 bg-neutral-900 border border-neutral-200 dark:border-white/10 rounded-2xl shrink-0 relative z-10 w-full max-w-3xl mx-auto`}>
@@ -2803,7 +2805,7 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
                     >
                       <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 mb-1">
                         <span className="font-bold text-cyan-400">
-                          {p.half === 2 ? "2nd Half" : "1st Half"} • {getOrdinal(p.down || 1)} Down
+                          {(periodType === 'quarters' || p.half > 2) ? `Q${p.half}` : (p.half === 2 ? "2nd Half" : "1st Half")} • {getOrdinal(p.down || 1)} Down
                         </span>
                         <span>{p.gameClock !== undefined && p.gameClock !== null ? formatTime(p.gameClock) : ""}</span>
                       </div>

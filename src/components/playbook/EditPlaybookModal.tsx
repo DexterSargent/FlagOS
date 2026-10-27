@@ -41,6 +41,15 @@ export default function EditPlaybookModal({
     }
   }, [isOpen, playbook, leagueRulePlayers]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   usePageGuide(isOpen ? EDIT_PLAYBOOK_WALKTHROUGH : null, 2);
   if (!isOpen || !playbook) return null;
 

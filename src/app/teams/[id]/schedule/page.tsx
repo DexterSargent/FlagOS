@@ -83,6 +83,15 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [matchTime, setMatchTime] = useState("14:00");
   const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "");
   const [isScheduling, setIsScheduling] = useState(false);
+
+  useEffect(() => {
+    if (!isScheduleModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsScheduleModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isScheduleModalOpen]);
   const [scheduleError, setScheduleError] = useState("");
 
   useEffect(() => {
@@ -639,7 +648,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       {/* SCHEDULE MATCH MODAL */}
       {isScheduleModalOpen && canScheduleMatches && (
         <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div role="dialog" aria-label="Schedule Exhibition Game" aria-modal="true" className="bg-neutral-950 border border-emerald-500/40 rounded-3xl max-w-lg w-full max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto p-6 md:p-8 shadow-2xl relative">
+          <div role="dialog" aria-modal="true" aria-labelledby="exhibition-game-modal-title" className="bg-neutral-950 border border-emerald-500/40 rounded-3xl max-w-lg w-full max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setIsScheduleModalOpen(false)}
               aria-label="Close"
@@ -654,7 +663,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               </div>
               <div>
                 <PageGuideButton className="mb-2" />
-                <h3 className="text-xl font-black uppercase text-white">Schedule Exhibition Game</h3>
+                <h3 id="exhibition-game-modal-title" className="text-xl font-black uppercase text-white">Schedule Exhibition Game</h3>
                 <p className="text-xs text-neutral-400">Independent game against a custom named opponent</p>
               </div>
             </div>
@@ -662,8 +671,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
             <form data-tour="team-game-opponent" onSubmit={handleCreateMatch} className="space-y-4">
               {scheduleError && <p role="alert" className="text-red-300">{scheduleError}</p>}
               <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1">Opponent Team Name</label>
+                <label htmlFor="exhibition-opponent-name" className="text-xs font-bold text-neutral-300 block mb-1">Opponent Team Name</label>
                 <input
+                  id="exhibition-opponent-name"
                   type="text"
                   required
                   value={opponentName}
@@ -719,8 +729,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-neutral-300 block mb-1">Date</label>
+                  <label htmlFor="exhibition-match-date" className="text-xs font-bold text-neutral-300 block mb-1">Date</label>
                   <input
+                    id="exhibition-match-date"
                     type="date"
                     required
                     value={matchDate}
@@ -729,8 +740,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-neutral-300 block mb-1">Time</label>
+                  <label htmlFor="exhibition-match-time" className="text-xs font-bold text-neutral-300 block mb-1">Time</label>
                   <input
+                    id="exhibition-match-time"
                     type="time"
                     required
                     value={matchTime}
@@ -741,8 +753,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               </div>
 
               <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1">Field / Venue Location</label>
+                <label htmlFor="exhibition-match-location" className="text-xs font-bold text-neutral-300 block mb-1">Field / Venue Location</label>
                 <input
+                  id="exhibition-match-location"
                   type="text"
                   value={matchLocation}
                   onChange={(e) => setMatchLocation(e.target.value)}

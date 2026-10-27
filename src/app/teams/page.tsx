@@ -69,7 +69,12 @@ const getShorthand = (name: string) => {
   if (name.includes("Team")) return name.replace("Team ", "T");
   if (name === "Free Agent") return "FA";
   return name.substring(0, 3).toUpperCase();
-};
+function localMatchDate(value: string | number | Date): Date {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return new Date(`${value.trim()}T12:00:00`);
+  }
+  return new Date(value);
+}
 
 export default function TeamsPage() {
   usePageGuide(TEAMS_DIRECTORY_WALKTHROUGH);
@@ -79,7 +84,7 @@ export default function TeamsPage() {
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
-  const { isAdmin, isLeagueAdmin, isPlatformAdmin, canManageTeam, canRegisterAsPlayer } = useAuth();
+  const { isAdmin, isLeagueAdmin, isPlatformAdmin, isTeamAdmin, playerTeamId, userProfile, canManageTeam, canRegisterAsPlayer } = useAuth();
   const {
     settings,
     isDemoLeague,
@@ -837,7 +842,7 @@ export default function TeamsPage() {
                   if (upcoming) {
                     const isHome = upcoming.homeTeamId === team.id;
                     const opponent = teams.find(tObj => tObj.id === (isHome ? upcoming.awayTeamId : upcoming.homeTeamId))?.name || "Unknown";
-                    upcomingStr = `${new Date(upcoming.date).toLocaleDateString()} vs ${getShorthand(opponent)}`;
+                    upcomingStr = `${localMatchDate(upcoming.date).toLocaleDateString()} vs ${getShorthand(opponent)}`;
                   }
 
                   return (
@@ -868,14 +873,14 @@ export default function TeamsPage() {
                               );
                             })()}
                             <span className="text-neutral-400 text-xs font-medium">
-                              {teamRosterCount}/30 Players
+                              {teamRosterCount}/{effectiveMaxRoster(settings.rules)} Players
                             </span>
                             {teamRosterCount < (settings.rules?.minRosterSize || 5) && (
                               <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-300 rounded text-[10px] font-bold border border-amber-500/30">
                                 Below Min
                               </span>
                             )}
-                            {canManageTeam(team.id) && (
+                            {Boolean(isTeamAdmin(team.id) || playerTeamId === team.id || userProfile?.managedTeamIds?.includes(team.id)) && (
                               <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded-md text-[10px] font-bold uppercase tracking-wider border border-cyan-500/30">
                                 My Team
                               </span>
@@ -1328,7 +1333,7 @@ export default function TeamsPage() {
                           return (
                             <Link href={`/matches/${m.id}`} key={m.id} className="bg-neutral-950 border border-white/5 p-4 rounded-xl flex items-center justify-between hover:bg-white/5 transition-colors group">
                               <div>
-                                <span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{new Date(m.date).toLocaleDateString()}</span>
+                                <span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{localMatchDate(m.date).toLocaleDateString()}</span>
                                 <p className="font-bold text-white mt-1 group-hover:text-blue-400 transition-colors">vs {opponent}</p>
                               </div>
                               <div className="flex items-center gap-3">
@@ -1362,7 +1367,7 @@ export default function TeamsPage() {
                           return (
                             <div key={m.id} className="bg-neutral-950 border border-white/5 p-4 rounded-xl flex items-center justify-between">
                               <div>
-                                <span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{dateObj.toLocaleDateString()}</span>
+                                <span className="text-xs text-[var(--text-muted)] uppercase font-bold tracking-widest">{localMatchDate(m.date).toLocaleDateString()}</span>
                                 <p className="font-bold text-white mt-1">vs {opponent}</p>
                               </div>
                               <div className="text-right">

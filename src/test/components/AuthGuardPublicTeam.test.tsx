@@ -8,8 +8,10 @@ vi.mock("next/navigation", () => ({
   usePathname: () => state.pathname,
   useRouter: () => ({ push: state.push }),
 }));
-vi.mock("@/lib/authContext", () => ({
-  useAuth: () => ({ user: null, isPlayer: false, isAuthorized: false, loading: state.loading, logout: vi.fn() }),
+vi.mock("@/lib/authContext", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/authContext")>(),
+  useAuth: () => ({ user: null, isPlayer: false, isAuthorized: false, loading: state.loading, logout: vi.fn(), needsEmailVerification: false, identityLookupFailed: false }),
+  useAccountAuth: () => ({ user: null, isPlayer: false, isAuthorized: false, loading: state.loading, logout: vi.fn(), needsEmailVerification: false, identityLookupFailed: false }),
 }));
 vi.mock("@/lib/leagueContext", () => ({
   useLeague: () => ({ isDemoLeague: state.demo, activeLeagueId: state.demo ? "default" : "" }),

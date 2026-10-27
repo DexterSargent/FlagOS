@@ -24,7 +24,7 @@ interface Player {
 
 export default function JoinLeague() {
   usePageGuide(JOIN_LEAGUE_WALKTHROUGH);
-  const { settings, isDemoLeague, activeLeagueId, switchLeague } = useLeague();
+  const { settings, isDemoLeague, activeLeagueId } = useLeague();
   const { isPlayer, playerData, isLeagueAdmin, role, canRegisterAsPlayer, managedTeamId } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,16 +69,6 @@ export default function JoinLeague() {
     };
     fetchPlayers();
   }, [isDemoLeague, activeLeagueId]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      const lId = sp.get("league");
-      if (lId && lId !== activeLeagueId) {
-        switchLeague(lId);
-      }
-    }
-  }, [activeLeagueId, switchLeague]);
 
   const handleToggleFriend = (player: Player) => {
     if (selectedFriends.find(p => p.id === player.id)) {
@@ -325,10 +315,11 @@ export default function JoinLeague() {
             <div className="space-y-5">
               <div data-tour="join-identity" className="space-y-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
+                  <label htmlFor="join-full-name" className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
                     Full Name *
                   </label>
                   <input
+                    id="join-full-name"
                     required
                     type="text"
                     value={name}
@@ -340,10 +331,11 @@ export default function JoinLeague() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
+                    <label htmlFor="join-email-address" className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
                       Email Address *
                     </label>
                     <input
+                      id="join-email-address"
                       type="email"
                       required
                       value={email}
@@ -357,10 +349,11 @@ export default function JoinLeague() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
+                    <label htmlFor="join-experience-level" className="block text-xs font-bold uppercase tracking-widest text-neutral-400 mb-2">
                       Experience Level
                     </label>
                     <select
+                      id="join-experience-level"
                       value={experience}
                       onChange={(e) => setExperience(e.target.value)}
                       className="w-full bg-black border border-white/10 rounded-xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:border-cyan-400 transition-colors cursor-pointer"
@@ -423,6 +416,8 @@ export default function JoinLeague() {
                   <Search className="w-4 h-4 text-neutral-500" />
                   <input
                     type="text"
+                    id="join-player-search"
+                    aria-label="Search for players"
                     placeholder="Search for players..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}

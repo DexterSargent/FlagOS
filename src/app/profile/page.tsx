@@ -4,7 +4,7 @@ import FlagOSLoader from "@/components/FlagOSLoader";
 import { usePageGuide } from "@/lib/pageGuide";
 import { PROFILE_WALKTHROUGH } from "@/lib/walkthroughs/public";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -44,6 +44,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import DemoNoticeStrip from "@/components/DemoNoticeStrip";
 import { effectiveMaxRoster } from "@/lib/rosterLimits";
 import { useMyMemberships } from "@/lib/useMyMemberships";
+import { loadTeamPlayers } from "@/lib/matchRoster";
+import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 
 interface PlayerStats {
   gamesPlayed: number;
@@ -83,56 +85,67 @@ export default function PlayerProfilePage() {
     isDemoLeague,
     seasons,
     currentSeasonId,
-    switchLeague,
+    portalLeagueId,
   } = useLeague();
   const { data: memberships, loading: membershipsLoading } = useMyMemberships(user?.uid);
-  const leagueMembership = memberships?.leagues.find((league) => league.id === activeLeagueId) ?? null;
+  // Independent (league-free) team whose roster this profile shows, set by ?team= or by resolution below.
+  const [teamProfileId, setTeamProfileId] = useState<string | null>(null);
+  const teamMembership = teamProfileId
+    ? memberships?.independentTeams.find((team) => team.id === teamProfileId) ?? null
+    : null;
+  const leagueMembership = teamProfileId ? null : memberships?.leagues.find((league) => league.id === activeLeagueId) ?? null;
   const ownPlayerIds = useMemo(() => {
     const ids = new Set<string>();
-    if (authPlayerId) ids.add(authPlayerId);
+    if (authPlayerId && !teamProfileId) ids.add(authPlayerId);
     leagueMembership?.teams.forEach((team) => { if (team.player?.id) ids.add(team.player.id); });
+    if (teamMembership?.player?.id) ids.add(teamMembership.player.id);
     return ids;
-  }, [authPlayerId, leagueMembership]);
+  }, [authPlayerId, leagueMembership, teamMembership, teamProfileId]);
   const coachedTeamIds = useMemo(
-    () => new Set((leagueMembership?.teams || []).filter((team) => team.roles.includes("coach")).map((team) => team.id)),
-    [leagueMembership],
+    () => new Set([...(leagueMembership?.teams || []), ...(teamMembership ? [teamMembership] : [])]
+      .filter((team) => team.roles.includes("coach")).map((team) => team.id)),
+    [leagueMembership, teamMembership],
   );
   // Only commissioners and coaches may look at other players' profiles; everyone else sees their own.
-  const canPreviewPlayers = isDemoLeague || isLeagueAdmin || !!leagueMembership?.isCommissioner || coachedTeamIds.size > 0;
+  const canPreviewPlayers = teamProfileId
+    ? coachedTeamIds.size > 0
+    : isDemoLeague || isLeagueAdmin || !!leagueMembership?.isCommissioner || coachedTeamIds.size > 0;
   const ownPlayerKey = [...ownPlayerIds].sort().join(",");
   const coachedTeamKey = [...coachedTeamIds].sort().join(",");
 
-  // /profile?league=X&player=Y opens that league; a signed-in visit never falls back to the demo athlete.
-  const leagueRedirectDone = useRef(false);
-  const [stayInLeague, setStayInLeague] = useState(false);
+  // The profile follows the portal being browsed: ?team= for an independent team, otherwise the league
+  // portal (?league= or the one carried over in-session). With no portal, a signed-in visitor picks a
+  // roster; nothing is guessed from memberships or remembered between visits.
+  const [profileTarget, setProfileTarget] = useState<"pending" | "league" | "team" | "none">("pending");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(authPlayerId || "");
+  const [requestedLeagueId, setRequestedLeagueId] = useState<string | null>(null);
   useEffect(() => {
-    if (typeof window === "undefined" || leagueRedirectDone.current) return;
     const params = new URLSearchParams(window.location.search);
-    const requestedLeague = params.get("league");
+    const requestedTeam = params.get("team");
     const requestedPlayer = params.get("player");
     if (requestedPlayer) setSelectedPlayerId(requestedPlayer);
-    if (requestedLeague) {
-      leagueRedirectDone.current = true;
-      setStayInLeague(true);
-      if (requestedLeague !== activeLeagueId) void switchLeague(requestedLeague).catch(() => {});
+    if (requestedTeam) {
+      setTeamProfileId(requestedTeam);
+      setProfileTarget("team");
       return;
     }
-    if (!user || !isDemoLeague || !memberships) return;
-    leagueRedirectDone.current = true;
-    const ownLeague = memberships.leagues.find((league) => league.teams.some((team) => team.player)) || memberships.leagues[0];
-    if (ownLeague) void switchLeague(ownLeague.id).catch(() => setStayInLeague(true));
-  }, [user, isDemoLeague, memberships, activeLeagueId, switchLeague]);
-  const contextRoleLabel = isDemoLeague
+    setTeamProfileId(null);
+    const requestedLeague = params.get("league");
+    setRequestedLeagueId(requestedLeague);
+    setProfileTarget(requestedLeague || portalLeagueId || !user ? "league" : "none");
+  }, [user, portalLeagueId]);
+  // A fresh ?league= load renders before the provider adopts it; don't load another league's roster meanwhile.
+  const awaitingLeague = profileTarget === "league" && !!requestedLeagueId && requestedLeagueId !== activeLeagueId;
+  const contextRoleLabel = isDemoLeague && !teamProfileId
     ? String(role).replace("_", " ")
     : [
-        leagueMembership?.isCommissioner || isLeagueAdmin ? "Commissioner" : "",
+        !teamProfileId && (leagueMembership?.isCommissioner || isLeagueAdmin) ? "Commissioner" : "",
         coachedTeamIds.size > 0 ? "Coach" : "",
-        leagueMembership?.teams.some((team) => team.player) ? "Player" : "",
+        leagueMembership?.teams.some((team) => team.player) || teamMembership?.player ? "Player" : "",
       ].filter(Boolean).join(" & ") || "Spectator";
-  const needsLeaguePick = !!user && isDemoLeague && !!memberships && memberships.leagues.length === 0;
-  const { sandbox } = useDemoSandbox(isDemoLeague);
-  const hasArchivedSeasons = !isDemoLeague && seasons.some((season) => season.status === "archived");
+  const needsLeaguePick = !!user && profileTarget === "none";
+  const { sandbox } = useDemoSandbox(isDemoLeague && !teamProfileId);
+  const hasArchivedSeasons = !isDemoLeague && !teamProfileId && seasons.some((season) => season.status === "archived");
   const seasonHistory = useLeagueSeasonHistory(activeLeagueId, hasArchivedSeasons);
 
   const [activeTab, setActiveTab] = useState<"stats" | "settings" | "rules" | "account">("stats");
@@ -174,11 +187,16 @@ export default function PlayerProfilePage() {
   // Load all players, team, and stats
   useEffect(() => {
     const fetchProfileAndStats = async () => {
+      if (profileTarget === "pending" || profileTarget === "none" || awaitingLeague) return;
+      const teamMode = profileTarget === "team" && !!teamProfileId;
       // The demo league lives in the session sandbox, the same source the dashboard and roster use.
-      if (isDemoLeague && !sandbox) return;
+      if (!teamMode && isDemoLeague && !sandbox) return;
       setLoading(true);
       try {
-        const [playersList, rawMatches, rawPlays] = isDemoLeague && sandbox
+        const [playersList, rawMatches, rawPlays] = teamMode
+          ? await Promise.all([loadTeamPlayers(teamProfileId!), loadTeamSeasonData(teamProfileId!)])
+            .then(([players, season]) => [players, season.matches as any[], season.plays as any[]])
+          : isDemoLeague && sandbox
           ? [sandbox.getSandboxPlayers() as any[], sandbox.getSandboxMatches() as any[], sandbox.getSandboxPlays() as any[]]
           : await Promise.all([
             getCachedLeaguePlayers(activeLeagueId),
@@ -193,7 +211,7 @@ export default function PlayerProfilePage() {
         if (targetPlayer && !canPreviewPlayers && !ownPlayerIds.has(targetPlayer.id)) targetPlayer = undefined;
         if (!targetPlayer) targetPlayer = playersList.find((p) => ownPlayerIds.has(p.id));
         if (!targetPlayer && canPreviewPlayers && playersList.length > 0) {
-          targetPlayer = isDemoLeague
+          targetPlayer = isDemoLeague && !teamMode
             ? playersList.find((p) => p.teamId === "team_kc") || playersList[0]
             : playersList.find((p) => coachedTeamIds.has(p.teamId)) || playersList[0];
         }
@@ -201,7 +219,7 @@ export default function PlayerProfilePage() {
         setSelectedPlayer(targetPlayer ?? null);
         if (!targetPlayer) setPlayerTeam(null);
 
-        if (targetPlayer?.teamId && isDemoLeague && sandbox) {
+        if (targetPlayer?.teamId && !teamMode && isDemoLeague && sandbox) {
           setPlayerTeam(sandbox.getSandboxTeams().find((t: any) => t.id === targetPlayer.teamId) ?? null);
         } else if (targetPlayer?.teamId) {
           const teamSnap = await getDoc(doc(db, "teams", targetPlayer.teamId));
@@ -332,7 +350,7 @@ export default function PlayerProfilePage() {
 
     fetchProfileAndStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPlayerId, authPlayerId, activeLeagueId, isDemoLeague, sandbox, ownPlayerKey, coachedTeamKey, canPreviewPlayers]);
+  }, [selectedPlayerId, authPlayerId, activeLeagueId, isDemoLeague, sandbox, ownPlayerKey, coachedTeamKey, canPreviewPlayers, profileTarget, teamProfileId, awaitingLeague]);
 
   // Handle switching player (for admins / preview)
   const handleSelectAnotherPlayer = (pId: string) => {
@@ -340,12 +358,26 @@ export default function PlayerProfilePage() {
     const found = allRosteredPlayers.find((p) => p.id === pId);
     if (found) {
       setSelectedPlayer(found);
-      if (isDemoLeague) setDevRole("player", found.teamId, found.id);
+      if (isDemoLeague && !teamProfileId) setDevRole("player", found.teamId, found.id);
     }
   };
 
-  const leavingDemo = !!user && isDemoLeague && !stayInLeague && !!memberships && memberships.leagues.length > 0;
-  if (loading || (!!user && membershipsLoading) || leavingDemo) {
+  const isDemoId = (id: string) => id === "default" || id === "demo";
+  const rosterChoices = [
+    ...(memberships?.leagues || []).filter((league) => !isDemoId(league.id)).flatMap((league) =>
+      league.teams.filter((team) => team.player).map((team) => ({
+        key: `${league.id}:${team.id}`,
+        href: `/profile?league=${encodeURIComponent(league.id)}&player=${encodeURIComponent(team.player!.id)}`,
+        label: `${team.name} · ${league.name}`,
+      }))),
+    ...(memberships?.independentTeams || []).filter((team) => team.player).map((team) => ({
+      key: team.id,
+      href: `/profile?team=${encodeURIComponent(team.id)}&player=${encodeURIComponent(team.player!.id)}`,
+      label: team.name,
+    })),
+  ];
+  const showNoProfile = needsLeaguePick || (!loading && !awaitingLeague && profileTarget !== "pending" && (!isDemoLeague || !!teamProfileId) && !selectedPlayer);
+  if (!showNoProfile && (loading || awaitingLeague || (!!user && membershipsLoading) || (!!user && profileTarget === "pending"))) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
         <FlagOSLoader />
@@ -353,24 +385,28 @@ export default function PlayerProfilePage() {
     );
   }
 
-  if (needsLeaguePick || (!isDemoLeague && !loading && !selectedPlayer)) {
-    const playerLeagues = (memberships?.leagues || []).filter((league) => league.teams.some((team) => team.player));
+  if (showNoProfile) {
+    const rosterName = teamProfileId ? teamMembership?.name || "this team" : settings.leagueName || "this league";
     return (
       <div className="min-h-screen bg-black text-white font-sans flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-[#0B0F19] border border-white/10 rounded-3xl p-6 space-y-4 text-center">
           <User className="w-10 h-10 mx-auto text-cyan-400" aria-hidden />
-          <h1 className="text-xl font-black">{needsLeaguePick ? "Pick a league" : "No player profile here yet"}</h1>
+          <h1 className="text-xl font-black">
+            {needsLeaguePick ? (rosterChoices.length > 0 ? "Choose a profile" : "No player profile yet") : "No player profile here yet"}
+          </h1>
           <p className="text-sm text-neutral-300">
             {needsLeaguePick
-              ? "Your player profile lives inside a league. Join a league or open one you belong to."
-              : `You're not on a roster in ${settings.leagueName || "this league"}. Your stats appear here once a coach adds you to a team.`}
+              ? rosterChoices.length > 0
+                ? "Pick which roster's player profile to open."
+                : "Your player profile appears once a coach adds you to a team roster. Join a league or ask your coach to add you."
+              : `You're not on the ${rosterName} roster. Your stats appear here once a coach adds you to a team.`}
           </p>
-          {playerLeagues.length > 0 && (
+          {rosterChoices.length > 0 && (
             <ul className="space-y-2">
-              {playerLeagues.map((league) => (
-                <li key={league.id}>
-                  <a href={`/profile?league=${league.id}`} className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold hover:bg-white/10">
-                    My stats in {league.name}
+              {rosterChoices.map((choice) => (
+                <li key={choice.key}>
+                  <a href={choice.href} className="block rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold hover:bg-white/10">
+                    {choice.label}
                   </a>
                 </li>
               ))}
@@ -402,7 +438,7 @@ export default function PlayerProfilePage() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">
-      {isDemoLeague && <div className="relative z-10"><DemoNoticeStrip /></div>}
+      {isDemoLeague && !teamProfileId && <div className="relative z-10"><DemoNoticeStrip /></div>}
 
       {/* Dynamic Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none">
@@ -545,7 +581,7 @@ export default function PlayerProfilePage() {
                 </Link>
               )}
 
-              {Boolean(activeLeagueId) && (
+              {Boolean(activeLeagueId) && !teamProfileId && (
                 <button
                   type="button"
                   onClick={openCustomizer}
@@ -567,7 +603,7 @@ export default function PlayerProfilePage() {
           {[
             { id: "stats", label: "Player Statistics", icon: Activity },
             { id: "settings", label: "Appearance", icon: Palette },
-            { id: "rules", label: "Official Rules (View Only)", icon: BookOpen },
+            ...(teamProfileId ? [] : [{ id: "rules", label: "Official Rules (View Only)", icon: BookOpen }]),
             { id: "account", label: "Account & Linked Emails", icon: User },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -985,7 +1021,7 @@ export default function PlayerProfilePage() {
                 Current App Session:
               </span>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-neutral-400">Your role in {settings.leagueName || "this league"}:</span>
+                <span className="text-neutral-400">Your role in {teamProfileId ? teamName : settings.leagueName || "this league"}:</span>
                 <span className="font-mono font-bold uppercase text-cyan-400">{contextRoleLabel}</span>
               </div>
               {user?.email && (

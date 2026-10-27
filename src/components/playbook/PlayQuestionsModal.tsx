@@ -3,7 +3,7 @@ import { usePageGuide } from "@/lib/pageGuide";
 import { PLAY_QUESTIONS_WALKTHROUGH } from "@/lib/walkthroughData";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PlayDiagram, PlayQuestion, PlayQuestionAnswer } from "@/lib/playbookTypes";
 import {
   MessageSquare,
@@ -57,6 +57,15 @@ export default function PlayQuestionsModal({
   const [submitting, setSubmitting] = useState(false);
 
   usePageGuide(isOpen ? PLAY_QUESTIONS_WALKTHROUGH : null, 2);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
   if (!isOpen) return null;
 
   const questions: PlayQuestion[] = play.questions || [];

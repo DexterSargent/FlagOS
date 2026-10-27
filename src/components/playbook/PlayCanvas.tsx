@@ -558,7 +558,7 @@ export default function PlayCanvas({
   const handleUpdatePlayerNotes = (playerId: string, notes: string) => {
     if (readOnly) return;
     const updated = play.players.map((p) =>
-      p.id === playerId ? { ...p, notes } : p
+      p.id === playerId ? { ...p, notes, hasCustomNotes: true } : p
     );
     const nextPlayNotes = updatePlayNotesWithAssignments(play.notes, updated, play.zones, play.type);
     onChange({ ...play, players: updated, notes: nextPlayNotes });
@@ -1454,6 +1454,11 @@ export default function PlayCanvas({
         updatedPostSnapRoute = generateRoutePreset(targetPlayer.quickRouteName, motionEnd.x, motionEnd.y, currentLosY, targetPlayer.routeDepthYards);
       }
 
+      const targetHasCustom = Boolean(
+        targetPlayer.hasCustomNotes ||
+        (targetPlayer.notes && targetPlayer.notes.trim() !== "" && targetPlayer.notes !== generatePlayerAssignmentNote(targetPlayer, play.players, play.zones))
+      );
+
       const updatedPlayers = play.players.map((p) => {
         if (p.id === targetPlayer.id) {
           const updatedP: PlayerNode = hadPostSnapRoute
@@ -1480,7 +1485,8 @@ export default function PlayCanvas({
                 zoneId: undefined,
                 manTargetId: undefined,
               };
-          updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+          updatedP.notes = targetHasCustom ? targetPlayer.notes : generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+          updatedP.hasCustomNotes = targetHasCustom;
           return updatedP;
         }
         // IFAF & Flag Rule: Only 1 player can be in pre-snap motion simultaneously
@@ -1492,7 +1498,12 @@ export default function PlayCanvas({
             motionName: undefined,
             routeType: (p.routeType === "motion" ? "pass" : p.routeType) as RouteType,
           };
-          clearedP.notes = generatePlayerAssignmentNote(clearedP, play.players, play.zones);
+          const pHasCustom = Boolean(
+            p.hasCustomNotes ||
+            (p.notes && p.notes.trim() !== "" && p.notes !== generatePlayerAssignmentNote(p, play.players, play.zones))
+          );
+          clearedP.notes = pHasCustom ? p.notes : generatePlayerAssignmentNote(clearedP, play.players, play.zones);
+          clearedP.hasCustomNotes = pHasCustom;
           return clearedP;
         }
         return p;
@@ -1512,6 +1523,11 @@ export default function PlayCanvas({
       y: Math.max(4, pt.y),
     }));
 
+    const targetHasCustom = Boolean(
+      targetPlayer.hasCustomNotes ||
+      (targetPlayer.notes && targetPlayer.notes.trim() !== "" && targetPlayer.notes !== generatePlayerAssignmentNote(targetPlayer, play.players, play.zones))
+    );
+
     const updatedPlayers = play.players.map((p) => {
       if (p.id === targetPlayer.id) {
         const updatedP: PlayerNode = {
@@ -1527,7 +1543,8 @@ export default function PlayCanvas({
           zoneId: undefined,
           manTargetId: undefined,
         };
-        updatedP.notes = generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        updatedP.notes = targetHasCustom ? targetPlayer.notes : generatePlayerAssignmentNote(updatedP, play.players, play.zones);
+        updatedP.hasCustomNotes = targetHasCustom;
         return updatedP;
       }
       return p;

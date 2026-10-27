@@ -93,7 +93,9 @@ export function toMillis(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string") {
-    const parsed = Date.parse(value);
+    const trimmed = value.trim();
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+    const parsed = Date.parse(dateOnly ? `${trimmed}T12:00:00` : trimmed);
     return Number.isFinite(parsed) ? parsed : null;
   }
   if (value instanceof Date) return value.getTime();

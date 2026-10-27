@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/lib/authContext";
+import { useAccountAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { ShieldAlert, Lock, LogIn, Home, ArrowRight, Shield, PlayCircle } from "lucide-react";
 import FlagOSLoader from "@/components/FlagOSLoader";
@@ -26,7 +26,7 @@ function isShowcaseRoute(path: string): boolean {
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, userProfile, isPlayer, isAuthorized, loading, logout, needsEmailVerification, identityLookupFailed } = useAuth();
+  const { user, userProfile, isPlayer, isAuthorized, loading, logout, needsEmailVerification, identityLookupFailed } = useAccountAuth();
   const { isDemoLeague, activeLeagueId } = useLeague();
   const { demoFlag, inIframe, embedQuery } = useEmbedState();
   const routeTeamId = pathname.startsWith("/teams/") ? pathname.split("/")[2] || null : null;

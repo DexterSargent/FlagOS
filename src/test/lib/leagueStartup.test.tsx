@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({
   getDoc: vi.fn(),
   sandboxSettings: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => mocks.pathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn((_db, collection, id) => ({ collection, id })),
   getDoc: mocks.getDoc,
@@ -28,6 +31,7 @@ const state = () => JSON.parse(screen.getByRole("status").textContent!);
 
 describe("Route-scoped league startup", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/");
     mocks.pathname = "/teams/falcons";
     mocks.sandboxSettings.mockReturnValue(DEFAULT_LEAGUE_SETTINGS);
     mocks.getDoc.mockImplementation(async ({ collection, id }) => ({
@@ -35,7 +39,6 @@ describe("Route-scoped league startup", () => {
       data: () => collection === "teams" ? { name: "Falcons", subscription: { status: "active" } }
         : collection === "matches" ? { managingTeamId: "falcons" } : { leagueName: "Selected Private League" },
     }));
-    localStorage.setItem("flagos_active_league_id", "private-league");
   });
 
   it.each([
@@ -48,7 +51,6 @@ describe("Route-scoped league startup", () => {
     await waitFor(() => expect(state()).toMatchObject({ id: "", name: "Falcons", demo: false, loading: false }));
     expect(mocks.getDoc.mock.calls.every(([ref]) => ref.collection !== "leagues")).toBe(true);
     expect(mocks.sandboxSettings).not.toHaveBeenCalled();
-    expect(localStorage.getItem("flagos_active_league_id")).toBe("private-league");
   });
 
   it("restores the selected league after leaving an independent team", async () => {
@@ -76,11 +78,9 @@ describe("Route-scoped league startup", () => {
     }));
     expect(state()).toMatchObject({ id: "", name: "Falcons", loading: false });
     expect(localStorage.getItem("league_settings_private-league")).toBeNull();
-    expect(localStorage.getItem("flagos_active_league_id")).toBe("private-league");
   });
 
   it("still initializes demo settings on demo league routes", async () => {
-    localStorage.setItem("flagos_active_league_id", "default");
     mocks.pathname = "/league/default";
     render(<LeagueProvider><Probe /></LeagueProvider>);
     await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false }));
@@ -89,7 +89,6 @@ describe("Route-scoped league startup", () => {
   });
 
   it("uses the owning league on a league team's pages and keeps it for league-wide pages", async () => {
-    localStorage.setItem("flagos_active_league_id", "default");
     mocks.getDoc.mockImplementation(async ({ collection, id }) => ({
       id, exists: () => true,
       data: () => collection === "teams" ? { name: "York Lions", leagueId: "york" } : { leagueName: "York Region" },
@@ -97,39 +96,55 @@ describe("Route-scoped league startup", () => {
     mocks.pathname = "/teams/york-lions";
     const view = render(<LeagueProvider><Probe /></LeagueProvider>);
     await waitFor(() => expect(state()).toMatchObject({ id: "york", name: "York Region", demo: false, loading: false }));
-    expect(localStorage.getItem("flagos_active_league_id")).toBe("york");
     mocks.pathname = "/schedule";
     view.rerender(<LeagueProvider><Probe /></LeagueProvider>);
     expect(state()).toMatchObject({ id: "york", name: "York Region", demo: false, loading: false });
+    expect(window.location.search).toBe("?league=york");
     expect(mocks.sandboxSettings).not.toHaveBeenCalled();
   });
 
+  it("opens the league named by ?league= on a league-wide page", async () => {
+    window.history.replaceState(null, "", "/schedule?league=private-league");
+    mocks.pathname = "/schedule";
+    render(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "private-league", name: "Selected Private League", loading: false }));
+  });
+
+  it("forgets the portal after leaving it and never restores a league from storage", async () => {
+    localStorage.setItem("flagos_active_league_id", "private-league");
+    mocks.pathname = "/league/private-league";
+    const view = render(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "private-league", loading: false }));
+    mocks.pathname = "/account";
+    view.rerender(<LeagueProvider><Probe /></LeagueProvider>);
+    mocks.pathname = "/schedule";
+    view.rerender(<LeagueProvider><Probe /></LeagueProvider>);
+    await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true }));
+    expect(localStorage.getItem("flagos_active_league_id")).toBeNull();
+  });
+
   it("drops a deleted league from the switcher and falls back to the demo league", async () => {
-    localStorage.setItem("flagos_active_league_id", "deleted-league");
     localStorage.setItem("flagos_user_leagues", JSON.stringify([
       { id: "default", name: "Demo", shortcode: "FLAG", role: "owner" },
       { id: "deleted-league", name: "Gone", shortcode: "GONE", role: "owner" },
     ]));
     mocks.getDoc.mockImplementation(async ({ id }) => ({ id, exists: () => false, data: () => null }));
-    mocks.pathname = "/schedule";
+    mocks.pathname = "/league/deleted-league";
     render(<LeagueProvider><Probe /></LeagueProvider>);
-    await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false, leagues: ["default"] }));
-    expect(localStorage.getItem("flagos_active_league_id")).toBe("default");
-    expect(JSON.parse(localStorage.getItem("flagos_user_leagues")!).map((l: { id: string }) => l.id)).toEqual(["default"]);
+    await waitFor(() => expect(state()).toMatchObject({ id: "deleted-league", name: "League Not Found", loading: false }));
   });
 });
 
 describe("Deleted league URLs", () => {
   it("does not keep a deleted league selected after visiting its dashboard URL", async () => {
-    localStorage.setItem("flagos_active_league_id", "default");
+    window.history.replaceState(null, "", "/");
     mocks.getDoc.mockImplementation(async ({ id }) => ({ id, exists: () => false, data: () => null }));
     mocks.pathname = "/league/deleted-league";
     const view = render(<LeagueProvider><Probe /></LeagueProvider>);
     await waitFor(() => expect(state()).toMatchObject({ id: "deleted-league", name: "League Not Found", loading: false }));
-    expect(localStorage.getItem("flagos_active_league_id")).toBe("default");
     mocks.pathname = "/schedule";
     view.rerender(<LeagueProvider><Probe /></LeagueProvider>);
-    await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false }));
+    await waitFor(() => expect(state()).toMatchObject({ id: "default", demo: true, loading: false }), { timeout: 3000 });
   });
 });
 

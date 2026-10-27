@@ -611,6 +611,15 @@ export default function MyStoryPage() {
                     ) : (
                       /* Empty Interactive Photo Frame Placeholder */
                       <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Add photo for ${section.title}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openPhotoModal(section);
+                          }
+                        }}
                         onClick={() => openPhotoModal(section)}
                         className="group relative cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-black/15 bg-gradient-to-b from-black/[0.02] to-black/[0.05] p-6 text-center transition-all duration-300 hover:border-[#3CA505]/60 hover:bg-[#3CA505]/[0.03] dark:border-white/15 dark:from-white/[0.02] dark:to-white/[0.04] dark:hover:border-[#70CB42]/60 dark:hover:bg-[#3CA505]/[0.05] sm:p-8"
                       >

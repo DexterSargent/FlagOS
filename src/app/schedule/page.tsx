@@ -92,21 +92,14 @@ interface Match {
 export default function Calendar() {
   usePageGuide(SCHEDULE_WALKTHROUGH);
   const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
-  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId, switchLeague } = useLeague();
-  // `?league=` opens the schedule on a specific league (e.g. from that league's dashboard).
+  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId } = useLeague();
+  // `?league=` opens the schedule on a specific league; hold off loading until the provider has picked it up.
   const [awaitingLeague, setAwaitingLeague] = useState<string | null>(() =>
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("league"),
   );
-  const leagueSwitchRequested = useRef(false);
   useEffect(() => {
-    if (!awaitingLeague) return;
-    if (activeLeagueId === awaitingLeague || leagueSwitchRequested.current) {
-      setAwaitingLeague(null);
-      return;
-    }
-    leagueSwitchRequested.current = true;
-    void switchLeague(awaitingLeague);
-  }, [awaitingLeague, activeLeagueId, switchLeague]);
+    if (awaitingLeague && activeLeagueId === awaitingLeague) setAwaitingLeague(null);
+  }, [awaitingLeague, activeLeagueId]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [simulatingMatchId, setSimulatingMatchId] = useState<string | null>(null);
 
@@ -238,6 +231,18 @@ export default function Calendar() {
       unsub();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsModalOpen(false);
+        setMatchSaveError(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
 
   const sortMatches = (mData: Match[]) => {
     return [...mData].sort((a, b) => {
@@ -1168,7 +1173,7 @@ export default function Calendar() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                  <label htmlFor="schedule-home-team-select" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
                     <span>Home Team</span>
                     <FieldHelpTooltip
                       title="Home Team"
@@ -1176,6 +1181,9 @@ export default function Calendar() {
                     />
                   </label>
                   <select
+                    id="schedule-home-team-select"
+                    name="homeTeamId"
+                    aria-label="Home Team"
                     required={!editingMatch.isPlayoff}
                     value={editingMatch.homeTeamId || ""}
                     onChange={(e) => setEditingMatch({ ...editingMatch, homeTeamId: e.target.value })}
@@ -1192,7 +1200,7 @@ export default function Calendar() {
                   </select>
                 </div>
                 <div>
-                  <label className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
+                  <label htmlFor="schedule-away-team-select" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
                     <span>Away Team</span>
                     <FieldHelpTooltip
                       title="Away Team"
@@ -1200,6 +1208,9 @@ export default function Calendar() {
                     />
                   </label>
                   <select
+                    id="schedule-away-team-select"
+                    name="awayTeamId"
+                    aria-label="Away Team"
                     required={!editingMatch.isPlayoff}
                     value={editingMatch.awayTeamId || ""}
                     onChange={(e) => setEditingMatch({ ...editingMatch, awayTeamId: e.target.value })}

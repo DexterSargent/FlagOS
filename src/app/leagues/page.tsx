@@ -59,7 +59,7 @@ import {
 
 export default function LeagueDirectoryPage() {
   usePageGuide(LEAGUE_DIRECTORY_WALKTHROUGH);
-  const { userLeagues, settings, activeLeagueId, switchLeague } = useLeague();
+  const { userLeagues, settings, activeLeagueId } = useLeague();
   const { user } = useAuth();
 
   // Remote Firestore Leagues & Loading State

@@ -133,6 +133,24 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   usePageGuide(isEditModalOpen ? TEAM_EDIT_WALKTHROUGH : null, 2);
   usePageGuide(isStaffModalOpen ? TEAM_STAFF_WALKTHROUGH : null, 2);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isEditModalOpen) setIsEditModalOpen(false);
+        if (isStaffModalOpen) {
+          setIsStaffModalOpen(false);
+          setStaffActionError("");
+          setStaffActionSuccess("");
+        }
+      }
+    };
+    if (isEditModalOpen || isStaffModalOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isEditModalOpen, isStaffModalOpen]);
+
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [staffActionError, setStaffActionError] = useState("");
   const [staffActionSuccess, setStaffActionSuccess] = useState("");

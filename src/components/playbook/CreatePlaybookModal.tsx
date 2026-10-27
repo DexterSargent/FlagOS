@@ -50,6 +50,15 @@ export default function CreatePlaybookModal({
     }
   }, [isOpen, defaultPlayersOnField, settings?.rules?.playersOnField]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   usePageGuide(isOpen ? CREATE_PLAYBOOK_WALKTHROUGH : null, 2);
   if (!isOpen) return null;
 

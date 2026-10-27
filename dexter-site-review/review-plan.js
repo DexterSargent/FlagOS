@@ -199,7 +199,11 @@ window.FLAGOS_REVIEW_PLAN = {
     ["Firebase indexes", "firestore.indexes.json", "Query-index definitions."],
     ["Production configuration", "apphosting.yaml", "Runtime flags and secret references, not secret values."],
     ["Contrast audit", "scripts/contrast-audit.mjs", "Existing phone/laptop theme/form checks; use its documented setup."],
-    ["Brand assets", "public", "Logos, loader layers, favicons and shared graphics."],
+    ["Brand emblem", "public/flagos-emblem.webp", "Main emblem; related logo/loader assets live alongside this file in public."],
+    ["Loader gear", "public/flagos-loading-gear.webp", "Spinning gear layer. Compare with the centered football layer."],
+    ["Loader football", "public/flagos-loading-football.webp", "Centered football layer for the loader."],
+    ["Favicon", "src/app/favicon.ico", "Browser icon; verify desktop and saved/bookmarked appearance."],
+    ["Global styles", "src/app/globals.css", "Shared light/dark tokens, form contrast and responsive styles."],
     ["Build / test commands", "package.json", "Existing scripts and installed tooling."],
     ["Dashboard verification", "dexter-site-review/verify.cjs", "Inventory coverage and browser regression tests for this tool."]
   ]

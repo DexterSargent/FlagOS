@@ -101,6 +101,15 @@ export default function CreateFormationModal({
     }
   }, [isOpen, initialFormation, leagueRulePlayers, playbook.playersOnField, playbook.type, losY, isOffense]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   const visiblePlayers = players.filter((p) => (showOpposingSide ? true : p.side === playbook.type));
 
   const svgRef = useRef<SVGSVGElement>(null);

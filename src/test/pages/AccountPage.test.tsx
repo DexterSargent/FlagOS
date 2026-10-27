@@ -2,10 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AccountPage from "@/app/account/page";
 
-const { useAuthMock, requestMock, confirmMock, connectMock } = vi.hoisted(() => ({
+const { useAuthMock, requestMock, confirmMock, connectMock, leagueState } = vi.hoisted(() => ({
   useAuthMock: vi.fn(), requestMock: vi.fn(), confirmMock: vi.fn(), connectMock: vi.fn(),
+  leagueState: { userLeagues: [] as Array<{ id: string; name: string; shortcode: string; role: string }> },
 }));
 vi.mock("@/lib/authContext", () => ({ useAuth: useAuthMock }));
+vi.mock("@/lib/leagueContext", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/leagueContext")>();
+  return { ...actual, useLeague: () => ({ ...actual.useLeague(), userLeagues: leagueState.userLeagues }) };
+});
 vi.mock("@/lib/accountEmails", () => ({
   accountEmailRequest: requestMock, confirmAccountOwner: confirmMock, connectAccountEmail: connectMock,
 }));
@@ -25,6 +30,17 @@ describe("connected email settings", () => {
     render(<AccountPage />);
     expect(screen.getByRole("link", { name: /Sign in to manage/ })).toHaveAttribute("href", "/login?redirect=%2Faccount");
     expect(requestMock).not.toHaveBeenCalled();
+  });
+
+  it("lists only real leagues the account belongs to, never the demo league", async () => {
+    leagueState.userLeagues = [
+      { id: "default", name: "FlagOS Demo League", shortcode: "FLAG", role: "owner" },
+      { id: "york", name: "York Region", shortcode: "YRK", role: "member" },
+    ];
+    render(<AccountPage />);
+    expect(await screen.findByText("York Region")).toBeInTheDocument();
+    expect(screen.queryByText("FlagOS Demo League")).not.toBeInTheDocument();
+    leagueState.userLeagues = [];
   });
 
   it("requires reauthentication before showing additional-email credentials", async () => {

@@ -13,8 +13,8 @@ import { useLeague } from "@/lib/leagueContext";
  */
 export default function AccountMenu({ className = "" }: { className?: string }) {
   const pathname = usePathname();
-  const { user, isPlayer, playerData, playerTeamId, managedTeamId, isLeagueAdmin, isPlatformAdmin, isAuthorized, logout } = useAuth();
-  const { openCustomizer, activeLeagueId } = useLeague();
+  const { user, userProfile, isPlayer, playerId, playerData, playerTeamId, managedTeamId, isLeagueAdmin, isPlatformAdmin, isAuthorized, logout } = useAuth();
+  const { openCustomizer, activeLeagueId, portalLeagueId } = useLeague();
   // Remember the path the menu was opened on so navigating away closes it.
   const [openPath, setOpenPath] = useState<string | null>(null);
   const open = openPath !== null && openPath === pathname;
@@ -57,7 +57,15 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
 
   const displayName = (isPlayer && playerData?.playerName) || user.displayName || user.email?.split("@")[0] || "Account";
   const initial = displayName.trim().charAt(0).toUpperCase() || "?";
+  // "My" links point at the portal being browsed; outside a portal, Profile lists every roster to pick from.
   const teamId = managedTeamId || playerTeamId;
+  const realPortalLeague = portalLeagueId && portalLeagueId !== "default" ? portalLeagueId : null;
+  const profileHref = isPlayer && playerId && realPortalLeague
+    ? `/profile?league=${encodeURIComponent(realPortalLeague)}&player=${encodeURIComponent(playerId)}`
+    : isPlayer && playerId && playerTeamId && !portalLeagueId
+      ? `/profile?team=${encodeURIComponent(playerTeamId)}&player=${encodeURIComponent(playerId)}`
+      : "/profile";
+  const showProfile = isPlayer || Boolean(userProfile?.playerRecords?.length);
   const itemClass =
     "flex w-full items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-left cursor-pointer";
 
@@ -87,8 +95,8 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
             <p className="text-sm font-bold text-text-primary truncate">{displayName}</p>
             {user.email && <p className="text-xs text-text-muted truncate">{user.email}</p>}
           </div>
-          {isPlayer && (
-            <Link href="/profile" role="menuitem" className={itemClass}>
+          {showProfile && (
+            <Link href={profileHref} role="menuitem" className={itemClass}>
               <User className="w-4 h-4 shrink-0" /> My Profile
             </Link>
           )}

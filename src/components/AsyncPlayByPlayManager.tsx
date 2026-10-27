@@ -390,6 +390,24 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
     return computePlayerStatCounts(allPlaysForStats, allPlayers);
   }, [allPlaysForStats, allPlayers]);
 
+  const liveMatchData = useMemo(() => {
+    if (!matchData) return matchData;
+    return {
+      ...matchData,
+      status: matchStatus,
+      homeScore,
+      awayScore,
+      matchState: {
+        ...matchData.matchState,
+        homeScore,
+        awayScore,
+        half,
+        currentDown,
+        possession,
+      },
+    };
+  }, [matchData, matchStatus, homeScore, awayScore, half, currentDown, possession]);
+
   useEffect(() => {
     loadPlays();
   }, [matchId, step, homeScore, awayScore, matchData]);
@@ -854,8 +872,10 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
 
     const pending = pendingTdRef.current;
     pendingTdRef.current = null;
+    const basePlay = pending ? { ...pending.play } : buildPlayData(playResult);
+    delete basePlay.playStatement;
     const finalPlay: any = {
-      ...(pending ? { ...pending.play } : buildPlayData(playResult)),
+      ...basePlay,
       conversionPending: false,
       conversionAttempt: convPts,
       conversionSuccess: convIsGood,
@@ -2068,7 +2088,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
 
         {/* TAB 4: TEAM STATS */}
         {activeTab === "team-stats" && (
-          <div data-tour="async-team-stats" className="contents"><GameTeamStats matchData={matchData} plays={plays} isDemo={isDemo} /></div>
+          <div data-tour="async-team-stats" className="contents"><GameTeamStats matchData={liveMatchData} plays={plays} isDemo={isDemo} /></div>
         )}
       </div>
 

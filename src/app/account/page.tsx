@@ -36,8 +36,24 @@ import {
 export default function AccountPage() {
   usePageGuide(ACCOUNT_WALKTHROUGH);
   const { user, loading, logout, sendPasswordReset, isPlatformAdmin } = useAuth();
-  const { userLeagues } = useLeague();
+  const { userLeagues: switcherLeagues } = useLeague();
   const { data: memberships } = useMyMemberships(user?.emailVerified ? user.uid : null);
+  // Every league the account belongs to, in any role. The demo league is a preview, not a membership.
+  const userLeagues = useMemo(() => {
+    const list: Array<{ id: string; name: string; role: "owner" | "member" }> = [];
+    const seen = new Set<string>(["default", "demo"]);
+    for (const league of memberships?.leagues || []) {
+      if (seen.has(league.id)) continue;
+      seen.add(league.id);
+      list.push({ id: league.id, name: league.name, role: league.isCommissioner ? "owner" : "member" });
+    }
+    for (const league of switcherLeagues) {
+      if (seen.has(league.id)) continue;
+      seen.add(league.id);
+      list.push({ id: league.id, name: league.name, role: league.role === "owner" || league.role === "admin" ? "owner" : "member" });
+    }
+    return list;
+  }, [memberships, switcherLeagues]);
 
   const userTeams = useMemo(() => {
     const list: Array<{ id: string; name: string; roleLabel: string }> = [];
@@ -309,7 +325,7 @@ export default function AccountPage() {
                         <div className="min-w-0">
                           <p className="font-bold text-sm text-slate-900 dark:text-white truncate">{l.name}</p>
                           <p className="text-xs text-slate-500 dark:text-neutral-400">
-                            {l.role === "owner" || l.role === "admin" ? "Commissioner / Admin" : "Member"}
+                            {l.role === "owner" ? "Commissioner / Admin" : "Member"}
                           </p>
                         </div>
                         <Link
