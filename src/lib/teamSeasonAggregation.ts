@@ -15,7 +15,7 @@ import {
  */
 
 /** Bump whenever per-game aggregation semantics change so persisted game summaries are rebuilt. */
-export const TEAM_SEASON_SUMMARY_SCHEMA_VERSION = 3;
+export const TEAM_SEASON_SUMMARY_SCHEMA_VERSION = 4;
 
 export const PLAYER_COUNTING_STAT_KEYS = [
   "passAtt", "passComp", "passTD", "passInt",

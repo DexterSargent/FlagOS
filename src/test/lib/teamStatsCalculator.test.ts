@@ -228,12 +228,61 @@ describe("Team Comprehensive Stats Engine & Customization", () => {
     expect(stats.defFourthDownStopFormatted).toBe("100.0% (1/1)");
 
     // Turnover Differential:
-    // Takeaways: 1 INT + 1 stop on 4th down = 2
-    // Giveaways: 1 failed 4th down = 1
-    // Turnover Diff = 2 - 1 = +1
-    expect(stats.takeaways).toBe(2);
-    expect(stats.giveaways).toBe(1);
+    // The fourth-down interception counts once; a failed fourth down is not a giveaway.
+    expect(stats.takeaways).toBe(1);
+    expect(stats.giveaways).toBe(0);
     expect(stats.turnoverDiff).toBe(1);
     expect(stats.turnoverDiffFormatted).toBe("+1");
+  });
+
+  it.each([3, 4])("keeps failed %ith downs separate from takeaways and giveaways", (down) => {
+    const match = { id: "m", status: "completed", homeTeamId: "home", awayTeamId: "away" };
+    const plays = [
+      { matchId: "m", possessionTeamId: "home", down, playType: "Pass", passOutcome: "Incomplete", turnover: true },
+      { matchId: "m", possessionTeamId: "home", down, playType: "Run", result: "Short", turnover: true },
+      { matchId: "m", possessionTeamId: "home", down, playType: "Pass", passOutcome: "Interception", result: "Turnover" },
+      { matchId: "m", possessionTeamId: "home", down, playType: "Pass", result: "Pick 6 Touchdown" },
+    ];
+    const offense = calculateTeamComprehensiveStats("home", [match], plays);
+    const defense = calculateTeamComprehensiveStats("away", [match], plays);
+    expect(offense.giveaways).toBe(2);
+    expect(defense.takeaways).toBe(2);
+    expect(offense.turnoverDiff).toBe(-2);
+    expect(defense.turnoverDiff).toBe(2);
+    expect(down === 3 ? offense.thirdDownFormatted : offense.fourthDownFormatted).toBe("0.0% (0/4)");
+    expect(down === 3 ? defense.defThirdDownStopFormatted : defense.defFourthDownStopFormatted).toBe("100.0% (4/4)");
+  });
+
+  it.each([3, 4])("calculates %ith down conversions from valid attempts for both teams", (down) => {
+    const match = { id: "m", status: "completed", homeTeamId: "home", awayTeamId: "away" };
+    const base = { matchId: "m", possessionTeamId: "home", down, playType: "Pass" };
+    const plays = [
+      { ...base, firstDown: true },
+      { ...base, result: "Touchdown", conversionAttempt: 1, conversionSuccess: true },
+      { ...base, passOutcome: "Incomplete" },
+      { ...base, passOutcome: "Interception", firstDown: true, isThirdDownConversion: true, isFourthDownConversion: true },
+      { ...base, isPick6: true, isTouchdown: true },
+      { ...base, down: String(down), result: "First Down" },
+      { ...base, result: "Repeat Down" },
+      { ...base, playType: "Penalty", result: "First Down" },
+      { ...base, isConversion: true, conversionAttempt: 2, conversionSuccess: true },
+      { ...base, playType: "Conversion", conversionAttempt: 1 },
+      { ...base, isHidden: true, result: "First Down" },
+    ];
+    const offense = calculateTeamComprehensiveStats("home", [match], plays);
+    const defense = calculateTeamComprehensiveStats("away", [match], plays);
+    expect(down === 3 ? offense.thirdDownAttempts : offense.fourthDownAttempts).toBe(6);
+    expect(down === 3 ? offense.thirdDownConversions : offense.fourthDownConversions).toBe(3);
+    expect(down === 3 ? offense.thirdDownPct : offense.fourthDownPct).toBe(50);
+    expect(down === 3 ? offense.thirdDownFormatted : offense.fourthDownFormatted).toBe("50.0% (3/6)");
+    expect(down === 3 ? defense.defThirdDownStopFormatted : defense.defFourthDownStopFormatted).toBe("50.0% (3/6)");
+  });
+
+  it("uses zero rather than NaN for down rates without attempts", () => {
+    const stats = calculateTeamComprehensiveStats("home");
+    expect(stats.thirdDownPct).toBe(0);
+    expect(stats.fourthDownPct).toBe(0);
+    expect(stats.thirdDownFormatted).toBe("0.0% (0/0)");
+    expect(stats.fourthDownFormatted).toBe("0.0% (0/0)");
   });
 });

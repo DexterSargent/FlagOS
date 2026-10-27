@@ -139,6 +139,27 @@ describe("GameTeamStats Component", () => {
     expect(screen.getByTestId("comparison-row-totalTDs")).toBeInTheDocument();
   });
 
+  it("displays corrected down percentages and counts a fourth-down interception only once", () => {
+    const plays = [3, 4].flatMap((down) => [
+      { matchId: mockMatchData.id, possessionTeamId: "team_titans", down, playType: "Run", result: "First Down" },
+      { matchId: mockMatchData.id, possessionTeamId: "team_titans", down, playType: "Pass", passOutcome: "Incomplete", turnover: true },
+      { matchId: mockMatchData.id, possessionTeamId: "team_titans", down, playType: "Pass", passOutcome: "Interception" },
+    ]);
+    render(<GameTeamStats matchData={mockMatchData} plays={plays} isDemo={true} />);
+
+    fireEvent.click(screen.getByTestId("team-stats-view-home"));
+    expect(screen.getByTestId("stat-card-thirdDownPct")).toHaveTextContent("33.3% (1/3)");
+    expect(screen.getByTestId("stat-card-fourthDownPct")).toHaveTextContent("33.3% (1/3)");
+    expect(screen.getByTestId("stat-card-giveaways")).toHaveTextContent("2");
+    expect(screen.getByTestId("stat-card-turnoverDiff")).toHaveTextContent("-2");
+
+    fireEvent.click(screen.getByTestId("team-stats-view-away"));
+    expect(screen.getByTestId("stat-card-defThirdDownStopPct")).toHaveTextContent("66.7% (2/3)");
+    expect(screen.getByTestId("stat-card-defFourthDownStopPct")).toHaveTextContent("66.7% (2/3)");
+    expect(screen.getByTestId("stat-card-takeaways")).toHaveTextContent("2");
+    expect(screen.getByTestId("stat-card-turnoverDiff")).toHaveTextContent("+2");
+  });
+
   it("omits season-only aggregates like record, win % and per-game averages", () => {
     render(<GameTeamStats matchData={mockMatchData} plays={mockPlays} isDemo={true} />);
 

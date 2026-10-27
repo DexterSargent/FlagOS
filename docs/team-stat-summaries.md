@@ -64,6 +64,20 @@ counts follow the roster and stats pages, including possession-aware attribution
 stats sum those counts and then call `finalizeTeamComprehensiveStats` to derive
 percentages and display strings, so percentages are never averaged.
 
+Third- and fourth-down conversion rates are first downs or offensive touchdowns
+divided by attempts on that down, multiplied by 100. PATs, hidden plays,
+penalty-only records and replayed downs are excluded. Interceptions (including
+pick-sixes) and safeties cannot count as offensive conversions. Defensive stop
+rates use unsuccessful opponent attempts over the same denominator. For example,
+1/1 in one game and 0/3 in another produces 25.0% (1/4), not 50%.
+
+Failed downs do not count as giveaways or defensive takeaways, even when the
+play's `turnover` flag records a change of possession. An interception on fourth
+down counts once, not once for the interception and again for the failed down.
+Safeties retain their existing takeaway/giveaway treatment. Summary schema
+version 4 invalidates previously cached counts when these rules are deployed;
+no match or play records need to be edited.
+
 On every request, `src/lib/teamStatSummaryService.ts` uses one **read-only Firestore
 transaction**, which gives it a single consistent snapshot. In that snapshot it:
 

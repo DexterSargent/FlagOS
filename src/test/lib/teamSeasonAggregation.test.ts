@@ -5,6 +5,7 @@ import {
   isGameStatSummary,
   summarizeGame,
   summarizeTeamSeason,
+  TEAM_SEASON_SUMMARY_SCHEMA_VERSION,
   type TeamIdentity,
 } from "@/lib/teamSeasonAggregation";
 import { calculateTeamComprehensiveStats } from "@/lib/teamStatsCalculator";
@@ -56,6 +57,27 @@ describe("team season summaries", () => {
     expect(aggregate.teamStats.ppg).toBe(13.5);
   });
 
+  it("weights third/fourth down rates by attempts across games and excludes failed downs from turnovers", () => {
+    const identity = { teamId: "home" };
+    const games = ["a", "b"].map((id) => ({
+      id, status: "completed", homeTeamId: "home", awayTeamId: "away",
+    }));
+    const gamePlays = [3, 4].flatMap((down) => [
+      { matchId: "a", possessionTeamId: "home", down, playType: "Run", firstDown: true },
+      ...Array.from({ length: 3 }, () => ({
+        matchId: "b", possessionTeamId: "home", down, playType: "Pass", passOutcome: "Incomplete", turnover: true,
+      })),
+    ]);
+    const stats = summarizeTeamSeason(identity, games, gamePlays).teamStats;
+    expect(stats.thirdDownFormatted).toBe("25.0% (1/4)");
+    expect(stats.fourthDownFormatted).toBe("25.0% (1/4)");
+    expect(stats.giveaways).toBe(0);
+    const opponent = summarizeTeamSeason({ teamId: "away" }, games, gamePlays).teamStats;
+    expect(opponent.defThirdDownStopFormatted).toBe("75.0% (3/4)");
+    expect(opponent.defFourthDownStopFormatted).toBe("75.0% (3/4)");
+    expect(opponent.takeaways).toBe(0);
+  });
+
   it("keeps roster/stats page player semantics including passInt, defTD and conversions", () => {
     const aggregate = summarizeTeamSeason(york, matches, plays);
     expect(aggregate.playerStats.Quinn).toMatchObject({ passAtt: 2, passComp: 1, passTD: 1, passInt: 1, totalTDs: 0, gamesPlayed: 2 });
@@ -96,6 +118,7 @@ describe("team season summaries", () => {
     const summary = summarizeGame(york, matches[0], plays);
     expect(isGameStatSummary(JSON.parse(JSON.stringify(summary)))).toBe(true);
     expect(isGameStatSummary({ ...summary, schemaVersion: 0 })).toBe(false);
+    expect(isGameStatSummary({ ...summary, schemaVersion: TEAM_SEASON_SUMMARY_SCHEMA_VERSION - 1 })).toBe(false);
     expect(isGameStatSummary({ ...summary, teamCounts: { ...summary.teamCounts, pf: "21" } })).toBe(false);
     expect(() => combineGameSummaries([summary, summary])).toThrow(/Duplicate/);
     expect(() => summarizeGame(york, matches[2], plays)).toThrow();

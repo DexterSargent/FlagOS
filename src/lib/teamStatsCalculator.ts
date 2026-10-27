@@ -191,7 +191,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
     shortLabel: "3RD %",
     category: "downs",
     categoryLabel: "Situational & Downs",
-    description: "Percentage and count of successful 3rd down conversions.",
+    description: "First downs or offensive touchdowns on 3rd down divided by 3rd down attempts. Excludes PATs, penalty-only records and replayed downs.",
     getValue: (s) => s.thirdDownFormatted,
   },
   {
@@ -200,7 +200,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
     shortLabel: "4TH %",
     category: "downs",
     categoryLabel: "Situational & Downs",
-    description: "Percentage and count of successful 4th down conversions.",
+    description: "First downs or offensive touchdowns on 4th down divided by 4th down attempts. Excludes PATs, penalty-only records and replayed downs.",
     getValue: (s) => s.fourthDownFormatted,
   },
   {
@@ -388,7 +388,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
     shortLabel: "TAKEAWAYS",
     category: "discipline",
     categoryLabel: "Discipline & Margins",
-    description: "Opponent turnovers forced (interceptions, 4th down stops, safeties).",
+    description: "Opponent turnovers forced (interceptions and safeties). Stops on downs are tracked separately.",
     getValue: (s) => s.takeaways,
   },
   {
@@ -398,7 +398,7 @@ export const TEAM_STAT_DEFINITIONS: TeamStatDefinition[] = [
     shortLabel: "GIVEAWAYS",
     category: "discipline",
     categoryLabel: "Discipline & Margins",
-    description: "Turnovers committed (interceptions thrown, 4th down fails, safeties).",
+    description: "Turnovers committed (interceptions thrown and safeties). Failed downs are tracked separately.",
     getValue: (s) => s.giveaways,
   },
   {
@@ -539,6 +539,7 @@ export function calculateTeamComprehensiveStats(
   const matchMap = new Map(matches.map((m) => [m.id, m]));
 
   plays.forEach((play) => {
+    if (play.isHidden === true) return;
     // Only analyze plays from completed matches if matches exist; if no completed match list was given or play has matchId in set, process
     if (completedMatchIdSet.size > 0 && play.matchId && !completedMatchIdSet.has(play.matchId)) {
       return;
@@ -559,7 +560,7 @@ export function calculateTeamComprehensiveStats(
     const isConversionPlay = Boolean(
       play.isConversion === true ||
       play.playType === "Conversion" ||
-      (!play.isTouchdown && !play.isPick6 && play.result !== "Pick 6" && (
+      (!play.isTouchdown && play.result !== "Touchdown" && !play.isPick6 && play.result !== "Pick 6" && play.result !== "Pick 6 Touchdown" && (
         (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
         play.conversionSuccess === true
       ))
@@ -569,6 +570,7 @@ export function calculateTeamComprehensiveStats(
     const convPts = play.conversionAttempt ?? play.conversionPts;
     // A pick-6 conversion is attempted by the defence that scored.
     const isPick6Play = Boolean(play.isPick6 || play.result === "Pick 6" || play.result === "Pick 6 Touchdown");
+    const isInterception = play.passOutcome === "Interception" || isPick6Play;
     const attemptedConversion = isPick6Play ? !isOffense : isOffense;
     if (attemptedConversion && convPts !== undefined && convPts !== null) {
       const numPts = Number(convPts);
@@ -592,90 +594,55 @@ export function calculateTeamComprehensiveStats(
 
     // Downs and situational tracking (non-conversion plays)
     if (!isConversionPlay) {
+      const down = Number(play.down);
+      const isDownAttempt = play.playType !== "Penalty" && play.result !== "Repeat Down";
+      const converted = !isInterception && !play.isSafety && play.result !== "Safety" && Boolean(
+        play.firstDown ||
+        play.isTouchdown ||
+        play.result === "First Down" ||
+        play.result === "Touchdown" ||
+        (down === 3 && play.isThirdDownConversion) ||
+        (down === 4 && play.isFourthDownConversion)
+      );
+      if (isDownAttempt && down === 3) {
+        if (isOffense) {
+          thirdDownAttempts += 1;
+          if (converted) thirdDownConversions += 1;
+        } else {
+          defThirdDownAttempts += 1;
+          if (!converted) defThirdDownStops += 1;
+        }
+      } else if (isDownAttempt && down === 4) {
+        if (isOffense) {
+          fourthDownAttempts += 1;
+          if (converted) fourthDownConversions += 1;
+        } else {
+          defFourthDownAttempts += 1;
+          if (!converted) defFourthDownStops += 1;
+        }
+      }
+
       if (isOffense) {
         // First downs gained
         if (play.firstDown || play.result === "First Down" || play.isTouchdown || play.result === "Touchdown") {
           firstDowns += 1;
         }
 
-        // 3rd Down Efficiency
-        if (play.down === 3 && play.playType !== "Penalty") {
-          thirdDownAttempts += 1;
-          const converted = Boolean(
-            play.firstDown ||
-            play.isTouchdown ||
-            play.result === "First Down" ||
-            play.result === "Touchdown" ||
-            play.isThirdDownConversion
-          );
-          if (converted) thirdDownConversions += 1;
-        }
-
-        // 4th Down Efficiency
-        if (play.down === 4 && play.playType !== "Penalty") {
-          fourthDownAttempts += 1;
-          const converted = Boolean(
-            play.firstDown ||
-            play.isTouchdown ||
-            play.result === "First Down" ||
-            play.result === "Touchdown" ||
-            play.isFourthDownConversion
-          );
-          if (converted) {
-            fourthDownConversions += 1;
-          } else {
-            // Turnover on downs is a giveaway
-            giveaways += 1;
-          }
-        }
-
         // Offensive Play Types
         if (play.playType === "Pass") {
           passAttempts += 1;
           if (play.passOutcome === "Complete") passCompletions += 1;
-          if (play.passOutcome === "Interception") {
-            giveaways += 1;
-          }
         } else if (play.playType === "Run") {
           rushAttempts += 1;
         }
 
         // Giveaways on offense
+        if (isInterception) giveaways += 1;
         if (play.isSafety || play.result === "Safety") {
           giveaways += 1;
         }
       } else {
         // DEFENSIVE PERSPECTIVE
-        // Opponent 3rd Down Stops
-        if (play.down === 3 && play.playType !== "Penalty") {
-          defThirdDownAttempts += 1;
-          const converted = Boolean(
-            play.firstDown ||
-            play.isTouchdown ||
-            play.result === "First Down" ||
-            play.result === "Touchdown" ||
-            play.isThirdDownConversion
-          );
-          if (!converted) defThirdDownStops += 1;
-        }
-
-        // Opponent 4th Down Stops
-        if (play.down === 4 && play.playType !== "Penalty") {
-          defFourthDownAttempts += 1;
-          const converted = Boolean(
-            play.firstDown ||
-            play.isTouchdown ||
-            play.result === "First Down" ||
-            play.result === "Touchdown" ||
-            play.isFourthDownConversion
-          );
-          if (!converted) {
-            defFourthDownStops += 1;
-            // Stop on 4th down is a takeaway
-            takeaways += 1;
-          }
-        }
-
         // Defensive stats
         if (Array.isArray(play.flaggers) && play.flaggers.length > 0) {
           flags += play.flaggers.length;
@@ -687,7 +654,7 @@ export function calculateTeamComprehensiveStats(
           sacks += 1;
         }
 
-        if (play.passOutcome === "Interception" || play.result === "Pick 6" || play.isPick6) {
+        if (isInterception) {
           interceptions += 1;
           takeaways += 1;
         }
