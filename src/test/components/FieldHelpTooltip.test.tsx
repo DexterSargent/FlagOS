@@ -28,4 +28,12 @@ describe("FieldHelpTooltip", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("stays open when a hovering pointer clicks the help icon", () => {
+    render(<FieldHelpTooltip content="Help text" title="Week" />);
+    const button = screen.getByRole("button");
+    fireEvent.mouseEnter(button.parentElement!);
+    fireEvent.click(button);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Help text");
+  });
 });

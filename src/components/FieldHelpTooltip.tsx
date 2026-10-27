@@ -57,7 +57,8 @@ export default function FieldHelpTooltip({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setIsOpen((prev) => !prev);
+          // Hover already opened it on desktop, so a click must never toggle it shut.
+          setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
         onBlur={(e) => {
@@ -68,7 +69,7 @@ export default function FieldHelpTooltip({
         }}
         aria-label={title ? `${title}: ${content}` : content}
         aria-expanded={isOpen}
-        className="inline-flex items-center justify-center p-0.5 text-neutral-400 hover:text-cyan-400 focus:text-cyan-300 focus:outline-none transition-colors rounded-full cursor-pointer ml-1"
+        className="inline-flex items-center justify-center p-0.5 text-neutral-400 hover:text-cyan-400 focus:text-cyan-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 transition-colors rounded-full cursor-pointer ml-1"
       >
         <HelpCircle className="w-3.5 h-3.5 shrink-0 stroke-[2.2]" />
       </button>
