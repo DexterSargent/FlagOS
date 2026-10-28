@@ -3,10 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { lazy, Suspense, type ComponentType } from "react";
 import GlobalShell from "@/components/GlobalShell";
 
-const { usePathnameMock, useSearchParamsMock, mockUseAuth } = vi.hoisted(() => ({
+const { usePathnameMock, useSearchParamsMock, mockUseAuth, mockUseLeague } = vi.hoisted(() => ({
   usePathnameMock: vi.fn(),
   useSearchParamsMock: vi.fn(),
   mockUseAuth: vi.fn(),
+  mockUseLeague: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -16,6 +17,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/authContext", () => ({
   useAuth: () => mockUseAuth(),
+}));
+
+vi.mock("@/lib/leagueContext", () => ({
+  useLeague: () => mockUseLeague(),
 }));
 
 vi.mock("@/components/LeagueHeader", () => ({
@@ -53,6 +58,8 @@ describe("GlobalShell", () => {
       managedTeamId: null,
       playerTeamId: null,
     });
+    // Default: a league portal is being browsed.
+    mockUseLeague.mockReturnValue({ portalLeagueId: "league_x" });
   });
 
   it("omits the league header from the public landing page", () => {
@@ -125,6 +132,21 @@ describe("GlobalShell", () => {
 
     expect(await screen.findByText("League Header")).toBeInTheDocument();
     expect(screen.getByText("League Footer")).toBeInTheDocument();
+  });
+
+  it("uses the site chrome instead of league nav on a league directory page with no league selected", async () => {
+    usePathnameMock.mockReturnValue("/teams");
+    mockUseLeague.mockReturnValue({ portalLeagueId: null });
+
+    render(
+      <GlobalShell>
+        <div>Pick a league</div>
+      </GlobalShell>
+    );
+
+    expect(await screen.findByText("Site Header")).toBeInTheDocument();
+    expect(screen.queryByText("League Header")).not.toBeInTheDocument();
+    expect(screen.queryByText("League Footer")).not.toBeInTheDocument();
   });
 
   it("keeps the league header on league schedule page for non-team users", async () => {

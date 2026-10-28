@@ -74,7 +74,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const unwrappedParams = use(params);
   const teamId = unwrappedParams.id;
 
-  const { canManageTeam, isPlayer, playerTeamId, isLeagueAdmin, isTeamAdmin, managedTeamId, user, userProfile, playerData, loading: authLoading } = useAuth();
+  const { canManageTeam, isPlayer, playerTeamId, isLeagueAdmin, isPlatformAdmin, isTeamAdmin, managedTeamId, user, userProfile, playerData, loading: authLoading } = useAuth();
   const { settings, isDemoLeague } = useLeague();
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const playersPerSide = settings?.rules?.playersOnField || 5;
@@ -175,16 +175,23 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   // League admins are strictly forbidden from viewing or modifying customer playbooks,
   // unless they are explicitly listed as an admin of this team.
   // The server-verified identity lookup lists the teams this account coaches; team_private admin emails confirm it.
+  // The platform admin is never blocked: they own the platform and the block exists to protect
+  // customer leagues from each other's commissioners, not from the operator.
+  const userEmail = user?.email?.trim().toLowerCase();
   const isListedTeamAdmin = userProfile?.managedTeamId === teamId || !!userProfile?.managedTeamIds?.includes(teamId) ||
-    (!!user?.email && Array.isArray(team?.adminEmails) && team.adminEmails.some((e: string) => String(e).trim().toLowerCase() === user.email!.trim().toLowerCase()));
-  const isBlockedLeagueAdmin = !isEmbedded && isLeagueAdmin && !isListedTeamAdmin;
+    (!!userEmail && (
+      (Array.isArray(team?.adminEmails) && team.adminEmails.some((e: string) => String(e).trim().toLowerCase() === userEmail)) ||
+      (Array.isArray(privateTeam?.adminEmails) && privateTeam.adminEmails.some((e) => String(e).trim().toLowerCase() === userEmail)) ||
+      (!!privateTeam?.coachEmail && privateTeam.coachEmail.trim().toLowerCase() === userEmail)
+    ));
+  const isBlockedLeagueAdmin = !isEmbedded && isLeagueAdmin && !isListedTeamAdmin && !isPlatformAdmin;
 
   // Edit access: strictly team admins/coaches of THIS team (or embedded marketing demo).
   // Players strictly have VIEW-ONLY permissions (no editing plays, formations, or routes).
-  const hasEditAccess = !isBlockedLeagueAdmin && !isPlayer && (isEmbedded || isTeamAdminForThisTeam);
+  const hasEditAccess = !isBlockedLeagueAdmin && !isPlayer && (isEmbedded || isTeamAdminForThisTeam || isListedTeamAdmin);
 
   // View access: team admins of THIS team OR rostered players of THIS team
-  const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam);
+  const canViewPlaybook = !isBlockedLeagueAdmin && (isEmbedded || isTeamAdminForThisTeam || isRosteredPlayerOnTeam || isListedTeamAdmin);
 
   // Warm the editor chunk while the playbook list loads so opening a play is instant.
   useEffect(() => {
@@ -197,18 +204,27 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     activePlaybookIdRef.current = activePlaybookId;
   }, [activePlaybookId]);
-  const hasPlaybookAccess = isEmbedded || (!isBlockedLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam));
+  const hasPlaybookAccess = isEmbedded || (!isBlockedLeagueAdmin && (isTeamAdminForThisTeam || isRosteredPlayerOnTeam || isListedTeamAdmin));
 
-  const canLoadPrivateTeam = !isEmbedded && !isEffectDemo && hasEditAccess;
+  // The server verifies team staff from team_private, so this probe does not depend on the
+  // client-side identity lookup: a failed or throttled lookup can't lock out a real coach.
+  const canProbePrivateTeam = !isEmbedded && !isEffectDemo && !!user && !authLoading;
+  const [privateTeamChecked, setPrivateTeamChecked] = useState(false);
   useEffect(() => {
     setPrivateTeam(null);
-    if (!canLoadPrivateTeam) return;
+    setPrivateTeamChecked(!canProbePrivateTeam);
+    if (!canProbePrivateTeam) return;
     let cancelled = false;
     requestPrivateData<{ team: { adminEmails?: string[]; coachEmail?: string } }>("team", { teamId })
-      .then((data) => { if (!cancelled) setPrivateTeam(data.team); })
-      .catch((error: unknown) => console.warn("Unable to load private team settings:", error));
+      .then((data) => { if (!cancelled) { setPrivateTeam(data.team); setPrivateTeamChecked(true); } })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          console.warn("Unable to load private team settings:", error);
+          setPrivateTeamChecked(true);
+        }
+      });
     return () => { cancelled = true; };
-  }, [teamId, canLoadPrivateTeam, user?.uid]);
+  }, [teamId, canProbePrivateTeam, user?.uid]);
 
   // 1. Fetch Team & Playbooks from Firestore / LocalStorage
   useEffect(() => {
@@ -317,8 +333,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
       // revalidation or team metadata updates should not refetch or reset the editor.
       if (loadedPlaybooksKeyRef.current === loadKey && hasPlaybookAccess) return;
 
-      // Hold the spinner while auth resolves instead of flashing an access-denied screen.
-      if (!hasPlaybookAccess && authLoading) return;
+      // Hold the spinner while auth and the server-side staff probe resolve instead of
+      // flashing an access-denied screen.
+      if (!hasPlaybookAccess && (authLoading || !privateTeamChecked)) return;
 
       const generation = ++fetchGenerationRef.current;
       const isStale = () => generation !== fetchGenerationRef.current;
@@ -347,7 +364,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
         // League admins are only allowed through once the team doc confirms they're a listed admin.
         if (!hasPlaybookAccess) {
-          setLoading(false);
+          // Keep the spinner up while the staff probe could still grant access.
+          if (privateTeamChecked || !user) setLoading(false);
           return;
         }
 
@@ -389,7 +407,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, isEmbedded, hasPlaybookAccess, authLoading]);
+  }, [teamId, isEmbedded, hasPlaybookAccess, authLoading, privateTeamChecked]);
   // Active Playbook, Formation, & Play references
   const activePlaybook =
     playbooks.find((b) => b.id === activePlaybookId) || playbooks[0] || null;
@@ -907,10 +925,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </Link>
               )}
               <Link
-                href="/teams"
+                href={team?.leagueId ? `/teams?league=${encodeURIComponent(team.leagueId)}` : `/teams/${teamId}`}
                 className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
               >
-                Back to Teams
+                {team?.leagueId ? "Back to Teams" : `Back to ${teamName}`}
               </Link>
             </div>
           </div>

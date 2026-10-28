@@ -50,6 +50,8 @@ import {
   ScheduleBackup,
 } from "@/lib/demoSandbox";
 import { getLeagueSeasonMatchDocs, subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
+import { isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
+import NoLeagueSelected from "@/components/league/NoLeagueSelected";
 import {
   calculateStandings,
   isPlayoffActive,
@@ -92,7 +94,7 @@ interface Match {
 export default function Calendar() {
   usePageGuide(SCHEDULE_WALKTHROUGH);
   const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
-  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId } = useLeague();
+  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId, portalLeagueId } = useLeague();
   // `?league=` opens the schedule on a specific league; hold off loading until the provider has picked it up.
   const [awaitingLeague, setAwaitingLeague] = useState<string | null>(() =>
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("league"),
@@ -180,6 +182,16 @@ export default function Calendar() {
     }
   }, []);
 
+  // The demo league is only shown when it was explicitly entered (demo button/URL, embed, or the
+  // in-memory demo portal). A bare "/schedule" visit has no league to show. The real context
+  // always provides portalLeagueId (null when no portal is being browsed).
+  const demoRequested = isDemoExplicitlyRequested(portalLeagueId) || isEmbedded;
+  const noLeagueSelected = portalLeagueId === null && !awaitingLeague && !demoRequested;
+  // The server cannot read the query string, so the picker only renders after mount; until then
+  // the page shows its usual loading state, keeping server and first client render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Archived leagues are read-only; the server rejects schedule writes until reactivation.
   const canManageSchedule = Boolean((isLeagueAdmin || isEmbedded) && !isLeagueArchived);
 
@@ -260,6 +272,12 @@ export default function Calendar() {
   useEffect(() => {
     setLoading(true);
     if (awaitingLeague) return;
+    if (noLeagueSelected) {
+      setTeams([]);
+      setMatches([]);
+      setLoading(false);
+      return;
+    }
 
     if (isDemoLeague || isEmbedded) {
       const loadDemoData = () => {
@@ -310,7 +328,7 @@ export default function Calendar() {
     );
 
     return () => unsub();
-  }, [isDemoLeague, isEmbedded, activeLeagueId, currentSeasonId, awaitingLeague]);
+  }, [isDemoLeague, isEmbedded, activeLeagueId, currentSeasonId, awaitingLeague, noLeagueSelected]);
 
   // Standings & Playoff Calculations
   const playoffActive = useMemo(() => isPlayoffActive(matches), [matches]);
@@ -678,6 +696,10 @@ export default function Calendar() {
 
   if (isDenied) {
     return deniedElement;
+  }
+
+  if (mounted && noLeagueSelected) {
+    return <NoLeagueSelected pagePath="/schedule" noun="Schedules" />;
   }
 
   return (

@@ -14,9 +14,11 @@ const PoweredByFooter = dynamic(() => import("./PoweredByFooter"));
 
 import { ShellChromeContext } from "@/lib/shellChrome";
 import { PageGuideProvider } from "@/lib/pageGuide";
+import { useLeague } from "@/lib/leagueContext";
 
 function GlobalShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { portalLeagueId } = useLeague();
 
   // Always initialize to false so server HTML matches the first client render.
   // The real embedded state is determined in useEffect (client-only). Reading the query from
@@ -59,6 +61,12 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/join")
   );
 
+  // League-wide directory pages without a selected league show a league picker instead of
+  // league data; they get the site chrome so no demo-league branding leaks in.
+  const isLeagueDirectoryPath = Boolean(
+    pathname === "/schedule" || pathname === "/stats" || pathname === "/teams" || pathname === "/join"
+  );
+
   // League navigation (header and footer) should ONLY appear if:
   // 1. Not in chrome-less views (iframe embed, login, play-by-play, landing, pricing, my-story)
   // 2. Not on an individual team page or team portal (/teams/...)
@@ -71,7 +79,8 @@ function GlobalShellInner({ children }: { children: React.ReactNode }) {
     !isMyStoryPage &&
     !isTeamRoute &&
     !suppressLeagueNav &&
-    isLeagueRoute;
+    isLeagueRoute &&
+    (!isLeagueDirectoryPath || portalLeagueId !== null);
 
   // Every other page still gets the theme toggle, account menu and "Powered by FlagOS" footer.
   // Marketing pages, team portals and play-by-play views render these inside their own chrome.

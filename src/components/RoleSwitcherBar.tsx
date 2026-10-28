@@ -10,7 +10,7 @@ const RoleSwitcherContent = dynamic(() => import("./RoleSwitcherContent"), { ssr
 
 export default function RoleSwitcherBar() {
   const pathname = usePathname();
-  const { isDemoLeague, loading } = useLeague();
+  const { isDemoLeague, loading, portalLeagueId } = useLeague();
 
   const teamId = pathname?.startsWith("/teams/") ? pathname.split("/")[2] : null;
   const matchId = pathname?.startsWith("/matches/") ? pathname.split("/")[2] : null;
@@ -26,7 +26,9 @@ export default function RoleSwitcherBar() {
   const isMainPageSandboxLeague = Boolean(embedded && (leagueId === "default" || leagueId === "demo" || isDemoLeague) && pathname?.startsWith("/league/"));
   const allowEmbed = isMainPageSandboxLeague ? true : !embedded;
 
-  const allowed = allowEmbed && isDemoLeague && !loading &&
+  // The demo bar only appears while the demo portal is actively being browsed; a bare
+  // league-wide URL (no ?league=, no demo flow) never implicitly selects the demo league.
+  const allowed = allowEmbed && isDemoLeague && portalLeagueId !== null && !loading &&
     !customerPage &&
     (!teamId || demoTeam) &&
     isDemoLeaguePagePath(pathname);

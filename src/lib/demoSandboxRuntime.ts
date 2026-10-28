@@ -10,6 +10,20 @@ export const isDemoLeague = (leagueId?: string | null): boolean => {
   return !leagueId || leagueId === "default" || leagueId === "demo";
 };
 
+/**
+ * True only when the demo league was explicitly entered: the demo button or a demo/embed URL,
+ * or the in-memory demo portal kept while moving between demo pages. A bare league-wide URL
+ * (e.g. "/teams" with no ?league=) never implicitly selects the demo league.
+ */
+export const isDemoExplicitlyRequested = (portalLeagueId?: string | null): boolean => {
+  if (portalLeagueId === "default" || portalLeagueId === "demo") return true;
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("embed") === "true" || params.get("demo") === "true") return true;
+  }
+  return false;
+};
+
 export const notifySandboxChange = (): void => {
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(DEMO_EVENT));
 };

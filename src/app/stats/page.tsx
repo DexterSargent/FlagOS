@@ -38,6 +38,8 @@ import { usePageGuide } from "@/lib/pageGuide";
 import { STATS_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import { computeLeagueSeasonStats, type PlayerStatLine } from "@/lib/leagueSeasons";
 import { useLeagueSeasonHistory } from "@/lib/useLeagueSeasonHistory";
+import { isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
+import NoLeagueSelected from "@/components/league/NoLeagueSelected";
 import SeasonHistoryPanel from "@/components/league/SeasonHistoryPanel";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
@@ -52,9 +54,21 @@ import {
 export default function StatsAndStandings() {
   usePageGuide(STATS_WALKTHROUGH);
   const {
-    settings, isDemoLeague, activeLeagueId,
+    settings, isDemoLeague, activeLeagueId, portalLeagueId,
     seasons, currentSeasonId, viewingSeasonId, setViewingSeasonId, isViewingArchivedSeason,
   } = useLeague();
+  // The demo league is only shown when it was explicitly entered (demo button/URL or the
+  // in-memory demo portal). A bare "/stats" visit has no league to show. The real context
+  // always provides portalLeagueId (null when no portal is being browsed).
+  const demoRequested = isDemoExplicitlyRequested(portalLeagueId);
+  const leagueParam = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("league")
+    : null;
+  const noLeagueSelected = portalLeagueId === null && !demoRequested && !leagueParam;
+  // The server cannot read the query string, so the picker only renders after mount; until then
+  // the page shows its usual loading state, keeping server and first client render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
   const [activeTab, setActiveTab] = useState<"team" | "individual" | "history">("team");
   const [indivViewMode, setIndivViewMode] = useState<"leaders" | "table">("leaders");
@@ -79,6 +93,12 @@ export default function StatsAndStandings() {
 
 
   useEffect(() => {
+    if (noLeagueSelected) {
+      setStandings([]);
+      setIndividualStats([]);
+      setLoading(false);
+      return;
+    }
     const fetchAllData = async () => {
       try {
         let teams: any[];
@@ -139,7 +159,7 @@ export default function StatsAndStandings() {
       const unsub = subscribeDemoSandbox(() => fetchAllData());
       return () => unsub();
     }
-  }, [isDemoLeague, activeLeagueId, currentSeasonId]);
+  }, [isDemoLeague, activeLeagueId, currentSeasonId, noLeagueSelected]);
 
   // Helper for Top 3 in any category
   const getTop3 = (key: string) => {
@@ -257,6 +277,10 @@ export default function StatsAndStandings() {
 
   if (isDenied) {
     return deniedElement;
+  }
+
+  if (mounted && noLeagueSelected) {
+    return <NoLeagueSelected pagePath="/stats" noun="Standings and stats" />;
   }
 
   if (loading) {

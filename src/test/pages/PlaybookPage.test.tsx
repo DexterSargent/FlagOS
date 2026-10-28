@@ -16,19 +16,22 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/",
 
 // Mock contexts
 const mockAuth = {
-  user: { uid: "test-user-1", email: "test@flagos.ca" },
+  user: { uid: "test-user-1", email: "test@flagos.ca" } as { uid: string; email: string } | null,
   role: "team_coach",
   isPlayer: false,
   playerTeamId: null as string | null,
   isLeagueAdmin: false,
+  isPlatformAdmin: false,
   isTeamAdmin: vi.fn(),
   managedTeamId: "team_apex" as string | null,
   canManageTeam: vi.fn(),
+  userProfile: null as any,
   loading: false,
 };
 
 const mockSecureWrite = vi.hoisted(() => vi.fn().mockResolvedValue("ok"));
-vi.mock("@/lib/secureWrites", () => ({ createSecureRecord: mockSecureWrite }));
+const mockRequestPrivateData = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/secureWrites", () => ({ createSecureRecord: mockSecureWrite, requestPrivateData: mockRequestPrivateData }));
 
 vi.mock("@/lib/authContext", () => ({
   useAuth: () => mockAuth,
@@ -92,14 +95,19 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: Coach for team_apex
+    mockAuth.user = { uid: "test-user-1", email: "test@flagos.ca" };
     mockAuth.role = "team_coach";
     mockAuth.isLeagueAdmin = false;
+    mockAuth.isPlatformAdmin = false;
     mockAuth.isPlayer = false;
     mockAuth.playerTeamId = null;
     mockAuth.managedTeamId = "team_apex";
+    mockAuth.userProfile = null;
     mockAuth.isTeamAdmin = vi.fn((tid?: string) => tid === "team_apex");
     mockAuth.canManageTeam = vi.fn((tid?: string) => tid === "team_apex");
     mockAuth.loading = false;
+    // The server-side staff probe finds no matching admin email unless a test says otherwise.
+    mockRequestPrivateData.mockResolvedValue({ team: { adminEmails: [], coachEmail: "" } });
     localStorage.clear();
 
     // Clean window location search
@@ -318,6 +326,38 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
         screen.getByText(/League admin access does not include team playbooks/i)
       ).toBeInTheDocument();
     });
+  });
+
+  it("PLATFORM ADMIN: never blocked as a league admin when the identity lookup has no team list", async () => {
+    // Simulates the platform admin whose identity lookup failed: league_admin role, no managedTeamIds.
+    mockAuth.isLeagueAdmin = true;
+    mockAuth.isPlatformAdmin = true;
+    mockAuth.isTeamAdmin = vi.fn(() => true);
+    mockAuth.managedTeamId = null;
+    mockAuth.userProfile = { uid: "test-user-1", email: "test@flagos.ca", role: "league_admin" };
+    localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify(createDefaultPlaybooks("team_apex")));
+
+    await renderPage("team_apex");
+
+    expect(await screen.findByText(/Existing Playbooks/)).toBeInTheDocument();
+    expect(screen.queryByText("League Admin Access Restricted")).not.toBeInTheDocument();
+  });
+
+  it("COACH LOCKED OUT BY A FAILED IDENTITY LOOKUP: server-verified staff probe restores access", async () => {
+    // The identity lookup failed, so the profile fell back to league_admin with no team list.
+    mockAuth.isLeagueAdmin = true;
+    mockAuth.isPlatformAdmin = false;
+    mockAuth.isTeamAdmin = vi.fn(() => false);
+    mockAuth.managedTeamId = null;
+    mockAuth.userProfile = { uid: "test-user-1", email: "test@flagos.ca", role: "league_admin" };
+    // team_private proves the account is on this team's staff for a live (non-demo) team.
+    mockRequestPrivateData.mockResolvedValue({ team: { adminEmails: ["test@flagos.ca"], coachEmail: "" } });
+    localStorage.setItem("flagos_playbooks_team_live_apex", JSON.stringify(createDefaultPlaybooks("team_live_apex")));
+
+    await renderPage("team_live_apex");
+
+    expect(await screen.findByText(/Existing Playbooks/)).toBeInTheDocument();
+    expect(screen.queryByText("League Admin Access Restricted")).not.toBeInTheDocument();
   });
 
   it("STRICT RBAC RULE 2: Blocks opponent coach from viewing rival team's tactical schemes", async () => {

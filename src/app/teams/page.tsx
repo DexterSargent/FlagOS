@@ -34,7 +34,8 @@ import {
   getSandboxPlays,
   subscribeDemoSandbox,
 } from "@/lib/demoSandbox";
-import { isStandaloneTeam } from "@/lib/demoSandboxRuntime";
+import { isStandaloneTeam, isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
+import NoLeagueSelected from "@/components/league/NoLeagueSelected";
 import { usePageGuide } from "@/lib/pageGuide";
 import { TEAMS_DIRECTORY_WALKTHROUGH } from "@/lib/walkthroughs/league";
 
@@ -82,7 +83,12 @@ export default function TeamsPage() {
   usePageGuide(TEAMS_DIRECTORY_WALKTHROUGH);
   const [teams, setTeams] = useState<Team[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+  const [activeTeamId, setActiveTeamId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("team");
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
@@ -91,6 +97,7 @@ export default function TeamsPage() {
     settings,
     isDemoLeague,
     activeLeagueId,
+    portalLeagueId,
     subscription,
     updateSubscriptionTeamCount,
     addTeamToSubscription,
@@ -120,14 +127,30 @@ export default function TeamsPage() {
   // Modal State
   const [selectedPlayerForStats, setSelectedPlayerForStats] = useState<Player | null>(null);
 
-  const isEffectiveDemo =
-    isDemoLeague ||
-    (typeof window !== "undefined" &&
-      (new URLSearchParams(window.location.search).get("embed") === "true" ||
-        new URLSearchParams(window.location.search).get("demo") === "true"));
+  // The demo league is only shown when it was explicitly entered (demo button/URL or the
+  // in-memory demo portal). A bare "/teams" visit has no league to list. The real context
+  // always provides portalLeagueId (null when no portal is being browsed).
+  const demoRequested = isDemoExplicitlyRequested(portalLeagueId);
+  const leagueParam = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("league")
+    : null;
+  const noLeagueSelected = portalLeagueId === null && !demoRequested && !leagueParam;
+  const isEffectiveDemo = isDemoLeague && !noLeagueSelected;
+  // The server cannot read the query string, so the picker only renders after mount; until then
+  // the page shows its usual loading state, keeping server and first client render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const fetchData = async () => {
     setLoading(true);
+    if (noLeagueSelected) {
+      setTeams([]);
+      setPlayers([]);
+      setMatches([]);
+      setPlays([]);
+      setLoading(false);
+      return;
+    }
     if (isEffectiveDemo) {
       const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
       const t = [...baseTeams].sort((a, b) => a.name.localeCompare(b.name));
@@ -189,7 +212,7 @@ export default function TeamsPage() {
       });
       return () => unsub();
     }
-  }, [isEffectiveDemo]);
+  }, [isEffectiveDemo, noLeagueSelected]);
 
   const handleAddPlayer = async () => {
     if (!newPlayerName.trim() || !activeTeamId) return;
@@ -638,6 +661,10 @@ export default function TeamsPage() {
     return deniedElement;
   }
 
+  if (mounted && noLeagueSelected) {
+    return <NoLeagueSelected pagePath="/teams" noun="Team directories" />;
+  }
+
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] font-sans selection:bg-blue-500/30 selection:text-blue-200 flex flex-col justify-between">
 
@@ -852,6 +879,7 @@ export default function TeamsPage() {
                     <Link
                       key={team.id}
                       href={`/teams/${team.id}`}
+                      onClick={() => setActiveTeamId(team.id)}
                       className="group relative bg-neutral-900/50 backdrop-blur-md border border-white/5 hover:border-cyan-500/50 rounded-3xl p-6 transition-all duration-300 text-left overflow-hidden flex flex-col h-64 shadow-xl hover:-translate-y-1 hover:bg-neutral-900"
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>

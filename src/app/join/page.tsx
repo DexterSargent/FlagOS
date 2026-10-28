@@ -13,6 +13,8 @@ import { useLeague } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { getSandboxPlayers, addSandboxPlayer } from "@/lib/demoSandbox";
+import { isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
+import NoLeagueSelected from "@/components/league/NoLeagueSelected";
 
 const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
@@ -24,7 +26,19 @@ interface Player {
 
 export default function JoinLeague() {
   usePageGuide(JOIN_LEAGUE_WALKTHROUGH);
-  const { settings, isDemoLeague, activeLeagueId } = useLeague();
+  const { settings, isDemoLeague, activeLeagueId, portalLeagueId } = useLeague();
+  // The demo league is only shown when it was explicitly entered (demo button/URL or the
+  // in-memory demo portal). A bare "/join" visit has no league to join. The real context
+  // always provides portalLeagueId (null when no portal is being browsed).
+  const demoRequested = isDemoExplicitlyRequested(portalLeagueId);
+  const leagueParam = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("league")
+    : null;
+  const noLeagueSelected = portalLeagueId === null && !demoRequested && !leagueParam;
+  // The server cannot read the query string, so the picker only renders after mount; until then
+  // the page shows its usual loading state, keeping server and first client render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const { isPlayer, playerData, isLeagueAdmin, role, canRegisterAsPlayer, managedTeamId } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +57,11 @@ export default function JoinLeague() {
 
   useEffect(() => {
     const fetchPlayers = async () => {
+      if (noLeagueSelected) {
+        setPlayers([]);
+        setLoading(false);
+        return;
+      }
       if (isDemoLeague) {
         const pData = getSandboxPlayers() as unknown as Player[];
         const filtered = pData.filter(p => p.teamId !== "Free Agent" && p.teamId !== "team_free_agents");
@@ -68,7 +87,7 @@ export default function JoinLeague() {
       setLoading(false);
     };
     fetchPlayers();
-  }, [isDemoLeague, activeLeagueId]);
+  }, [isDemoLeague, activeLeagueId, noLeagueSelected]);
 
   const handleToggleFriend = (player: Player) => {
     if (selectedFriends.find(p => p.id === player.id)) {
@@ -139,6 +158,10 @@ export default function JoinLeague() {
   };
 
   const filteredPlayers = players.filter(p => p.playerName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  if (mounted && noLeagueSelected) {
+    return <NoLeagueSelected pagePath="/join" noun="Player registration" />;
+  }
 
   if (registered) {
     return (
