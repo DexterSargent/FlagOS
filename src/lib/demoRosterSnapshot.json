@@ -4,7 +4,7 @@
   "sourceUrl": "https://github.com/nflverse/nflverse-data/releases/tag/rosters",
   "rosterUrl": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2026.csv",
   "depthChartUrl": "https://github.com/nflverse/nflverse-data/releases/download/depth_charts/depth_charts_2026.csv.gz",
-  "sourceUpdatedAt": "2026-10-27T13:10:49.000Z",
+  "sourceUpdatedAt": "2026-10-28T14:00:18.000Z",
   "players": [
     {
       "id": "nfl_00-0034857",
@@ -1685,17 +1685,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0041496",
+      "id": "nfl_00-0036158",
       "teamId": "team_den",
-      "playerName": "Jonah Coleman",
-      "number": "20",
+      "playerName": "J.K. Dobbins",
+      "number": "27",
       "position": "RB",
       "positions": [
         "RB",
         "ATH"
       ],
       "status": "Active",
-      "nflId": "00-0041496",
+      "nflId": "00-0036158",
       "nflPosition": "RB",
       "sourceStatus": "ACT"
     },
@@ -3151,16 +3151,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0034843",
+      "id": "nfl_00-0036281",
       "teamId": "team_atl",
-      "playerName": "Mike Hughes",
-      "number": "21",
+      "playerName": "C.J. Henderson",
+      "number": "26",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0034843",
+      "nflId": "00-0036281",
       "nflPosition": "CB",
       "sourceStatus": "ACT"
     },
