@@ -27,7 +27,7 @@ import { useEmbedState } from "./embedState";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
 /** OAuth identity providers offered on the sign-in page (Firebase provider IDs). */
-export type OAuthProviderId = "google" | "apple" | "microsoft" | "facebook" | "twitter" | "yahoo" | "github";
+export type OAuthProviderId = "google" | "apple" | "microsoft" | "facebook" | "twitter";
 type LoginResult = { success: true; message?: string; defaultPath?: string } | { success: false; message: string };
 type IdentityLookup = {
   teams: Array<{ id: string; name: string }>;
@@ -639,8 +639,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     microsoft: "microsoft.com",
     facebook: "facebook.com",
     twitter: "twitter.com",
-    yahoo: "yahoo.com",
-    github: "github.com",
   };
 
   const loginWithProvider = async (providerId: OAuthProviderId): Promise<LoginResult> => {

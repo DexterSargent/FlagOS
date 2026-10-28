@@ -76,8 +76,6 @@ describe("OAuth provider sign-in", () => {
     ["microsoft", "microsoft.com"],
     ["facebook", "facebook.com"],
     ["twitter", "twitter.com"],
-    ["yahoo", "yahoo.com"],
-    ["github", "github.com"],
   ] as const)("builds the %s provider with the Firebase id %s and signs in with a popup", async (provider, firebaseId) => {
     popupMock.mockResolvedValue({ user: { uid: `${provider}-user`, email: null, emailVerified: false } });
     render(<AuthProvider><Harness provider={provider} /></AuthProvider>);
@@ -112,7 +110,7 @@ describe("OAuth provider sign-in", () => {
 
   it("surfaces a friendly error when the provider popup is cancelled", async () => {
     popupMock.mockRejectedValue(new FirebaseError("auth/popup-closed-by-user", "Popup closed"));
-    render(<AuthProvider><Harness provider="github" /></AuthProvider>);
+    render(<AuthProvider><Harness provider="microsoft" /></AuthProvider>);
 
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
