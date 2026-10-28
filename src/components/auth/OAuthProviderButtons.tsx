@@ -13,6 +13,10 @@ interface ProviderDef {
   className: string;
 }
 
+// Only providers enabled in Firebase Auth are shown. Google is configured; the rest are
+// hidden until their app credentials are set up in the Firebase console.
+const ENABLED_PROVIDERS: OAuthProviderId[] = ["google"];
+
 const PROVIDERS: ProviderDef[] = [
   {
     id: "google",
@@ -106,7 +110,7 @@ export default function OAuthProviderButtons({ onSuccess }: { onSuccess?: (defau
         </p>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {PROVIDERS.map((p) => (
+        {PROVIDERS.filter((p) => ENABLED_PROVIDERS.includes(p.id)).map((p) => (
           <button
             key={p.id}
             type="button"
