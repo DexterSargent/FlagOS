@@ -34,14 +34,6 @@ interface PlayQuestionsModalProps {
   };
 }
 
-const QUESTION_SUGGESTIONS = [
-  "What is my read against Cover 2?",
-  "Who is the hot read if they send a blitzer?",
-  "When should the pre-snap motion begin?",
-  "Should the out route stem to the stick or break early?",
-  "What is my contain assignment on this play?",
-];
-
 export default function PlayQuestionsModal({
   isOpen,
   onClose,
@@ -229,28 +221,6 @@ export default function PlayQuestionsModal({
               }
               className="w-full p-3 rounded-xl bg-white dark:bg-black/50 border border-neutral-300 dark:border-white/10 focus:border-cyan-500 dark:focus:border-cyan-400 text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-xs sm:text-sm outline-none resize-none transition-colors"
             />
-
-            {/* Quick Suggestion Chips for Players */}
-            {isPlayer && (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-neutral-500 dark:text-neutral-400 uppercase">
-                  <Lightbulb className="w-3 h-3 text-amber-500" />
-                  <span>Quick Prompts:</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {QUESTION_SUGGESTIONS.map((sug) => (
-                    <button
-                      key={sug}
-                      type="button"
-                      onClick={() => setQuestionText(sug)}
-                      className="text-[11px] px-2.5 py-1 rounded-lg bg-neutral-200/70 hover:bg-neutral-300 dark:bg-white/10 dark:hover:bg-white/15 text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white transition-colors cursor-pointer"
-                    >
-                      {sug}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="flex justify-end pt-1">
               <button
