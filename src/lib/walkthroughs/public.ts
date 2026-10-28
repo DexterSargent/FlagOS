@@ -944,11 +944,11 @@ export const LOGIN_WALKTHROUGH: ToolWalkthrough = {
     {
       "id": "account-login-login-google",
       "targetSelector": "[data-tour=\"login-google\"]",
-      "title": "Sign in with Google",
-      "description": "Use the Google account connected to your league or team.",
+      "title": "Sign in with a provider",
+      "description": "Sign in with Google, Apple, Microsoft, Facebook, X, Yahoo or GitHub using the email your league or team has on file.",
       "details": [
         {
-          "label": "SIGN IN WITH GOOGLE",
+          "label": "Continue with Google",
           "text": "Starts Google sign-in and continues to your destination when successful."
         }
       ]

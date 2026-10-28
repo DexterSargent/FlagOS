@@ -8,6 +8,7 @@ import {
   signInWithPopup,
   getRedirectResult,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -25,6 +26,8 @@ import { announceLeagueAccess } from "./leagueAccess";
 import { useEmbedState } from "./embedState";
 
 export type UserRole = "league_admin" | "team_admin" | "player" | "user";
+/** OAuth identity providers offered on the sign-in page (Firebase provider IDs). */
+export type OAuthProviderId = "google" | "apple" | "microsoft" | "facebook" | "twitter" | "yahoo" | "github";
 type LoginResult = { success: true; message?: string; defaultPath?: string } | { success: false; message: string };
 type IdentityLookup = {
   teams: Array<{ id: string; name: string }>;
@@ -182,6 +185,7 @@ interface AuthContextType {
   canRegisterAsPlayer: boolean;
   loading: boolean;
   login: () => Promise<LoginResult>;
+  loginWithProvider: (provider: OAuthProviderId) => Promise<LoginResult>;
   loginWithEmailAndPassword: (email: string, password: string) => Promise<LoginResult>;
   createAccount: (displayName: string, email: string, password: string) => Promise<LoginResult>;
   sendPasswordReset: (email: string) => Promise<LoginResult>;
@@ -222,6 +226,7 @@ const DEFAULT_AUTH: AuthContextType = {
   canRegisterAsPlayer: true,
   loading: true,
   login: async () => ({ success: false, message: "Sign-in is unavailable." }),
+  loginWithProvider: async () => ({ success: false, message: "Sign-in is unavailable." }),
   loginWithEmailAndPassword: async () => ({ success: false, message: "Sign-in is unavailable." }),
   createAccount: async () => ({ success: false, message: "Account creation is unavailable." }),
   sendPasswordReset: async () => ({ success: false, message: "Password reset is unavailable." }),
@@ -628,10 +633,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   };
 
-  const login = async (): Promise<LoginResult> => {
+  const OAUTH_PROVIDER_IDS: Record<OAuthProviderId, string> = {
+    google: "google.com",
+    apple: "apple.com",
+    microsoft: "microsoft.com",
+    facebook: "facebook.com",
+    twitter: "twitter.com",
+    yahoo: "yahoo.com",
+    github: "github.com",
+  };
+
+  const loginWithProvider = async (providerId: OAuthProviderId): Promise<LoginResult> => {
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
+      const provider =
+        providerId === "google"
+          ? (() => { const p = new GoogleAuthProvider(); p.setCustomParameters({ prompt: "select_account" }); return p; })()
+          : new OAuthProvider(OAUTH_PROVIDER_IDS[providerId]);
 
       // Redirect sign-in can lose its result when mobile browsers block cross-site storage.
       // Open the popup directly from the click handler to preserve user activation.
@@ -654,6 +671,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return { success: false, message: getAuthErrorMessage(error) };
     }
   };
+
+  const login = () => loginWithProvider("google");
 
   const loginWithEmailAndPassword = async (
     email: string,
@@ -864,6 +883,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         canRegisterAsPlayer,
         loading,
         login,
+        loginWithProvider,
         loginWithEmailAndPassword,
         createAccount,
         sendPasswordReset,

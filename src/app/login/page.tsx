@@ -14,6 +14,7 @@ import { getSandboxTeams, getSandboxPlayers } from "@/lib/demoSandbox";
 import { useTheme } from "@/lib/themeContext";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import EmailVerificationNotice from "@/components/EmailVerificationNotice";
+import OAuthProviderButtons from "@/components/auth/OAuthProviderButtons";
 
 export default function LoginPage() {
   usePageGuide(LOGIN_WALKTHROUGH);
@@ -61,8 +62,6 @@ export default function LoginPage() {
   const [emailPasswordSuccess, setEmailPasswordSuccess] = useState("");
   const [emailPasswordLoggingIn, setEmailPasswordLoggingIn] = useState(false);
   const [sendingPasswordReset, setSendingPasswordReset] = useState(false);
-  const [googleLoggingIn, setGoogleLoggingIn] = useState(false);
-  const [googleLoginError, setGoogleLoginError] = useState("");
   const [redirectUrl, setRedirectUrl] = useState<string>("");
   const [isLocalhost, setIsLocalhost] = useState(false);
 
@@ -153,24 +152,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoginError("");
-    setGoogleLoggingIn(true);
-    try {
-      const result = await login();
-      if (result.success) {
-        if (redirectUrl || result.defaultPath) router.push(redirectUrl || result.defaultPath!);
-      } else {
-        setGoogleLoginError(result.message);
-      }
-    } catch (error) {
-      console.error("Google login failed:", error);
-      setGoogleLoginError(error instanceof Error ? error.message : "Google sign-in failed. Please try again.");
-    } finally {
-      setGoogleLoggingIn(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 md:p-12 relative overflow-hidden font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
       {/* Dynamic Background */}
@@ -233,8 +214,8 @@ export default function LoginPage() {
         </h1>
         <p className="text-neutral-400 text-xs text-center mb-6">
           {isCreatingAccount && !user
-            ? "Create a free account with your email or Google. Use the email your coach or league has on file so you're connected to your team."
-            : "Sign in with your email or Google account to access your teams and leagues."}
+            ? "Create a free account with your email or a social sign-in. Use the email your coach or league has on file so you're connected to your team."
+            : "Sign in with your email or a social account to access your teams and leagues."}
         </p>
 
         {/* Email-only roster role simulation is intentionally limited to local development. */}
@@ -422,13 +403,13 @@ export default function LoginPage() {
                     <span>Account Not Authorized</span>
                   </div>
                   <p className="text-[11px] text-neutral-300 leading-relaxed">
-                    This Google account is not registered to an active league commissioner, team coaching staff, or player roster.
+                    This account is not registered to an active league commissioner, team coaching staff, or player roster.
                   </p>
                 </div>
                 <button
                   onClick={async () => {
                     await logout();
-                    await handleGoogleLogin();
+                    await login();
                   }}
                   className="w-full py-3 px-4 bg-white hover:bg-neutral-200 text-black font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                 >
@@ -445,21 +426,13 @@ export default function LoginPage() {
             )}
           </div>
         ) : (
-          <>
-            {googleLoginError && (
-              <p role="alert" className="w-full mb-4 text-xs text-rose-300 bg-rose-500/10 border border-rose-500/30 p-3 rounded-lg font-medium">
-                {googleLoginError}
-              </p>
-            )}
-            <button data-tour="login-google"
-              onClick={handleGoogleLogin}
-              disabled={googleLoggingIn}
-              className="w-full py-3.5 mb-6 bg-white hover:bg-neutral-200 text-black font-extrabold text-sm rounded-2xl transition-all active:scale-98 shadow-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span>{googleLoggingIn ? "SIGNING IN..." : "SIGN IN WITH GOOGLE"}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </>
+          <div className="w-full mb-6">
+            <OAuthProviderButtons
+              onSuccess={(defaultPath) => {
+                if (redirectUrl || defaultPath) router.push(redirectUrl || defaultPath!);
+              }}
+            />
+          </div>
         )}
 
         {/* Localhost Role Switcher & Dev Tools (ONLY rendered in local development, NEVER in production on flagos.ca) */}
