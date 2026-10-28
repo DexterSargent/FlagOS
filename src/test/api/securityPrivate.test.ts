@@ -225,6 +225,56 @@ describe("private-data API", () => {
     expect(await response.json()).toMatchObject({ data: { team: { adminEmails: TEAM_ADMIN_EMAILS } } });
   });
 
+  it.each([
+    {
+      name: "saved private emails when the public player has no contacts",
+      privateContacts: { email: "saved@example.com", emails: ["saved@example.com", "backup@example.com"] },
+      legacyContacts: {},
+      expected: { email: "saved@example.com", emails: ["saved@example.com", "backup@example.com"] },
+    },
+    {
+      name: "saved private emails instead of stale public contacts",
+      privateContacts: { email: "saved@example.com", emails: ["saved@example.com"] },
+      legacyContacts: { email: "old@example.com", emails: ["old@example.com"] },
+      expected: { email: "saved@example.com", emails: ["saved@example.com"] },
+    },
+    {
+      name: "cleared private emails instead of restoring old public contacts",
+      privateContacts: { email: "", emails: [] },
+      legacyContacts: { email: "old@example.com", emails: ["old@example.com"] },
+      expected: { email: "", emails: [] },
+    },
+    {
+      name: "legacy contacts for a player without a private record",
+      privateContacts: null,
+      legacyContacts: { email: "legacy@example.com", emails: ["legacy@example.com"] },
+      expected: { email: "legacy@example.com", emails: ["legacy@example.com"] },
+    },
+  ])("returns $name on repeated roster loads", async ({ privateContacts, legacyContacts, expected }) => {
+    verifyIdTokenMock.mockResolvedValue({ ...token, email: TEAM_ADMIN_EMAILS[0] });
+    documentGetMock.mockImplementation(async (path: string) => ({
+      exists: ["teams/falcons", "team_private/falcons"].includes(path),
+      get: () => undefined,
+      data: () => path === "teams/falcons" ? { name: "Falcons" }
+        : path === "team_private/falcons" ? { adminEmails: TEAM_ADMIN_EMAILS } : undefined,
+    }));
+    collectionMock.mockImplementation((name: string) => ({
+      where: () => ({ limit: () => ({
+        get: async () => ({
+          docs: name === "player_private"
+            ? privateContacts ? [{ id: "p1", data: () => privateContacts }] : []
+            : [{ id: "p1", data: () => ({ playerName: "Player One", teamId: "falcons", ...legacyContacts }) }],
+        }),
+      }) }),
+    }));
+
+    for (let load = 0; load < 2; load += 1) {
+      const response = await POST(request({ action: "team", data: { teamId: "falcons" } }));
+      expect(response.status).toBe(200);
+      expect((await response.json()).data.players).toEqual({ p1: expected });
+    }
+  });
+
   it("does not invent a team or grant access when its document is missing", async () => {
     verifyIdTokenMock.mockResolvedValue({ ...token, email: TEAM_ADMIN_EMAILS[0] });
     const response = await POST(request({ action: "team", data: { teamId: "missing-team" } }));

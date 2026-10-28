@@ -449,7 +449,7 @@ async function getTeamPrivate(teamId: string, token: DecodedIdToken) {
       .get(),
   ]);
   const playerPrivate = new Map(
-    [...players.docs, ...legacyPlayers.docs]
+    [...legacyPlayers.docs, ...players.docs]
       .map((snapshot) => [snapshot.id, snapshot.data()] as const),
   );
   if (playerPrivate.size > MAX_ROSTER_HARD_CAP) fail("The team roster exceeds the supported limit.", 409);
