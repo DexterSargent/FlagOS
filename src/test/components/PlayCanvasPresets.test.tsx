@@ -737,4 +737,124 @@ describe("PlayCanvas Route Presets Suite", () => {
       expect(screen.getByTestId("catalog-route-go")).toBeInTheDocument();
     });
   });
+
+  describe("Defense zones, position notes, and dialog integrations", () => {
+    it("creates a custom zone and selects it", () => {
+      const onPlayChange = vi.fn();
+      render(
+        <PageGuideProvider>
+          <PlayCanvas
+            play={mockDefensePlay}
+            onChange={onPlayChange}
+            readOnly={false}
+          />
+        </PageGuideProvider>
+      );
+
+      // Select CB1 (who has zone coverage) to reveal zone options
+      const cb1Btn = screen.getByRole("button", { name: /CB1/ });
+      fireEvent.click(cb1Btn);
+
+      const customZoneBtn = screen.getByTestId("create-custom-zone");
+      fireEvent.click(customZoneBtn);
+
+      expect(onPlayChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          zones: expect.arrayContaining([
+            expect.objectContaining({ name: expect.any(String) }),
+          ]),
+        })
+      );
+    });
+
+    it("selects a defender using the bottom defender pill list", () => {
+      const onPlayChange = vi.fn();
+      render(
+        <PageGuideProvider>
+          <PlayCanvas
+            play={mockDefensePlay}
+            onChange={onPlayChange}
+            readOnly={false}
+          />
+        </PageGuideProvider>
+      );
+
+      const rushPill = screen.getByRole("button", { name: /RUSH/ });
+      fireEvent.click(rushPill);
+
+      expect(screen.getByRole("button", { name: "Clear route or assignment" })).toBeInTheDocument();
+    });
+
+    it("updates play name, formation, and situation dropdowns", () => {
+      const onChange = vi.fn();
+      render(
+        <PageGuideProvider>
+          <PlayCanvas
+            play={mockDefensePlay}
+            onChange={onChange}
+            readOnly={false}
+          />
+        </PageGuideProvider>
+      );
+
+      const playNameInput = screen.getByLabelText("Play name");
+      fireEvent.change(playNameInput, { target: { value: "Cover 2 Sink" } });
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Cover 2 Sink" })
+      );
+
+      const formationSelect = screen.getByLabelText("Play formation");
+      fireEvent.change(formationSelect, { target: { value: "Cover 1 Man" } });
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ formation: "Cover 1 Man" })
+      );
+
+      const situationSelect = screen.getByLabelText("Play situation");
+      fireEvent.change(situationSelect, { target: { value: "Red Zone" } });
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ situation: "Red Zone" })
+      );
+    });
+
+    it("renders defense zones and selects a zone bubble or pill", () => {
+      const playWithZone: PlayDiagram = {
+        ...mockDefensePlay,
+        players: [
+          ...mockDefensePlay.players.map((p) =>
+            p.id === "p_cb1" ? { ...p, zoneId: "z1" } : p
+          ),
+        ],
+        zones: [
+          {
+            id: "z1",
+            name: "Deep 1/2",
+            shape: "rectangle",
+            color: "#8b5cf6",
+            x: 25,
+            y: 30,
+            rx: 20,
+            ry: 15,
+          },
+        ],
+      };
+
+      const onChange = vi.fn();
+      render(
+        <PageGuideProvider>
+          <PlayCanvas
+            play={playWithZone}
+            onChange={onChange}
+            readOnly={false}
+          />
+        </PageGuideProvider>
+      );
+
+      const zoneBubble = screen.getByTestId("zone-bubble-z1");
+      expect(zoneBubble).toBeInTheDocument();
+      fireEvent.pointerDown(zoneBubble);
+
+      const cb1Btn = screen.getByRole("button", { name: /CB1/ });
+      fireEvent.click(cb1Btn);
+    });
+  });
 });

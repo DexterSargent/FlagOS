@@ -61,4 +61,93 @@ describe("shared play-entry components", () => {
     fireEvent.click(screen.getByRole("button", { name: "GOOD" }));
     expect(onResultChange).toHaveBeenCalledWith(true);
   });
+
+  it("handles points summary change button and NO GOOD selection in sync layout", () => {
+    const onPointsChange = vi.fn();
+    const onResultChange = vi.fn();
+
+    const { rerender } = render(
+      <ConversionAttemptSelector
+        points={1}
+        isGood={null}
+        onPointsChange={onPointsChange}
+        onResultChange={onResultChange}
+        variant="sync"
+      />
+    );
+
+    // Click Attempt summary button to change points
+    const pointsSummaryBtn = screen.getByRole("button", { name: /Conversion attempt: 1 point\(s\)\. Click to change/i });
+    fireEvent.click(pointsSummaryBtn);
+
+    // Select 2 points
+    fireEvent.click(screen.getByRole("button", { name: /From 10 Yd/i }));
+    expect(onPointsChange).toHaveBeenCalledWith(2);
+
+    // Select NO GOOD
+    rerender(
+      <ConversionAttemptSelector
+        points={2}
+        isGood={null}
+        onPointsChange={onPointsChange}
+        onResultChange={onResultChange}
+        variant="sync"
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "NO GOOD" }));
+    expect(onResultChange).toHaveBeenCalledWith(false);
+
+    // Rerender with result set, verify result summary button allows editing
+    rerender(
+      <ConversionAttemptSelector
+        points={2}
+        isGood={false}
+        onPointsChange={onPointsChange}
+        onResultChange={onResultChange}
+        variant="sync"
+      />
+    );
+    const resultSummaryBtn = screen.getByRole("button", { name: /Conversion result: No good\. Click to change/i });
+    fireEvent.click(resultSummaryBtn);
+    expect(screen.getByRole("button", { name: "GOOD" })).toBeInTheDocument();
+  });
+
+  it("supports async layout with point values and result buttons", () => {
+    const onPointsChange = vi.fn();
+    const onResultChange = vi.fn();
+
+    const { rerender } = render(
+      <ConversionAttemptSelector
+        points={null}
+        isGood={null}
+        onPointsChange={onPointsChange}
+        onResultChange={onResultChange}
+        variant="async"
+        accentColor="#06b6d4"
+      />
+    );
+
+    // Click 2 POINTS in async layout
+    fireEvent.click(screen.getByText("2 POINTS").closest("button")!);
+    expect(onPointsChange).toHaveBeenCalledWith(2);
+
+    rerender(
+      <ConversionAttemptSelector
+        points={2}
+        isGood={null}
+        onPointsChange={onPointsChange}
+        onResultChange={onResultChange}
+        variant="async"
+        accentColor="#06b6d4"
+      />
+    );
+
+    // Good and No Good buttons appear in async layout
+    expect(screen.getByRole("button", { name: /GOOD \(\+2 PTS\)/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /NO GOOD \(0 PTS\)/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /GOOD \(\+2 PTS\)/i }));
+    expect(onResultChange).toHaveBeenCalledWith(true);
+  });
 });
+

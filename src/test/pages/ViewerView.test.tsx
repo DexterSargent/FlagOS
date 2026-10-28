@@ -12,11 +12,25 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/",
 }));
 
 // Mock Auth
+let mockIsLeagueAdmin = false;
+let mockManagedTeamId: string | null = null;
+let mockPlayerTeamId: string | null = null;
+let mockUser: any = null;
+
 vi.mock("@/lib/authContext", () => ({
   useAuth: () => ({
-    isLeagueAdmin: false,
-    managedTeamId: null,
-    playerTeamId: null,
+    isLeagueAdmin: mockIsLeagueAdmin,
+    managedTeamId: mockManagedTeamId,
+    playerTeamId: mockPlayerTeamId,
+    user: mockUser,
+  }),
+}));
+
+vi.mock("firebase/firestore", () => ({
+  doc: vi.fn((_db, coll, id) => ({ id, path: `${coll}/${id}` })),
+  onSnapshot: vi.fn((_ref, cb) => {
+    cb({ exists: () => false, data: () => null });
+    return () => {};
   }),
 }));
 
@@ -106,10 +120,15 @@ const mockPlays = [
   },
 ];
 
+let currentMockMatch: any = mockMatch;
+let currentMockPlays: any[] = [...mockPlays];
+const mockUpdateSandboxMatch = vi.fn();
+const mockDeleteSandboxPlaysForMatch = vi.fn();
+
 vi.mock("@/lib/demoSandbox", () => ({
   getSandboxMatches: () => [mockMatch],
-  getSandboxMatch: () => mockMatch,
-  getSandboxPlays: () => [...mockPlays],
+  getSandboxMatch: () => currentMockMatch,
+  getSandboxPlays: () => [...currentMockPlays],
   getSandboxPlayers: () => [
     { id: "p1", playerName: "Marcus Vance", teamId: "team_apex" },
     { id: "p2", playerName: "Leo Sterling", teamId: "team_apex" },
@@ -121,16 +140,24 @@ vi.mock("@/lib/demoSandbox", () => ({
     { id: "team_apex", primaryColor: "#A10A39", secondaryColor: "#FFFFFF", tertiaryColor: "#FFCC00" },
     { id: "team_cyber", primaryColor: "#123456", secondaryColor: "#EEEEEE", tertiaryColor: "#ABCDEF" },
   ],
-  updateSandboxMatch: vi.fn(),
-  deleteSandboxPlaysForMatch: vi.fn(),
+  updateSandboxMatch: (...args: any[]) => mockUpdateSandboxMatch(...args),
+  deleteSandboxPlaysForMatch: (...args: any[]) => mockDeleteSandboxPlaysForMatch(...args),
   subscribeDemoSandbox: (cb: any) => () => {},
+  isDemoMatch: () => true,
 }));
 
 describe("Live Game Spectator & Box Score Suite (ViewerView)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsLeagueAdmin = false;
+    mockManagedTeamId = null;
+    mockPlayerTeamId = null;
+    mockUser = null;
+    currentMockMatch = mockMatch;
+    currentMockPlays = [...mockPlays];
     delete (window as any).location;
     window.location = new URL("http://localhost:3000/matches/match_demo_101/play-by-play") as any;
+    window.location.reload = vi.fn();
   });
 
   const renderViewer = async () => {
@@ -235,6 +262,213 @@ describe("Live Game Spectator & Box Score Suite (ViewerView)", () => {
       expect(screen.getByTestId("stat-card-firstDowns")).toBeInTheDocument();
       expect(screen.getByTestId("stat-card-totalTDs")).toBeInTheDocument();
     });
+
+    // Toggle to Cyber Knights breakdown
+    const awayBtn = screen.getByTestId("team-stats-view-away");
+    fireEvent.click(awayBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("team-stats-view-away")).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  it("opens flag football terms glossary drawer when Terms button is clicked", async () => {
+    await renderViewer();
+
+    const termsBtn = screen.getByRole("button", { name: /Terms/i });
+    fireEvent.click(termsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /Flag football terms/i })).toBeInTheDocument();
+      expect(screen.getByText("New to flag football?")).toBeInTheDocument();
+    });
+  });
+
+  it("opens terms drawer focused on Down when Down pill button is clicked", async () => {
+    await renderViewer();
+
+    const downBtn = screen.getByTitle("What is a down?");
+    fireEvent.click(downBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /Flag football terms/i })).toBeInTheDocument();
+      expect(screen.getByText("New to flag football?")).toBeInTheDocument();
+    });
+  });
+
+  it("toggles all stats vs core stats in live box score", async () => {
+    await renderViewer();
+
+    // Click Live Box Score
+    fireEvent.click(screen.getByRole("button", { name: "Live Box Score" }));
+
+    // Click All Stats toggle button if present
+    const toggleBtn = screen.queryByRole("button", { name: /All Stats/i });
+    if (toggleBtn) {
+      fireEvent.click(toggleBtn);
+      expect(screen.getByRole("button", { name: /Core Stats/i })).toBeInTheDocument();
+    }
+  });
+
+  it("renders Game Not Found state when match does not exist", async () => {
+    currentMockMatch = null;
+
+    const paramsPromise = Promise.resolve({ id: "non_existent_match" });
+    await act(async () => {
+      render(
+        <Suspense fallback={<div>Loading match...</div>}>
+          <ViewerView params={paramsPromise} />
+        </Suspense>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Game Not Found")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Return to Schedule/i })).toHaveAttribute("href", "/schedule");
+    });
+  });
+
+  it("switches teams in live box score tab", async () => {
+    await renderViewer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Live Box Score" }));
+
+    const awayTeamBtn = screen.getByRole("button", { name: /Cyber Knights/i });
+    fireEvent.click(awayTeamBtn);
+
+    const homeTeamBtn = screen.getByRole("button", { name: /Apex Predators/i });
+    fireEvent.click(homeTeamBtn);
+  });
+
+  it("renders Final banner and status when match is completed", async () => {
+    currentMockMatch = {
+      ...mockMatch,
+      status: "completed",
+    };
+
+    await renderViewer();
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Final").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("taps stat column header to display definition bar and closes it", async () => {
+    await renderViewer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Live Box Score" }));
+
+    const colHeader = screen.queryByRole("button", { name: /^P-TD$/i });
+    if (colHeader) {
+      fireEvent.click(colHeader);
+      const closeDefBtn = screen.queryByRole("button", { name: /Dismiss|Close/i });
+      if (closeDefBtn) fireEvent.click(closeDefBtn);
+    }
+  });
+
+  it("handles admin demo controls for opening manager and resetting match", async () => {
+    mockIsLeagueAdmin = true;
+    mockUser = { uid: "admin_1" };
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    await renderViewer();
+
+    const openManagerBtn = screen.getByRole("button", { name: /Open Live Manager/i });
+    expect(openManagerBtn).toBeInTheDocument();
+    fireEvent.click(openManagerBtn);
+    expect(mockUpdateSandboxMatch).toHaveBeenCalledWith("match_demo_101", { status: "in_progress" });
+
+    const resetBtn = screen.getByRole("button", { name: /Reset Match/i });
+    expect(resetBtn).toBeInTheDocument();
+    fireEvent.click(resetBtn);
+    expect(mockDeleteSandboxPlaysForMatch).toHaveBeenCalledWith("match_demo_101");
+  });
+
+  it("renders untimed / independent match without live clock", async () => {
+    currentMockMatch = {
+      ...mockMatch,
+      isAsyncStatKeeping: true,
+      isIndependent: true,
+    };
+
+    await renderViewer();
+
+    await waitFor(() => {
+      expect(screen.getByText(/3 Plays/i)).toBeInTheDocument();
+    });
+  });
+
+  it("pre-selects away team tab when user manages away team", async () => {
+    mockManagedTeamId = "team_cyber";
+
+    await renderViewer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Live Box Score" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("David Kim")).toBeInTheDocument();
+    });
+  });
+
+  it("calculates conversions and defensive events in live box score", async () => {
+    currentMockPlays = [
+      ...mockPlays,
+      {
+        id: "play_conv",
+        matchId: "match_demo_101",
+        timestamp: "2026-10-18T10:08:00Z",
+        period: 1,
+        possessionTeamId: "team_apex",
+        playType: "Pass",
+        isConversion: true,
+        conversionSuccess: true,
+        conversionPasser: "Marcus Vance",
+        conversionReceiver: "Leo Sterling",
+        points: 2,
+      },
+      {
+        id: "play_sack",
+        matchId: "match_demo_101",
+        timestamp: "2026-10-18T10:09:00Z",
+        period: 1,
+        possessionTeamId: "team_apex",
+        playType: "Pass",
+        passOutcome: "Sack",
+        defenders: ["David Kim"],
+        isSafety: true,
+      },
+      {
+        id: "play_pick6",
+        matchId: "match_demo_101",
+        timestamp: "2026-10-18T10:10:00Z",
+        period: 1,
+        possessionTeamId: "team_apex",
+        playType: "Pass",
+        passOutcome: "Interception",
+        interceptorPlayerId: "David Kim",
+        isPick6: true,
+      },
+    ];
+
+    await renderViewer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Live Box Score" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cyber Knights" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("David Kim")).toBeInTheDocument();
+    });
+  });
+
+  it("handles embedded mode with hidden back button", async () => {
+    delete (window as any).location;
+    window.location = new URL("http://localhost:3000/matches/match_demo_101/play-by-play?embed=true") as any;
+    window.location.reload = vi.fn();
+
+    await renderViewer();
+
+    expect(screen.queryByRole("link", { name: "" })).not.toBeInTheDocument();
   });
 });
+
 

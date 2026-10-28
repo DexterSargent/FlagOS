@@ -297,4 +297,407 @@ describe("LeagueHeader Component", () => {
     const flagosLinks = screen.queryAllByRole("link", { name: /^flagos$/i });
     expect(flagosLinks.length).toBe(0);
   });
+
+  it("opens mobile navigation drawer and allows navigating through links", () => {
+    const logoutMock = vi.fn();
+    mockUseLeague.mockReturnValue(defaultLeagueSettings);
+    mockUseAuth.mockReturnValue({
+      user: { email: "player@flagos.com" },
+      role: "player",
+      isLeagueAdmin: false,
+      isPlayer: true,
+      playerData: { playerName: "Jordan" },
+      canRegisterAsPlayer: true,
+      isAuthorized: true,
+      playerTeamId: "team_apex",
+      managedTeamId: "team_apex",
+      logout: logoutMock,
+    });
+
+    render(<LeagueHeader activePage="schedule" />);
+
+    const menuToggle = screen.getByLabelText(/Toggle navigation menu/i);
+    expect(menuToggle).toBeInTheDocument();
+    fireEvent.click(menuToggle);
+
+    // Mobile drawer is open
+    expect(screen.getAllByText("League Home").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Schedule").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Standings & Stats").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Teams").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Find a League").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("My Team").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Playbook").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Player Registration").length).toBeGreaterThan(0);
+
+    // Sign out button in mobile menu
+    const signOutBtn = screen.getByRole("button", { name: /Sign Out/i });
+    fireEvent.click(signOutBtn);
+    expect(logoutMock).toHaveBeenCalledOnce();
+  });
+
+  it("renders demo platform exit links in mobile menu when in demo league", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isDemoLeague: true,
+    });
+    mockUseAuth.mockReturnValue({
+      user: null,
+      role: null,
+      isLeagueAdmin: false,
+      isPlayer: false,
+      canRegisterAsPlayer: false,
+      isAuthorized: false,
+      playerTeamId: null,
+      managedTeamId: null,
+    });
+
+    render(<LeagueHeader activePage="league" />);
+    fireEvent.click(screen.getByLabelText(/Toggle navigation menu/i));
+
+    expect(screen.getByText("Pricing Plans")).toBeInTheDocument();
+    expect(screen.getByText(/Sign In \/ Register/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /FlagOS Platform Home/i })).toBeInTheDocument();
+  });
+
+  it("renders announcement banner when announcement is set", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      settings: {
+        ...defaultLeagueSettings.settings,
+        announcement: "Playoffs start this weekend! Check your schedule.",
+      },
+    });
+    mockUseAuth.mockReturnValue(signedOutAuth);
+
+    render(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText(/Playoffs start this weekend!/i)).toBeInTheDocument();
+  });
+
+  it("renders switcher actions for Create & Subscribe League and Platform Home", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      userLeagues: switcherLeagues,
+      isDemoLeague: true,
+    });
+    mockUseAuth.mockReturnValue(signedOutAuth);
+
+    render(<LeagueHeader activePage="schedule" />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch League" }));
+
+    expect(screen.getByText("Create & Subscribe League")).toBeInTheDocument();
+    expect(screen.getByText(/FlagOS Platform Home/i)).toBeInTheDocument();
+  });
+
+  it("handles subscription past due banner and resume subscription", async () => {
+    const resumeSubscription = vi.fn().mockResolvedValue(undefined);
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isSubscriptionPastDue: true,
+      resumeSubscription,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isLeagueAdmin: true,
+      isAuthorized: true,
+    });
+
+    render(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText(/Subscription Payment Past Due/i)).toBeInTheDocument();
+
+    const resumeBtn = screen.getByRole("button", { name: /Update Payment & Resume/i });
+    fireEvent.click(resumeBtn);
+    expect(resumeSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles subscription past due banner error alert", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const resumeSubscription = vi.fn().mockRejectedValue(new Error("Card declined"));
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isSubscriptionPastDue: true,
+      resumeSubscription,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isLeagueAdmin: true,
+      isAuthorized: true,
+    });
+
+    render(<LeagueHeader activePage="schedule" />);
+    const resumeBtn = screen.getByRole("button", { name: /Update Payment & Resume/i });
+    fireEvent.click(resumeBtn);
+
+    // Wait for promise rejection to trigger alert
+    await vi.waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Card declined");
+    });
+    alertSpy.mockRestore();
+  });
+
+  it("handles archived season banner with Season Options trigger", () => {
+    const openCustomizer = vi.fn();
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isLeagueArchived: true,
+      isSubscriptionPastDue: false,
+      openCustomizer,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isLeagueAdmin: true,
+      isAuthorized: true,
+    });
+
+    render(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText(/Archived Season/i)).toBeInTheDocument();
+
+    const seasonOptionsBtn = screen.getByRole("button", { name: /Season Options/i });
+    fireEvent.click(seasonOptionsBtn);
+    expect(openCustomizer).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders Settings button for authorized league admin and calls openCustomizer", () => {
+    const openCustomizer = vi.fn();
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      openCustomizer,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isLeagueAdmin: true,
+      isAuthorized: true,
+    });
+
+    render(<LeagueHeader activePage="league" />);
+    const settingsBtn = screen.getByRole("button", { name: /Settings/i });
+    expect(settingsBtn).toBeInTheDocument();
+    fireEvent.click(settingsBtn);
+    expect(openCustomizer).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders player profile pill when user is a rostered player", () => {
+    mockUseLeague.mockReturnValue(defaultLeagueSettings);
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isPlayer: true,
+      playerData: { number: "12", playerName: "Tom Brady" },
+    });
+
+    render(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText("#12 Tom Brady")).toBeInTheDocument();
+  });
+
+  it("allows signing out from mobile drawer when logged in to non-demo league", () => {
+    const logout = vi.fn().mockResolvedValue(undefined);
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      activeLeagueId: "real-league-123",
+      isDemoLeague: false,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      user: { uid: "user-1" },
+      logout,
+    });
+
+    render(<LeagueHeader activePage="schedule" />);
+    fireEvent.click(screen.getByLabelText(/Toggle navigation menu/i));
+
+    const signOutBtn = screen.getByRole("button", { name: /Sign Out/i });
+    expect(signOutBtn).toBeInTheDocument();
+    fireEvent.click(signOutBtn);
+    expect(logout).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigates to standard tabs from mobile drawer", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      activeLeagueId: "demo-league",
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      playerTeamId: "team-a",
+      canRegisterAsPlayer: true,
+    });
+
+    render(<LeagueHeader activePage="schedule" />);
+    fireEvent.click(screen.getByLabelText(/Toggle navigation menu/i));
+
+    expect(screen.getAllByRole("link", { name: /League Home/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /Schedule/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /Standings & Stats/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /^Teams$/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /Find a League/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /My Team/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /Playbook/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("link", { name: /Player Registration/i }).length).toBeGreaterThanOrEqual(1);
+
+    // Clicking a link closes the mobile drawer
+    const scheduleLink = screen.getAllByRole("link", { name: /Schedule/i })[1];
+    fireEvent.click(scheduleLink);
+  });
+
+  it("renders role pill for Team Admin and Spectator in demo league", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isDemoLeague: true,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      role: "team_admin",
+    });
+
+    const { rerender } = render(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText("Team Admin")).toBeInTheDocument();
+
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      role: "spectator",
+    });
+    rerender(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText("Spectator")).toBeInTheDocument();
+  });
+
+  it("renders role pill for League Admin, Team Admin, and User in non-demo league", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isDemoLeague: false,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isLeagueAdmin: true,
+      user: { uid: "admin-1" },
+    });
+
+    const { rerender } = render(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText("League Admin")).toBeInTheDocument();
+
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isLeagueAdmin: false,
+      role: "team_admin",
+      user: { uid: "team-admin-1" },
+    });
+    rerender(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText("Team Admin")).toBeInTheDocument();
+
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      isLeagueAdmin: false,
+      role: null,
+      user: { uid: "regular-user-1" },
+    });
+    rerender(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText("My Account")).toBeInTheDocument();
+  });
+
+  it("renders popover links for Create & Subscribe League and Platform Home", () => {
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      userLeagues: switcherLeagues,
+      isDemoLeague: true,
+    });
+    mockUseAuth.mockReturnValue(signedOutAuth);
+
+    render(<LeagueHeader activePage="schedule" />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch League" }));
+
+    const createLink = screen.getByRole("link", { name: /Create & Subscribe League/i });
+    expect(createLink).toBeInTheDocument();
+    fireEvent.click(createLink);
+
+    // Reopen switcher
+    fireEvent.click(screen.getByRole("button", { name: "Switch League" }));
+    const homeLink = screen.getByRole("link", { name: /FlagOS Platform Home/i });
+    expect(homeLink).toBeInTheDocument();
+    fireEvent.click(homeLink);
+  });
+
+  it("filters private leagues in switcher unless user is authorized", () => {
+    const leaguesWithPrivate = [
+      { id: "default", name: "Public League", shortcode: "PUB", role: "member", visibility: "public" },
+      { id: "priv1", name: "Private League", shortcode: "PRV", role: "member", visibility: "private" },
+    ];
+
+    // Unauthorized user
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      userLeagues: leaguesWithPrivate,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      user: { email: "stranger@example.com" },
+    });
+
+    const { rerender } = render(<LeagueHeader activePage="schedule" />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch League" }));
+    expect(screen.getByText("Public League")).toBeInTheDocument();
+    expect(screen.queryByText("Private League")).not.toBeInTheDocument();
+
+    // Authorized owner user
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      user: { email: "dextersargent@flagos.ca" },
+    });
+    rerender(<LeagueHeader activePage="schedule" />);
+    expect(screen.getByText("Private League")).toBeInTheDocument();
+  });
+
+  it("opens mobile navigation menu and clicks mobile drawer links", () => {
+    const mockLogout = vi.fn();
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isDemoLeague: true,
+    });
+    mockUseAuth.mockReturnValue({
+      ...signedOutAuth,
+      user: { email: "player@example.com" },
+      playerTeamId: "team_apex",
+      canRegisterAsPlayer: true,
+      logout: mockLogout,
+    });
+
+    const { rerender } = render(<LeagueHeader activePage="schedule" />);
+
+    // Open mobile menu
+    const menuBtn = screen.getByRole("button", { name: "Toggle Navigation Menu" });
+    fireEvent.click(menuBtn);
+
+    // Click links inside mobile drawer
+    const linksToClick = [
+      "Standings & Stats",
+      "Teams",
+      "Find a League",
+      "Playbook",
+      "Player Registration",
+      "FlagOS Platform Home",
+      "Pricing Plans",
+      "Schedule",
+    ];
+
+    linksToClick.forEach((text) => {
+      // If menu was closed by previous click, reopen it
+      const openBtn = screen.queryByRole("button", { name: "Toggle Navigation Menu" });
+      if (openBtn) fireEvent.click(openBtn);
+
+      const links = screen.queryAllByRole("link", { name: new RegExp(text, "i") });
+      const mobileLink = links[links.length - 1];
+      if (mobileLink) fireEvent.click(mobileLink);
+    });
+
+    // Test sign out in non-demo mode
+    mockUseLeague.mockReturnValue({
+      ...defaultLeagueSettings,
+      isDemoLeague: false,
+    });
+    rerender(<LeagueHeader activePage="schedule" />);
+    const reopenBtn = screen.getByRole("button", { name: "Toggle Navigation Menu" });
+    fireEvent.click(reopenBtn);
+
+    const signOutBtn = screen.getByRole("button", { name: /Sign Out/i });
+    fireEvent.click(signOutBtn);
+    expect(mockLogout).toHaveBeenCalled();
+  });
 });
+

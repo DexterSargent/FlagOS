@@ -56,23 +56,49 @@ const mockPlayers = [
   { id: "p3", playerName: "David Kim", teamId: "team_cyber" },
 ];
 
+const {
+  mockUpdateSandboxMatch,
+  mockAddSandboxPlay,
+  mockDeleteSandboxPlay,
+  mockDeleteSandboxPlaysForMatch,
+  getSandboxPlaysList,
+  setSandboxPlaysList,
+  getMockMatch,
+  setMockMatch,
+} = vi.hoisted(() => {
+  let plays: any[] = [];
+  let currentMatch: any = null;
+  return {
+    mockUpdateSandboxMatch: vi.fn(),
+    mockAddSandboxPlay: vi.fn((play: Record<string, unknown>) => ({ id: "sandbox-play", ...play })),
+    mockDeleteSandboxPlay: vi.fn(),
+    mockDeleteSandboxPlaysForMatch: vi.fn(),
+    getSandboxPlaysList: () => plays,
+    setSandboxPlaysList: (p: any[]) => { plays = p; },
+    getMockMatch: () => currentMatch,
+    setMockMatch: (m: any) => { currentMatch = m; },
+  };
+});
+
 vi.mock("@/lib/demoSandbox", () => ({
-  getSandboxMatches: () => [mockMatch],
-  getSandboxMatch: () => mockMatch,
-  getSandboxPlays: () => [],
+  getSandboxMatches: () => [getMockMatch() || mockMatch],
+  getSandboxMatch: () => getMockMatch() || mockMatch,
+  getSandboxPlays: () => getSandboxPlaysList(),
   getSandboxPlayers: () => mockPlayers,
   getSandboxTeams: () => [],
   isDemoMatch: () => true,
-  updateSandboxMatch: vi.fn(),
-  addSandboxPlay: vi.fn((play: Record<string, unknown>) => ({ id: "sandbox-play", ...play })),
-  deleteSandboxPlay: vi.fn(),
-  deleteSandboxPlaysForMatch: vi.fn(),
+  updateSandboxMatch: mockUpdateSandboxMatch,
+  addSandboxPlay: mockAddSandboxPlay,
+  deleteSandboxPlay: mockDeleteSandboxPlay,
+  deleteSandboxPlaysForMatch: mockDeleteSandboxPlaysForMatch,
   subscribeDemoSandbox: (cb: any) => () => {},
 }));
 
 describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setSandboxPlaysList([]);
+    setMockMatch(null);
     delete (window as any).location;
     window.location = new URL("http://localhost:3000/matches/match_demo_101/play-by-play") as any;
   });
@@ -334,4 +360,544 @@ describe("Live Game Operator & Official Admin Suite (AdminView)", () => {
     fireEvent.click(qbCollapsed);
     expect(screen.getByText("Select Quarterback")).toBeInTheDocument();
   });
+
+  it("handles down selection directly in sync play wizard header", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    // Verify down selector buttons exist
+    const secondDownBtn = screen.getByRole("button", { name: /2nd Down/i });
+    expect(secondDownBtn).toBeInTheDocument();
+    fireEvent.click(secondDownBtn);
+
+    // Down should now be 2nd
+    expect(secondDownBtn.className).toContain("bg-white");
+  });
+
+  it("handles INCOMPLETE pass outcome via Missed Throw", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    // PASS play
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+
+    // Change outcome to Incomplete
+    const outcomeBtn = screen.getByRole("button", { name: /Play Outcome: Complete\. Click to change/i });
+    fireEvent.click(outcomeBtn);
+
+    const incompleteOption = screen.getByRole("button", { name: /^Incomplete$/i });
+    fireEvent.click(incompleteOption);
+
+    // Choose Missed Throw
+    const missedThrowBtn = screen.getByRole("button", { name: /MISSED THROW/i });
+    fireEvent.click(missedThrowBtn);
+
+    // Record Incomplete Pass
+    const recordBtn = screen.getByRole("button", { name: /SAVE & NEXT DOWN/i });
+    expect(recordBtn).toBeInTheDocument();
+    fireEvent.click(recordBtn);
+
+    // After play is saved, operator is prompted to spot the ball
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles TOUCHDOWN outcome and transitions to extra point / conversion wizard", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    // PASS play
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leo Sterling" }));
+
+    // Click TOUCHDOWN
+    const tdBtn = screen.getByRole("button", { name: /TOUCHDOWN/i });
+    fireEvent.click(tdBtn);
+
+    // Should prompt for conversion attempt: 1 PT from 5 Yd or 2 PT from 10 Yd
+    await waitFor(() => {
+      expect(screen.getByText(/From 5 Yd/i)).toBeInTheDocument();
+      expect(screen.getByText(/From 10 Yd/i)).toBeInTheDocument();
+    });
+  });
+
+  it("handles SACK outcome on PASS play with loss of yards", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+
+    const outcomeBtn = screen.getByRole("button", { name: /Play Outcome: Complete\. Click to change/i });
+    fireEvent.click(outcomeBtn);
+    fireEvent.click(screen.getByRole("button", { name: /^Sack$/i }));
+
+    const sackerBtn = screen.getByRole("button", { name: "David Kim" });
+    fireEvent.click(sackerBtn);
+
+    const lossOfYardsBtn = screen.getByRole("button", { name: /Loss Of Yards/i });
+    expect(lossOfYardsBtn).toBeInTheDocument();
+    fireEvent.click(lossOfYardsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles SACK resulting in SAFETY and awards 2 points", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+
+    const outcomeBtn = screen.getByRole("button", { name: /Play Outcome: Complete\. Click to change/i });
+    fireEvent.click(outcomeBtn);
+    fireEvent.click(screen.getByRole("button", { name: /^Sack$/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "David Kim" }));
+
+    const safetyBtn = screen.getByRole("button", { name: /^Safety$/i });
+    fireEvent.click(safetyBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles INTERCEPTION with PICK 6 outcome", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+
+    const outcomeBtn = screen.getByRole("button", { name: /Play Outcome: Complete\. Click to change/i });
+    fireEvent.click(outcomeBtn);
+    fireEvent.click(screen.getByRole("button", { name: /^Interception$/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "David Kim" }));
+
+    const pick6Btn = screen.getByRole("button", { name: /PICK 6/i });
+    expect(pick6Btn).toBeInTheDocument();
+    fireEvent.click(pick6Btn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/From 5 Yd/i)).toBeInTheDocument();
+    });
+  });
+
+  it("handles INTERCEPTION with TURNOVER (Downed/OOB)", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+
+    const outcomeBtn = screen.getByRole("button", { name: /Play Outcome: Complete\. Click to change/i });
+    fireEvent.click(outcomeBtn);
+    fireEvent.click(screen.getByRole("button", { name: /^Interception$/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "David Kim" }));
+
+    const turnoverBtn = screen.getByRole("button", { name: /OOB \/ DOWNED/i });
+    expect(turnoverBtn).toBeInTheDocument();
+    fireEvent.click(turnoverBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles RUN play with Flag For Loss (FFL)", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /RUN/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+
+    const outcomeBtn = screen.getByRole("button", { name: /Play Outcome: Positive \/ No Gain\. Click to change|Play Outcome: Gain\. Click to change/i });
+    fireEvent.click(outcomeBtn);
+    fireEvent.click(screen.getByRole("button", { name: /Flag For Loss/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "David Kim" }));
+
+    const lossOfYardsBtn = screen.getByRole("button", { name: /Loss Of Yards/i });
+    fireEvent.click(lossOfYardsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles OUT OF BOUNDS prompt for Complete Pass", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leo Sterling" }));
+
+    const oobBtn = screen.getByRole("button", { name: /OUT OF BOUNDS/i });
+    fireEvent.click(oobBtn);
+
+    const oobFirstDownBtn = screen.getByRole("button", { name: /OOB - FIRST DOWN/i });
+    expect(oobFirstDownBtn).toBeInTheDocument();
+    fireEvent.click(oobFirstDownBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles TOUCHDOWN followed by NO GOOD conversion", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leo Sterling" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /TOUCHDOWN/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/From 5 Yd/i)).toBeInTheDocument();
+    });
+
+    const onePtBtn = screen.getByRole("button", { name: /From 5 Yd/i });
+    fireEvent.click(onePtBtn);
+
+    const noGoodBtn = screen.getByRole("button", { name: /NO GOOD/i });
+    expect(noGoodBtn).toBeInTheDocument();
+    fireEvent.click(noGoodBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles TOUCHDOWN followed by GOOD conversion and saves conversion stats", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PASS/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Marcus Vance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Leo Sterling" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /TOUCHDOWN/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/From 5 Yd/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /From 5 Yd/i }));
+
+    const goodBtn = screen.getByRole("button", { name: /^GOOD$/i });
+    fireEvent.click(goodBtn);
+
+    const saveStatsBtn = screen.getByRole("button", { name: /SAVE CONVERSION STATS/i });
+    expect(saveStatsBtn).toBeInTheDocument();
+    fireEvent.click(saveStatsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /CLICK WHEN SPOTTED/i })).toBeInTheDocument();
+    });
+  });
+
+  it("handles PENALTY play type selection and returns to play type", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PENALTY/i }));
+
+    await waitFor(() => {
+      const backBtn = screen.getByRole("button", { name: /Back to Play Type/i });
+      expect(backBtn).toBeInTheDocument();
+      fireEvent.click(backBtn);
+    });
+
+    expect(screen.getByRole("button", { name: /PASS/i })).toBeInTheDocument();
+  });
+
+  it("enforces penalty with automatic first down", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /PENALTY/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Select Infraction/i)).toBeInTheDocument();
+    });
+
+    const dpiBtn = screen.getByRole("button", { name: /Defensive Pass Interference/i });
+    fireEvent.click(dpiBtn);
+
+    const contEnforcementBtn = screen.getByRole("button", { name: /Continue to enforcement/i });
+    fireEvent.click(contEnforcementBtn);
+
+    const contPlayerBtn = screen.getByRole("button", { name: /Continue to player/i });
+    fireEvent.click(contPlayerBtn);
+
+    const enforceBtn = screen.getByRole("button", { name: /Enforce penalty/i });
+    fireEvent.click(enforceBtn);
+
+    await waitFor(() => {
+      expect(mockAddSandboxPlay).toHaveBeenCalledWith(
+        expect.objectContaining({
+          playType: "Penalty",
+          firstDown: true,
+        })
+      );
+    });
+  });
+
+  it("adjusts game clock by 10s and allows pausing and resetting play clock", async () => {
+    await renderAdmin();
+
+    const addClockBtn = screen.getByRole("button", { name: "Add 10 seconds" });
+    fireEvent.pointerDown(addClockBtn);
+    fireEvent.pointerUp(addClockBtn);
+
+    const removeClockBtn = screen.getByRole("button", { name: "Remove 10 seconds" });
+    fireEvent.pointerDown(removeClockBtn);
+    fireEvent.pointerUp(removeClockBtn);
+
+    const playClockToggle = screen.getByRole("button", { name: /Start play clock|Pause play clock/i });
+    fireEvent.click(playClockToggle);
+    expect(screen.getByRole("button", { name: /Start play clock|Pause play clock/i })).toBeInTheDocument();
+
+    const resetPlayClockBtn = screen.getByRole("button", { name: "Reset play clock" });
+    fireEvent.click(resetPlayClockBtn);
+  });
+
+  it("handles timeout flow and ends timeout early", async () => {
+    await renderAdmin();
+
+    const homeTimeoutBtn = screen.getByRole("button", { name: /Call home timeout/i });
+    fireEvent.click(homeTimeoutBtn);
+
+    expect(screen.getByText("Timeout")).toBeInTheDocument();
+    const endEarlyBtn = screen.getByRole("button", { name: /END TIMEOUT EARLY/i });
+    fireEvent.click(endEarlyBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText("END TIMEOUT EARLY")).not.toBeInTheDocument();
+    });
+  });
+
+  it("transitions to HALFTIME when clock reaches 0 and begins second half", async () => {
+    setMockMatch({
+      ...mockMatch,
+      status: "in_progress",
+      matchState: {
+        gameClock: 0,
+        half: 1,
+        currentDown: 1,
+        possession: "Apex Predators",
+      },
+    });
+
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /RUN/i }));
+    const runnerBtn1 = screen.queryByRole("button", { name: "Marcus Vance" });
+    if (runnerBtn1) fireEvent.click(runnerBtn1);
+    fireEvent.click(screen.getByRole("button", { name: /OUT OF BOUNDS/i }));
+    fireEvent.click(screen.getByRole("button", { name: /OOB - SHORT/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Halftime")).toBeInTheDocument();
+    });
+
+    const skipBreakBtn = screen.getByRole("button", { name: /SKIP BREAK|BEGIN SECOND HALF/i });
+    fireEvent.click(skipBreakBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Halftime")).not.toBeInTheDocument();
+    });
+  });
+
+  it("transitions to GAME_OVER when second half clock expires and finalizes game", async () => {
+    setMockMatch({
+      ...mockMatch,
+      status: "in_progress",
+      matchState: {
+        gameClock: 0,
+        half: 2,
+        currentDown: 1,
+        possession: "Apex Predators",
+      },
+    });
+
+    await renderAdmin();
+
+    await waitFor(() => {
+      const snapButton = screen.getByRole("button", { name: /CLICK WHEN SNAPPED/i });
+      fireEvent.click(snapButton);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /RUN/i }));
+    const runnerBtn2 = screen.queryByRole("button", { name: "Marcus Vance" });
+    if (runnerBtn2) fireEvent.click(runnerBtn2);
+    fireEvent.click(screen.getByRole("button", { name: /OUT OF BOUNDS/i }));
+    fireEvent.click(screen.getByRole("button", { name: /OOB - SHORT/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Game Over")).toBeInTheDocument();
+      expect(screen.getByText("Did Not Participate")).toBeInTheDocument();
+    });
+
+    // Mark Marcus Vance as absent then unmark
+    const vanceBtn = screen.getByRole("button", { name: /Marcus Vance/i });
+    fireEvent.click(vanceBtn);
+    expect(screen.getByText("Absent")).toBeInTheDocument();
+    fireEvent.click(vanceBtn);
+    expect(screen.queryByText("Absent")).not.toBeInTheDocument();
+
+    const finalizeBtn = screen.getByRole("button", { name: /FINALIZE GAME & SAVE STATS/i });
+    fireEvent.click(finalizeBtn);
+
+    await waitFor(() => {
+      expect(mockUpdateSandboxMatch).toHaveBeenCalledWith(
+        "match_demo_101",
+        expect.objectContaining({
+          status: "completed",
+        })
+      );
+      expect(mockPush).toHaveBeenCalledWith("/matches/match_demo_101");
+    });
+  });
+
+
+  it("confirms Reset Game to Pre-Game and resets match data", async () => {
+    await renderAdmin();
+
+    await waitFor(() => {
+      const resetBtn = screen.getByRole("button", { name: /Reset Game/i });
+      fireEvent.click(resetBtn);
+    });
+
+    const confirmBtn = screen.getByRole("button", { name: /Permanently Reset/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(mockDeleteSandboxPlaysForMatch).toHaveBeenCalledWith("match_demo_101");
+      expect(mockUpdateSandboxMatch).toHaveBeenCalled();
+    });
+  });
+
+  it("confirms undo last play and removes last play", async () => {
+    const alertMock = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const confirmMock = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    setSandboxPlaysList([
+      {
+        id: "play_1",
+        matchId: "match_demo_101",
+        down: 2,
+        possessionTeamId: "team_apex",
+        isTouchdown: false,
+      },
+    ]);
+
+    await renderAdmin();
+
+    const undoBtn = screen.getByRole("button", { name: /Undo last play/i });
+    fireEvent.click(undoBtn);
+
+    expect(confirmMock).toHaveBeenCalled();
+    expect(mockDeleteSandboxPlay).toHaveBeenCalledWith("play_1");
+    expect(alertMock).toHaveBeenCalledWith("Last play undone successfully.");
+
+    alertMock.mockRestore();
+    confirmMock.mockRestore();
+  });
+
+  it("opens and closes play log drawer", async () => {
+    await renderAdmin();
+
+    const playLogBtn = screen.getByRole("button", { name: /Play Log/i });
+    fireEvent.click(playLogBtn);
+
+    expect(screen.getByText("Live Game Play Log")).toBeInTheDocument();
+    expect(screen.getByText("No plays logged yet.")).toBeInTheDocument();
+
+    const closeButtons = screen.getAllByRole("button");
+    const closeBtn = closeButtons.find(b => b.querySelector("svg.lucide-x"));
+    expect(closeBtn).toBeDefined();
+    if (closeBtn) {
+      fireEvent.click(closeBtn);
+      expect(screen.queryByText("Live Game Play Log")).not.toBeInTheDocument();
+    }
+  });
+
+  it("toggles game clock running state", async () => {
+    await renderAdmin();
+
+    const pauseBtn = screen.getByRole("button", { name: /Pause game clock|Start game clock/i });
+    expect(pauseBtn).toBeInTheDocument();
+    fireEvent.click(pauseBtn);
+  });
 });
+
+

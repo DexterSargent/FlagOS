@@ -87,9 +87,9 @@ describe("PlayQuestionsModal", () => {
       />
     );
 
-    // Click suggestion chip
-    const chip = screen.getByRole("button", { name: "What is my read against Cover 2?" });
-    fireEvent.click(chip);
+    // Enter question in textarea
+    const textarea = screen.getByLabelText(/Ask Your Coach a Question/i);
+    fireEvent.change(textarea, { target: { value: "What is my read against Cover 2?" } });
 
     // Submit question
     const postBtn = screen.getByRole("button", { name: /Post Question/i });

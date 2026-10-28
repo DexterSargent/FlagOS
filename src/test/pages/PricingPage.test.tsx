@@ -389,4 +389,144 @@ describe("FlagOS Pricing & Packaging Page (PricingPage)", () => {
     render(<PricingPage />);
     expect(await screen.findByRole("status")).toHaveTextContent("Nothing was charged");
   });
+
+  it("creates a complimentary team for owner with custom colors and visibility", async () => {
+    mockAuth = ownerAuth() as typeof mockAuth;
+    render(<PricingPage />);
+
+    const createTeamBtn = screen.getByRole("button", { name: /Create Team Portal \(no charge\)/i });
+    fireEvent.click(createTeamBtn);
+
+    expect(screen.getByPlaceholderText(/Apex Predators/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(/Apex Predators/i), { target: { value: "Apex Wolves" } });
+    fireEvent.change(screen.getByPlaceholderText(/APX/i), { target: { value: "AWF" } });
+
+    // Pick colors
+    const colorBtn = screen.queryByRole("button", { name: /Team primary color #3b82f6/i });
+    if (colorBtn) fireEvent.click(colorBtn);
+
+    // Pick visibility
+    const visibilitySelect = screen.getByLabelText(/Team Portal Visibility/i);
+    fireEvent.change(visibilitySelect, { target: { value: "private" } });
+
+    const submitBtn = screen.getByRole("button", { name: /Create Team · Complimentary/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockCreateSecureRecord).toHaveBeenCalledWith(
+        "team",
+        expect.objectContaining({
+          name: "Apex Wolves",
+          shortcode: "AWF",
+          visibility: "private",
+        })
+      );
+    });
+  });
+
+  it("closes development notice when close button or Maybe later is clicked", () => {
+    render(<PricingPage />);
+
+    // Click subscribe to trigger development notice
+    const subscribeBtn = screen.getByRole("button", { name: /Launch & Subscribe League/i });
+    fireEvent.click(subscribeBtn);
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("FlagOS is still in development");
+
+    // Click Maybe later button
+    const maybeLaterBtn = screen.getByRole("button", { name: /Maybe later/i });
+    fireEvent.click(maybeLaterBtn);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("closes development notice when clicking close button or outside backdrop", () => {
+    render(<PricingPage />);
+
+    // Click subscribe to trigger development notice
+    const subscribeBtn = screen.getByRole("button", { name: /Launch & Subscribe League/i });
+    fireEvent.click(subscribeBtn);
+
+    const closeBtn = screen.getByRole("button", { name: /Close development notice/i });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // Reopen and click backdrop
+    fireEvent.click(subscribeBtn);
+    const dialog = screen.getByRole("dialog");
+    const backdrop = dialog.parentElement!;
+    fireEvent.click(backdrop);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("customizes color palette and closes league modal", () => {
+    mockAuth = ownerAuth();
+    render(<PricingPage />);
+
+    const createLeagueBtn = screen.getByRole("button", { name: /Create League \(no charge\)/i });
+    fireEvent.click(createLeagueBtn);
+
+    expect(screen.getByRole("heading", { name: /Subscribe League Portal/i })).toBeInTheDocument();
+
+    // Pick colors
+    const primaryBtn = screen.queryByRole("button", { name: /League primary color #06B6D4/i });
+    if (primaryBtn) fireEvent.click(primaryBtn);
+
+    const secondaryBtn = screen.queryByRole("button", { name: /League secondary color #3B82F6/i });
+    if (secondaryBtn) fireEvent.click(secondaryBtn);
+
+    const tertiaryBtn = screen.queryByRole("button", { name: /League tertiary color #FFFFFF/i });
+    if (tertiaryBtn) fireEvent.click(tertiaryBtn);
+
+    // Close modal
+    const closeBtn = screen.getByLabelText("Close");
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole("heading", { name: /Subscribe League Portal/i })).not.toBeInTheDocument();
+  });
+
+  it("customizes team color palette and closes team modal", () => {
+    mockAuth = ownerAuth();
+    render(<PricingPage />);
+
+    const createTeamBtn = screen.getByRole("button", { name: /Create Team Portal \(no charge\)/i });
+    fireEvent.click(createTeamBtn);
+
+    expect(screen.getByRole("heading", { name: /Subscribe Team Portal/i })).toBeInTheDocument();
+
+    // Pick colors
+    const primaryBtn = screen.queryByRole("button", { name: /Team primary color #06B6D4/i });
+    if (primaryBtn) fireEvent.click(primaryBtn);
+
+    const secondaryBtn = screen.queryByRole("button", { name: /Team secondary color #3ca505/i });
+    if (secondaryBtn) fireEvent.click(secondaryBtn);
+
+    const tertiaryBtn = screen.queryByRole("button", { name: /Team tertiary color #FFFFFF/i });
+    if (tertiaryBtn) fireEvent.click(tertiaryBtn);
+
+    // Pick visibility
+    const visibilitySelect = screen.getByLabelText(/Team Portal Visibility/i);
+    fireEvent.change(visibilitySelect, { target: { value: "private" } });
+
+    // Close modal
+    const closeBtn = screen.getByLabelText("Close");
+    fireEvent.click(closeBtn);
+    expect(screen.queryByRole("heading", { name: /Subscribe Team Portal/i })).not.toBeInTheDocument();
+  });
+
+  it("handles team logo URL and custom color input changes", () => {
+    mockAuth = ownerAuth();
+    render(<PricingPage />);
+
+    const createTeamBtn = screen.getByRole("button", { name: /Create Team Portal \(no charge\)/i });
+    fireEvent.click(createTeamBtn);
+
+    const logoInput = screen.getByPlaceholderText(/Paste image URL or upload below/i);
+    fireEvent.change(logoInput, { target: { value: "https://example.com/logo.png" } });
+    expect(logoInput).toHaveValue("https://example.com/logo.png");
+
+    const closeBtn = screen.getByLabelText("Close");
+    fireEvent.click(closeBtn);
+  });
 });
+
+

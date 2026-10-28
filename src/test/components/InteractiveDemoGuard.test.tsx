@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import InteractiveDemoGuard, { isPathAllowedForFeature } from "@/components/InteractiveDemoGuard";
 
 describe("InteractiveDemoGuard & Embed Isolation", () => {
@@ -125,6 +125,106 @@ describe("InteractiveDemoGuard & Embed Isolation", () => {
       fireEvent.click(exploreBtn);
 
       expect(topLocation.href).toBe("/league/default?demo=true");
+    });
+
+    it("intercepts target=_blank links in embedded frame", () => {
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("http://localhost:3000/schedule?embed=true"),
+      });
+
+      render(
+        <div>
+          <a href="https://example.com" target="_blank" rel="noreferrer">External</a>
+          <InteractiveDemoGuard />
+        </div>
+      );
+
+      fireEvent.click(screen.getByRole("link", { name: /External/i }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      // Close dialog via X button
+      const closeBtn = screen.getByRole("button", { name: /Close dialog/i });
+      fireEvent.click(closeBtn);
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("intercepts programmatic history.pushState and history.replaceState", () => {
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("http://localhost:3000/schedule?embed=true"),
+      });
+
+      render(<InteractiveDemoGuard />);
+
+      act(() => {
+        window.history.pushState({}, "", "/teams/other-team");
+      });
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      // Close dialog via Escape key
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).toBeNull();
+
+      // Test replaceState
+      act(() => {
+        window.history.replaceState({}, "", "/stats");
+      });
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("ignores anchor clicks with href=# or in-page hash links", () => {
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("http://localhost:3000/schedule?embed=true"),
+      });
+
+      render(
+        <div>
+          <a href="#" id="hash-link">Hash</a>
+          <a href="#section" id="section-link">Section</a>
+          <InteractiveDemoGuard />
+        </div>
+      );
+
+      fireEvent.click(screen.getByRole("link", { name: "Hash" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+
+      fireEvent.click(screen.getByRole("link", { name: "Section" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("falls back to window.location when top and self are equal", () => {
+      const locationObj = {
+        href: "http://localhost:3000/schedule?embed=true",
+        search: "?embed=true",
+        pathname: "/schedule",
+      };
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: locationObj,
+      });
+      Object.defineProperty(window, "top", {
+        writable: true,
+        value: window,
+      });
+      Object.defineProperty(window, "self", {
+        writable: true,
+        value: window,
+      });
+
+      render(
+        <div>
+          <a href="/pricing">Pricing</a>
+          <InteractiveDemoGuard />
+        </div>
+      );
+
+      fireEvent.click(screen.getByRole("link", { name: /Pricing/i }));
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: /Explore Demo League/i }));
+      expect(locationObj.href).toBe("/league/default?demo=true");
     });
   });
 });

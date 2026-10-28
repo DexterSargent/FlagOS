@@ -233,4 +233,43 @@ describe("Marketing Landing Page (FlagOSPlatformLandingPage)", () => {
     expect(directoryLinks.length).toBeGreaterThan(0);
     expect(directoryLinks[0]).toHaveAttribute("href", "/leagues");
   });
+
+  it("handles resetting demo frame and iframe onLoad", () => {
+    render(<FlagOSPlatformLandingPage />);
+
+    const resetBtn = screen.getByRole("button", { name: /Reset demo/i });
+    fireEvent.click(resetBtn);
+
+    const iframe = screen.getByTitle("FlagOS interactive demo");
+    expect(iframe).toBeInTheDocument();
+    fireEvent.load(iframe);
+  });
+
+  it("sets demo flags in sessionStorage and localStorage when clicking Explore Demo League or Watch a Game", () => {
+    sessionStorage.clear();
+    localStorage.clear();
+
+    render(<FlagOSPlatformLandingPage />);
+
+    // Click hero Explore Demo League button
+    const exploreBtn = screen.getAllByRole("link", { name: /Explore Demo League/i })[0];
+    fireEvent.click(exploreBtn);
+    expect(sessionStorage.getItem("flagos_demo_active")).toBe("true");
+    expect(localStorage.getItem("flagos_demo_active")).toBe("true");
+
+    // Click Watch a Game
+    sessionStorage.clear();
+    localStorage.clear();
+    const watchGameBtn = screen.getByRole("link", { name: /Watch a Game/i });
+    fireEvent.click(watchGameBtn);
+    expect(sessionStorage.getItem("flagos_demo_active")).toBe("true");
+    expect(localStorage.getItem("flagos_demo_active")).toBe("true");
+  });
+
+  it("renders Find a Team free agents card link", () => {
+    render(<FlagOSPlatformLandingPage />);
+    const findTeamLinks = screen.getAllByRole("link", { name: /Find a Team/i });
+    expect(findTeamLinks.length).toBeGreaterThan(0);
+    expect(findTeamLinks[0]).toHaveAttribute("href", "/free-agents");
+  });
 });

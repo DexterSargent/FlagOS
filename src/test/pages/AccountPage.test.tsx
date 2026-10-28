@@ -74,6 +74,77 @@ describe("connected email settings", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Confirm with Google instead" }));
     fireEvent.click(await screen.findByRole("button", { name: "Connect another Google account" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Verify the additional email");
-    expect(screen.queryByText(/Email connected\\./)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Email connected\./)).not.toBeInTheDocument();
+  });
+
+  it("shows email verification warning alert when primary email is unverified", () => {
+    useAuthMock.mockReturnValue({
+      user: { uid: "unverified_1", email: "unverified@example.com", emailVerified: false },
+      loading: false,
+      logout: vi.fn(),
+    });
+
+    render(<AccountPage />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Email Verification Required");
+  });
+
+  it("sends password reset link when button is clicked", async () => {
+    const mockSendReset = vi.fn().mockResolvedValue({ success: true });
+    useAuthMock.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn(),
+      sendPasswordReset: mockSendReset,
+    });
+
+    render(<AccountPage />);
+    const resetBtn = screen.getByRole("button", { name: /Send Password Reset Link/i });
+    fireEvent.click(resetBtn);
+
+    await waitFor(() => {
+      expect(mockSendReset).toHaveBeenCalledWith("primary@example.com");
+      expect(screen.getByText(/Password reset link has been dispatched/i)).toBeInTheDocument();
+    });
+  });
+
+  it("disconnects a secondary email after confirming with window.confirm", async () => {
+    window.confirm = vi.fn(() => true);
+    const mockLogout = vi.fn();
+    useAuthMock.mockReturnValue({
+      user,
+      loading: false,
+      logout: mockLogout,
+    });
+    requestMock.mockResolvedValue({
+      accountUid: "primary",
+      emails: [
+        { uid: "primary", email: "primary@example.com" },
+        { uid: "secondary_id", email: "secondary@example.com" },
+      ],
+    });
+
+    render(<AccountPage />);
+    // Re-auth first to see disconnect
+    fireEvent.click(await screen.findByRole("button", { name: "Confirm with Google instead" }));
+
+    const disconnectBtn = await screen.findByRole("button", { name: "Disconnect" });
+    fireEvent.click(disconnectBtn);
+
+    await waitFor(() => {
+      expect(requestMock).toHaveBeenCalledWith(user, "disconnect", { uid: "secondary_id" });
+      expect(mockLogout).toHaveBeenCalled();
+    });
+  });
+
+  it("handles account data export", () => {
+    const createObjectUrlSpy = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
+    const revokeObjectUrlSpy = vi.spyOn(URL, "revokeObjectURL").mockReturnValue();
+
+    render(<AccountPage />);
+    const exportBtn = screen.getByRole("button", { name: /Export Account Data/i });
+    fireEvent.click(exportBtn);
+
+    expect(createObjectUrlSpy).toHaveBeenCalled();
+    expect(revokeObjectUrlSpy).toHaveBeenCalled();
   });
 });

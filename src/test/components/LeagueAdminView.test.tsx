@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { LeagueAdminView, type LeagueAdminViewProps } from "@/components/league/dashboard/LeagueAdminView";
+import { useLeague } from "@/lib/leagueContext";
 
 vi.mock("@/lib/leagueContext", () => ({
-  useLeague: () => ({ isLeagueArchived: false }),
+  useLeague: vi.fn(() => ({ isLeagueArchived: false })),
   leagueScheduleHref: (leagueId?: string | null) => (leagueId ? `/schedule?league=${leagueId}` : "/schedule"),
 }));
 vi.mock("@/components/walkthrough/PageGuideButton", () => ({ default: () => null }));
@@ -57,4 +58,38 @@ describe("League admin overview", () => {
     fireEvent.click(screen.getByRole("button", { name: "League Settings" }));
     expect(input.openCustomizer).toHaveBeenCalledOnce();
   });
+
+  it("displays private league badge and copies direct URL to clipboard", async () => {
+    const input = props(false);
+    input.settings = { visibility: "private" };
+    const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText: writeTextSpy },
+    });
+
+    render(<LeagueAdminView {...input} />);
+
+    expect(screen.getByText(/Private League:/i)).toBeInTheDocument();
+    const copyBtn = screen.getByRole("button", { name: /Copy Direct URL/i });
+    fireEvent.click(copyBtn);
+
+    expect(writeTextSpy).toHaveBeenCalledWith(expect.stringContaining("/league/default"));
+    expect(screen.getByText("Copied Direct Link!")).toBeInTheDocument();
+  });
+
+  it("handles archived league state and complimentary subscription", () => {
+    vi.mocked(useLeague).mockReturnValueOnce({ isLeagueArchived: true } as any);
+    const input = props(false);
+    input.subscription = { paymentMethod: "complimentary", teamCount: 12 };
+    input.topScorer = { name: "-", totalTD: 0, team: "" };
+
+    render(<LeagueAdminView {...input} />);
+
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    expect(screen.getByText("View Teams")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Schedule Game/i })).not.toBeInTheDocument();
+    expect(screen.getByText("No stats recorded")).toBeInTheDocument();
+    expect(screen.getByText("0 Total TDs (No team)")).toBeInTheDocument();
+  });
 });
+

@@ -363,4 +363,247 @@ describe("League Directory & Proximity Finder Suite (LeagueDirectoryPage)", () =
     expect(exploreHubLinks[0]).toHaveStyle({ backgroundColor: "rgb(43, 125, 4)" });
     expect(exploreHubLinks[0]).toHaveStyle({ color: "rgb(255, 255, 255)" });
   });
+
+  it("opens and cancels contact commissioner dialog", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    const inquireButtons = screen.getAllByRole("button", { name: /Inquire/i });
+    expect(inquireButtons.length).toBeGreaterThan(0);
+    fireEvent.click(inquireButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Cancel/i })).toBeInTheDocument();
+    });
+
+    const cancelBtn = screen.getByRole("button", { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /Cancel/i })).toBeNull();
+    });
+  });
+
+  it("handles GPS geolocation success, error, and unsupported browser states", async () => {
+    const originalGeolocation = navigator.geolocation;
+    const mockGetCurrentPosition = vi.fn();
+
+    Object.defineProperty(global.navigator, "geolocation", {
+      value: { getCurrentPosition: mockGetCurrentPosition },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    const gpsBtn = screen.getByRole("button", { name: /Use My Location/i });
+
+    // 1. Success case
+    mockGetCurrentPosition.mockImplementationOnce((success) => {
+      success({ coords: { latitude: 43.7, longitude: -79.4 } });
+    });
+    fireEvent.click(gpsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your location/i)).toBeInTheDocument();
+    });
+
+    // 2. Error case
+    mockGetCurrentPosition.mockImplementationOnce((_success, error) => {
+      error({ code: 1, message: "User denied" });
+    });
+    fireEvent.click(gpsBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Unable to retrieve location/i)).toBeInTheDocument();
+    });
+
+    // 3. Unsupported case
+    Object.defineProperty(global.navigator, "geolocation", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+
+    fireEvent.click(gpsBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Geolocation is not supported by your browser/i)).toBeInTheDocument();
+    });
+
+    // Restore
+    Object.defineProperty(global.navigator, "geolocation", {
+      value: originalGeolocation,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it("clears search query using the clear (X) button and resets all filters using Reset All", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(/Search by city/i);
+    fireEvent.change(searchInput, { target: { value: "Lakeshore" } });
+
+    // Lakeshore is shown, Metro West is filtered out
+    expect(screen.getByRole("heading", { name: "Lakeshore Flag League" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Metro West Flag League" })).toBeNull();
+
+    // Click clear search (X) button
+    const clearSearchBtn = searchInput.parentElement?.querySelector("button");
+    expect(clearSearchBtn).not.toBeNull();
+    fireEvent.click(clearSearchBtn!);
+
+    expect(screen.getByRole("heading", { name: "Metro West Flag League" })).toBeInTheDocument();
+
+    // Now change tier filter to trigger Reset All button
+    const tierSelect = screen.getByDisplayValue("All Tiers");
+    fireEvent.change(tierSelect, { target: { value: "Premier / Elite" } });
+
+    const resetAllBtn = screen.getByRole("button", { name: /Reset All/i });
+    expect(resetAllBtn).toBeInTheDocument();
+    fireEvent.click(resetAllBtn);
+
+    expect(screen.queryByRole("button", { name: /Reset All/i })).toBeNull();
+  });
+
+  it("toggles categories between All Leagues and My Leagues, and changes radius and sort options", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    // Switch to My Leagues
+    const myLeaguesBtn = screen.getAllByRole("button", { name: /My Leagues/i })[0];
+    fireEvent.click(myLeaguesBtn);
+
+    // Switch back to All Leagues
+    const allLeaguesBtn = screen.getAllByRole("button", { name: /All Leagues/i })[0];
+    fireEvent.click(allLeaguesBtn);
+
+    // Change Radius
+    const radiusSelect = screen.getByDisplayValue("Any Distance");
+    fireEvent.change(radiusSelect, { target: { value: "25" } });
+    expect(radiusSelect).toHaveValue("25");
+
+    // Change Sort by Fee and Sort by Name
+    const sortSelect = screen.getByDisplayValue("Closest First");
+    fireEvent.change(sortSelect, { target: { value: "fee" } });
+    expect(sortSelect).toHaveValue("fee");
+
+    fireEvent.change(sortSelect, { target: { value: "name" } });
+    expect(sortSelect).toHaveValue("name");
+  });
+
+  it("closes format dropdown when clicking outside", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    const formatBtn = screen.getByRole("button", { name: /Format:/i });
+    fireEvent.click(formatBtn);
+
+    expect(screen.getByRole("listbox", { name: /Filter by Ruleset Format/i })).toBeInTheDocument();
+
+    // Click outside on hero heading
+    fireEvent.mouseDown(screen.getByRole("heading", { name: /Find a Flag Football League/i }));
+
+    expect(screen.queryByRole("listbox", { name: /Filter by Ruleset Format/i })).toBeNull();
+  });
+
+  it("handles contact commissioner topic selection and closing modal via X icon", async () => {
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Find a Flag Football League/i)).toBeInTheDocument();
+    });
+
+    const inquireBtns = screen.getAllByRole("button", { name: /Inquire/i });
+    fireEvent.click(inquireBtns[0]);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Change topic
+    const topicSelect = screen.getByDisplayValue("Looking for a team (Free Agent)");
+    fireEvent.change(topicSelect, { target: { value: "Registering an Entire Squad" } });
+    expect(topicSelect).toHaveValue("Registering an Entire Squad");
+
+    // Close via X button in header
+    const dialog = screen.getByRole("dialog");
+    const closeXBtn = dialog.querySelector("button.p-1\\.5");
+    expect(closeXBtn).not.toBeNull();
+    fireEvent.click(closeXBtn!);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  it("displays rich league metadata including amenities, deadline, season dates, and game day/time", async () => {
+    mockGetDocs.mockImplementation(async (ref: { name?: string }) => {
+      if (ref?.name === "leagues") {
+        return {
+          docs: [
+            {
+              id: "league_rich_metadata",
+              data: () => ({
+                leagueName: "Rich Metadata Flag Circuit",
+                shortcode: "RMFC",
+                tagline: "Premier Flag Circuit",
+                seasonTitle: "Summer 2026",
+                visibility: "public",
+                directoryListed: true,
+                gameDay: "Saturday",
+                gameTimeWindow: "10:00 AM - 4:00 PM",
+                registrationDeadline: "May 15, 2026",
+                seasonDates: "June 1 - August 30",
+                rulesFormat: "5v5 Non-Contact",
+                division: "Co-Ed",
+                registrationFeePerTeam: 950,
+                amenities: ["Official NFL Flags", "4K Video Replays", "Certified Officials"],
+                venue: {
+                  name: "Central Sports Dome",
+                  city: "Toronto",
+                  postalCode: "M5V 2T6",
+                  surface: "Indoor Turf",
+                  latitude: 43.65,
+                  longitude: -79.38,
+                },
+              }),
+            },
+          ],
+        };
+      }
+      return { docs: [] };
+    });
+
+    render(<LeagueDirectoryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Rich Metadata Flag Circuit" })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Official NFL Flags")).toBeInTheDocument();
+    expect(screen.getByText("4K Video Replays")).toBeInTheDocument();
+    expect(screen.getByText("Certified Officials")).toBeInTheDocument();
+    expect(screen.getByText("Indoor Turf")).toBeInTheDocument();
+    expect(screen.getByText("May 15, 2026")).toBeInTheDocument();
+    expect(screen.getByText("June 1 - August 30")).toBeInTheDocument();
+  });
 });
+
+
+

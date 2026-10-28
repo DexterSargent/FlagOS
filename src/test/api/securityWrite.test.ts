@@ -798,5 +798,288 @@ describe("secure data write API", () => {
         expect(response.status).toBe(PRIMARY_ADMIN_EMAILS.includes(email) ? 201 : 403);
       },
     );
+
+    it("updates league settings for authorized league admin", async () => {
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      transaction.get.mockImplementation(async (ref) => ({
+        exists: ref.path === "leagues/league_apex" || ref.path === "league_private/league_apex",
+        data: () => ({
+          ...validLeague,
+          ownerUid: validToken.uid,
+          adminEmails: [validToken.email],
+        }),
+        get: (field: string) => (field === "subscription" ? { status: "active" } : undefined),
+      }));
+
+      const response = await POST(request({
+        entity: "league_update",
+        data: {
+          leagueId: "league_apex",
+          leagueName: "Renamed Apex",
+          visibility: "private",
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "leagues/league_apex" }),
+        expect.objectContaining({ leagueName: "Renamed Apex", visibility: "private" }),
+        { merge: true },
+      );
+    });
+
+    it("updates team private details for authorized team admin", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: TEAM_ADMIN_EMAILS[0] });
+      const response = await POST(request({
+        entity: "team_private_update",
+        data: {
+          teamId: "falcons",
+          adminEmails: [TEAM_ADMIN_EMAILS[0], "newcoach@falcons.com"],
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "team_private/falcons" }),
+        expect.objectContaining({ adminEmails: [TEAM_ADMIN_EMAILS[0], "newcoach@falcons.com"] }),
+        { merge: true },
+      );
+    });
+
+    it("deletes a team and its private document", async () => {
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      const response = await POST(request({
+        entity: "delete_team",
+        data: { teamId: "falcons" },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "teams/falcons" }));
+      expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "team_private/falcons" }));
+    });
+
+    it("deletes a league and its private document", async () => {
+
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      transaction.get.mockImplementation(async (ref) => {
+        if ("collection" in ref) return { docs: [] };
+        return {
+          exists: true,
+          data: () => ({
+            ...validLeague,
+            ownerUid: validToken.uid,
+            adminEmails: [validToken.email],
+          }),
+        };
+      });
+      const response = await POST(request({
+        entity: "delete_league",
+        data: { leagueId: "league_apex", deleteTeams: false },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "leagues/league_apex" }));
+      expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "league_private/league_apex" }));
+    });
+
+    it("updates player public info and private contact details", async () => {
+
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: TEAM_ADMIN_EMAILS[0] });
+      transaction.get.mockImplementation(async (ref) => {
+        if (ref.path === "players/p_test") {
+          return { exists: true, data: () => ({ teamId: "falcons", depthChartPositions: ["QB"] }) };
+        }
+        if (ref.path === "teams/falcons" || ref.path === "team_private/falcons") {
+          return storedTeamSnapshot(ref.path);
+        }
+        return { exists: false, data: () => undefined, get: () => undefined };
+      });
+
+      const response = await POST(request({
+        entity: "player_update",
+        data: {
+          playerId: "p_test",
+          playerName: "Updated Vance",
+          number: "12",
+          positions: ["QB", "WR"],
+          email: "vance@falcons.com",
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "players/p_test" }),
+        expect.objectContaining({ playerName: "Updated Vance", number: "12" }),
+      );
+
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "player_private/p_test" }),
+        expect.objectContaining({ email: "vance@falcons.com" }),
+        { merge: true },
+      );
+    });
+
+    it("updates player private contact info directly", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: TEAM_ADMIN_EMAILS[0] });
+      transaction.get.mockImplementation(async (ref) => {
+        if (ref.path === "players/p_test") {
+          return { exists: true, data: () => ({ teamId: "falcons" }) };
+        }
+        if (ref.path === "teams/falcons" || ref.path === "team_private/falcons") {
+          return storedTeamSnapshot(ref.path);
+        }
+        return { exists: false, data: () => undefined, get: () => undefined };
+      });
+
+      const response = await POST(request({
+        entity: "player_private_update",
+        data: {
+          playerId: "p_test",
+          email: "newemail@falcons.com",
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "player_private/p_test" }),
+        expect.objectContaining({ email: "newemail@falcons.com" }),
+        { merge: true },
+      );
+    });
+
+    it("deletes a player and player_private documents", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: TEAM_ADMIN_EMAILS[0] });
+      transaction.get.mockImplementation(async (ref) => {
+        if (ref.path === "players/p_test") {
+          return { exists: true, data: () => ({ teamId: "falcons" }) };
+        }
+        if (ref.path === "teams/falcons" || ref.path === "team_private/falcons") {
+          return storedTeamSnapshot(ref.path);
+        }
+        return { exists: false, data: () => undefined, get: () => undefined };
+      });
+
+      const response = await POST(request({
+        entity: "delete_player",
+        data: { playerId: "p_test" },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "players/p_test" }));
+      expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "player_private/p_test" }));
+    });
+
+    it("updates match teams and manual matchup for scheduled games", async () => {
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      transaction.get.mockImplementation(async (ref) => {
+        if (ref.path === "matches/m_sched") {
+          return {
+            exists: true,
+            data: () => ({ leagueId: "league_apex", status: "scheduled", seasonId: "season-1" }),
+            get: (f: string) => (f === "leagueId" ? "league_apex" : f === "status" ? "scheduled" : undefined),
+          };
+        }
+        if (ref.path === "teams/t1" || ref.path === "teams/t2") {
+          return {
+            exists: true,
+            data: () => ({ leagueId: "league_apex" }),
+            get: (f: string) => (f === "leagueId" ? "league_apex" : undefined),
+          };
+        }
+        if (ref.path === "leagues/league_apex" || ref.path === "league_private/league_apex") {
+          return {
+            exists: true,
+            data: () => ({ ...validLeague, ownerUid: validToken.uid, adminEmails: [validToken.email] }),
+            get: () => undefined,
+          };
+        }
+        return { exists: false, data: () => undefined, get: () => undefined };
+      });
+
+      const response = await POST(request({
+        entity: "match_update",
+        data: {
+          matchId: "m_sched",
+          homeTeamId: "t1",
+          awayTeamId: "t2",
+          homeTeamName: "Titans",
+          awayTeamName: "Warriors",
+          manualMatchup: true,
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "matches/m_sched" }),
+        expect.objectContaining({ homeTeamId: "t1", awayTeamId: "t2", manualMatchup: true }),
+      );
+    });
+
+    it("updates league private contact email and admin emails", async () => {
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      transaction.get.mockImplementation(async (ref) => {
+        if (ref.path === "leagues/league_apex" || ref.path === "league_private/league_apex") {
+          return {
+            exists: true,
+            data: () => ({ ...validLeague, ownerUid: validToken.uid, adminEmails: [validToken.email] }),
+            get: () => undefined,
+          };
+        }
+        return { exists: false, data: () => undefined, get: () => undefined };
+      });
+
+      const response = await POST(request({
+        entity: "league_private_update",
+        data: {
+          leagueId: "league_apex",
+          contactEmail: "commissioner@league.com",
+          adminEmails: [validToken.email, "assistant@league.com"],
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.set).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "league_private/league_apex" }),
+        expect.objectContaining({ contactEmail: "commissioner@league.com" }),
+        { merge: true },
+      );
+    });
+
+    it("replaces a pending touchdown play when PAT play is recorded", async () => {
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      transaction.get.mockImplementation(async (ref) => {
+        if (ref.path === "matches/m_live") {
+          return {
+            exists: true,
+            data: () => ({ leagueId: "league_apex", status: "in_progress", seasonId: "season-1" }),
+            get: () => undefined,
+          };
+        }
+        if (ref.path === "plays/play_td_1") {
+          return {
+            exists: true,
+            data: () => ({ matchId: "m_live", conversionPending: true }),
+            get: (f: string) => (f === "matchId" ? "m_live" : f === "conversionPending" ? true : undefined),
+          };
+        }
+        if (ref.path === "leagues/league_apex" || ref.path === "league_private/league_apex") {
+          return {
+            exists: true,
+            data: () => ({ ...validLeague, ownerUid: validToken.uid, adminEmails: [validToken.email] }),
+            get: () => undefined,
+          };
+        }
+        return { exists: false, data: () => undefined, get: () => undefined };
+      });
+
+      const response = await POST(request({
+        entity: "play",
+        data: {
+          matchId: "m_live",
+          replacesPlayId: "play_td_1",
+          playType: "Pass",
+          passOutcome: "Complete",
+          qbPlayerId: "Marcus Vance",
+          receiverPlayerId: "Leo Sterling",
+          isTouchdown: true,
+          patPoints: 1,
+          patSuccess: true,
+        },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "plays/play_td_1" }));
+    });
   });
 });
+

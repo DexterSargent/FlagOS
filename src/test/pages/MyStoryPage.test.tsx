@@ -168,4 +168,190 @@ describe("My Story Page (/my-story)", () => {
     const img = screen.getByAltText("Thanksgiving 2022 Touchdown Return");
     expect(img).toHaveAttribute("src", "https://example.com/york51.jpg");
   });
+
+  it("renders loading screen when auth is loading", () => {
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isPlatformAdmin: false,
+      loading: true,
+    });
+
+    render(<MyStoryPage />);
+    expect(screen.getByText(/Loading Story…/i)).toBeInTheDocument();
+  });
+
+  it("copies story link to clipboard and displays Link Copied confirmation", async () => {
+    const mockWriteText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockWriteText,
+      },
+    });
+
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
+      isPlatformAdmin: true,
+      loading: false,
+    });
+
+    render(<MyStoryPage />);
+
+    const shareBtn = screen.getByRole("button", { name: /share/i });
+    fireEvent.click(shareBtn);
+
+    expect(mockWriteText).toHaveBeenCalled();
+    expect(screen.getByText("Link Copied")).toBeInTheDocument();
+  });
+
+  it("removes a saved photo from a chapter and closes modal with Cancel", () => {
+    localStorage.setItem(
+      "flagos_story_photos",
+      JSON.stringify({
+        "first-football": {
+          url: "https://example.com/photo1.jpg",
+          caption: "Dartmouth Destroyers",
+        },
+      }),
+    );
+
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
+      isPlatformAdmin: true,
+      loading: false,
+    });
+
+    render(<MyStoryPage />);
+
+    // Click Edit on photo
+    const editBtn = screen.getByRole("button", { name: /Edit/i });
+    fireEvent.click(editBtn);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Click Remove Photo in modal
+    const removeBtn = screen.getByRole("button", { name: /Remove Photo/i });
+    fireEvent.click(removeBtn);
+
+    const saved = JSON.parse(localStorage.getItem("flagos_story_photos") || "{}");
+    expect(saved["first-football"]).toBeUndefined();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens photo modal via Enter key and uploads a photo using FileReader", async () => {
+    localStorage.clear();
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
+      isPlatformAdmin: true,
+      loading: false,
+    });
+
+    // Mock FileReader
+    class MockFileReader {
+      result: string | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      readAsDataURL(_file: Blob) {
+        this.result = "data:image/png;base64,sampleimagepreview";
+        if (this.onload) this.onload();
+      }
+    }
+    vi.stubGlobal("FileReader", MockFileReader);
+
+    render(<MyStoryPage />);
+
+    // Find photo frame for section 1
+    const frame = screen.getByRole("button", { name: /Add photo for Childhood Roots in Dartmouth/i });
+    fireEvent.keyDown(frame, { key: "Enter" });
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Trigger file upload
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).not.toBeNull();
+
+    const file = new File(["dummy content"], "photo.png", { type: "image/png" });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    // Preview should now show the base64 URL
+    const previewImg = screen.getByAltText("Preview");
+    expect(previewImg).toHaveAttribute("src", "data:image/png;base64,sampleimagepreview");
+
+    // Close via Cancel button
+    const cancelBtn = screen.getByRole("button", { name: /Cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("handles window scroll and resize events", () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
+      isPlatformAdmin: true,
+      loading: false,
+    });
+
+    render(<MyStoryPage />);
+
+    // Dispatch scroll and resize
+    fireEvent.scroll(window, { target: { scrollY: 400 } });
+    fireEvent.resize(window);
+  });
+
+  it("handles FileReader error, clearing image URL to remove photo, hover overlay actions, and upload trigger", () => {
+    localStorage.setItem(
+      "flagos_story_photos",
+      JSON.stringify({
+        "first-football": {
+          url: "https://example.com/photo1.jpg",
+          caption: "Dartmouth Destroyers",
+        },
+      }),
+    );
+
+    mockUseAuth.mockReturnValue({
+      user: { uid: "dexter-1", email: "dextersargent@flagos.ca" },
+      isPlatformAdmin: true,
+      loading: false,
+    });
+
+    const alertMock = vi.fn();
+    vi.stubGlobal("alert", alertMock);
+
+    // Mock FileReader with onerror trigger
+    class ErrorFileReader {
+      result: string | null = null;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      readAsDataURL(_file: Blob) {
+        if (this.onerror) this.onerror();
+      }
+    }
+    vi.stubGlobal("FileReader", ErrorFileReader);
+
+    render(<MyStoryPage />);
+
+    // Test hover bar "Change Photo" button
+    const changePhotoBtn = screen.getByRole("button", { name: /Change Photo/i });
+    fireEvent.click(changePhotoBtn);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    // Click upload trigger button inside modal
+    const uploadBtn = screen.getByRole("button", { name: /Choose image file/i });
+    fireEvent.click(uploadBtn);
+
+    // Trigger file change with error FileReader
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["err"], "test.png")] } });
+    expect(alertMock).toHaveBeenCalledWith("Failed to read image file. Please try another image.");
+
+    // Clear URL and Save Photo -> removes photo
+    const urlInput = screen.getByPlaceholderText("https://example.com/photo.jpg");
+    fireEvent.change(urlInput, { target: { value: "" } });
+    const saveBtn = screen.getByRole("button", { name: /Save Photo/i });
+    fireEvent.click(saveBtn);
+
+    const saved = JSON.parse(localStorage.getItem("flagos_story_photos") || "{}");
+    expect(saved["first-football"]).toBeUndefined();
+  });
 });
+
+

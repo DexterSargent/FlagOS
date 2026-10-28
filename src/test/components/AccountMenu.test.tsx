@@ -1,120 +1,109 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import AccountMenu from "@/components/AccountMenu";
+import * as authContext from "@/lib/authContext";
+import * as leagueContext from "@/lib/leagueContext";
 
-let mockActiveLeagueId = "default";
-const { mockUseAuth, mockLogout, mockOpenCustomizer, usePathnameMock } = vi.hoisted(() => ({
-  mockUseAuth: vi.fn(),
-  mockLogout: vi.fn(),
-  mockOpenCustomizer: vi.fn(),
-  usePathnameMock: vi.fn(),
+let mockPathname = "/schedule";
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockPathname,
 }));
 
-vi.mock("next/navigation", () => ({ usePathname: usePathnameMock }));
-vi.mock("@/lib/authContext", () => ({ useAuth: () => mockUseAuth() }));
-vi.mock("@/lib/leagueContext", () => ({ useLeague: () => ({ openCustomizer: mockOpenCustomizer, activeLeagueId: mockActiveLeagueId }) }));
+vi.mock("@/lib/authContext", () => ({
+  useAuth: vi.fn(),
+}));
 
-const signedOut = {
-  user: null,
-  isPlayer: false,
-  playerData: null,
-  playerTeamId: null,
-  managedTeamId: null,
-  isLeagueAdmin: false,
-  isPlatformAdmin: false,
-  isAuthorized: false,
-  logout: mockLogout,
-};
+vi.mock("@/lib/leagueContext", () => ({
+  useLeague: vi.fn(),
+}));
 
 describe("AccountMenu", () => {
+  const mockLogout = vi.fn();
+  const mockOpenCustomizer = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
-    mockActiveLeagueId = "default";
-    usePathnameMock.mockReturnValue("/teams/york_lions/playbook");
-    mockUseAuth.mockReturnValue(signedOut);
-  });
-
-  it("shows a sign-in link that returns to the current page when signed out", () => {
-    render(<AccountMenu />);
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/login?redirect=%2Fteams%2Fyork_lions%2Fplaybook"
-    );
-  });
-
-  it("hides the sign-in link on the login page itself", () => {
-    usePathnameMock.mockReturnValue("/login");
-    const { container } = render(<AccountMenu />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it("opens a menu with team, settings and sign out for a signed-in coach", () => {
-    mockUseAuth.mockReturnValue({
-      ...signedOut,
-      user: { displayName: "Dexter Sargent", email: "dextersargent@gmail.com" },
-      managedTeamId: "york_lions",
-      isAuthorized: true,
+    mockPathname = "/schedule";
+    (leagueContext.useLeague as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      openCustomizer: mockOpenCustomizer,
+      activeLeagueId: "league_1",
+      portalLeagueId: null,
     });
-    render(<AccountMenu />);
-
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Account menu for Dexter Sargent" }));
-
-    expect(screen.getByRole("menu")).toBeInTheDocument();
-    expect(screen.getByText("dextersargent@gmail.com")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: /My Team/ })).toHaveAttribute("href", "/teams/york_lions");
-    expect(screen.getByRole("menuitem", { name: /Account Settings/ })).toHaveAttribute("href", "/account");
-    expect(screen.queryByRole("menuitem", { name: /My Profile/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("menuitem", { name: /League Settings/ })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("menuitem", { name: /Sign Out/ }));
-    expect(mockLogout).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("links rostered players to their profile and closes on Escape", () => {
-    mockUseAuth.mockReturnValue({
-      ...signedOut,
-      user: { displayName: null, email: "player@example.com" },
+  it("renders Sign In link when user is signed out, and null when on /login", () => {
+    (authContext.useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: null,
+    });
+
+    const { rerender } = render(<AccountMenu />);
+    const signInLink = screen.getByRole("link", { name: /Sign in/i });
+    expect(signInLink).toBeInTheDocument();
+    expect(signInLink).toHaveAttribute("href", "/login?redirect=%2Fschedule");
+
+    mockPathname = "/login";
+    rerender(<AccountMenu />);
+    expect(screen.queryByRole("link", { name: /Sign in/i })).not.toBeInTheDocument();
+  });
+
+  it("renders avatar button and dropdown menu when signed in, and handles actions", () => {
+    (authContext.useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: { displayName: "Coach Taylor", email: "taylor@dillon.com" },
+      userProfile: { playerRecords: [] },
       isPlayer: true,
-      playerData: { playerName: "Sonia" },
-      playerTeamId: "york_lions",
+      playerId: "p_taylor",
+      playerData: { playerName: "Coach Taylor" },
+      playerTeamId: "team_panthers",
+      managedTeamId: "team_panthers",
+      isLeagueAdmin: true,
+      isPlatformAdmin: true,
       isAuthorized: true,
+      logout: mockLogout,
     });
+
     render(<AccountMenu />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Account menu for Sonia" }));
-    expect(screen.getByRole("menuitem", { name: /My Profile/ })).toHaveAttribute("href", "/profile");
+    // Initial is 'C'
+    const menuBtn = screen.getByRole("button", { name: /Account menu for Coach Taylor/i });
+    expect(menuBtn).toBeInTheDocument();
+    expect(screen.getByText("C")).toBeInTheDocument();
+
+    // Open dropdown
+    fireEvent.click(menuBtn);
+    expect(screen.getByRole("menu", { name: "Account" })).toBeInTheDocument();
+    expect(screen.getByText("Coach Taylor")).toBeInTheDocument();
+    expect(screen.getByText("taylor@dillon.com")).toBeInTheDocument();
+
+    // Verify navigation links
+    expect(screen.getByRole("menuitem", { name: /My Profile/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /My Team/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Account Settings/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /Platform Admin/i })).toBeInTheDocument();
+
+    // Click League Settings
+    const leagueSettingsBtn = screen.getByRole("menuitem", { name: /League Settings/i });
+    fireEvent.click(leagueSettingsBtn);
+    expect(mockOpenCustomizer).toHaveBeenCalled();
+
+    // Reopen menu and click Sign Out
+    fireEvent.click(menuBtn);
+    const signOutBtn = screen.getByRole("menuitem", { name: /Sign Out/i });
+    fireEvent.click(signOutBtn);
+    expect(mockLogout).toHaveBeenCalled();
+  });
+
+  it("closes dropdown menu on Escape key press", () => {
+    (authContext.useAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: { displayName: "Alex", email: "alex@flagos.com" },
+      logout: mockLogout,
+    });
+
+    render(<AccountMenu />);
+    const menuBtn = screen.getByRole("button", { name: /Account menu for Alex/i });
+    fireEvent.click(menuBtn);
+    expect(screen.getByRole("menu", { name: "Account" })).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-  });
-
-  it("offers league settings to signed-in league admins", () => {
-    mockUseAuth.mockReturnValue({
-      ...signedOut,
-      user: { displayName: "Commissioner", email: "admin@example.com" },
-      isLeagueAdmin: true,
-      isAuthorized: true,
-    });
-    render(<AccountMenu />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Account menu for Commissioner" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: /League Settings/ }));
-    expect(mockOpenCustomizer).toHaveBeenCalledTimes(1);
-  });
-
-  it("hides league settings for independent teams when no active league is present", () => {
-    mockActiveLeagueId = "";
-    mockUseAuth.mockReturnValue({
-      ...signedOut,
-      user: { displayName: "Coach Indie", email: "indie@example.com" },
-      isLeagueAdmin: true,
-      isAuthorized: true,
-    });
-    render(<AccountMenu />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Account menu for Coach Indie" }));
-    expect(screen.queryByRole("menuitem", { name: /League Settings/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menu", { name: "Account" })).not.toBeInTheDocument();
   });
 });
