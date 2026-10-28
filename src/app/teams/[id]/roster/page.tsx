@@ -708,19 +708,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               >
                 Depth Chart
               </button>
-              <button
-                type="button"
-                onClick={() => setShowStats(!showStats)}
-                className={`min-h-10 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  showStats
-                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
-                }`}
-                title={showStats ? "Hide player stats" : "Show player stats"}
-              >
-                <Activity className="w-3.5 h-3.5" />
-                <span>{showStats ? "Hide Stats" : "Show Stats"}</span>
-              </button>
             </div>
           </div>
 
@@ -835,16 +822,6 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                       {/* Actions */}
                       <td className="py-3 px-3 sm:py-4 sm:px-6 text-right">
                         <div className="flex items-center justify-end gap-1 [&_button]:min-h-10 [&_button]:min-w-10">
-                          {/* View Stats Button */}
-                          <button
-                            onClick={() => setSelectedPlayerForStats(p)}
-                            className="hidden sm:block p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
-                            title="View Player Stats"
-                            aria-label={`View stats for ${p.playerName}`}
-                          >
-                            <Activity className="w-4 h-4" />
-                          </button>
-
                           {/* Team Admin / League Admin Edit & Remove Controls */}
                           {hasEditAccess && (
                             <>
@@ -1180,39 +1157,44 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
 
-            {/* Stats Breakdown */}
+            {/* Stats Breakdown: only categories the player has actually recorded appear. */}
             {(() => {
               const s = playerStats[selectedPlayerForStats.playerName] || {};
+              const tiles: { label: string; value: React.ReactNode; color: string; span?: boolean }[] = [];
+              const gp = s.gamesPlayed || 0;
+              if (gp > 0) tiles.push({ label: "Games Played", value: gp, color: "text-white" });
+              if ((s.totalTDs || 0) > 0) tiles.push({ label: "Total Touchdowns", value: s.totalTDs, color: "text-yellow-400" });
+              if ((s.passAtt || 0) > 0) {
+                const pct = Math.round(((s.passComp || 0) / s.passAtt) * 100);
+                tiles.push({ label: "Passing", value: `${s.passComp || 0}/${s.passAtt} (${pct}%)`, color: "text-blue-400" });
+              }
+              if ((s.passTD || 0) > 0) tiles.push({ label: "Passing TDs", value: s.passTD, color: "text-emerald-400" });
+              if ((s.passInt || 0) > 0) tiles.push({ label: "Interceptions Thrown", value: s.passInt, color: "text-red-400" });
+              if ((s.receptions || 0) > 0) tiles.push({ label: "Receptions", value: s.receptions, color: "text-blue-400" });
+              if ((s.recTD || 0) > 0) tiles.push({ label: "Receiving TDs", value: s.recTD, color: "text-emerald-400" });
+              if ((s.rushAtt || 0) > 0) tiles.push({ label: "Rush Attempts", value: s.rushAtt, color: "text-amber-400" });
+              if ((s.rushTD || 0) > 0) tiles.push({ label: "Rushing TDs", value: s.rushTD, color: "text-emerald-400" });
+              if ((s.flagPulls || 0) > 0) tiles.push({ label: "Flag Pulls", value: s.flagPulls, color: "text-amber-400" });
+              if ((s.sacks || 0) > 0) tiles.push({ label: "Sacks", value: s.sacks, color: "text-orange-400" });
+              if ((s.int || 0) > 0) tiles.push({ label: "Interceptions", value: s.int, color: "text-purple-400" });
+              if ((s.defTD || 0) > 0) tiles.push({ label: "Defensive TDs", value: s.defTD, color: "text-emerald-400" });
+              if ((s.pbu || 0) > 0) tiles.push({ label: "Pass Breakups", value: s.pbu, color: "text-cyan-400" });
+
+              if (tiles.length === 0) {
+                return (
+                  <p className="text-sm text-neutral-400 text-center py-6">
+                    No stats recorded yet this season.
+                  </p>
+                );
+              }
               return (
                 <div data-tour="team-player-stats-totals" className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-xs text-neutral-500 block">Games Played</span>
-                    <span className="text-xl font-black text-white">{s.gamesPlayed || 0}</span>
-                  </div>
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-xs text-neutral-500 block">Total Touchdowns</span>
-                    <span className="text-xl font-black text-yellow-400">{s.totalTDs || 0}</span>
-                  </div>
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-xs text-neutral-500 block">Passing (Comp/Att)</span>
-                    <span className="text-xl font-black text-blue-400">{s.passComp || 0} / {s.passAtt || 0}</span>
-                  </div>
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-xs text-neutral-500 block">Passing TDs</span>
-                    <span className="text-xl font-black text-emerald-400">{s.passTD || 0}</span>
-                  </div>
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-xs text-neutral-500 block">Receptions / TDs</span>
-                    <span className="text-xl font-black text-blue-400">{s.receptions || 0} / {s.recTD || 0} TD</span>
-                  </div>
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5">
-                    <span className="text-xs text-neutral-500 block">Flags / Sacks</span>
-                    <span className="text-xl font-black text-amber-400">{s.flagPulls || 0} / {s.sacks || 0}</span>
-                  </div>
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-white/5 col-span-2">
-                    <span className="text-xs text-neutral-500 block">Interceptions / Pass Breakups</span>
-                    <span className="text-xl font-black text-purple-400">{s.int || 0} INT / {s.pbu || 0} PBU</span>
-                  </div>
+                  {tiles.map((tile) => (
+                    <div key={tile.label} className={`bg-neutral-950 p-3.5 rounded-xl border border-white/5 ${tile.span ? "col-span-2" : ""}`}>
+                      <span className="text-xs text-neutral-500 block">{tile.label}</span>
+                      <span className={`text-xl font-black ${tile.color}`}>{tile.value}</span>
+                    </div>
+                  ))}
                 </div>
               );
             })()}

@@ -676,8 +676,7 @@ export default function StatsAndStandings() {
                               </div>
                             </th>
                             <ThIndiv label="GP" sortKey="gamesPlayed" className="text-neutral-300" />
-                            <ThIndiv label="Comp" sortKey="passComp" className="text-blue-400" />
-                            <ThIndiv label="Comp %" sortKey="compPct" />
+                            <ThIndiv label="Comp/Att (%)" sortKey="compPct" className="text-blue-400" />
                             <ThIndiv label="Pass TD" sortKey="passTD" className="text-emerald-400" />
                             <ThIndiv label="INT" sortKey="passInt" className="text-red-400" />
                             <ThIndiv label="PAT Conv" sortKey="convPass" className="text-purple-400" />
@@ -769,11 +768,8 @@ export default function StatsAndStandings() {
 
                             {individualTab === "passing" && (
                               <>
-                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-blue-200">
-                                  {row.passComp} / {row.passAtt}
-                                </td>
-                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-neutral-300">
-                                  {row.passAtt > 0 ? Math.round((row.passComp / row.passAtt) * 100) : 0}%
+                                <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-blue-200 whitespace-nowrap">
+                                  {row.passComp}/{row.passAtt} ({row.passAtt > 0 ? Math.round((row.passComp / row.passAtt) * 100) : 0}%)
                                 </td>
                                 <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-black text-emerald-400 text-lg">{row.passTD}</td>
                                 <td className="py-3 px-2 sm:py-4 sm:px-6 text-center font-medium text-red-400">{row.passInt}</td>

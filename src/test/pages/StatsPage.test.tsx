@@ -241,11 +241,11 @@ describe("League Standings & Individual Leaderboards Suite (StatsAndStandings)",
     fireEvent.click(playerHeader);
     fireEvent.click(playerHeader);
 
-    // Test sorting by Pass TD and Comp %
+    // Test sorting by Pass TD and the combined Comp/Att (%) column
     const passTDHeader = screen.getByText("Pass TD");
     fireEvent.click(passTDHeader);
 
-    const compPctHeader = screen.getByText("Comp %");
+    const compPctHeader = screen.getByText("Comp/Att (%)");
     fireEvent.click(compPctHeader);
 
     // Switch to Receiving / Rushing sub-tab
