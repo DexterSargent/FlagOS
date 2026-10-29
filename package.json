@@ -11,7 +11,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "emulators": "npx firebase-tools emulators:start --project demo-flagos-local",
+    "emulators": "JAVA_HOME=\"$(/usr/libexec/java_home -v 21 2>/dev/null || echo $JAVA_HOME)\" npx firebase-tools emulators:start --project demo-flagos-local",
     "audit:contrast": "node scripts/contrast-audit.mjs"
   },
   "dependencies": {
