@@ -11,6 +11,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "emulators": "npx firebase-tools emulators:start --project demo-flagos-local",
     "audit:contrast": "node scripts/contrast-audit.mjs"
   },
   "dependencies": {
