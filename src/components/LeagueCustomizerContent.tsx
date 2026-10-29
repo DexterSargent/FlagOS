@@ -594,6 +594,7 @@ export default function LeagueCustomizerContent() {
             setNewSeasonTitle={setNewSeasonTitle}
             seasons={seasons}
             startNewSeason={startNewSeason}
+            leagueId={activeLeagueId}
             resumeSubscription={resumeSubscription}
             setSaveError={setSaveError}
             describeSaveError={describeSaveError}

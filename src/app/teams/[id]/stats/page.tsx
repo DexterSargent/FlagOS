@@ -4,9 +4,9 @@ import { usePageGuide } from "@/lib/pageGuide";
 
 import { TEAM_STATS_WALKTHROUGH } from "@/lib/walkthroughData";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, type LucideIcon } from "lucide-react";
+import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, History, Calendar, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { loadTeamPlayers } from "@/lib/matchRoster";
@@ -18,6 +18,14 @@ import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 import { loadTeamSeasonSummary, getPlayerNumber, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
 import { getAccentOnDark, getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors";
 import { calculateTeamComprehensiveStats, type TeamComprehensiveStats } from "@/lib/teamStatsCalculator";
+import {
+  getTeamSeasons,
+  getCurrentTeamSeasonId,
+  loadTeamSeasonSnapshots,
+  buildTeamCareerSummaries,
+  type TeamSeasonSnapshot,
+} from "@/lib/teamSeasons";
+import TeamSeasonHistoryPanel from "@/components/team/TeamSeasonHistoryPanel";
 import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
@@ -39,6 +47,9 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [teamMissing, setTeamMissing] = useState(false);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>("current");
+  const [activeTab, setActiveTab] = useState<"leaders" | "history">("leaders");
+  const [snapshots, setSnapshots] = useState<TeamSeasonSnapshot[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +73,13 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           players = getSandboxPlayers().filter((p) => p.teamId === effectiveTeamId);
           matches = getSandboxMatches();
           plays = getSandboxPlays();
+          if (tObj && !cancelled) {
+            setTeam(tObj);
+            const tSeasons = getTeamSeasons(tObj);
+            loadTeamSeasonSnapshots(teamId, tSeasons).then((snaps) => {
+              if (!cancelled) setSnapshots(snaps);
+            });
+          }
         } else {
           const teamSnap = await getDoc(doc(db, "teams", teamId));
           if (cancelled) return;
@@ -72,7 +90,13 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
           tObj = { ...teamSnap.data(), id: teamSnap.id };
           const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
-          if (tObj) setTeam(tObj);
+          if (tObj) {
+            setTeam(tObj);
+            const tSeasons = getTeamSeasons(tObj);
+            loadTeamSeasonSnapshots(teamId, tSeasons).then((snaps) => {
+              if (!cancelled) setSnapshots(snaps);
+            });
+          }
           setLoading(false);
           setStatsLoading(true);
           try {
@@ -250,8 +274,78 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
     return () => { cancelled = true; unsubscribe?.(); };
   }, [teamId, isDemoLeague, reloadKey, sandbox]);
 
+  const seasons = useMemo(() => getTeamSeasons(team), [team]);
+  const currentSeasonId = useMemo(() => getCurrentTeamSeasonId(team), [team]);
+
+  const displayedStats = useMemo(() => {
+    if (selectedSeasonId === "career") {
+      const careerSummaries = buildTeamCareerSummaries(
+        snapshots,
+        stats.map((s) => ({
+          playerId: s.playerId || s.name,
+          name: s.name,
+          number: s.number || "",
+          teamId,
+          teamName: team?.name || "Team",
+          teamShortcode: team?.shortcode || "",
+          gamesPlayed: s.gamesPlayed || 0,
+          passAtt: s.passAtt || 0,
+          passComp: s.passComp || 0,
+          passTD: s.passTD || 0,
+          passInt: s.passInt || 0,
+          receptions: s.receptions || 0,
+          recTD: s.recTD || 0,
+          rushAtt: s.rushAtt || 0,
+          rushTD: s.rushTD || 0,
+          flagPulls: s.flagPulls || 0,
+          sacks: s.sacks || 0,
+          int: s.int || 0,
+          defTD: s.defTD || 0,
+          convPass: s.convPass || 0,
+          convRec: s.convRec || 0,
+          pbu: s.pbu || 0,
+          safeties: s.safeties || 0,
+          ffl: s.ffl || 0,
+          totalTDs: s.totalTDs || 0,
+        })),
+        team?.seasonTitle || "Current Season",
+        seasons.length,
+        currentSeasonId,
+      );
+
+      return careerSummaries.map((c) => ({
+        name: c.name,
+        number: "",
+        gamesPlayed: c.totals.gamesPlayed,
+        passAtt: c.totals.passAtt,
+        passComp: c.totals.passComp,
+        passTD: c.totals.passTD,
+        passInt: c.totals.passInt,
+        receptions: c.totals.receptions,
+        recTD: c.totals.recTD,
+        rushAtt: c.totals.rushAtt,
+        rushTD: c.totals.rushTD,
+        flagPulls: c.totals.flagPulls,
+        sacks: c.totals.sacks,
+        int: c.totals.int,
+        defTD: c.totals.defTD,
+        pbu: c.totals.pbu,
+        totalTDs: c.totals.totalTDs,
+      }));
+    }
+
+    if (selectedSeasonId !== "current") {
+      const snap = snapshots.find((s) => s.seasonId === selectedSeasonId);
+      if (snap && snap.playerStats.length > 0) {
+        return snap.playerStats.map((p) => ({ ...p }));
+      }
+    }
+
+    return stats;
+  }, [selectedSeasonId, snapshots, stats, team, seasons.length, currentSeasonId, teamId]);
+
   const getTop3 = (key: string) => {
-    const sorted = [...stats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
+    const sorted = [...displayedStats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
     return sorted.slice(0, 3);
   };
 
@@ -368,7 +462,100 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           )}
         </header>
 
-        {statsLoading ? (
+        {/* View Mode & Season Navigation */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 border-b border-white/10">
+          {/* Main Tabs: Leaders vs History */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-neutral-900 border border-white/10 text-xs font-bold uppercase tracking-wider">
+            <button
+              type="button"
+              onClick={() => setActiveTab("leaders")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                activeTab === "leaders"
+                  ? "bg-cyan-500 text-black font-black shadow-md"
+                  : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Stat Leaders</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("history")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                activeTab === "history"
+                  ? "bg-cyan-500 text-black font-black shadow-md"
+                  : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              <History className="w-3.5 h-3.5" />
+              <span>Franchise History ({seasons.length})</span>
+            </button>
+          </div>
+
+          {/* Season Filter Selector (Shown when on Stat Leaders tab) */}
+          {activeTab === "leaders" && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
+              <span className="text-neutral-400 text-[11px] uppercase tracking-wider mr-1">Scope:</span>
+              <button
+                type="button"
+                onClick={() => setSelectedSeasonId("current")}
+                className={`px-3 py-1.5 rounded-xl border transition-all ${
+                  selectedSeasonId === "current"
+                    ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold"
+                    : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
+                }`}
+              >
+                {team?.seasonTitle || "Current Season"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSeasonId("career")}
+                className={`px-3 py-1.5 rounded-xl border transition-all ${
+                  selectedSeasonId === "career"
+                    ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
+                    : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
+                }`}
+              >
+                All-Time Career
+              </button>
+              {snapshots.map((snap) => (
+                <button
+                  key={snap.seasonId}
+                  type="button"
+                  onClick={() => setSelectedSeasonId(snap.seasonId)}
+                  className={`px-3 py-1.5 rounded-xl border transition-all ${
+                    selectedSeasonId === snap.seasonId
+                      ? "bg-purple-500/20 border-purple-400 text-purple-300 font-bold"
+                      : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
+                  }`}
+                >
+                  {snap.title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {activeTab === "history" ? (
+          <TeamSeasonHistoryPanel
+            teamName={teamName}
+            teamId={teamId}
+            seasons={seasons}
+            snapshots={snapshots}
+            currentSeasonId={currentSeasonId}
+            liveRecord={teamStats ? {
+              won: teamStats.wins,
+              lost: teamStats.losses,
+              tied: teamStats.ties,
+              pf: teamStats.pf,
+              pa: teamStats.pa,
+            } : undefined}
+            onSelectSeason={(sId) => {
+              setSelectedSeasonId(sId);
+              setActiveTab("leaders");
+            }}
+          />
+        ) : statsLoading ? (
           <div role="status" aria-label="Loading stat leaders" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {Array.from({ length: 6 }, (_, i) => (
               <div key={i} className="h-48 rounded-2xl border border-white/5 bg-neutral-900/70 animate-pulse" />

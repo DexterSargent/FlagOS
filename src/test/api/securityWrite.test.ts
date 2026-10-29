@@ -1081,5 +1081,31 @@ describe("secure data write API", () => {
       expect(transaction.delete).toHaveBeenCalledWith(expect.objectContaining({ path: "plays/play_td_1" }));
     });
   });
+
+  describe("multi-season support", () => {
+    beforeEach(() => {
+      runTransactionMock.mockImplementation(async (callback) => callback(transaction));
+    });
+
+    it("rejects start_season with invalid fields or mode", async () => {
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      const res = await POST(request({
+        entity: "start_season",
+        data: { leagueId: "league_apex", title: "Season 2", teamSelectionMode: "invalid_mode" },
+      }));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain("Invalid team selection mode");
+    });
+
+    it("rejects start_team_season with invalid roster selection mode", async () => {
+      verifyIdTokenMock.mockResolvedValue(validToken);
+      const res = await POST(request({
+        entity: "start_team_season",
+        data: { teamId: "falcons", title: "Season 2", rosterSelectionMode: "invalid_roster_mode" },
+      }));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain("Invalid roster selection mode");
+    });
+  });
 });
 

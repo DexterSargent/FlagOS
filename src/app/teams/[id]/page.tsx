@@ -36,6 +36,7 @@ import {
   ShieldCheck,
   Plus,
   CreditCard,
+  Calendar,
 } from "lucide-react";
 import { openBillingPortal } from "@/lib/billingClient";
 import { db } from "@/lib/firebase";
@@ -60,6 +61,9 @@ import {
   type TeamComprehensiveStats,
 } from "@/lib/teamStatsCalculator";
 import { loadTeamSeasonSummary, TeamSeasonSummaryError } from "@/lib/teamSeasonSummary";
+import { getTeamSeasons, getCurrentTeamSeasonId, loadTeamSeasonSnapshots, type TeamSeasonSnapshot } from "@/lib/teamSeasons";
+import TeamSeasonModal from "@/components/team/TeamSeasonModal";
+import TeamSeasonHistoryPanel from "@/components/team/TeamSeasonHistoryPanel";
 import { usePageGuide } from "@/lib/pageGuide";
 import { TEAM_HUB_WALKTHROUGH, TEAM_EDIT_WALKTHROUGH, TEAM_STAFF_WALKTHROUGH } from "@/lib/walkthroughData";
 import TeamNavBar from "@/components/team/TeamNavBar";
@@ -129,6 +133,20 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const [statsReloadKey, setStatsReloadKey] = useState(0);
   const [visibleStatIds, setVisibleStatIds] = useState<string[]>(DEFAULT_VISIBLE_TEAM_STATS);
   const [isStatsCustomizerOpen, setIsStatsCustomizerOpen] = useState(false);
+  const [isSeasonModalOpen, setIsSeasonModalOpen] = useState(false);
+  const [seasonSnapshots, setSeasonSnapshots] = useState<TeamSeasonSnapshot[]>([]);
+
+  useEffect(() => {
+    if (!team) return;
+    let cancelled = false;
+    const seasons = getTeamSeasons(team);
+    loadTeamSeasonSnapshots(teamId, seasons).then((snaps) => {
+      if (!cancelled) setSeasonSnapshots(snaps);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [teamId, team?.seasons]);
 
   // Edit Team Modal / State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -795,12 +813,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <button
                     type="button"
                     data-tour="team-archive"
-                    onClick={handleToggleSeasonArchive}
-                    disabled={archivingSeason}
-                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer disabled:opacity-50"
+                    onClick={() => setIsSeasonModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-all border border-white/15 hover:border-white/30 backdrop-blur-md shadow-lg cursor-pointer"
                   >
-                    <Archive className="w-4 h-4 text-neutral-300" />
-                    <span>{archivingSeason ? "Saving..." : teamSeasonArchived ? "Reopen Season" : "Conclude & Archive Season"}</span>
+                    <Calendar className="w-4 h-4 text-cyan-300" />
+                    <span>Season Management</span>
                   </button>
                 )}
                 {isIndependentTeam && !isDemoLeague && team.subscription?.paymentMethod === "paid" && (
@@ -1060,7 +1077,56 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             </Link>
           )}
         </div>
+
+        {/* Team Franchise History Panel */}
+        <div data-tour="team-history-panel" className="w-full max-w-6xl mt-8">
+          <TeamSeasonHistoryPanel
+            teamName={team.name || "Team"}
+            teamId={teamId}
+            seasons={getTeamSeasons(team)}
+            snapshots={seasonSnapshots}
+            currentSeasonId={getCurrentTeamSeasonId(team)}
+            liveRecord={comprehensiveStats ? {
+              won: comprehensiveStats.wins,
+              lost: comprehensiveStats.losses,
+              tied: comprehensiveStats.ties,
+              pf: comprehensiveStats.pf,
+              pa: comprehensiveStats.pa,
+            } : undefined}
+          />
+        </div>
       </div>
+
+      {/* Team Season Management Modal */}
+      {isSeasonModalOpen && (
+        <TeamSeasonModal
+          isOpen={isSeasonModalOpen}
+          onClose={() => setIsSeasonModalOpen(false)}
+          teamId={teamId}
+          teamName={team.name || "Team"}
+          teamSeasonArchived={teamSeasonArchived}
+          seasons={getTeamSeasons(team)}
+          currentSeasonId={getCurrentTeamSeasonId(team)}
+          archivingSeason={archivingSeason}
+          onArchiveToggled={handleToggleSeasonArchive}
+          onSeasonStarted={(newSeasonId, title) => {
+            const currentSeasons = getTeamSeasons(team);
+            const nextNumber = Math.max(...currentSeasons.map((s) => s.number)) + 1;
+            setTeam((prev: any) => ({
+              ...prev,
+              currentSeasonId: newSeasonId,
+              seasonTitle: title,
+              seasonStatus: "active",
+              isArchived: false,
+              seasons: [
+                ...currentSeasons.map((s) => ({ ...s, status: "archived" })),
+                { id: newSeasonId, title, status: "active", number: nextNumber },
+              ],
+            }));
+            setStatsReloadKey((k) => k + 1);
+          }}
+        />
+      )}
 
       {/* Edit Team Modal (Accessible to Team Admin & League Admin) */}
       {isEditModalOpen && (

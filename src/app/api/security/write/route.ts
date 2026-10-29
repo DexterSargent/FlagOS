@@ -15,6 +15,10 @@ import {
   buildSeasonSnapshot, createSeasonId, getCurrentSeasonId, getLeagueSeasons, INITIAL_SEASON_ID, matchSeasonId,
   SEASON_SNAPSHOT_COLLECTION, seasonSnapshotDocId,
 } from "@/lib/leagueSeasons";
+import {
+  buildTeamSeasonSnapshot, getCurrentTeamSeasonId, getTeamSeasons,
+  TEAM_SEASON_SNAPSHOT_COLLECTION, teamSeasonSnapshotDocId,
+} from "@/lib/teamSeasons";
 import { isRealTeam } from "@/components/TeamAssets";
 import { SCORER_GRANTS_COLLECTION, scorerGrantDocId, timestampMillis } from "@/lib/scorerAccess";
 import { GAME_SUMMARY_COLLECTION } from "@/lib/teamStatSummaryService";
@@ -63,7 +67,8 @@ type Entity =
   | "red_play"
   | "playbook"
   | "depth_chart"
-  | "start_season";
+  | "start_season"
+  | "start_team_season";
 type Scope = { kind: string; id: string; collection: string; field: string; limit: number };
 
 const ENTITY_LIMITS = {
@@ -808,6 +813,7 @@ function getRecordCollection(entity: Entity): string {
     case "delete_team":
     case "delete_league":
     case "start_season":
+    case "start_team_season":
       return "";
     case "assign_player":
     case "player":
@@ -895,6 +901,7 @@ const AUDITED_ENTITIES = new Set<Entity>([
   "delete_team",
   "delete_league",
   "start_season",
+  "start_team_season",
 ]);
 const AUDIT_ID_FIELDS = new Set(["leagueId", "teamId", "playerId", "matchId", "purge"]);
 
@@ -905,14 +912,22 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T): T {
 /**
  * Closes the league's current season: freezes its standings, stat lines and results into a
  * snapshot document, marks it archived with its champion, and opens a new active season.
- * Teams and rosters carry over; new games are stamped with the new season ID.
+ * Prompts commissioner to retain all teams, select returning teams, or start fresh with new teams.
  */
 async function startLeagueSeason(token: DecodedIdToken, data: Record<string, unknown>): Promise<string> {
-  if (Object.keys(data).some((key) => !["leagueId", "title"].includes(key))) fail("Invalid season fields.");
+  const allowedKeys = ["leagueId", "title", "teamSelectionMode", "retainedTeamIds"];
+  if (Object.keys(data).some((key) => !allowedKeys.includes(key))) fail("Invalid season fields.");
   const leagueId = data.leagueId;
   if (!isDocumentId(leagueId)) fail("A valid league ID is required.");
   const title = typeof data.title === "string" ? data.title.trim() : "";
   if (!title || title.length > 80) fail("Season names must be between 1 and 80 characters.");
+  const selectionMode = data.teamSelectionMode;
+  if (selectionMode !== undefined && !["keep_all", "select_teams", "new_teams"].includes(String(selectionMode))) {
+    fail("Invalid team selection mode.");
+  }
+  if (data.retainedTeamIds !== undefined && (!Array.isArray(data.retainedTeamIds) || !data.retainedTeamIds.every((id) => typeof id === "string"))) {
+    fail("Retained team IDs must be a list of strings.");
+  }
 
   const leagueRef = adminDb.doc(`leagues/${leagueId}`);
   const [leagueSnap, privateSnap] = await Promise.all([
@@ -952,6 +967,21 @@ async function startLeagueSeason(token: DecodedIdToken, data: Record<string, unk
   const nextNumber = Math.max(...seasons.map((season) => season.number)) + 1;
   const nextId = createSeasonId(nextNumber);
 
+  const retainedSet = selectionMode === "select_teams" && Array.isArray(data.retainedTeamIds)
+    ? new Set(data.retainedTeamIds as string[])
+    : null;
+  const detachAll = selectionMode === "new_teams";
+  const teamsToDetach = teams.docs.filter((doc) => {
+    if (detachAll) return true;
+    if (retainedSet) return !retainedSet.has(doc.id);
+    return false;
+  });
+  const detachedTeamIds = new Set(teamsToDetach.map((d) => d.id));
+  const playersToDetach = players.docs.filter((p) => {
+    const pData = p.data();
+    return detachedTeamIds.has(String(pData.teamId));
+  });
+
   await adminDb.runTransaction(async (transaction) => {
     const fresh = await transaction.get(leagueRef);
     if (getCurrentSeasonId(fresh.data()) !== currentId) {
@@ -968,7 +998,132 @@ async function startLeagueSeason(token: DecodedIdToken, data: Record<string, unk
       ...withoutUndefined({ ...snapshot }),
       createdAt: FieldValue.serverTimestamp(),
     });
+    const remainingTeams = Math.max(0, teams.docs.length - teamsToDetach.length);
     transaction.set(leagueRef, {
+      seasons: [...archivedSeasons, { id: nextId, title, status: "active", number: nextNumber, startedAt: endedAt }],
+      currentSeasonId: nextId,
+      seasonTitle: title,
+      seasonStatus: "active",
+      isArchived: false,
+      teamCount: remainingTeams,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    for (const teamDoc of teamsToDetach) {
+      transaction.update(teamDoc.ref, {
+        leagueId: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    for (const playerDoc of playersToDetach) {
+      transaction.update(playerDoc.ref, {
+        leagueId: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  });
+  return nextId;
+}
+
+/**
+ * Closes a team's current season: freezes its record, player stats and results into a
+ * snapshot document, marks it archived, and opens a new active season.
+ * Prompts coaches to retain full roster, select returning players, or start fresh.
+ */
+async function startTeamSeason(token: DecodedIdToken, data: Record<string, unknown>): Promise<string> {
+  const allowedKeys = ["teamId", "title", "rosterSelectionMode", "retainedPlayerIds"];
+  if (Object.keys(data).some((key) => !allowedKeys.includes(key))) fail("Invalid team season fields.");
+  const teamId = data.teamId;
+  if (!isDocumentId(teamId)) fail("A valid team ID is required.");
+  const title = typeof data.title === "string" ? data.title.trim() : "";
+  if (!title || title.length > 80) fail("Season names must be between 1 and 80 characters.");
+  const rosterMode = data.rosterSelectionMode;
+  if (rosterMode !== undefined && !["keep_all", "select_players", "new_roster"].includes(String(rosterMode))) {
+    fail("Invalid roster selection mode.");
+  }
+  if (data.retainedPlayerIds !== undefined && (!Array.isArray(data.retainedPlayerIds) || !data.retainedPlayerIds.every((id) => typeof id === "string"))) {
+    fail("Retained player IDs must be a list of strings.");
+  }
+
+  const teamRef = adminDb.doc(`teams/${teamId}`);
+  const [teamSnap, privateSnap] = await Promise.all([
+    teamRef.get(),
+    adminDb.doc(`team_private/${teamId}`).get(),
+  ]);
+  const teamData = teamSnap.data();
+  if (!teamData) fail("The team was not found.", 404);
+  if (!isTeamAdminData(privateSnap.data() || {}, token) && !isTeamAdminData(teamData, token) && !isPlatformAdmin(token)) {
+    fail("Only team coaches or administrators can start a new season.", 403);
+  }
+
+  const seasons = getTeamSeasons(teamData);
+  if (seasons.length >= 100) fail("This team has reached the maximum number of seasons.", 409);
+  const currentId = getCurrentTeamSeasonId(teamData);
+  const current = seasons.find((season) => season.id === currentId) || seasons[seasons.length - 1];
+
+  const [playersSnap, matchesSnap] = await Promise.all([
+    adminDb.collection("players").where("teamId", "==", teamId).limit(100).get(),
+    adminDb.collection("matches").where("managingTeamId", "==", teamId).limit(512).get(),
+  ]);
+
+  const matchIds = matchesSnap.docs.map((d) => d.id);
+  const playsDocs = matchIds.length
+    ? (await Promise.all(matchIds.slice(0, 50).map((mId) =>
+        adminDb.collection("plays").where("matchId", "==", mId).where("managingTeamId", "==", teamId).limit(1000).get(),
+      ))).flatMap((s) => s.docs)
+    : [];
+
+  const toRecords = (docs: FirebaseFirestore.QueryDocumentSnapshot[]) => docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  const endedAt = new Date().toISOString();
+
+  const snapshot = buildTeamSeasonSnapshot({
+    teamId,
+    teamName: teamData.name || "Team",
+    shortcode: teamData.shortcode || "",
+    season: current,
+    players: toRecords(playersSnap.docs),
+    matches: toRecords(matchesSnap.docs),
+    plays: toRecords(playsDocs),
+    endedAt,
+  });
+
+  const nextNumber = Math.max(...seasons.map((s) => s.number)) + 1;
+  const nextId = createSeasonId(nextNumber);
+
+  const retainedPlayerSet = rosterMode === "select_players" && Array.isArray(data.retainedPlayerIds)
+    ? new Set(data.retainedPlayerIds as string[])
+    : null;
+  const detachAllPlayers = rosterMode === "new_roster";
+  const playersToDetach = playersSnap.docs.filter((doc) => {
+    if (detachAllPlayers) return true;
+    if (retainedPlayerSet) return !retainedPlayerSet.has(doc.id);
+    return false;
+  });
+
+  await adminDb.runTransaction(async (transaction) => {
+    const fresh = await transaction.get(teamRef);
+    if (getCurrentTeamSeasonId(fresh.data()) !== currentId) {
+      fail("The team season was already changed. Refresh and try again.", 409);
+    }
+    const archivedSeasons = seasons.map((season) => withoutUndefined(season.id === currentId ? {
+      ...season,
+      status: "archived" as const,
+      endedAt,
+      won: snapshot.won,
+      lost: snapshot.lost,
+      tied: snapshot.tied,
+      pf: snapshot.pf,
+      pa: snapshot.pa,
+      diff: snapshot.diff,
+      gamesPlayed: snapshot.gamesPlayed,
+    } : { ...season }));
+
+    transaction.create(adminDb.doc(`${TEAM_SEASON_SNAPSHOT_COLLECTION}/${teamSeasonSnapshotDocId(teamId, currentId)}`), {
+      ...withoutUndefined({ ...snapshot }),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    transaction.set(teamRef, {
       seasons: [...archivedSeasons, { id: nextId, title, status: "active", number: nextNumber, startedAt: endedAt }],
       currentSeasonId: nextId,
       seasonTitle: title,
@@ -976,7 +1131,16 @@ async function startLeagueSeason(token: DecodedIdToken, data: Record<string, unk
       isArchived: false,
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
+
+    for (const playerDoc of playersToDetach) {
+      transaction.update(playerDoc.ref, {
+        teamId: "",
+        leagueId: "",
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
   });
+
   return nextId;
 }
 
@@ -1007,9 +1171,10 @@ async function recordPlatformAudit(
     delete_team: `Deleted team ${teamLabel}${data.purge === true ? " and purged its data" : ""}`,
     delete_league: `Deleted league ${names.league || targetId}`,
     start_season: `Started ${String(data.title || "a new season").slice(0, 80)} in league ${names.league || String(data.leagueId)}`,
+    start_team_season: `Started ${String(data.title || "a new season").slice(0, 80)} for team ${names.team || String(data.teamId)}`,
   };
   const leagueScoped = entity === "league" || entity.startsWith("league_") || entity === "delete_league";
-  const targetKind = entity.includes("player") ? "player" : entity.includes("team") ? "team" : entity === "start_season" ? "season" : "league";
+  const targetKind = entity.includes("player") ? "player" : entity.includes("team") && entity !== "start_team_season" ? "team" : entity.includes("season") ? "season" : "league";
   try {
     await adminDb.collection("platform_audit").add({
       action: entity,
@@ -1105,7 +1270,7 @@ export async function POST(request: Request) {
     if (![
       "league", "team", "player", "assign_player", "team_private_update", "player_private_update",
       "league_private_update", "league_update", "match_update", "player_update", "match", "play", "play_batch", "red_play", "playbook",
-      "delete_player", "delete_team", "delete_league", "depth_chart", "start_season",
+      "delete_player", "delete_team", "delete_league", "depth_chart", "start_season", "start_team_season",
     ].includes(String(entity))) {
       fail("Unsupported record type.");
     }
@@ -1114,6 +1279,11 @@ export async function POST(request: Request) {
     const requestedEntity = entity as Entity;
     if (requestedEntity === "start_season") {
       const seasonId = await startLeagueSeason(token, data);
+      await recordPlatformAudit(token, requestedEntity, data, seasonId);
+      return Response.json({ id: seasonId }, { status: 201 });
+    }
+    if (requestedEntity === "start_team_season") {
+      const seasonId = await startTeamSeason(token, data);
       await recordPlatformAudit(token, requestedEntity, data, seasonId);
       return Response.json({ id: seasonId }, { status: 201 });
     }

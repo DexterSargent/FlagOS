@@ -5,6 +5,7 @@ import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 
 export type SecureEntity =
   | "start_season"
+  | "start_team_season"
   | "league"
   | "team"
   | "player"

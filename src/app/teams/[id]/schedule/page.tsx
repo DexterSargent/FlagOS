@@ -276,7 +276,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         ));
         if (cancelled) return;
 
-        if (teamSnap.exists()) {
+        if (teamData) {
           const tData = teamData;
           if (isRealTeam(tData)) setTeam(tData);
           else setTeam(null);

@@ -418,7 +418,10 @@ interface LeagueContextType {
   setViewingSeasonId: (seasonId: string) => void;
   isViewingArchivedSeason: boolean;
   /** Archives the live season (standings, stats, champion) and opens a new one. */
-  startNewSeason: (title: string) => Promise<void>;
+  startNewSeason: (
+    title: string,
+    options?: { teamSelectionMode?: "keep_all" | "select_teams" | "new_teams"; retainedTeamIds?: string[] },
+  ) => Promise<void>;
 }
 
 interface RgbColor {
@@ -1117,11 +1120,19 @@ const SelectedLeagueProvider = ({ pathname, routeLeagueId, suspended, children }
     setViewingSeasonState({ leagueId: activeLeagueId, seasonId });
   };
 
-  const startNewSeason = async (title: string) => {
+  const startNewSeason = async (
+    title: string,
+    options?: { teamSelectionMode?: "keep_all" | "select_teams" | "new_teams"; retainedTeamIds?: string[] },
+  ) => {
     if (checkIsDemoLeague(activeLeagueId)) {
       throw new Error("Seasons can't be rolled over in the demo league.");
     }
-    await createSecureRecord("start_season", { leagueId: activeLeagueId, title: title.trim() });
+    await createSecureRecord("start_season", {
+      leagueId: activeLeagueId,
+      title: title.trim(),
+      ...(options?.teamSelectionMode ? { teamSelectionMode: options.teamSelectionMode } : {}),
+      ...(options?.retainedTeamIds ? { retainedTeamIds: options.retainedTeamIds } : {}),
+    });
     notifyDataChanged();
     const refreshed = await fetchSettingsForLeague(activeLeagueId);
     if (refreshed && refreshed !== LEAGUE_NOT_FOUND) {

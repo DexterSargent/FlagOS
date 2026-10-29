@@ -18,34 +18,40 @@ vi.mock("@/lib/firebase", () => ({
 }));
 
 // Mock matchMedia for responsive UI components & ThemeContext
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
 
-// Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-} as any;
+  window.scrollTo = vi.fn();
+}
 
-// Mock window.scrollTo
-window.scrollTo = vi.fn();
-Element.prototype.scrollIntoView = vi.fn();
+if (typeof Element !== "undefined") {
+  Element.prototype.scrollIntoView = vi.fn();
+}
+
+if (typeof globalThis !== "undefined") {
+  // Mock ResizeObserver
+  (globalThis as any).ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
 
 // In-memory SessionStorage & LocalStorage reset
 beforeEach(() => {
-  sessionStorage.clear();
-  localStorage.clear();
+  if (typeof sessionStorage !== "undefined") sessionStorage.clear();
+  if (typeof localStorage !== "undefined") localStorage.clear();
   vi.clearAllMocks();
 });
