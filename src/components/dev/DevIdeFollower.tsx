@@ -2,13 +2,18 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { Code, Navigation, Crosshair, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Code, Navigation, Crosshair, Check, ChevronDown, ChevronUp, Layers, Cpu } from "lucide-react";
 
-interface ComponentInspection {
-  name: string;
-  file?: string;
-  line?: number;
+interface ClickableTarget {
+  element: HTMLElement;
   rect: DOMRect;
+  name: string;
+  href?: string;
+  onClickText?: string;
+  text?: string;
+  ariaLabel?: string | null;
+  dataTour?: string | null;
+  id?: string;
 }
 
 function getFiberFromElement(element: Element | null): any {
@@ -22,23 +27,9 @@ function getFiberFromElement(element: Element | null): any {
   return key ? (element as any)[key] : null;
 }
 
-function parseStackForLocation(stackStr: unknown): { file?: string; line?: number } | null {
-  if (typeof stackStr !== "string") return null;
-  const match = stackStr.match(
-    /(?:at\s+.*?\s+\()?((\/(?:[^\s\):]+)(?:\.tsx|\.ts|\.jsx|\.js))(?::(\d+))?)/i
-  );
-  if (match) {
-    return {
-      file: match[2],
-      line: match[3] ? parseInt(match[3], 10) : undefined,
-    };
-  }
-  return null;
-}
-
 function getComponentName(type: any): string | null {
   if (!type) return null;
-  if (typeof type === "string") return null; // DOM tag like 'div'
+  if (typeof type === "string") return null;
   if (typeof type === "function") return type.displayName || type.name || null;
   if (typeof type === "object") {
     return (
@@ -54,80 +45,116 @@ function getComponentName(type: any): string | null {
   return null;
 }
 
-const IGNORED_NAMES = new Set([
-  "RootLayout",
-  "ThemeProvider",
-  "AuthProvider",
-  "LeagueProvider",
-  "AuthGuard",
-  "DevIdeFollower",
-  "Fragment",
-]);
+function extractElementDetails(element: HTMLElement, initialFiber: any) {
+  let href = element.getAttribute("href") || undefined;
+  let onClickText: string | null = null;
+  let compName: string | null = null;
 
-function findComponentInfo(target: Element | null): { name: string; file?: string; line?: number } | null {
-  let curr: Element | null = target;
-  while (curr && curr !== document.body && curr !== document.documentElement) {
-    let fiber = getFiberFromElement(curr);
-    while (fiber) {
-      const name = getComponentName(fiber.type) || getComponentName(fiber.elementType);
-
-      // 1. Direct debugSource (Babel / SWC dev transform)
-      if (fiber._debugSource?.fileName) {
-        const compName = name || "Component";
-        if (!IGNORED_NAMES.has(compName)) {
-          return {
-            name: compName,
-            file: fiber._debugSource.fileName,
-            line: fiber._debugSource.lineNumber,
-          };
+  // Check onClick in React fiber
+  let currFiber = initialFiber;
+  while (currFiber && !onClickText) {
+    const fn = currFiber.memoizedProps?.onClick;
+    if (fn) {
+      if (typeof fn === "function") {
+        onClickText = fn.name || null;
+        if (!onClickText) {
+          const fnStr = fn.toString();
+          const match = fnStr.match(/(set[A-Z0-9_a-z]+|handle[A-Z0-9_a-z]+|[a-zA-Z0-9_]+Modal)/);
+          if (match) onClickText = match[1];
         }
       }
-
-      // 2. React 19 _debugStack
-      if (fiber._debugStack) {
-        const stackLoc = parseStackForLocation(
-          typeof fiber._debugStack === "string" ? fiber._debugStack : fiber._debugStack.stack
-        );
-        const compName = name || "Component";
-        if (stackLoc?.file && !IGNORED_NAMES.has(compName)) {
-          return {
-            name: compName,
-            file: stackLoc.file,
-            line: stackLoc.line,
-          };
-        }
-      }
-
-      // 3. Matched custom component by function/class name
-      if (name && !IGNORED_NAMES.has(name)) {
-        return { name };
-      }
-
-      fiber = fiber.return;
     }
+    if (!compName) {
+      compName = getComponentName(currFiber.type);
+    }
+    currFiber = currFiber.return;
+  }
+
+  // Extract clean visible label
+  const rawText = (element.innerText || element.textContent || "").split("\n")[0]?.trim() || "";
+  const cleanText = rawText.slice(0, 40) || undefined;
+  const ariaLabel = element.getAttribute("aria-label") || undefined;
+  const dataTour = element.getAttribute("data-tour") || undefined;
+  const id = element.id || undefined;
+
+  const displayName =
+    compName ||
+    (element.tagName.toLowerCase() === "a" ? "Link" : element.tagName.toLowerCase());
+
+  return {
+    name: cleanText ? `${displayName} "${cleanText}"` : displayName,
+    href,
+    onClickText: onClickText || undefined,
+    text: cleanText,
+    ariaLabel,
+    dataTour,
+    id,
+  };
+}
+
+/**
+ * Searches up the DOM tree for a truly interactive/clickable element.
+ * If the element is non-interactive (static div, paragraph, background, etc.), returns null.
+ */
+function findInteractiveTarget(target: Element | null): ClickableTarget | null {
+  let curr: HTMLElement | null = target as HTMLElement;
+  while (curr && curr !== document.body && curr !== document.documentElement) {
+    if (curr.closest("#dev-ide-follower-ui")) return null;
+
+    const tag = curr.tagName.toLowerCase();
+    const isInteractiveTag = ["button", "a", "input", "select", "textarea", "summary"].includes(tag);
+    const role = curr.getAttribute("role");
+    const isInteractiveRole = Boolean(
+      role && ["button", "link", "checkbox", "switch", "tab", "menuitem", "radio"].includes(role)
+    );
+
+    let isPointer = false;
+    try {
+      isPointer = window.getComputedStyle(curr).cursor === "pointer";
+    } catch {}
+
+    const fiber = getFiberFromElement(curr);
+    const hasFiberHandler = Boolean(
+      fiber?.memoizedProps?.onClick ||
+      fiber?.memoizedProps?.onChange ||
+      fiber?.memoizedProps?.onSubmit
+    );
+
+    if (isInteractiveTag || isInteractiveRole || isPointer || hasFiberHandler) {
+      const details = extractElementDetails(curr, fiber);
+      const rect = curr.getBoundingClientRect();
+      return {
+        element: curr,
+        rect,
+        ...details,
+      };
+    }
+
     curr = curr.parentElement;
   }
+
   return null;
 }
 
 export default function DevIdeFollower() {
   const pathname = usePathname();
-
-  // Only run in development
   const isDev = process.env.NODE_ENV === "development";
 
   const [autoFollow, setAutoFollow] = useState(true);
   const [inspectorActive, setInspectorActive] = useState(true);
-  const [isModifierDown, setIsModifierDown] = useState(false);
-  const [hoveredComponent, setHoveredComponent] = useState<ComponentInspection | null>(null);
+
+  // Modifier states:
+  // Ctrl: UI segment mode (Cyan)
+  // Option/Alt: Logic / Backend mode (Amber)
+  const [activeMode, setActiveMode] = useState<"ui" | "logic" | null>(null);
+  const [hoveredTarget, setHoveredTarget] = useState<ClickableTarget | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const prevPathnameRef = useRef<string>("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastTargetRef = useRef<{ file?: string; name: string; line?: number } | null>(null);
+  const lastTargetRef = useRef<ClickableTarget | null>(null);
 
-  // Load preferences from localStorage
   useEffect(() => {
     try {
       const savedAuto = localStorage.getItem("flagos_dev_auto_route");
@@ -147,10 +174,11 @@ export default function DevIdeFollower() {
 
   const openTarget = useCallback(
     async (payload: {
-      file?: string;
+      mode: "ui" | "logic";
       component?: string;
       route?: string;
-      line?: number;
+      href?: string;
+      onClickText?: string;
       text?: string;
       ariaLabel?: string | null;
       dataTour?: string | null;
@@ -164,14 +192,10 @@ export default function DevIdeFollower() {
         });
         const data = await res.json();
         if (data.ok) {
-          const display = payload.component
-            ? `<${payload.component}>`
-            : payload.text
-            ? `"${payload.text.slice(0, 20)}"`
-            : data.file || "file";
-          showStatus(`Focused ${display} in VS Code (line ${data.line || 1})`);
+          const modeTag = payload.mode === "logic" ? "Logic" : "UI";
+          showStatus(`[${modeTag}] ${payload.text || payload.component || "element"} (line ${data.line || 1})`);
         } else {
-          showStatus(`Could not find ${payload.component || payload.route}`);
+          showStatus(`Could not locate ${payload.component || payload.route}`);
         }
       } catch (err) {
         console.warn("[DevIDE] Failed to open in VS Code:", err);
@@ -188,7 +212,7 @@ export default function DevIdeFollower() {
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      openTarget({ route: pathname });
+      openTarget({ mode: "ui", route: pathname });
     }, 350);
 
     return () => {
@@ -196,20 +220,26 @@ export default function DevIdeFollower() {
     };
   }, [pathname, autoFollow, isDev, openTarget]);
 
-  // 2. Track modifier keys (Control or Alt/Option on Mac)
+  // 2. Track modifier keys
   useEffect(() => {
     if (!isDev || !inspectorActive) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Control" || e.key === "Alt" || e.ctrlKey || e.altKey) {
-        setIsModifierDown(true);
+      if (e.altKey || e.key === "Alt") {
+        setActiveMode("logic");
+      } else if (e.ctrlKey || e.key === "Control") {
+        setActiveMode("ui");
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (!e.ctrlKey && !e.altKey && (e.key === "Control" || e.key === "Alt")) {
-        setIsModifierDown(false);
-        setHoveredComponent(null);
+      if (!e.ctrlKey && !e.altKey) {
+        setActiveMode(null);
+        setHoveredTarget(null);
+      } else if (e.altKey) {
+        setActiveMode("logic");
+      } else if (e.ctrlKey) {
+        setActiveMode("ui");
       }
     };
 
@@ -222,61 +252,55 @@ export default function DevIdeFollower() {
     };
   }, [isDev, inspectorActive]);
 
-  // 3. Inspect on mouse move & handle click / contextmenu (Mac Ctrl+Click)
+  // 3. Mousemove & Click handler
   useEffect(() => {
     if (!isDev || !inspectorActive) return;
 
-    const isTrigger = (e: MouseEvent) => Boolean(e.ctrlKey || e.altKey || isModifierDown);
+    const getModeFromEvent = (e: MouseEvent): "ui" | "logic" | null => {
+      if (e.altKey) return "logic";
+      if (e.ctrlKey) return "ui";
+      return activeMode;
+    };
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isTrigger(e)) {
-        if (hoveredComponent) setHoveredComponent(null);
+      const mode = getModeFromEvent(e);
+      if (!mode) {
+        if (hoveredTarget) setHoveredTarget(null);
         return;
       }
 
       const target = document.elementFromPoint(e.clientX, e.clientY);
-      if (!target || target.closest("#dev-ide-follower-ui")) {
-        setHoveredComponent(null);
-        return;
-      }
+      const interactive = findInteractiveTarget(target);
 
-      const info = findComponentInfo(target);
-      if (info) {
-        const rect = target.getBoundingClientRect();
-        lastTargetRef.current = info;
-        setHoveredComponent({
-          ...info,
-          rect,
-        });
+      if (interactive) {
+        lastTargetRef.current = interactive;
+        setHoveredTarget(interactive);
       } else {
-        setHoveredComponent(null);
+        setHoveredTarget(null);
       }
     };
 
     const triggerOpen = (e: MouseEvent) => {
-      if (!isTrigger(e)) return;
+      const mode = getModeFromEvent(e);
+      if (!mode) return;
 
       const target = document.elementFromPoint(e.clientX, e.clientY);
-      if (!target || target.closest("#dev-ide-follower-ui")) return;
+      const interactive = findInteractiveTarget(target) || lastTargetRef.current;
+      if (!interactive) return;
 
       e.preventDefault();
       e.stopPropagation();
 
-      const info = findComponentInfo(target) || lastTargetRef.current;
-      const cleanText = (target as HTMLElement).innerText?.split("\n")[0]?.trim()?.slice(0, 50);
-      const ariaLabel = target.getAttribute("aria-label");
-      const dataTour = target.getAttribute("data-tour");
-      const id = target.id;
-
       openTarget({
-        file: info?.file,
-        component: info?.name,
-        line: info?.line,
+        mode,
+        component: interactive.name,
         route: pathname,
-        text: cleanText,
-        ariaLabel,
-        dataTour,
-        id,
+        href: interactive.href,
+        onClickText: interactive.onClickText,
+        text: interactive.text,
+        ariaLabel: interactive.ariaLabel,
+        dataTour: interactive.dataTour,
+        id: interactive.id,
       });
     };
 
@@ -284,10 +308,8 @@ export default function DevIdeFollower() {
       triggerOpen(e);
     };
 
-    // On macOS, Ctrl+Click fires a contextmenu event. We must intercept it to prevent the context menu
-    // and jump directly to the component.
     const handleContextMenu = (e: MouseEvent) => {
-      if (e.ctrlKey || e.altKey || isModifierDown) {
+      if (e.ctrlKey || e.altKey || activeMode) {
         e.preventDefault();
         e.stopPropagation();
         triggerOpen(e);
@@ -303,30 +325,40 @@ export default function DevIdeFollower() {
       window.removeEventListener("click", handleClick, true);
       window.removeEventListener("contextmenu", handleContextMenu, true);
     };
-  }, [isDev, inspectorActive, isModifierDown, hoveredComponent, openTarget]);
+  }, [isDev, inspectorActive, activeMode, hoveredTarget, pathname, openTarget]);
 
   if (!isDev) return null;
 
-  const showHighlight = (isModifierDown || hoveredComponent) && hoveredComponent;
-
   return (
     <>
-      {/* Component Highlighting Rect */}
-      {showHighlight && (
+      {/* Component Highlighting Rect (ONLY displays when hovering over a valid clickable element) */}
+      {activeMode && hoveredTarget && (
         <div
-          className="fixed pointer-events-none z-[9999999] transition-all duration-75 border-2 border-emerald-500 bg-emerald-500/15 rounded-md shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+          className={`fixed pointer-events-none z-[9999999] transition-all duration-75 border-2 rounded-md ${
+            activeMode === "logic"
+              ? "border-amber-400 bg-amber-500/15 shadow-[0_0_20px_rgba(245,158,11,0.4)]"
+              : "border-cyan-400 bg-cyan-500/15 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+          }`}
           style={{
-            top: `${hoveredComponent.rect.top}px`,
-            left: `${hoveredComponent.rect.left}px`,
-            width: `${hoveredComponent.rect.width}px`,
-            height: `${hoveredComponent.rect.height}px`,
+            top: `${hoveredTarget.rect.top}px`,
+            left: `${hoveredTarget.rect.left}px`,
+            width: `${hoveredTarget.rect.width}px`,
+            height: `${hoveredTarget.rect.height}px`,
           }}
         >
-          <div className="absolute -top-7 left-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold tracking-tight bg-emerald-600 text-white shadow-md flex items-center gap-1.5 whitespace-nowrap pointer-events-none">
-            <Crosshair className="w-3 h-3 animate-spin" />
-            <span>&lt;{hoveredComponent.name}&gt;</span>
-            <span className="text-emerald-200 text-[10px] font-normal opacity-90">
-              (Click to open in VS Code)
+          <div
+            className={`absolute -top-7 left-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold tracking-tight text-white shadow-md flex items-center gap-1.5 whitespace-nowrap pointer-events-none ${
+              activeMode === "logic" ? "bg-amber-600" : "bg-cyan-600"
+            }`}
+          >
+            {activeMode === "logic" ? (
+              <Cpu className="w-3 h-3 animate-pulse" />
+            ) : (
+              <Layers className="w-3 h-3 animate-pulse" />
+            )}
+            <span>{hoveredTarget.name}</span>
+            <span className="opacity-80 text-[10px] font-normal">
+              ({activeMode === "logic" ? "Option+Click for Logic" : "Ctrl+Click for UI"})
             </span>
           </div>
         </div>
@@ -394,14 +426,14 @@ export default function DevIdeFollower() {
                 />
               </label>
 
-              {/* Ctrl/Option Click Inspector */}
+              {/* Inspector active toggle */}
               <label className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition">
                 <div className="flex items-center gap-2">
                   <Crosshair className="w-3.5 h-3.5 text-emerald-500" />
                   <div>
-                    <div className="text-[11px] font-semibold">Ctrl + Click Inspector</div>
+                    <div className="text-[11px] font-semibold">Dual Inspector</div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Hold Ctrl or Option &amp; click any UI element
+                      Ctrl (UI) / Option (Logic)
                     </div>
                   </div>
                 </div>
@@ -420,15 +452,16 @@ export default function DevIdeFollower() {
               {/* Quick Actions */}
               <div className="pt-1 flex gap-1.5">
                 <button
-                  onClick={() => openTarget({ route: pathname })}
+                  onClick={() => openTarget({ mode: "ui", route: pathname })}
                   className="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition text-center cursor-pointer shadow-sm"
                 >
                   Open Current Page
                 </button>
               </div>
 
-              <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center pt-1 border-t border-slate-100 dark:border-slate-800/60">
-                Hold <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[9px]">Ctrl</kbd> or <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[9px]">Option</kbd> and click any element
+              <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center pt-1 border-t border-slate-100 dark:border-slate-800/60 space-y-0.5">
+                <div><kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[9px]">Ctrl</kbd> + click &rarr; <strong>UI / JSX Segment</strong></div>
+                <div><kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[9px]">Option</kbd> + click &rarr; <strong>Backend / Logic Segment</strong></div>
               </div>
             </div>
           </div>
