@@ -49,7 +49,7 @@ import { useLeagueArchived, isTeamSeasonArchived } from "@/lib/useLeagueArchived
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
-import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette , getReadableTextColor } from "@/lib/teamColors";
+import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { loadTeamSeasonData } from "@/lib/teamSeasonData";
 import {
@@ -326,7 +326,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             if (cachedStats) {
               try {
                 customStats = JSON.parse(cachedStats);
-              } catch {}
+              } catch { }
             }
           }
           if (!customStats && (tData as any).visibleTeamStats) {
@@ -361,7 +361,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               if (cachedStats) {
                 try {
                   customStats = JSON.parse(cachedStats);
-                } catch {}
+                } catch { }
               }
             }
             if (!customStats && teamData.visibleTeamStats) {
@@ -569,11 +569,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
       {/* Dynamic Background with ambient glows styled to team colors */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden opacity-15">
-        <div 
+        <div
           className="absolute -top-40 -left-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-25 animate-pulse"
           style={{ backgroundColor: palette.primary }}
         />
-        <div 
+        <div
           className="absolute top-40 -right-40 w-[35rem] h-[35rem] rounded-full mix-blend-screen filter blur-[140px] opacity-20 animate-pulse delay-1000"
           style={{ backgroundColor: palette.secondary !== "#FFFFFF" ? palette.secondary : palette.primary }}
         />
@@ -608,7 +608,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
           <div className="flex flex-col items-center justify-center pt-2">
             {team.logoUrl ? (
               <div className="relative group/logo">
-                <div 
+                <div
                   className="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-3xl p-3 flex items-center justify-center backdrop-blur-xl shadow-2xl transition-all duration-300 group-hover/logo:scale-105 bg-white dark:bg-[#0a0a0a]/80"
                   style={{
                     border: `2px solid ${palette.primary}60`,
@@ -669,7 +669,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             )}
           </div>
 
-          <div 
+          <div
             className="inline-flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2 rounded-full backdrop-blur-md mb-2 shadow-2xl border max-w-full"
             style={{
               backgroundColor: palette.secondary,
@@ -684,7 +684,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               iconColor={palette.primary}
               primaryColor={palette.primary}
             />
-            <span 
+            <span
               className="min-w-0 text-[10px] sm:text-sm font-black tracking-wider sm:tracking-widest uppercase break-words"
               style={{ color: getReadableTextColor(palette.secondary, palette.primary) }}
             >
@@ -734,19 +734,19 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 <span>Colours:</span>
               </span>
               <div className="flex items-center gap-1.5">
-                <span 
-                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm" 
-                  style={{ backgroundColor: palette.primary }} 
+                <span
+                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm"
+                  style={{ backgroundColor: palette.primary }}
                   title={`Primary: ${palette.primary}`}
                 />
-                <span 
-                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm" 
-                  style={{ backgroundColor: palette.secondary }} 
+                <span
+                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm"
+                  style={{ backgroundColor: palette.secondary }}
                   title={`Secondary: ${palette.secondary}`}
                 />
-                <span 
-                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm" 
-                  style={{ backgroundColor: palette.tertiary }} 
+                <span
+                  className="w-4 h-4 rounded-full border border-white/30 shadow-sm"
+                  style={{ backgroundColor: palette.tertiary }}
                   title={`Tertiary: ${palette.tertiary}`}
                 />
               </div>
@@ -755,14 +755,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             {canEditTeam && (
               <>
                 {!teamSeasonArchived && (
-                <Link
-                  data-tour="team-schedule-game-btn"
-                  href={`/teams/${teamId}/schedule?create=1`}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wider transition-all border border-emerald-500/30 hover:border-emerald-500/50 backdrop-blur-md shadow-lg cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 text-emerald-400" />
-                  <span>Schedule Game</span>
-                </Link>
+                  <Link
+                    data-tour="team-schedule-game-btn"
+                    href={`/teams/${teamId}/schedule?create=1`}
+                    className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wider transition-all border border-emerald-500/30 hover:border-emerald-500/50 backdrop-blur-md shadow-lg cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                    <span>Schedule Game</span>
+                  </Link>
                 )}
                 <button
                   type="button"
@@ -1052,17 +1052,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             </Link>
           )}
         </div>
-
-        {/* Footer info & Admin login */}
-        <div className="mt-16 flex items-center justify-center gap-6">
-          <Link
-            href={user ? "/profile" : "/login"}
-            className="text-neutral-600 hover:text-neutral-400 text-sm transition-colors flex items-center gap-2"
-          >
-            <Settings className="w-4 h-4" />
-            {user ? "Account & Role Settings" : "Sign In"}
-          </Link>
-        </div>
       </div>
 
       {/* Edit Team Modal (Accessible to Team Admin & League Admin) */}
@@ -1101,229 +1090,229 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
             <form data-tour="team-edit-names" onSubmit={handleSaveTeam} className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
                 <div>
-                <label htmlFor="team-edit-name" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
-                  Team Name
-                </label>
-                <input
-                  id="team-edit-name"
-                  type="text"
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-cyan-400 transition-colors"
-                  placeholder="e.g. Apex Titans"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="team-edit-shortcode" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
-                  Shortcode (Abbreviation)
-                </label>
-                <input
-                  id="team-edit-shortcode"
-                  type="text"
-                  maxLength={5}
-                  value={editShortcode}
-                  onChange={(e) => setEditShortcode(e.target.value.toUpperCase())}
-                  className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm uppercase font-mono outline-none focus:border-cyan-400 transition-colors"
-                  placeholder="e.g. FLG"
-                />
-                <span className="text-[11px] text-neutral-500 mt-1 block">
-                  Used in stat tables, scoreboards, and badges (2-4 characters recommended).
-                </span>
-              </div>
-
-              <fieldset data-tour="team-edit-colours" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
-                <legend className="px-2 text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5 text-[var(--team-ink)]" />
-                  <span>Team Colours</span>
-                </legend>
-                <p className="text-[11px] text-neutral-400">
-                  Primary colors the scoreboard, hero glow, and possession marker; secondary colors timeout indicators; tertiary colors wizard highlights.
-                </p>
-
-                {/* Quick Color Presets */}
-                <div className="pt-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-1.5">
-                    Quick Colour Presets:
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {COLOR_PRESETS.map((preset) => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        onClick={() => {
-                          setEditPrimaryColor(preset.primary);
-                          setEditSecondaryColor(preset.secondary);
-                          setEditTertiaryColor(preset.tertiary);
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-white/10 hover:border-white/30 text-[10px] font-semibold text-neutral-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-                        title={preset.name}
-                      >
-                        <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: preset.primary }} />
-                        <span>{preset.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2 pt-2 border-t border-white/5">
-                  {[
-                    { label: "Primary Colour", value: editPrimaryColor, onChange: setEditPrimaryColor },
-                    { label: "Secondary Colour", value: editSecondaryColor, onChange: setEditSecondaryColor },
-                    { label: "Tertiary Colour", value: editTertiaryColor, onChange: setEditTertiaryColor },
-                  ].map((color) => (
-                    <label key={color.label} className="flex items-center justify-between gap-3 text-xs font-bold text-neutral-300">
-                      <span>{color.label}</span>
-                      <span className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={color.value}
-                          onChange={(event) => color.onChange(event.target.value)}
-                          aria-label={`${color.label} team color`}
-                          className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent"
-                        />
-                        <input
-                          type="text"
-                          value={color.value}
-                          onChange={(event) => color.onChange(event.target.value)}
-                          pattern="#[0-9A-Fa-f]{6}"
-                          aria-label={`${color.label} team color hex`}
-                          className="w-24 rounded-lg border border-white/10 bg-black px-2 py-1.5 font-mono text-xs uppercase text-white"
-                        />
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <div data-tour="team-edit-logo" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
-                    <Upload className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Team Logo & Emblem</span>
+                  <label htmlFor="team-edit-name" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                    Team Name
                   </label>
-                  {editLogoUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setEditLogoUrl("")}
-                      className="text-[11px] text-red-400 hover:text-red-300 font-bold underline"
-                    >
-                      Remove Custom Logo
-                    </button>
-                  )}
-                </div>
-
-                {/* Live Logo Preview Box */}
-                <div className="p-3.5 bg-neutral-900/90 rounded-2xl border border-white/10 flex items-center gap-4">
-                  <div 
-                    className="w-16 h-16 rounded-2xl p-2 flex items-center justify-center shrink-0 border"
-                    style={{
-                      backgroundColor: "rgba(0, 0, 0, 0.8)",
-                      borderColor: `${editPrimaryColor}60`,
-                    }}
-                  >
-                    <TeamLogo
-                      teamName={editName || "Team"}
-                      logoUrl={editLogoUrl}
-                      icon={editIcon}
-                      className="w-full h-full object-contain"
-                      customColor={editPrimaryColor === "#E31837" ? "text-red-400" : undefined}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-white truncate">{editName || "Team Name"}</div>
-                    <div className="text-[11px] text-neutral-400 mt-0.5">
-                      {editLogoUrl ? "Custom image logo active" : `Using vector icon (${editIcon})`}
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        accept="image/*"
-                        aria-label="Upload team logo"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-white/10 transition-colors cursor-pointer"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Upload Logo from Device</span>
-                      </button>
-                      {editLogoUrl && (
-                        <span className="text-[10px] text-emerald-400 font-mono font-bold">✓ Ready</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="team-edit-logo-url" className="block text-[11px] text-neutral-400 mb-1">Or Paste Image URL (Optional)</label>
                   <input
-                    id="team-edit-logo-url"
+                    id="team-edit-name"
                     type="text"
-                    value={editLogoUrl}
-                    onChange={(e) => setEditLogoUrl(e.target.value)}
-                    className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none focus:border-cyan-400 transition-colors font-mono"
-                    placeholder="https://example.com/logo.png or /your-logo.png"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-cyan-400 transition-colors"
+                    placeholder="e.g. Apex Titans"
                   />
                 </div>
 
-                <div className="pt-2 border-t border-white/5">
-                  <label className="block text-[11px] text-neutral-400 mb-1.5">Or Choose Vector Icon (when no image uploaded)</label>
-                  <div className="grid grid-cols-6 gap-2">
-                    {AVAILABLE_ICONS.map((item) => {
-                      const IconComp = item.icon;
-                      const isSelected = editIcon === item.id && !editLogoUrl;
-                      return (
+                <div>
+                  <label htmlFor="team-edit-shortcode" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                    Shortcode (Abbreviation)
+                  </label>
+                  <input
+                    id="team-edit-shortcode"
+                    type="text"
+                    maxLength={5}
+                    value={editShortcode}
+                    onChange={(e) => setEditShortcode(e.target.value.toUpperCase())}
+                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm uppercase font-mono outline-none focus:border-cyan-400 transition-colors"
+                    placeholder="e.g. FLG"
+                  />
+                  <span className="text-[11px] text-neutral-500 mt-1 block">
+                    Used in stat tables, scoreboards, and badges (2-4 characters recommended).
+                  </span>
+                </div>
+
+                <fieldset data-tour="team-edit-colours" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
+                  <legend className="px-2 text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-[var(--team-ink)]" />
+                    <span>Team Colours</span>
+                  </legend>
+                  <p className="text-[11px] text-neutral-400">
+                    Primary colors the scoreboard, hero glow, and possession marker; secondary colors timeout indicators; tertiary colors wizard highlights.
+                  </p>
+
+                  {/* Quick Color Presets */}
+                  <div className="pt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-1.5">
+                      Quick Colour Presets:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {COLOR_PRESETS.map((preset) => (
                         <button
-                          key={item.id}
+                          key={preset.name}
                           type="button"
                           onClick={() => {
-                            setEditIcon(item.id);
-                            setEditLogoUrl("");
+                            setEditPrimaryColor(preset.primary);
+                            setEditSecondaryColor(preset.secondary);
+                            setEditTertiaryColor(preset.tertiary);
                           }}
-                          className={`p-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${isSelected
-                            ? "bg-cyan-500/20 border-cyan-500 text-white shadow-lg shadow-cyan-500/20"
-                            : "bg-neutral-900 border-white/5 text-neutral-400 hover:text-white hover:bg-white/5"
-                            }`}
-                          title={item.label}
-                          aria-label={`Use ${item.label} icon`}
-                          aria-pressed={isSelected}
+                          className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-white/10 hover:border-white/30 text-[10px] font-semibold text-neutral-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          title={preset.name}
                         >
-                          <IconComp className="w-5 h-5" />
+                          <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: preset.primary }} />
+                          <span>{preset.name}</span>
                         </button>
-                      );
-                    })}
-                  </div>
-                <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-[var(--team-ink)]" />
-                      <span>Custom Stats Display</span>
-                    </div>
-                    <div className="text-[11px] text-neutral-400 mt-0.5">
-                      {visibleStatIds.length} stats currently selected to display on team portal.
+                      ))}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditModalOpen(false);
-                      setIsStatsCustomizerOpen(true);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-colors border border-white/10 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Sliders className="w-3 h-3 text-[var(--team-ink)]" />
-                    <span>Customize Stats</span>
-                  </button>
-                </div>
-              </div>
 
-              </div>
+                  <div className="space-y-2 pt-2 border-t border-white/5">
+                    {[
+                      { label: "Primary Colour", value: editPrimaryColor, onChange: setEditPrimaryColor },
+                      { label: "Secondary Colour", value: editSecondaryColor, onChange: setEditSecondaryColor },
+                      { label: "Tertiary Colour", value: editTertiaryColor, onChange: setEditTertiaryColor },
+                    ].map((color) => (
+                      <label key={color.label} className="flex items-center justify-between gap-3 text-xs font-bold text-neutral-300">
+                        <span>{color.label}</span>
+                        <span className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={color.value}
+                            onChange={(event) => color.onChange(event.target.value)}
+                            aria-label={`${color.label} team color`}
+                            className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent"
+                          />
+                          <input
+                            type="text"
+                            value={color.value}
+                            onChange={(event) => color.onChange(event.target.value)}
+                            pattern="#[0-9A-Fa-f]{6}"
+                            aria-label={`${color.label} team color hex`}
+                            className="w-24 rounded-lg border border-white/10 bg-black px-2 py-1.5 font-mono text-xs uppercase text-white"
+                          />
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <div data-tour="team-edit-logo" className="space-y-3 rounded-2xl border border-white/10 bg-neutral-950/60 p-4">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Team Logo & Emblem</span>
+                    </label>
+                    {editLogoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setEditLogoUrl("")}
+                        className="text-[11px] text-red-400 hover:text-red-300 font-bold underline"
+                      >
+                        Remove Custom Logo
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Live Logo Preview Box */}
+                  <div className="p-3.5 bg-neutral-900/90 rounded-2xl border border-white/10 flex items-center gap-4">
+                    <div
+                      className="w-16 h-16 rounded-2xl p-2 flex items-center justify-center shrink-0 border"
+                      style={{
+                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                        borderColor: `${editPrimaryColor}60`,
+                      }}
+                    >
+                      <TeamLogo
+                        teamName={editName || "Team"}
+                        logoUrl={editLogoUrl}
+                        icon={editIcon}
+                        className="w-full h-full object-contain"
+                        customColor={editPrimaryColor === "#E31837" ? "text-red-400" : undefined}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-white truncate">{editName || "Team Name"}</div>
+                      <div className="text-[11px] text-neutral-400 mt-0.5">
+                        {editLogoUrl ? "Custom image logo active" : `Using vector icon (${editIcon})`}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          accept="image/*"
+                          aria-label="Upload team logo"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-white/10 transition-colors cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Upload Logo from Device</span>
+                        </button>
+                        {editLogoUrl && (
+                          <span className="text-[10px] text-emerald-400 font-mono font-bold">✓ Ready</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="team-edit-logo-url" className="block text-[11px] text-neutral-400 mb-1">Or Paste Image URL (Optional)</label>
+                    <input
+                      id="team-edit-logo-url"
+                      type="text"
+                      value={editLogoUrl}
+                      onChange={(e) => setEditLogoUrl(e.target.value)}
+                      className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none focus:border-cyan-400 transition-colors font-mono"
+                      placeholder="https://example.com/logo.png or /your-logo.png"
+                    />
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5">
+                    <label className="block text-[11px] text-neutral-400 mb-1.5">Or Choose Vector Icon (when no image uploaded)</label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {AVAILABLE_ICONS.map((item) => {
+                        const IconComp = item.icon;
+                        const isSelected = editIcon === item.id && !editLogoUrl;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              setEditIcon(item.id);
+                              setEditLogoUrl("");
+                            }}
+                            className={`p-2.5 rounded-xl border flex flex-col items-center justify-center transition-all ${isSelected
+                              ? "bg-cyan-500/20 border-cyan-500 text-white shadow-lg shadow-cyan-500/20"
+                              : "bg-neutral-900 border-white/5 text-neutral-400 hover:text-white hover:bg-white/5"
+                              }`}
+                            title={item.label}
+                            aria-label={`Use ${item.label} icon`}
+                            aria-pressed={isSelected}
+                          >
+                            <IconComp className="w-5 h-5" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-[var(--team-ink)]" />
+                          <span>Custom Stats Display</span>
+                        </div>
+                        <div className="text-[11px] text-neutral-400 mt-0.5">
+                          {visibleStatIds.length} stats currently selected to display on team portal.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditModalOpen(false);
+                          setIsStatsCustomizerOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-colors border border-white/10 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Sliders className="w-3 h-3 text-[var(--team-ink)]" />
+                        <span>Customize Stats</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
 
               </div>
 

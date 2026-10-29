@@ -11,10 +11,10 @@ import { TeamLogo } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import SiteControls from "@/components/SiteControls";
 
-type TeamSection = "overview" | "schedule" | "roster" | "stats" | "playbook";
+type TeamSection = "home" | "schedule" | "roster" | "stats" | "playbook";
 
 const SECTIONS: { key: TeamSection; label: string; mobileLabel: string; path: string; icon: LucideIcon }[] = [
-  { key: "overview", label: "Overview", mobileLabel: "Home", path: "", icon: LayoutGrid },
+  { key: "home", label: "Home", mobileLabel: "Home", path: "", icon: LayoutGrid },
   { key: "schedule", label: "Schedule", mobileLabel: "Games", path: "/schedule", icon: CalendarDays },
   { key: "roster", label: "Roster", mobileLabel: "Roster", path: "/roster", icon: Users },
   { key: "stats", label: "Stats", mobileLabel: "Stats", path: "/stats", icon: Activity },
@@ -24,7 +24,7 @@ const SECTIONS: { key: TeamSection; label: string; mobileLabel: string; path: st
 export function getActiveTeamSection(pathname: string | null, teamId: string): TeamSection | null {
   if (!pathname) return null;
   const base = `/teams/${teamId}`;
-  if (pathname === base || pathname === `${base}/`) return "overview";
+  if (pathname === base || pathname === `${base}/`) return "home";
   const match = SECTIONS.find((s) => s.path && (pathname === base + s.path || pathname.startsWith(`${base}${s.path}/`)));
   return match?.key ?? null;
 }
@@ -38,7 +38,7 @@ export function useCanAccessTeamPlaybook(teamId: string): boolean {
 
 /**
  * Sticky section switcher shared by every team page so coaches and players can
- * jump between Overview, Schedule, Roster, Stats and Playbook in one tap.
+ * jump between home, Schedule, Roster, Stats and Playbook in one tap.
  */
 export default function TeamNavBar({ teamId, className = "" }: { teamId: string; className?: string }) {
   const pathname = usePathname();
@@ -64,7 +64,7 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
         <Link
           href={`/teams/${teamId}`}
           className="hidden lg:flex items-center gap-2 min-w-0 lg:shrink rounded-lg px-1 py-1 hover:bg-white/5 transition-colors"
-          aria-label={`${teamName} overview`}
+          aria-label={`${teamName} home`}
         >
           <span
             className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center overflow-hidden border"
@@ -93,9 +93,8 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
                   href={`/teams/${teamId}${path}`}
                   aria-label={label}
                   aria-current={isActive ? "page" : undefined}
-                  className={`relative flex flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1.5 h-12 lg:h-10 px-0.5 lg:px-3 rounded-lg text-[10px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${
-                    isActive ? "text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
-                  }`}
+                  className={`relative flex flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1.5 h-12 lg:h-10 px-0.5 lg:px-3 rounded-lg text-[10px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${isActive ? "text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
+                    }`}
                   style={isActive ? { backgroundColor: `${accent}22`, color: "var(--team-ink)" } : undefined}
                 >
                   <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
