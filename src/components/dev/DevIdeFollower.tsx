@@ -250,13 +250,12 @@ export default function DevIdeFollower() {
       e.stopPropagation();
 
       const info = findComponentInfo(target) || lastTargetRef.current;
-      if (info) {
-        openTarget({
-          file: info.file,
-          component: info.name,
-          line: info.line,
-        });
-      }
+      openTarget({
+        file: info?.file,
+        component: info?.name,
+        line: info?.line,
+        route: pathname,
+      });
     };
 
     const handleClick = (e: MouseEvent) => {

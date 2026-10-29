@@ -20,18 +20,29 @@ export async function POST(req: Request) {
     let targetFile: string | null = null;
     let targetLine: number = typeof line === "number" && line > 0 ? line : 1;
 
-    // 1. Direct file resolution
-    if (file) {
-      const resolved = path.isAbsolute(file)
-        ? file
-        : path.join(PROJECT_ROOT, file.replace(/^\/+/, ""));
-      if (fs.existsSync(/*turbopackIgnore: true*/ resolved)) {
-        targetFile = resolved;
+    // 1. Direct file resolution (handles Turbopack, Webpack, [project], and absolute/relative paths)
+    if (file && typeof file === "string") {
+      const srcMatch = file.match(/src\/[^\s\?:\)]+/);
+      if (srcMatch) {
+        const candidate = path.join(PROJECT_ROOT, srcMatch[0]);
+        if (fs.existsSync(/*turbopackIgnore: true*/ candidate)) {
+          targetFile = candidate;
+        }
+      }
+
+      if (!targetFile) {
+        const cleaned = file.replace(/^\[project\]\/?/, "").replace(/^\/+/, "").split("?")[0];
+        const candidate = path.isAbsolute(file) && fs.existsSync(/*turbopackIgnore: true*/ file)
+          ? file
+          : path.join(PROJECT_ROOT, cleaned);
+        if (fs.existsSync(/*turbopackIgnore: true*/ candidate)) {
+          targetFile = candidate;
+        }
       }
     }
 
     // 2. Component lookup
-    if (!targetFile && component) {
+    if (!targetFile && component && typeof component === "string") {
       const lower = component.trim().toLowerCase();
       const findInDir = (dir: string): string | null => {
         try {
@@ -55,8 +66,8 @@ export async function POST(req: Request) {
       targetFile = findInDir(COMPONENTS_DIR) || findInDir(APP_DIR);
     }
 
-    // 3. Route lookup (App router page.tsx)
-    if (!targetFile && route) {
+    // 3. Route lookup (falls back to the App router page.tsx for the active URL)
+    if (!targetFile && route && typeof route === "string") {
       const clean = route.split("?")[0].replace(/^\/+|\/+$/g, "");
       const segments = clean ? clean.split("/") : [];
 
@@ -96,6 +107,14 @@ export async function POST(req: Request) {
         if (fs.existsSync(/*turbopackIgnore: true*/ pageCandidate)) {
           targetFile = pageCandidate;
         }
+      }
+    }
+
+    // 4. Ultimate fallback: root page.tsx
+    if (!targetFile) {
+      const rootPage = path.join(APP_DIR, "page.tsx");
+      if (fs.existsSync(/*turbopackIgnore: true*/ rootPage)) {
+        targetFile = rootPage;
       }
     }
 
@@ -141,6 +160,8 @@ export async function POST(req: Request) {
     }
 
     const relative = path.relative(PROJECT_ROOT, targetFile);
+    console.log(`[DevIDE] Focused in VS Code: ${relative}:${targetLine}`);
+
     return NextResponse.json({
       ok: true,
       file: relative,
@@ -149,6 +170,7 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[DevIDE] Error opening in VS Code:", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
