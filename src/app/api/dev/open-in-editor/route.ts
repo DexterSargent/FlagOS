@@ -15,10 +15,10 @@ export async function POST(req: Request) {
     const COMPONENTS_DIR = path.join(PROJECT_ROOT, "src", "components");
 
     const body = await req.json();
-    const { file, component, route, line = 1 } = body || {};
+    const { file, component, route, line, text, ariaLabel, dataTour, id } = body || {};
 
     let targetFile: string | null = null;
-    let targetLine: number = typeof line === "number" && line > 0 ? line : 1;
+    let targetLine: number = 1;
 
     // 1. Direct file resolution (handles Turbopack, Webpack, [project], and absolute/relative paths)
     if (file && typeof file === "string") {
@@ -123,6 +123,88 @@ export async function POST(req: Request) {
         { ok: false, error: "Could not resolve target file" },
         { status: 404 }
       );
+    }
+
+    // Determine the most accurate line inside targetFile
+    try {
+      const fileContent = fs.readFileSync(/*turbopackIgnore: true*/ targetFile, "utf8");
+      const fileLines = fileContent.split("\n");
+      const totalLines = fileLines.length;
+
+      let foundLine: number | null = null;
+
+      // Priority A: Search by distinctive data-tour attribute
+      if (!foundLine && dataTour && typeof dataTour === "string") {
+        const matchIdx = fileLines.findIndex((l) => l.includes(`data-tour="${dataTour}"`));
+        if (matchIdx !== -1) foundLine = matchIdx + 1;
+      }
+
+      // Priority B: Search by id attribute
+      if (!foundLine && id && typeof id === "string") {
+        const matchIdx = fileLines.findIndex((l) => l.includes(`id="${id}"`) || l.includes(`id={'${id}'}`));
+        if (matchIdx !== -1) foundLine = matchIdx + 1;
+      }
+
+      // Priority C: Search by aria-label
+      if (!foundLine && ariaLabel && typeof ariaLabel === "string") {
+        const matchIdx = fileLines.findIndex((l) => l.includes(`aria-label="${ariaLabel}"`));
+        if (matchIdx !== -1) foundLine = matchIdx + 1;
+      }
+
+      // Priority D: Search by component usage or declaration if inside this file
+      if (!foundLine && component && typeof component === "string") {
+        const compLower = component.toLowerCase();
+        const matchIdx = fileLines.findIndex((l) => {
+          const trimmed = l.trim();
+          if (trimmed.startsWith("import ") || trimmed.startsWith("import{")) return false;
+          return (
+            l.includes(`<${component}`) ||
+            l.toLowerCase().includes(`function ${compLower}`) ||
+            l.toLowerCase().includes(`const ${compLower}`)
+          );
+        });
+        if (matchIdx !== -1) foundLine = matchIdx + 1;
+      }
+
+      // Priority E: Search by clicked text content (e.g. "SEASON STATS", "SCHEDULE", "ROSTER")
+      if (!foundLine && text && typeof text === "string") {
+        const cleanText = text.trim();
+        if (cleanText.length >= 3) {
+          const lowerText = cleanText.toLowerCase();
+          // First pass: look for exact text in JSX (excluding import statements)
+          let candidateIdx = fileLines.findIndex((l) => {
+            const trimmed = l.trim();
+            if (trimmed.startsWith("import ") || trimmed.startsWith("import{")) return false;
+            return l.toLowerCase().includes(lowerText);
+          });
+
+          // Second pass: try first 2-3 words if text is long
+          if (candidateIdx === -1 && cleanText.includes(" ")) {
+            const shortText = cleanText.split(" ").slice(0, 3).join(" ").toLowerCase();
+            if (shortText.length >= 4) {
+              candidateIdx = fileLines.findIndex((l) => {
+                const trimmed = l.trim();
+                if (trimmed.startsWith("import ") || trimmed.startsWith("import{")) return false;
+                return l.toLowerCase().includes(shortText);
+              });
+            }
+          }
+
+          if (candidateIdx !== -1) {
+            foundLine = candidateIdx + 1;
+          }
+        }
+      }
+
+      // Priority F: Use supplied line number ONLY if it is within actual file line bounds
+      if (!foundLine && typeof line === "number" && line > 0 && line <= totalLines) {
+        foundLine = line;
+      }
+
+      // Default to top of file (line 1), never beyond EOF
+      targetLine = foundLine || 1;
+    } catch {
+      targetLine = 1;
     }
 
     // Launch specifically in Visual Studio Code (not Antigravity)

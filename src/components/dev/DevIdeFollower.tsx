@@ -146,7 +146,16 @@ export default function DevIdeFollower() {
   }, []);
 
   const openTarget = useCallback(
-    async (payload: { file?: string; component?: string; route?: string; line?: number }) => {
+    async (payload: {
+      file?: string;
+      component?: string;
+      route?: string;
+      line?: number;
+      text?: string;
+      ariaLabel?: string | null;
+      dataTour?: string | null;
+      id?: string;
+    }) => {
       try {
         const res = await fetch("/api/dev/open-in-editor", {
           method: "POST",
@@ -155,8 +164,12 @@ export default function DevIdeFollower() {
         });
         const data = await res.json();
         if (data.ok) {
-          const display = payload.component ? `<${payload.component}>` : data.file || "file";
-          showStatus(`Focused ${display} in VS Code`);
+          const display = payload.component
+            ? `<${payload.component}>`
+            : payload.text
+            ? `"${payload.text.slice(0, 20)}"`
+            : data.file || "file";
+          showStatus(`Focused ${display} in VS Code (line ${data.line || 1})`);
         } else {
           showStatus(`Could not find ${payload.component || payload.route}`);
         }
@@ -250,11 +263,20 @@ export default function DevIdeFollower() {
       e.stopPropagation();
 
       const info = findComponentInfo(target) || lastTargetRef.current;
+      const cleanText = (target as HTMLElement).innerText?.split("\n")[0]?.trim()?.slice(0, 50);
+      const ariaLabel = target.getAttribute("aria-label");
+      const dataTour = target.getAttribute("data-tour");
+      const id = target.id;
+
       openTarget({
         file: info?.file,
         component: info?.name,
         line: info?.line,
         route: pathname,
+        text: cleanText,
+        ariaLabel,
+        dataTour,
+        id,
       });
     };
 
