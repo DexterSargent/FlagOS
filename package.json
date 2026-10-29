@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS='--experimental-require-module' next dev",
     "build": "NODE_OPTIONS='--experimental-require-module' next build",
     "start": "next start",
     "repair:deps": "npm install --no-save --package-lock=false",
