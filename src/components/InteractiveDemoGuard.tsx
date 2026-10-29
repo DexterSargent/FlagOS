@@ -99,7 +99,8 @@ export default function InteractiveDemoGuard() {
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
 
-    window.history.pushState = function (data: any, unused: string, url?: string | URL | null) {
+    window.history.pushState = function (...args: any[]) {
+      const url = args[2];
       if (url) {
         try {
           const targetUrl = new URL(url.toString(), window.location.href);
@@ -109,10 +110,11 @@ export default function InteractiveDemoGuard() {
           }
         } catch {}
       }
-      return originalPushState.apply(this, arguments as any);
+      return originalPushState.apply(this, args as any);
     };
 
-    window.history.replaceState = function (data: any, unused: string, url?: string | URL | null) {
+    window.history.replaceState = function (...args: any[]) {
+      const url = args[2];
       if (url) {
         try {
           const targetUrl = new URL(url.toString(), window.location.href);
@@ -122,7 +124,7 @@ export default function InteractiveDemoGuard() {
           }
         } catch {}
       }
-      return originalReplaceState.apply(this, arguments as any);
+      return originalReplaceState.apply(this, args as any);
     };
 
     document.addEventListener("click", handleDocumentClick, true);

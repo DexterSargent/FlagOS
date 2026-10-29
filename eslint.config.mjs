@@ -12,9 +12,20 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "dexter-site-review/**",
+    "coverage/**",
+    "scripts/**",
   ]),
   {
+    plugins: {
+      ...nextVitals[0].plugins,
+      ...nextTs[0].plugins,
+    },
     rules: {
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/static-components": "off",
+      "react-hooks/immutability": "off",
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
         "warn",

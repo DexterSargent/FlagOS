@@ -169,6 +169,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   // Coaches & Team Admins Modal State
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [staffActionError, setStaffActionError] = useState("");
+  const [staffActionSuccess, setStaffActionSuccess] = useState("");
+  const [savingStaff, setSavingStaff] = useState(false);
+  const [privateSettingsReady, setPrivateSettingsReady] = useState(false);
+
   usePageGuide(isEditModalOpen ? TEAM_EDIT_WALKTHROUGH : null, 2);
   usePageGuide(isStaffModalOpen ? TEAM_STAFF_WALKTHROUGH : null, 2);
 
@@ -188,12 +194,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       return () => window.removeEventListener("keydown", handleKeyDown);
     }
   }, [isEditModalOpen, isStaffModalOpen]);
-
-  const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [staffActionError, setStaffActionError] = useState("");
-  const [staffActionSuccess, setStaffActionSuccess] = useState("");
-  const [savingStaff, setSavingStaff] = useState(false);
-  const [privateSettingsReady, setPrivateSettingsReady] = useState(false);
 
   const isDexter = isDexterUser(user?.email);
   const isPrimary = isPrimaryTeamAdmin(user?.email, team, isDexter);
