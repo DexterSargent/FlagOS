@@ -14,37 +14,95 @@ interface ComponentInspection {
 function getFiberFromElement(element: Element | null): any {
   if (!element) return null;
   const key = Object.keys(element).find(
-    (k) => k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$")
+    (k) =>
+      k.startsWith("__reactFiber$") ||
+      k.startsWith("__reactInternalInstance$") ||
+      k.startsWith("__reactContainer$")
   );
   return key ? (element as any)[key] : null;
 }
+
+function parseStackForLocation(stackStr: unknown): { file?: string; line?: number } | null {
+  if (typeof stackStr !== "string") return null;
+  const match = stackStr.match(
+    /(?:at\s+.*?\s+\()?((\/(?:[^\s\):]+)(?:\.tsx|\.ts|\.jsx|\.js))(?::(\d+))?)/i
+  );
+  if (match) {
+    return {
+      file: match[2],
+      line: match[3] ? parseInt(match[3], 10) : undefined,
+    };
+  }
+  return null;
+}
+
+function getComponentName(type: any): string | null {
+  if (!type) return null;
+  if (typeof type === "string") return null; // DOM tag like 'div'
+  if (typeof type === "function") return type.displayName || type.name || null;
+  if (typeof type === "object") {
+    return (
+      type.displayName ||
+      type.name ||
+      type.render?.displayName ||
+      type.render?.name ||
+      type.type?.displayName ||
+      type.type?.name ||
+      null
+    );
+  }
+  return null;
+}
+
+const IGNORED_NAMES = new Set([
+  "RootLayout",
+  "ThemeProvider",
+  "AuthProvider",
+  "LeagueProvider",
+  "AuthGuard",
+  "DevIdeFollower",
+  "Fragment",
+]);
 
 function findComponentInfo(target: Element | null): { name: string; file?: string; line?: number } | null {
   let curr: Element | null = target;
   while (curr && curr !== document.body && curr !== document.documentElement) {
     let fiber = getFiberFromElement(curr);
     while (fiber) {
-      if (fiber._debugSource?.fileName) {
-        const typeName =
-          typeof fiber.type === "string"
-            ? fiber.type
-            : fiber.type?.displayName || fiber.type?.name || "Component";
-        return {
-          name: typeName,
-          file: fiber._debugSource.fileName,
-          line: fiber._debugSource.lineNumber,
-        };
-      }
+      const name = getComponentName(fiber.type) || getComponentName(fiber.elementType);
 
-      if (typeof fiber.type === "function") {
-        const name = fiber.type.displayName || fiber.type.name;
-        if (
-          name &&
-          !["RootLayout", "ThemeProvider", "AuthProvider", "LeagueProvider", "AuthGuard", "DevIdeFollower"].includes(name)
-        ) {
-          return { name };
+      // 1. Direct debugSource (Babel / SWC dev transform)
+      if (fiber._debugSource?.fileName) {
+        const compName = name || "Component";
+        if (!IGNORED_NAMES.has(compName)) {
+          return {
+            name: compName,
+            file: fiber._debugSource.fileName,
+            line: fiber._debugSource.lineNumber,
+          };
         }
       }
+
+      // 2. React 19 _debugStack
+      if (fiber._debugStack) {
+        const stackLoc = parseStackForLocation(
+          typeof fiber._debugStack === "string" ? fiber._debugStack : fiber._debugStack.stack
+        );
+        const compName = name || "Component";
+        if (stackLoc?.file && !IGNORED_NAMES.has(compName)) {
+          return {
+            name: compName,
+            file: stackLoc.file,
+            line: stackLoc.line,
+          };
+        }
+      }
+
+      // 3. Matched custom component by function/class name
+      if (name && !IGNORED_NAMES.has(name)) {
+        return { name };
+      }
+
       fiber = fiber.return;
     }
     curr = curr.parentElement;
@@ -60,14 +118,14 @@ export default function DevIdeFollower() {
 
   const [autoFollow, setAutoFollow] = useState(true);
   const [inspectorActive, setInspectorActive] = useState(true);
-  const [isAltPressed, setIsAltPressed] = useState(false);
+  const [isModifierDown, setIsModifierDown] = useState(false);
   const [hoveredComponent, setHoveredComponent] = useState<ComponentInspection | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [isMinimized, setIsMinimized] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const prevPathnameRef = useRef<string>("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTargetRef = useRef<{ file?: string; name: string; line?: number } | null>(null);
 
   // Load preferences from localStorage
   useEffect(() => {
@@ -98,10 +156,12 @@ export default function DevIdeFollower() {
         const data = await res.json();
         if (data.ok) {
           const display = payload.component ? `<${payload.component}>` : data.file || "file";
-          showStatus(`Focused ${display}`);
+          showStatus(`Focused ${display} in VS Code`);
+        } else {
+          showStatus(`Could not find ${payload.component || payload.route}`);
         }
       } catch (err) {
-        console.warn("[DevIDE] Failed to open in IDE:", err);
+        console.warn("[DevIDE] Failed to open in VS Code:", err);
       }
     },
     [showStatus]
@@ -123,19 +183,19 @@ export default function DevIdeFollower() {
     };
   }, [pathname, autoFollow, isDev, openTarget]);
 
-  // 2. Option / Alt key tracker for component inspector
+  // 2. Track modifier keys (Control or Alt/Option on Mac)
   useEffect(() => {
     if (!isDev || !inspectorActive) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Alt" || e.altKey) {
-        setIsAltPressed(true);
+      if (e.key === "Control" || e.key === "Alt" || e.ctrlKey || e.altKey) {
+        setIsModifierDown(true);
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "Alt" || !e.altKey) {
-        setIsAltPressed(false);
+      if (!e.ctrlKey && !e.altKey && (e.key === "Control" || e.key === "Alt")) {
+        setIsModifierDown(false);
         setHoveredComponent(null);
       }
     };
@@ -149,14 +209,18 @@ export default function DevIdeFollower() {
     };
   }, [isDev, inspectorActive]);
 
-  // 3. Hover and Click handling while Alt is pressed
+  // 3. Inspect on mouse move & handle click / contextmenu (Mac Ctrl+Click)
   useEffect(() => {
-    if (!isDev || !inspectorActive || !isAltPressed) {
-      setHoveredComponent(null);
-      return;
-    }
+    if (!isDev || !inspectorActive) return;
+
+    const isTrigger = (e: MouseEvent) => Boolean(e.ctrlKey || e.altKey || isModifierDown);
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (!isTrigger(e)) {
+        if (hoveredComponent) setHoveredComponent(null);
+        return;
+      }
+
       const target = document.elementFromPoint(e.clientX, e.clientY);
       if (!target || target.closest("#dev-ide-follower-ui")) {
         setHoveredComponent(null);
@@ -166,6 +230,7 @@ export default function DevIdeFollower() {
       const info = findComponentInfo(target);
       if (info) {
         const rect = target.getBoundingClientRect();
+        lastTargetRef.current = info;
         setHoveredComponent({
           ...info,
           rect,
@@ -175,15 +240,16 @@ export default function DevIdeFollower() {
       }
     };
 
-    const handleClick = (e: MouseEvent) => {
-      if (!isAltPressed) return;
+    const triggerOpen = (e: MouseEvent) => {
+      if (!isTrigger(e)) return;
+
       const target = document.elementFromPoint(e.clientX, e.clientY);
       if (!target || target.closest("#dev-ide-follower-ui")) return;
 
       e.preventDefault();
       e.stopPropagation();
 
-      const info = findComponentInfo(target);
+      const info = findComponentInfo(target) || lastTargetRef.current;
       if (info) {
         openTarget({
           file: info.file,
@@ -193,21 +259,39 @@ export default function DevIdeFollower() {
       }
     };
 
+    const handleClick = (e: MouseEvent) => {
+      triggerOpen(e);
+    };
+
+    // On macOS, Ctrl+Click fires a contextmenu event. We must intercept it to prevent the context menu
+    // and jump directly to the component.
+    const handleContextMenu = (e: MouseEvent) => {
+      if (e.ctrlKey || e.altKey || isModifierDown) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerOpen(e);
+      }
+    };
+
     window.addEventListener("mousemove", handleMouseMove, true);
     window.addEventListener("click", handleClick, true);
+    window.addEventListener("contextmenu", handleContextMenu, true);
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove, true);
       window.removeEventListener("click", handleClick, true);
+      window.removeEventListener("contextmenu", handleContextMenu, true);
     };
-  }, [isDev, inspectorActive, isAltPressed, openTarget]);
+  }, [isDev, inspectorActive, isModifierDown, hoveredComponent, openTarget]);
 
   if (!isDev) return null;
+
+  const showHighlight = (isModifierDown || hoveredComponent) && hoveredComponent;
 
   return (
     <>
       {/* Component Highlighting Rect */}
-      {isAltPressed && hoveredComponent && (
+      {showHighlight && (
         <div
           className="fixed pointer-events-none z-[9999999] transition-all duration-75 border-2 border-emerald-500 bg-emerald-500/15 rounded-md shadow-[0_0_20px_rgba(16,185,129,0.4)]"
           style={{
@@ -217,13 +301,11 @@ export default function DevIdeFollower() {
             height: `${hoveredComponent.rect.height}px`,
           }}
         >
-          <div
-            className="absolute -top-7 left-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold tracking-tight bg-emerald-600 text-white shadow-md flex items-center gap-1.5 whitespace-nowrap pointer-events-none"
-          >
+          <div className="absolute -top-7 left-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold tracking-tight bg-emerald-600 text-white shadow-md flex items-center gap-1.5 whitespace-nowrap pointer-events-none">
             <Crosshair className="w-3 h-3 animate-spin" />
             <span>&lt;{hoveredComponent.name}&gt;</span>
             <span className="text-emerald-200 text-[10px] font-normal opacity-90">
-              (Click to open)
+              (Click to open in VS Code)
             </span>
           </div>
         </div>
@@ -231,8 +313,8 @@ export default function DevIdeFollower() {
 
       {/* Floating Status Toast */}
       {statusMessage && (
-        <div className="fixed bottom-14 left-4 z-[9999999] flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 dark:bg-white/95 text-white dark:text-slate-950 text-xs font-medium shadow-xl border border-emerald-500/30 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+        <div className="fixed bottom-14 left-4 z-[9999999] flex items-center gap-2 px-3.5 py-2 rounded-full bg-slate-900/95 dark:bg-white/95 text-white dark:text-slate-950 text-xs font-semibold shadow-2xl border border-emerald-500/40 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <Check className="w-4 h-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
           <span>{statusMessage}</span>
         </div>
       )}
@@ -245,8 +327,8 @@ export default function DevIdeFollower() {
         {!isExpanded ? (
           <button
             onClick={() => setIsExpanded(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950/80 hover:bg-slate-900 text-white border border-slate-700/60 shadow-lg backdrop-blur-md transition cursor-pointer hover:border-emerald-500/50"
-            title="IDE Auto-Follower & Component Inspector"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-950/85 hover:bg-slate-900 text-white border border-slate-700/60 shadow-lg backdrop-blur-md transition cursor-pointer hover:border-emerald-500/50"
+            title="VS Code Auto-Follower & Component Inspector"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-semibold text-slate-200 tracking-tight">VS Code Sync</span>
@@ -291,14 +373,14 @@ export default function DevIdeFollower() {
                 />
               </label>
 
-              {/* Option+Click Inspector */}
+              {/* Ctrl/Option Click Inspector */}
               <label className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition">
                 <div className="flex items-center gap-2">
                   <Crosshair className="w-3.5 h-3.5 text-emerald-500" />
                   <div>
-                    <div className="text-[11px] font-semibold">Option + Click Inspector</div>
+                    <div className="text-[11px] font-semibold">Ctrl + Click Inspector</div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Hold Option &amp; click any UI element
+                      Hold Ctrl or Option &amp; click any UI element
                     </div>
                   </div>
                 </div>
@@ -325,7 +407,7 @@ export default function DevIdeFollower() {
               </div>
 
               <div className="text-[10px] text-slate-400 dark:text-slate-500 text-center pt-1 border-t border-slate-100 dark:border-slate-800/60">
-                Tip: Hold <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[9px]">Option</kbd> in browser to inspect
+                Hold <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[9px]">Ctrl</kbd> or <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono text-[9px]">Option</kbd> and click any element
               </div>
             </div>
           </div>
@@ -334,4 +416,3 @@ export default function DevIdeFollower() {
     </>
   );
 }
-
