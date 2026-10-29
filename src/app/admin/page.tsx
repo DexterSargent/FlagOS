@@ -819,7 +819,6 @@ export default function PlatformAdminPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <PageGuideButton />
             <button
               type="button"
               onClick={() => {

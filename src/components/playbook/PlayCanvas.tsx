@@ -2633,6 +2633,7 @@ export default function PlayCanvas({
             />
           </div>
 
+          <div className={styles.metaRow}>
           {/* Formation Dropdown (THE ONLY ONE) */}
           <div data-tour="formation-selector" className={`${styles.metaSelect} flex items-center gap-1 min-w-0 w-[30%] max-w-[160px]`}>
             <span className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 hidden xl:inline shrink-0">Formation:</span>
@@ -2697,6 +2698,7 @@ export default function PlayCanvas({
                 </option>
               ))}
             </select>
+          </div>
           </div>
           </>
           )}

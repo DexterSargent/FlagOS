@@ -135,7 +135,15 @@ export default function PlayerProfilePage() {
     setProfileTarget(requestedLeague || portalLeagueId || !user ? "league" : "none");
   }, [user, portalLeagueId]);
   // A fresh ?league= load renders before the provider adopts it; don't load another league's roster meanwhile.
-  const awaitingLeague = profileTarget === "league" && !!requestedLeagueId && requestedLeagueId !== activeLeagueId;
+  const [leagueAwaitingExpired, setLeagueAwaitingExpired] = useState(false);
+  useEffect(() => {
+    if (requestedLeagueId && requestedLeagueId !== activeLeagueId) {
+      setLeagueAwaitingExpired(false);
+      const timer = setTimeout(() => setLeagueAwaitingExpired(true), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [requestedLeagueId, activeLeagueId]);
+  const awaitingLeague = !leagueAwaitingExpired && profileTarget === "league" && !!requestedLeagueId && requestedLeagueId !== activeLeagueId;
   const contextRoleLabel = isDemoLeague && !teamProfileId
     ? String(role).replace("_", " ")
     : [

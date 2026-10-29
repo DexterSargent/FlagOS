@@ -53,14 +53,26 @@ export function rememberTeamRecord(team: TeamRecord): void {
 export function loadTeamRecord(teamId: string): Promise<TeamRecord | null> {
   const inflight = pending.get(teamId);
   if (inflight) return inflight;
-  const request = getDoc(doc(db, "teams", teamId))
+  let timer: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<TeamRecord | null>((resolve) => {
+    timer = setTimeout(() => {
+      resolve(getCachedTeamRecord(teamId));
+    }, 4500);
+  });
+  const request = Promise.race([
+    getDoc(doc(db, "teams", teamId))
     .then((snapshot) => {
       if (!snapshot.exists()) return null;
       const team = { ...snapshot.data(), id: snapshot.id } as TeamRecord;
       rememberTeamRecord(team);
       return records.get(teamId) || team;
     })
-    .finally(() => pending.delete(teamId));
+    ,
+    timeoutPromise,
+  ]).finally(() => {
+    if (timer) clearTimeout(timer);
+    pending.delete(teamId);
+  });
   pending.set(teamId, request);
   return request;
 }

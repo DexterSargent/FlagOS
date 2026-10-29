@@ -100,7 +100,13 @@ export default function Calendar() {
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("league"),
   );
   useEffect(() => {
-    if (awaitingLeague && activeLeagueId === awaitingLeague) setAwaitingLeague(null);
+    if (awaitingLeague && activeLeagueId === awaitingLeague) {
+      setAwaitingLeague(null);
+      return;
+    }
+    if (!awaitingLeague) return;
+    const timer = setTimeout(() => setAwaitingLeague(null), 2500);
+    return () => clearTimeout(timer);
   }, [awaitingLeague, activeLeagueId]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [simulatingMatchId, setSimulatingMatchId] = useState<string | null>(null);

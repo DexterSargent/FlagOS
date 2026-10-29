@@ -20,7 +20,8 @@
 
 .toolbarMain,
 .toolbarActions,
-.toolbarExtras {
+.toolbarExtras,
+.metaRow {
   display: contents;
 }
 
@@ -29,32 +30,58 @@
   align-self: stretch;
 }
 
-/* Phones: keep play details on one row and tuck occasional tools behind "More". */
+/* Phones: keep play details on row 1, with formation and situation sharing row 2 across full width. */
 @media (max-width: 639px) {
   .toolbarCollapsible {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .toolbarCollapsible .metadata {
+    display: contents;
+  }
+
+  .toolbarCollapsible .metadata > button {
+    order: 1;
+  }
+
+  .toolbarCollapsible .playName {
+    order: 2;
     flex: 1 1 0;
     min-width: 0;
-    flex-wrap: wrap;
-    row-gap: 0.25rem;
-  }
-
-  /* Full play name on its own line; formation and situation share the row below. */
-  .toolbarCollapsible .playName {
-    flex: 1 1 calc(100% - 3rem);
-  }
-
-  .toolbarCollapsible .metaSelect {
-    flex: 1 1 0;
-    width: auto;
-    max-width: none;
   }
 
   .toolbarCollapsible .toolbarMore {
+    order: 3;
     display: flex;
+    align-self: auto;
+  }
+
+  .toolbarCollapsible .toolbarActions {
+    display: contents;
+  }
+
+  .toolbarCollapsible .toolbarActions > :first-child {
+    order: 4;
+    margin-left: 0;
+  }
+
+  .toolbarCollapsible .toolbarGuide {
+    order: 5;
+    display: flex;
+  }
+
+  .toolbarCollapsible .metaRow {
+    order: 6;
+    display: flex;
+    width: 100%;
+    gap: 0.25rem;
+  }
+
+  .toolbarCollapsible .metaRow .metaSelect {
+    flex: 1 1 0;
+    width: auto;
+    max-width: none;
+    min-width: 0;
   }
 
   .toolbarCollapsible .toolbarExtras {

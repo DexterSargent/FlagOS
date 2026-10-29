@@ -3,6 +3,7 @@ import { render, screen, waitFor, act, fireEvent, within } from "@testing-librar
 import TeamPlaybookPage from "@/app/teams/[id]/playbook/page";
 import { createDefaultPlaybooks } from "@/lib/playbookTypes";
 import { getDoc } from "firebase/firestore";
+import { rememberTeamRecord } from "@/lib/teamRecord";
 
 import { Suspense } from "react";
 
@@ -187,6 +188,51 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     expect(screen.getByRole("status", { name: "Loading playbook" })).toBeInTheDocument();
     expect(screen.queryByText(/Playbook Confidential/i)).not.toBeInTheDocument();
     expect(vi.mocked(getDoc)).not.toHaveBeenCalled();
+  });
+
+  it("holds the loading spinner instead of 'Team Not Found' while team document is still loading, even if playbooks are cached", async () => {
+    mockAuth.managedTeamId = "team_live_apex";
+    mockAuth.isTeamAdmin = vi.fn((tid?: string) => tid === "team_live_apex");
+    const [cachedBook] = createDefaultPlaybooks("team_live_apex");
+    localStorage.setItem("flagos_playbooks_team_live_apex", JSON.stringify([cachedBook]));
+    let finishTeam!: (value: unknown) => void;
+    vi.mocked(getDoc).mockReturnValueOnce(new Promise((resolve) => { finishTeam = resolve; }) as any);
+
+    await renderPage("team_live_apex");
+    expect(screen.queryByText("Team Not Found")).not.toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Loading playbook" })).toBeInTheDocument();
+
+    await act(async () => {
+      finishTeam({ exists: () => true, id: "team_live_apex", data: () => ({ name: "Apex Predators", shortcode: "APX" }) });
+    });
+
+    expect(screen.queryByText("Team Not Found")).not.toBeInTheDocument();
+  });
+
+  it("immediately uses cached team record from team hub without flashing Team Not Found", async () => {
+    rememberTeamRecord({ id: "team_apex", name: "Apex Predators", shortcode: "APX" });
+    const [cachedBook] = createDefaultPlaybooks("team_apex");
+    localStorage.setItem("flagos_playbooks_team_apex", JSON.stringify([cachedBook]));
+
+    await renderPage("team_apex");
+    expect(screen.queryByText("Team Not Found")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: cachedBook.title })).toBeInTheDocument();
+  });
+
+  it("displays accurate Team Not Found message when a team genuinely does not exist after loading completes", async () => {
+    mockAuth.managedTeamId = "team_live_nonexistent";
+    mockAuth.isTeamAdmin = vi.fn((tid?: string) => tid === "team_live_nonexistent");
+    vi.mocked(getDoc).mockResolvedValueOnce({ exists: () => false } as any);
+
+    await renderPage("team_live_nonexistent");
+    expect(await screen.findByRole("heading", { name: "Team Not Found" })).toBeInTheDocument();
+    expect(screen.getByText("This team could not be found. It may have been removed or the link may be invalid.")).toBeInTheDocument();
+  });
+
+  it("displays free-agent pool message when teamId is team_free_agents", async () => {
+    await renderPage("team_free_agents");
+    expect(await screen.findByRole("heading", { name: "Team Not Found" })).toBeInTheDocument();
+    expect(screen.getByText("The free-agent pool does not have a team playbook.")).toBeInTheDocument();
   });
 
   it("opens the selected play from its card and returns to the play grid without tabs", async () => {

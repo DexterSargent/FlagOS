@@ -165,11 +165,11 @@ export default function TeamsPage() {
       return;
     }
     try {
-      const [rawTeams, rawPlayers, rawMatches, rawPlays] = await Promise.all([
+      const [rawTeams, rawPlayers, rawMatches] = await Promise.all([
         getCachedLeagueTeams(activeLeagueId),
         getCachedLeaguePlayers(activeLeagueId),
         getCachedLeagueMatches(activeLeagueId),
-        getCachedLeaguePlays(activeLeagueId),
+
       ]);
 
       const tData = (rawTeams as Team[])
@@ -187,7 +187,8 @@ export default function TeamsPage() {
         );
       setMatches(mData);
 
-      setPlays(rawPlays);
+      setLoading(false);
+      getCachedLeaguePlays(activeLeagueId).then((rawPlays) => setPlays(rawPlays)).catch(() => {});
     } catch (e) {
       // Never substitute demo data for a real league; show it empty instead.
       console.warn("Unable to load league teams:", e);

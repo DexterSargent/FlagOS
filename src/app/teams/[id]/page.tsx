@@ -49,6 +49,7 @@ import { useLeagueArchived, isTeamSeasonArchived } from "@/lib/useLeagueArchived
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
+import { getCachedTeamRecord, loadTeamRecord } from "@/lib/teamRecord";
 import { DEFAULT_TEAM_COLOR_PALETTE, resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { loadTeamSeasonData } from "@/lib/teamSeasonData";
@@ -112,14 +113,14 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const canAccessPlaybook = (isTeamAdminForThisTeam && (!isLeagueAdmin || isListedCoach)) || isRosteredPlayerOnTeam;
   const hasEditAccess = canManageTeam(teamId) || isLeagueAdmin;
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
-  const [team, setTeam] = useState<any>(null);
+  const [team, setTeam] = useState<any>(() => getCachedTeamRecord(teamId));
   // Archived leagues are read-only, so hide edit controls the server would reject.
   const isTeamLeagueArchived = useLeagueArchived(team?.leagueId);
   const canEditTeam = hasEditAccess && !isTeamLeagueArchived;
   const teamSeasonArchived = isTeamSeasonArchived(team);
   const [archivingSeason, setArchivingSeason] = useState(false);
   const [openingBilling, setOpeningBilling] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => !getCachedTeamRecord(teamId));
   const [matches, setMatches] = useState<any[]>([]);
   const [plays, setPlays] = useState<any[]>([]);
   const [summaryStats, setSummaryStats] = useState<TeamComprehensiveStats | null>(null);
@@ -297,8 +298,15 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     let cancelled = false;
-    setTeam(null);
-    setLoading(true);
+    const cached = getCachedTeamRecord(teamId);
+    if (cached) {
+      setTeam(cached);
+      setLoading(false);
+    } else {
+      setTeam(null);
+      setLoading(true);
+    }
+
     setPrivateSettingsReady(false);
     const fetchTeam = async () => {
       if (isDemoLeague) {
@@ -338,11 +346,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         return;
       }
       try {
-        const snap = await getDoc(doc(db, "teams", teamId));
+        const tData = await loadTeamRecord(teamId);
         if (cancelled) return;
-        const tData = snap.exists() ? { id: snap.id, ...(snap.data() as any) } : null;
+        // tData resolved via loadTeamRecord with timeout and caching
         const leagueId = typeof tData?.leagueId === "string" ? tData.leagueId : "";
-        if (snap.exists()) {
+        if (tData) {
           const teamData: any = tData;
           if (isRealTeam(teamData)) {
             setTeam(teamData);

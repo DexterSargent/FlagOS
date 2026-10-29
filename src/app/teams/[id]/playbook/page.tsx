@@ -64,6 +64,7 @@ import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
 import { isDemoTeamId } from "@/lib/demoSandboxRuntime";
+import { getCachedTeamRecord, rememberTeamRecord } from "@/lib/teamRecord";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
@@ -80,13 +81,13 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const playersPerSide = settings?.rules?.playersOnField || 5;
 
   const { palette: contextPalette, team: contextTeam } = useTeamColors();
-  const [team, setTeam] = useState<any>(null);
+  const [team, setTeam] = useState<any>(() => getCachedTeamRecord(teamId));
   const effectiveTeam = team || contextTeam;
   const palette = resolveTeamColorPalette(effectiveTeam || contextPalette);
   const isDexter = isDexterUser(user?.email);
   // Admin emails are private, so the head-coach check reads them from team_private.
   const [privateTeam, setPrivateTeam] = useState<{ adminEmails?: string[]; coachEmail?: string } | null>(null);
-  const isPrimary = isPrimaryTeamAdmin(user?.email, { ...(team || {}), ...(privateTeam || {}) }, isDexter);
+  const isPrimary = isPrimaryTeamAdmin(user?.email, { ...(effectiveTeam || {}), ...(privateTeam || {}) }, isDexter);
   const canDeletePlaybook = isPrimary;
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [activePlaybookId, setActivePlaybookId] = useState<string>("");
@@ -113,6 +114,21 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
 
   const isDemoMode = isDemoTeam && demoRequested;
   const isEmbedded = isDemoTeam && embeddedRequested;
+
+  const [teamResolved, setTeamResolved] = useState<boolean>(() => {
+    return isDemoTeam || isDemoMode || teamId === "team_free_agents" || !!getCachedTeamRecord(teamId);
+  });
+
+  useEffect(() => {
+    const cached = getCachedTeamRecord(teamId);
+    if (cached) {
+      setTeam(cached);
+      setTeamResolved(true);
+    } else if (!isDemoTeam) {
+      setTeam(null);
+      setTeamResolved(isDemoMode || teamId === "team_free_agents");
+    }
+  }, [teamId, isDemoTeam, isDemoMode]);
 
   // Embedded demos and existing studio links open directly in the editor.
   const [viewLevel, setViewLevel] = useState<PlaybookViewLevel>(() => {
@@ -180,7 +196,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
   const userEmail = user?.email?.trim().toLowerCase();
   const isListedTeamAdmin = userProfile?.managedTeamId === teamId || !!userProfile?.managedTeamIds?.includes(teamId) ||
     (!!userEmail && (
-      (Array.isArray(team?.adminEmails) && team.adminEmails.some((e: string) => String(e).trim().toLowerCase() === userEmail)) ||
+      (Array.isArray(effectiveTeam?.adminEmails) && effectiveTeam.adminEmails.some((e: string) => String(e).trim().toLowerCase() === userEmail)) ||
       (Array.isArray(privateTeam?.adminEmails) && privateTeam.adminEmails.some((e) => String(e).trim().toLowerCase() === userEmail)) ||
       (!!privateTeam?.coachEmail && privateTeam.coachEmail.trim().toLowerCase() === userEmail)
     ));
@@ -242,11 +258,17 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         const teamSnap = await getDoc(doc(db, "teams", teamId));
         if (teamSnap.exists()) {
           const tData = { id: teamSnap.id, ...(teamSnap.data() as any) };
-          return isRealTeam(tData) ? tData : null;
+          if (isRealTeam(tData)) {
+            rememberTeamRecord(tData);
+            return tData;
+          }
+          return null;
         }
         return isEffectDemo ? resolveSandboxTeam("Apex Predators", "APX") : null;
       } catch (e) {
         console.warn("Unable to fetch live team from Firestore:", e);
+        const cached = contextTeam || getCachedTeamRecord(teamId);
+        if (cached && isRealTeam(cached)) return cached;
         return resolveSandboxTeam();
       }
     };
@@ -353,7 +375,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
           paintedSnapshot = JSON.stringify(books);
           setPlaybooks(books);
           selectFirstPlay(books);
-          setLoading(false);
+          if (effectiveTeam || isDemoTeam || isDemoMode) {
+            setLoading(false);
+          }
         }
       }
 
@@ -361,15 +385,20 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         const loadedTeam = await teamPromise;
         if (isStale()) return;
         if (loadedTeam) setTeam(loadedTeam);
+        setTeamResolved(true);
 
         // League admins are only allowed through once the team doc confirms they're a listed admin.
-        if (!hasPlaybookAccess) {
+        const currentEffective = loadedTeam || effectiveTeam;
+        const currentIsListedAdmin = isListedTeamAdmin || (!!userEmail && Array.isArray(currentEffective?.adminEmails) && currentEffective.adminEmails.some((e: string) => String(e).trim().toLowerCase() === userEmail));
+        const currentHasAccess = hasPlaybookAccess || (!isBlockedLeagueAdmin && currentIsListedAdmin);
+
+        if (!currentHasAccess) {
           // Keep the spinner up while the staff probe could still grant access.
           if (privateTeamChecked || !user) setLoading(false);
           return;
         }
 
-        const remote = await remotePromise;
+        const remote = await (hasPlaybookAccess ? remotePromise : loadRemotePlaybooks());
         if (isStale()) return;
 
         const sourcePlaybooks = remote !== null ? remote : readCachedPlaybooks();
@@ -401,6 +430,7 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
         setAutoSaveStatus("saved");
       } catch (err) {
         console.error("Error loading playbooks:", err);
+        setTeamResolved(true);
       }
       if (!isStale()) setLoading(false);
     };
@@ -813,7 +843,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     return deniedElement;
   }
 
-  if (loading) {
+  const isTeamPending = !effectiveTeam && !teamResolved && !isDemoMode && !isDemoTeam && teamId !== "team_free_agents";
+  const isAuthPending = authLoading || (!privateTeamChecked && !!user);
+
+  if (loading || isTeamPending || (isAuthPending && !hasPlaybookAccess)) {
     return (
       <div role="status" aria-label="Loading playbook" className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans">
         <FlagOSLoader label="Loading playbook data" />
@@ -821,12 +854,14 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  if ((!team && !isDemoMode && !isDemoTeam) || (team && !isRealTeam(team)) || teamId === "team_free_agents") {
+  if ((!effectiveTeam && !isDemoMode && !isDemoTeam) || (effectiveTeam && !isRealTeam(effectiveTeam)) || teamId === "team_free_agents") {
     return (
       <div className="min-h-screen bg-[#07090E] text-white flex flex-col justify-center items-center font-sans p-6 text-center">
-        <h1 className="text-3xl font-black mb-4">Team Not Found</h1>
-        <p className="text-neutral-400 mb-6 max-w-md">
-          This team could not be found. The free-agent pool does not have a team playbook.
+        <h1 className="text-3xl font-black mb-4 text-slate-900 dark:text-white">Team Not Found</h1>
+        <p className="text-slate-600 dark:text-neutral-400 mb-6 max-w-md">
+          {teamId === "team_free_agents" || (effectiveTeam && !isRealTeam(effectiveTeam))
+            ? "The free-agent pool does not have a team playbook."
+            : "This team could not be found. It may have been removed or the link may be invalid."}
         </p>
         <Link
           href="/teams"
@@ -839,8 +874,8 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const teamName = team?.name || "Team";
-  const shortcode = team?.shortcode || getTeamShortcode(team);
+  const teamName = effectiveTeam?.name || "Team";
+  const shortcode = effectiveTeam?.shortcode || getTeamShortcode(effectiveTeam);
 
   // RESTRICTION 0: League Admin Access Restriction (Strict Competitive Confidentiality Policy)
   // League admins have NO access to team playbooks
@@ -925,10 +960,10 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
                 </Link>
               )}
               <Link
-                href={team?.leagueId ? `/teams?league=${encodeURIComponent(team.leagueId)}` : `/teams/${teamId}`}
+                href={effectiveTeam?.leagueId ? `/teams?league=${encodeURIComponent(effectiveTeam.leagueId)}` : `/teams/${teamId}`}
                 className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider transition-all border border-white/10"
               >
-                {team?.leagueId ? "Back to Teams" : `Back to ${teamName}`}
+                {effectiveTeam?.leagueId ? "Back to Teams" : `Back to ${teamName}`}
               </Link>
             </div>
           </div>

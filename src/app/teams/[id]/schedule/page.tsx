@@ -26,6 +26,7 @@ import { subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
+import { getCachedTeamRecord, loadTeamRecord } from "@/lib/teamRecord";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
@@ -44,7 +45,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
   const { canManageTeam, isLeagueAdmin, user } = useAuth();
   const { palette: contextPalette } = useTeamColors();
-  const [team, setTeam] = useState<any>(null);
+  const [team, setTeam] = useState<any>(() => getCachedTeamRecord(teamId));
   const palette = resolveTeamColorPalette(team || contextPalette);
   const [allTeams, setAllTeams] = useState<Record<string, any>>({});
   const [matches, setMatches] = useState<any[]>([]);
@@ -239,10 +240,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       }
 
       try {
-        const teamSnap = await getDoc(doc(db, "teams", teamId));
-        const teamData = teamSnap.exists()
-          ? { ...teamSnap.data(), id: teamSnap.id } as { id: string; name?: string; leagueId?: unknown }
-          : null;
+        const teamData = await loadTeamRecord(teamId);
+
+
+
         const leagueId = typeof teamData?.leagueId === "string" ? teamData.leagueId : "";
         if (teamData && !leagueId) {
           const teamMatches = await loadTeamManagedMatches(teamId);

@@ -26,6 +26,7 @@ import {
 import { db } from "@/lib/firebase";
 import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { doc, getDoc } from "firebase/firestore";
+import { getCachedTeamRecord, loadTeamRecord } from "@/lib/teamRecord";
 import { loadTeamPlayers } from "@/lib/matchRoster";
 import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { useAuth } from "@/lib/authContext";
@@ -69,7 +70,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const { settings, isDemoLeague } = useLeague();
   const { sandbox, error: demoError, retry: retryDemo } = useDemoSandbox(isDemoLeague);
   const { palette: contextPalette } = useTeamColors();
-  const [team, setTeam] = useState<any>(null);
+  const [team, setTeam] = useState<any>(() => getCachedTeamRecord(teamId));
   const palette = resolveTeamColorPalette(team || contextPalette);
   const [players, setPlayers] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
@@ -127,8 +128,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         mList = getSandboxMatches();
         playList = getSandboxPlays();
       } else {
-        const teamSnap = await getDoc(doc(db, "teams", teamId));
-        if (teamSnap.exists()) tObj = { ...teamSnap.data(), id: teamSnap.id };
+        tObj = await loadTeamRecord(teamId);
+        // tObj resolved via loadTeamRecord with timeout and caching
         const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
         pList = await loadTeamPlayers(teamId, leagueId);
         if (version !== requestVersion.current) return;
