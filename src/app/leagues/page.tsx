@@ -687,9 +687,9 @@ export default function LeagueDirectoryPage() {
                   className="bg-transparent text-purple-700 dark:text-purple-300 outline-none cursor-pointer"
                 >
                   <option value="all" className="dark:bg-[#0B0F19] text-black dark:text-white">All Divisions</option>
-                  <option value="womens" className="dark:bg-[#0B0F19] text-black dark:text-white">Women's Flag</option>
+                  <option value="womens" className="dark:bg-[#0B0F19] text-black dark:text-white">Women&apos;s Flag</option>
                   <option value="coed" className="dark:bg-[#0B0F19] text-black dark:text-white">Co-Ed 5v5</option>
-                  <option value="mens" className="dark:bg-[#0B0F19] text-black dark:text-white">Men's Open</option>
+                  <option value="mens" className="dark:bg-[#0B0F19] text-black dark:text-white">Men&apos;s Open</option>
                   <option value="youth" className="dark:bg-[#0B0F19] text-black dark:text-white">Youth &amp; High School</option>
                 </select>
               </div>
@@ -906,6 +906,7 @@ export default function LeagueDirectoryPage() {
                   <div className="flex items-start gap-3.5">
                     <div className="w-12 h-12 rounded-2xl flex items-center justify-center p-1 shrink-0 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 overflow-hidden">
                       {league.logoUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                           src={league.logoUrl}
                           alt={league.name}

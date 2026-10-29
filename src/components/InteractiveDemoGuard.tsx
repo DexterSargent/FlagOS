@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, X } from "lucide-react";
 
 export function isPathAllowedForFeature(targetPathname: string, currentPathname: string): boolean {
@@ -36,6 +36,7 @@ export function isPathAllowedForFeature(targetPathname: string, currentPathname:
 }
 
 export default function InteractiveDemoGuard() {
+  const router = useRouter();
   const pathname = usePathname();
   const [isEmbedded, setIsEmbedded] = useState(false);
   const [isBarredModalOpen, setIsBarredModalOpen] = useState(false);
@@ -99,7 +100,7 @@ export default function InteractiveDemoGuard() {
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
 
-    window.history.pushState = function (...args: any[]) {
+    window.history.pushState = function (...args: [data: unknown, unused: string, url?: string | URL | null]) {
       const url = args[2];
       if (url) {
         try {
@@ -110,10 +111,10 @@ export default function InteractiveDemoGuard() {
           }
         } catch {}
       }
-      return originalPushState.apply(this, args as any);
+      return originalPushState.apply(this, args);
     };
 
-    window.history.replaceState = function (...args: any[]) {
+    window.history.replaceState = function (...args: [data: unknown, unused: string, url?: string | URL | null]) {
       const url = args[2];
       if (url) {
         try {
@@ -124,7 +125,7 @@ export default function InteractiveDemoGuard() {
           }
         } catch {}
       }
-      return originalReplaceState.apply(this, args as any);
+      return originalReplaceState.apply(this, args);
     };
 
     document.addEventListener("click", handleDocumentClick, true);
@@ -150,16 +151,15 @@ export default function InteractiveDemoGuard() {
   }
 
   const handleLaunchFullDemo = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const target = `${origin}/league/default?demo=true`;
     try {
       if (typeof window !== "undefined" && window.top && window.top !== window.self) {
-        window.top.location.href = "/league/default?demo=true";
+        window.top.location.href = target;
         return;
       }
     } catch {}
-    if (typeof window !== "undefined") {
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.href = "/league/default?demo=true";
-    }
+    router.push("/league/default?demo=true");
   };
 
   return (

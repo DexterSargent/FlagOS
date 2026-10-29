@@ -53,6 +53,7 @@ export interface TeamSeasonSnapshot {
   results: SeasonResult[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
 
 export function getTeamSeasons(team: { seasons?: unknown; seasonTitle?: string; currentSeasonId?: unknown } | null | undefined): TeamSeason[] {
