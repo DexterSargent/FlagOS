@@ -64,7 +64,7 @@ import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
 import { isDemoTeamId } from "@/lib/demoSandboxRuntime";
-import { getCachedTeamRecord, rememberTeamRecord } from "@/lib/teamRecord";
+import { getCachedTeamRecord, rememberTeamRecord, loadTeamRecord } from "@/lib/teamRecord";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 
@@ -255,14 +255,9 @@ export default function TeamPlaybookPage({ params }: { params: Promise<{ id: str
     const loadTeam = async () => {
       if (isEmbedded) return resolveSandboxTeam("Kansas City", "KC");
       try {
-        const teamSnap = await getDoc(doc(db, "teams", teamId));
-        if (teamSnap.exists()) {
-          const tData = { id: teamSnap.id, ...(teamSnap.data() as any) };
-          if (isRealTeam(tData)) {
-            rememberTeamRecord(tData);
-            return tData;
-          }
-          return null;
+        const tData = await loadTeamRecord(teamId);
+        if (tData && isRealTeam(tData)) {
+          return tData;
         }
         return isEffectDemo ? resolveSandboxTeam("Apex Predators", "APX") : null;
       } catch (e) {

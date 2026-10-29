@@ -93,7 +93,7 @@ function FootballIcon({
   );
 }
 
-export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
+export default function PlayByPlayManager({ params, initialMatchData }: { params: Promise<{ id: string }>; initialMatchData?: any }) {
   usePageGuide(STAT_KEEPER_WALKTHROUGH);
   const unwrappedParams = use(params);
   const matchId = unwrappedParams.id;
@@ -373,6 +373,12 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
           mData = getSandboxMatch(matchId);
           if (!mData) return;
           allP = getSandboxPlayers();
+        } else if (initialMatchData && (initialMatchData.id === matchId || !initialMatchData.id)) {
+          mData = initialMatchData;
+          allP = await loadMatchRosterPlayers(mData).catch((err) => {
+            console.warn("Unable to load match rosters:", err);
+            return [];
+          });
         } else {
           try {
             const matchDoc = await getDoc(doc(db, "matches", matchId));

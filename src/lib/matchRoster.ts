@@ -11,29 +11,42 @@ type MatchRosterSource = {
 const isRealTeamId = (id: unknown): id is string =>
   typeof id === "string" && !!id && !id.startsWith("opponent_");
 
+const rosterPending = new Map<string, Promise<any[]>>();
+
 /**
  * Runs player queries side by side and merges the results. The league-scoped shape is what
  * league members and league admins can read; the team-only shape covers team admins and older
  * player docs saved without a leagueId. Throws only when every query is rejected.
  */
 async function loadPlayersByTeamIds(teamIds: string[], leagueId: string | undefined, max: number): Promise<any[]> {
-  const teamFilter = teamIds.length === 1 ? where("teamId", "==", teamIds[0]) : where("teamId", "in", teamIds);
-  const queries = [getDocs(query(collection(db, "players"), teamFilter, limit(max)))];
-  if (typeof leagueId === "string" && leagueId) {
-    queries.push(getDocs(query(collection(db, "players"), where("leagueId", "==", leagueId), teamFilter, limit(max))));
-  }
-  const results = await Promise.allSettled(queries);
-  const byId = new Map<string, any>();
-  let lastError: unknown = null;
-  for (const result of results) {
-    if (result.status === "rejected") {
-      lastError = result.reason;
-      continue;
+  const cacheKey = `${[...teamIds].sort().join(",")}:${leagueId || ""}:${max}`;
+  const inflight = rosterPending.get(cacheKey);
+  if (inflight) return inflight;
+
+  const promise = (async () => {
+    const teamFilter = teamIds.length === 1 ? where("teamId", "==", teamIds[0]) : where("teamId", "in", teamIds);
+    const queries = [getDocs(query(collection(db, "players"), teamFilter, limit(max)))];
+    if (typeof leagueId === "string" && leagueId) {
+      queries.push(getDocs(query(collection(db, "players"), where("leagueId", "==", leagueId), teamFilter, limit(max))));
     }
-    result.value.docs.forEach((d) => byId.set(d.id, { ...d.data(), id: d.id }));
-  }
-  if (results.every((r) => r.status === "rejected")) throw lastError;
-  return [...byId.values()];
+    const results = await Promise.allSettled(queries);
+    const byId = new Map<string, any>();
+    let lastError: unknown = null;
+    for (const result of results) {
+      if (result.status === "rejected") {
+        lastError = result.reason;
+        continue;
+      }
+      result.value.docs.forEach((d) => byId.set(d.id, { ...d.data(), id: d.id }));
+    }
+    if (results.every((r) => r.status === "rejected")) throw lastError;
+    return [...byId.values()];
+  })().finally(() => {
+    rosterPending.delete(cacheKey);
+  });
+
+  rosterPending.set(cacheKey, promise);
+  return promise;
 }
 
 /** Loads one team's roster in a way every viewer who can see the team is allowed to read. */

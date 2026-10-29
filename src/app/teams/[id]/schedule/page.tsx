@@ -22,7 +22,7 @@ import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadTeamManagedMatches } from "@/lib/teamSeasonData";
-import { subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
+import { getCachedLeagueTeams, subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
@@ -269,11 +269,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
           if (cancelled) unsubscribe();
           return;
         }
-        const allTeamsSnap = await getDocs(query(
-          collection(db, "teams"),
-          where("leagueId", "==", leagueId),
-          limit(64),
-        ));
+        const allTeams = await getCachedLeagueTeams(leagueId);
         if (cancelled) return;
 
         if (teamData) {
@@ -283,10 +279,9 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         }
 
         const teamsMap: Record<string, any> = {};
-        allTeamsSnap.docs
-          .map((d) => ({ ...d.data(), id: d.id }))
+        allTeams
           .filter(isRealTeam)
-          .forEach((t) => {
+          .forEach((t: any) => {
             teamsMap[t.id] = t;
           });
         setAllTeams(teamsMap);

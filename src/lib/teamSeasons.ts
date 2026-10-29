@@ -278,17 +278,38 @@ export function buildTeamSeasonSnapshot({
   };
 }
 
+const teamSeasonSnapshotCache = new Map<string, TeamSeasonSnapshot>();
+
+export function clearTeamSeasonSnapshotCache(teamId?: string): void {
+  if (!teamId) {
+    teamSeasonSnapshotCache.clear();
+    return;
+  }
+  for (const key of Array.from(teamSeasonSnapshotCache.keys())) {
+    if (key.startsWith(`${teamId}:`)) {
+      teamSeasonSnapshotCache.delete(key);
+    }
+  }
+}
+
 export async function loadTeamSeasonSnapshots(teamId: string, seasons: TeamSeason[]): Promise<TeamSeasonSnapshot[]> {
   const archived = seasons.filter((s) => s.status === "archived");
   if (!archived.length) return [];
 
   const snapshots: TeamSeasonSnapshot[] = [];
   await Promise.all(archived.map(async (season) => {
+    const cacheKey = `${teamId}:${season.id}`;
+    const cached = teamSeasonSnapshotCache.get(cacheKey);
+    if (cached) {
+      snapshots.push(cached);
+      return;
+    }
+
     try {
       const snapDoc = await getDoc(doc(db, TEAM_SEASON_SNAPSHOT_COLLECTION, teamSeasonSnapshotDocId(teamId, season.id)));
       if (snapDoc.exists()) {
         const data = snapDoc.data() as AnyRecord;
-        snapshots.push({
+        const snap: TeamSeasonSnapshot = {
           teamId,
           seasonId: season.id,
           title: data.title || season.title,
@@ -307,10 +328,12 @@ export async function loadTeamSeasonSnapshots(teamId: string, seasons: TeamSeaso
           isChampion: Boolean(data.isChampion),
           playerStats: Array.isArray(data.playerStats) ? data.playerStats.map(inflatePlayerLine) : [],
           results: Array.isArray(data.results) ? data.results : [],
-        });
+        };
+        teamSeasonSnapshotCache.set(cacheKey, snap);
+        snapshots.push(snap);
       } else if (season.won !== undefined) {
         // Fall back to lightweight inline season record if snapshot doc does not exist
-        snapshots.push({
+        const snap: TeamSeasonSnapshot = {
           teamId,
           seasonId: season.id,
           title: season.title,
@@ -329,7 +352,9 @@ export async function loadTeamSeasonSnapshots(teamId: string, seasons: TeamSeaso
           isChampion: season.standing?.toLowerCase().includes("champion"),
           playerStats: [],
           results: [],
-        });
+        };
+        teamSeasonSnapshotCache.set(cacheKey, snap);
+        snapshots.push(snap);
       }
     } catch (err) {
       console.warn("Failed to load team snapshot for", season.id, err);

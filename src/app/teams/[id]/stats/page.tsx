@@ -8,8 +8,8 @@ import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, History, Calendar, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
 import { loadTeamPlayers } from "@/lib/matchRoster";
+import { loadTeamRecord } from "@/lib/teamRecord";
 import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { useLeague } from "@/lib/leagueContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
@@ -81,14 +81,13 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             });
           }
         } else {
-          const teamSnap = await getDoc(doc(db, "teams", teamId));
+          tObj = await loadTeamRecord(teamId);
           if (cancelled) return;
-          if (!teamSnap.exists()) {
+          if (!tObj) {
             setTeamMissing(true);
             setLoading(false);
             return;
           }
-          tObj = { ...teamSnap.data(), id: teamSnap.id };
           const leagueId = typeof tObj?.leagueId === "string" ? tObj.leagueId : "";
           if (tObj) {
             setTeam(tObj);

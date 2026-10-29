@@ -32,8 +32,10 @@ export function loadTeamMatchPlays(matchId: string, teamId: string): Promise<Dem
   });
 }
 
-export async function loadTeamSeasonData(teamId: string): Promise<{ matches: DemoMatch[]; plays: DemoPlay[] }> {
-  const matches = await loadTeamManagedMatches(teamId);
-  const plays = await Promise.all(matches.map((match) => loadTeamMatchPlays(match.id, teamId)));
-  return { matches, plays: plays.flat() };
+export function loadTeamSeasonData(teamId: string): Promise<{ matches: DemoMatch[]; plays: DemoPlay[] }> {
+  return cachedPublicTeamRequest(`team-season-data:${teamId}`, async () => {
+    const matches = await loadTeamManagedMatches(teamId);
+    const plays = await Promise.all(matches.map((match) => loadTeamMatchPlays(match.id, teamId)));
+    return { matches, plays: plays.flat() };
+  });
 }

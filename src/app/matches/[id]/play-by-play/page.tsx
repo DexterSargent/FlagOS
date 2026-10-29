@@ -156,7 +156,7 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
         {activeMode === "async" ? (
           <AsyncPlayByPlayManager matchId={matchId} backUrl={`/matches/${matchId}`} hasScorerGrant={scorer.hasGrant} />
         ) : (
-          <AdminView params={params} />
+          <AdminView params={params} initialMatchData={matchData} />
         )}
       </div>
     );

@@ -49,7 +49,7 @@ import {
   clearSandboxScheduleBackup,
   ScheduleBackup,
 } from "@/lib/demoSandbox";
-import { getLeagueSeasonMatchDocs, subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
+import { getCachedLeagueTeams, getLeagueSeasonMatchDocs, subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
 import { isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
 import NoLeagueSelected from "@/components/league/NoLeagueSelected";
 import {
@@ -300,15 +300,10 @@ export default function Calendar() {
       return () => unsub();
     }
 
-    // Fetch teams once
-    getDocs(query(
-      collection(db, "teams"),
-      where("leagueId", "==", activeLeagueId),
-      limit(64),
-    )).then((teamsSnap) => {
+    // Fetch teams once (cached)
+    getCachedLeagueTeams(activeLeagueId).then((teamsList) => {
       setTeams(
-        teamsSnap.docs
-          .map((d) => ({ ...d.data(), id: d.id }))
+        teamsList
           .filter((t: any) => isRealTeam(t) && (!t.leagueId || t.leagueId === activeLeagueId))
       );
     }).catch((err) => {

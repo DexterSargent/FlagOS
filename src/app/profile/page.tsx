@@ -40,6 +40,7 @@ import { useLeagueSeasonHistory } from "@/lib/useLeagueSeasonHistory";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import PlayerCareerCard from "@/components/league/PlayerCareerCard";
 import { getTeamShortcode } from "@/components/TeamAssets";
+import { loadTeamRecord } from "@/lib/teamRecord";
 import ThemeToggle from "@/components/ThemeToggle";
 import DemoNoticeStrip from "@/components/DemoNoticeStrip";
 import { effectiveMaxRoster } from "@/lib/rosterLimits";
@@ -230,9 +231,9 @@ export default function PlayerProfilePage() {
         if (targetPlayer?.teamId && !teamMode && isDemoLeague && sandbox) {
           setPlayerTeam(sandbox.getSandboxTeams().find((t: any) => t.id === targetPlayer.teamId) ?? null);
         } else if (targetPlayer?.teamId) {
-          const teamSnap = await getDoc(doc(db, "teams", targetPlayer.teamId));
-          if (teamSnap.exists()) {
-            setPlayerTeam({ id: teamSnap.id, ...(teamSnap.data() as any) });
+          const teamData = await loadTeamRecord(targetPlayer.teamId);
+          if (teamData) {
+            setPlayerTeam(teamData);
           }
         }
 

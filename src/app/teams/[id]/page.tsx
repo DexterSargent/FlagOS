@@ -40,7 +40,8 @@ import {
 } from "lucide-react";
 import { openBillingPortal } from "@/lib/billingClient";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, collection, getDocs, query, where, limit } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
+import { rememberTeamRecord } from "@/lib/teamRecord";
 import { getCachedLeagueMatches, getCachedLeaguePlays } from "@/lib/leagueDataCache";
 import { isPrimaryTeamAdmin, getTeamAdminEmails, getTeamAdminAccounts, isDexterUser, type TeamAdminAccount } from "@/lib/teamAdminRbac";
 import { useAuth } from "@/lib/authContext";
@@ -492,6 +493,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     setArchivingSeason(true);
     try {
       await updateDoc(doc(db, "teams", teamId), updatePayload);
+      rememberTeamRecord({ id: teamId, ...updatePayload });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("flagos_team_updated", { detail: { id: teamId, ...updatePayload } }));
+      }
       setTeam((prev: any) => ({ ...prev, ...updatePayload }));
     } catch (e) {
       console.error("Error updating season archive state:", e);

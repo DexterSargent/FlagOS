@@ -6,8 +6,6 @@ import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { collection, query, limit, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { getCachedLeaguesDirectory } from "@/lib/leagueDataCache";
 import { useLeague } from "@/lib/leagueContext";
