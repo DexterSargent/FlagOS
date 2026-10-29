@@ -15,7 +15,13 @@ export async function accountEmailRequest<T>(user: User, action: string, data: R
     headers: { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" },
     body: JSON.stringify({ action, ...data }),
   });
-  const result = await response.json();
+  const text = await response.text();
+  let result: any = {};
+  try {
+    result = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(`Unable to update account emails (status ${response.status}).`);
+  }
   if (!response.ok) throw new Error(result.error || "Unable to update account emails.");
   if (result.data === undefined) throw new Error("The account request returned no data.");
   return result.data as T;
