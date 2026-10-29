@@ -402,7 +402,6 @@ export default function PrintArmbandModal({
                     type="button"
                     role="checkbox"
                     aria-checked={isSelected}
-                    aria-pressed={isSelected}
                     data-tour="print-play-choices"
                     onClick={() => handleTogglePlay(play.id)}
                     className={`p-2 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${

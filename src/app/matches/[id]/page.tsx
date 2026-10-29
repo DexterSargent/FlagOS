@@ -353,7 +353,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                   <button
                     onClick={() => {
                       updateSandboxMatch(matchId, { status: "in_progress" });
-                      window.location.href = `/matches/${matchId}/play-by-play`;
+                      router.push(`/matches/${matchId}/play-by-play`);
                     }}
                     className="px-5 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl shadow-lg shadow-cyan-500/30 transition-all active:scale-95 whitespace-nowrap text-xs"
                   >

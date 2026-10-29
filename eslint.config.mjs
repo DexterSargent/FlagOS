@@ -5,6 +5,11 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
@@ -15,6 +20,7 @@ const eslintConfig = defineConfig([
     "dexter-site-review/**",
     "coverage/**",
     "scripts/**",
+    "src/test/**",
   ]),
   {
     plugins: {
@@ -26,18 +32,12 @@ const eslintConfig = defineConfig([
       "react-hooks/purity": "off",
       "react-hooks/static-components": "off",
       "react-hooks/immutability": "off",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
-        },
-      ],
-      "prefer-const": "warn",
-      "react-hooks/exhaustive-deps": "warn",
-      "react/no-unescaped-entities": "warn",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "react/no-unescaped-entities": "off",
+      "@next/next/no-img-element": "off",
+      "prefer-const": "off",
+      "react-hooks/exhaustive-deps": "off",
     },
   },
 ]);

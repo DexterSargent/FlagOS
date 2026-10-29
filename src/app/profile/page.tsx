@@ -21,14 +21,8 @@ import {
   Crown,
   LogOut,
   Zap,
-  Info,
-  Calendar,
-  Lock,
-  Eye,
   Settings
 } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where, limit } from "firebase/firestore";
 import {
   getCachedLeaguePlayers,
   getCachedLeagueMatches,
@@ -69,7 +63,6 @@ export default function PlayerProfilePage() {
   const {
     user,
     role,
-    isPlayer,
     playerId: authPlayerId,
     playerTeamId: authTeamId,
     playerData: authPlayerData,
@@ -179,8 +172,7 @@ export default function PlayerProfilePage() {
     pbu: 0,
   });
 
-  // Recent matches where player participated
-  const [playerMatches, setPlayerMatches] = useState<any[]>([]);
+  const [_playerMatches, setPlayerMatches] = useState<any[]>([]);
 
   // List of all players across all teams (for admin/demo inspection switcher)
   const [allRosteredPlayers, setAllRosteredPlayers] = useState<any[]>([]);
@@ -454,7 +446,6 @@ export default function PlayerProfilePage() {
 
   const effectiveTeamId = effectivePlayer?.teamId || authTeamId;
   const teamName = effectiveTeam?.name || "Team";
-  const teamShortcode = effectiveTeam ? getTeamShortcode(effectiveTeam) : "TM";
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-cyan-500/30 selection:text-cyan-200 flex flex-col relative">

@@ -9,17 +9,11 @@ import Link from "next/link";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { getCachedLeaguesDirectory } from "@/lib/leagueDataCache";
 import { useLeague } from "@/lib/leagueContext";
-import { useAuth } from "@/lib/authContext";
 import {
   DirectoryLeague,
   buildDirectoryCatalog,
   calculateDistanceInMiles,
   DIRECTORY_FORMAT_OPTIONS,
-  FormatChoice,
-  RulesetFormat,
-  LeagueDivision,
-  CompetitionTier,
-  RegistrationStatus,
 } from "@/lib/leagueDirectoryData";
 import { mapsSearchUrl } from "@/lib/leaguePublicProfile";
 import { FLAGOS_SUPPORT_EMAIL } from "@/lib/platformAdmin";
@@ -46,11 +40,9 @@ import {
   SlidersHorizontal,
   X,
   Building2,
-  Lock,
   Layers,
   Send,
   Mail,
-  Compass,
   Check,
   ChevronDown,
 } from "lucide-react";
@@ -58,11 +50,9 @@ import {
 export default function LeagueDirectoryPage() {
   usePageGuide(LEAGUE_DIRECTORY_WALKTHROUGH);
   const { userLeagues, settings, activeLeagueId } = useLeague();
-  const { user } = useAuth();
 
   // Remote Firestore Leagues & Loading State
   const [remoteLeagues, setRemoteLeagues] = useState<any[]>([]);
-  const [isLoadingRemote, setIsLoadingRemote] = useState<boolean>(true);
 
   // Quick Category Filter ("all" | "live" | "my")
   const [selectedCategory, setSelectedCategory] = useState<"all" | "my">("all");
@@ -71,15 +61,12 @@ export default function LeagueDirectoryPage() {
     let isCurrent = true;
     async function fetchLeagues() {
       try {
-        setIsLoadingRemote(true);
         const { leagues } = await getCachedLeaguesDirectory();
         if (isCurrent) {
           setRemoteLeagues(leagues);
         }
       } catch (err) {
         console.warn("Notice: could not load Firestore leagues directly (offline/mocked):", err);
-      } finally {
-        if (isCurrent) setIsLoadingRemote(false);
       }
     }
 
@@ -169,7 +156,7 @@ export default function LeagueDirectoryPage() {
         setLocationLabel("Your location");
         setIsLocating(false);
       },
-      (err) => {
+      () => {
         setIsLocating(false);
         setLocationError("Unable to retrieve location. Please choose a nearby metro region below.");
       },
