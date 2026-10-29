@@ -4,18 +4,10 @@ import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { cleanFirebaseConfigValue } from './firebaseConfig';
 
 const useFirebaseEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
-const isLocalDevelopment = process.env.NODE_ENV === 'development';
-
 const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
 
 if (useFirebaseEmulators && process.env.NODE_ENV === 'production' && !isBuildPhase) {
   throw new Error('Firebase emulator mode cannot be enabled in production.');
-}
-
-if (isLocalDevelopment && !useFirebaseEmulators) {
-  throw new Error(
-    'Local development is blocked from Firebase. Set NEXT_PUBLIC_USE_FIREBASE_EMULATORS=true and use the demo-flagos-local project.',
-  );
 }
 
 const firebaseConfig = {

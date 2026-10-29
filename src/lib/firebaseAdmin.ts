@@ -8,12 +8,6 @@ const useFirebaseEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 
 // Hosting env values can arrive wrapped in literal quotes, which breaks ID token audience checks.
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim().replace(/^["']+|["']+$/g, "");
 
-if (process.env.NODE_ENV !== "production" && !useFirebaseEmulators) {
-  throw new Error(
-    "Local Firebase Admin access is blocked. Start the Auth and Firestore emulators and enable NEXT_PUBLIC_USE_FIREBASE_EMULATORS.",
-  );
-}
-
 const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
 if (useFirebaseEmulators) {
