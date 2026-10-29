@@ -19,6 +19,10 @@ import { useAuth } from "@/lib/authContext";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import PlayEntryWizard from "@/components/play-by-play/PlayEntryWizard";
+import PlayByPlayResetModal from "@/components/play-by-play/PlayByPlayResetModal";
+import PlayByPlayTimeoutModal from "@/components/play-by-play/PlayByPlayTimeoutModal";
+import PlayByPlaySubModal from "@/components/play-by-play/PlayByPlaySubModal";
+import PlayByPlayLogDrawer from "@/components/play-by-play/PlayByPlayLogDrawer";
 import { getPlayerNumberMap, sortRosterWithNumbers, sortRosterByStatLeader, computePlayerStatCounts, getDefensiveStatCategory, getEligibleReceivers } from "@/lib/playerNumberHelper";
 import { loadStatKeeperHistory } from "@/lib/statKeeperHistory";
 import StatPlayerPicker from "@/components/play-by-play/StatPlayerPicker";
@@ -54,6 +58,40 @@ import {
   RESET_GAME_MODAL_WALKTHROUGH,
   ADD_SUB_MODAL_WALKTHROUGH,
 } from "@/lib/walkthroughs/league";
+
+function FootballIcon({
+  className,
+  active,
+  style,
+}: {
+  className?: string;
+  active: boolean;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      className={`${className} ${active ? "opacity-100 drop-shadow-[0_0_15px_currentColor]" : "opacity-30 grayscale"} transition-all duration-500`}
+      style={style}
+    >
+      <path
+        d="M6 3c-5 12 7 24 19 19-5-12-7-24-19-19z"
+        fill={active ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M13.5 10.5l-3 3M11 8l-3 3M16 13l-3 3"
+        fill="none"
+        stroke={active ? "#000" : "currentColor"}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function PlayByPlayManager({ params }: { params: Promise<{ id: string }> }) {
   usePageGuide(STAT_KEEPER_WALKTHROUGH);
@@ -119,7 +157,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
   const [awayPlayers, setAwayPlayers] = useState<string[]>([]);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   usePageGuide(isSubModalOpen ? ADD_SUB_MODAL_WALKTHROUGH : null, 1);
-  const [subModalTeam, setSubModalTeam] = useState<"HOME" | "AWAY" | null>(null);
 
   const playerNumberMap = useMemo(() => {
     return getPlayerNumberMap(allPlayers, homePlayers, awayPlayers);
@@ -325,30 +362,6 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     if (n === 3) return "3rd";
     return `${n}th`;
   };
-
-  const FootballIcon = ({ className, active, style }: { className?: string, active: boolean, style?: React.CSSProperties }) => (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      className={`${className} ${active ? 'opacity-100 drop-shadow-[0_0_15px_currentColor]' : 'opacity-30 grayscale'} transition-all duration-500`}
-      style={style}
-    >
-      <path
-        d="M6 3c-5 12 7 24 19 19-5-12-7-24-19-19z"
-        fill={active ? "currentColor" : "none"}
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M13.5 10.5l-3 3M11 8l-3 3M16 13l-3 3"
-        fill="none"
-        stroke={active ? "#000" : "currentColor"}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 
   useEffect(() => {
     const loadMatchData = async () => {
@@ -1245,157 +1258,33 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
     <div className="h-[calc(100dvh-var(--role-switcher-height,0px)-var(--pbp-banner-height,0px))] w-full min-h-0 max-w-full bg-black text-white font-sans overflow-hidden flex flex-col relative pb-[env(safe-area-inset-bottom)]">
 
       {/* RESET GAME TO PRE-GAME MODAL */}
-      {isResetModalOpen && (
-        <div className="fixed inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-[#0B0F19] border-2 border-red-500/50 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative overflow-hidden flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-            <div className="absolute top-3 right-3 z-10"><PageGuideButton /></div>
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" />
-
-            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-4 shadow-lg shadow-red-500/10">
-              <AlertTriangle className="w-8 h-8" />
-            </div>
-
-            <span className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
-              Permanent & Irreversible Action
-            </span>
-
-            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white mb-2">
-              Reset Game to Pre-Game?
-            </h2>
-
-            <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-              Are you sure you want to completely reset this game? This will clear the live game session back to before kickoff.
-            </p>
-
-            <div className="w-full bg-red-950/20 border border-red-500/20 rounded-2xl p-4 text-left text-xs sm:text-sm text-neutral-300 space-y-2.5 mb-6">
-              <div className="flex items-start gap-2">
-                <span className="text-red-400 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>All live stats and plays will be deleted:</strong> Every pass, run, touchdown, sack, flag, and interception recorded for this game will be permanently erased.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-red-400 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>Scores reset to 0 – 0:</strong> Both team scores, timeouts, down &amp; distance, and game clock will return to pre-game starting values.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-red-400 font-bold shrink-0 mt-0.5">•</span>
-                <span><strong>Reverts to Scheduled:</strong> Game status will be restored to &quot;Scheduled&quot; (Pre-Game).</span>
-              </div>
-            </div>
-
-            <div data-tour="reset-game-actions" className="flex flex-col sm:flex-row gap-3 w-full">
-              <button
-                type="button"
-                disabled={isResetting}
-                onClick={() => setIsResetModalOpen(false)}
-                className="flex-1 py-3.5 px-5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider rounded-2xl border border-white/10 transition-colors"
-              >
-                Cancel / Keep Game
-              </button>
-              <button
-                type="button"
-                disabled={isResetting}
-                onClick={handleResetGameToPreGame}
-                className="flex-1 py-3.5 px-5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isResetting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Resetting...</span>
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Permanently Reset</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PlayByPlayResetModal
+        isOpen={isResetModalOpen}
+        isResetting={isResetting}
+        onClose={() => setIsResetModalOpen(false)}
+        onConfirm={handleResetGameToPreGame}
+      />
 
       {/* TIMEOUT MODAL */}
-      {isTimeoutActive && (
-        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4">
-          <Timer className="w-16 h-16 sm:w-24 sm:h-24 md:w-32 md:h-32 text-white mb-4 sm:mb-8 animate-pulse" />
-          <h2 className="text-2xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-12 uppercase tracking-widest text-neutral-300">Timeout</h2>
-          <span className="text-6xl sm:text-9xl md:text-[12rem] font-black leading-none text-white tabular-nums mb-6 sm:mb-12">{timeoutClock}</span>
-          <button
-            onClick={() => setTimeoutClock(0)}
-            className="py-3.5 sm:py-6 px-6 sm:px-12 bg-white/10 hover:bg-white/20 text-white font-bold text-sm sm:text-xl md:text-2xl rounded-full transition-colors"
-          >
-            END TIMEOUT EARLY
-          </button>
-        </div>
-      )}
+      <PlayByPlayTimeoutModal
+        isActive={isTimeoutActive}
+        timeoutClock={timeoutClock}
+        onEndTimeout={() => setIsTimeoutActive(false)}
+      />
 
       {/* SUB MODAL */}
-      {isSubModalOpen && (
-        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-8">
-          <div className="bg-neutral-900 border border-white/10 rounded-2xl sm:rounded-3xl md:rounded-[3rem] p-4 sm:p-8 max-w-xl w-full flex flex-col max-h-[85vh]">
-            <div className="flex justify-between items-center mb-4 sm:mb-6 shrink-0">
-              <h2 className="text-xl sm:text-3xl font-black uppercase tracking-widest">Add Sub</h2>
-              <div className="flex items-center gap-2">
-              <PageGuideButton />
-              <button onClick={() => { setIsSubModalOpen(false); setSubModalTeam(null); }} className="text-[var(--text-muted)] hover:text-white p-2 bg-white/5 rounded-full">
-                <X className="w-6 h-6" />
-              </button>
-              </div>
-            </div>
-
-            {!subModalTeam ? (
-              <div className="flex flex-col gap-4">
-                <h3 className="text-neutral-400 font-bold mb-2">Select team to add sub to:</h3>
-                <button onClick={() => setSubModalTeam("HOME")} className="py-6 px-4 bg-neutral-950 border border-white/5 rounded-2xl text-2xl font-black hover:bg-neutral-800 transition-colors uppercase flex items-center justify-between">
-                  {homeTeamName}
-                  <ChevronRight className="w-6 h-6 text-neutral-600" />
-                </button>
-                <button onClick={() => setSubModalTeam("AWAY")} className="py-6 px-4 bg-neutral-950 border border-white/5 rounded-2xl text-2xl font-black hover:bg-neutral-800 transition-colors uppercase flex items-center justify-between">
-                  {awayTeamName}
-                  <ChevronRight className="w-6 h-6 text-neutral-600" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-4 overflow-hidden h-full">
-                <button onClick={() => setSubModalTeam(null)} className="flex items-center text-amber-500 mb-2 hover:text-amber-400 w-fit shrink-0">
-                  <ChevronLeft className="w-5 h-5 mr-1" /> Back
-                </button>
-                <h3 className="text-neutral-400 font-bold mb-2 shrink-0">Select player to join {subModalTeam === "HOME" ? homeTeamName : awayTeamName}:</h3>
-                <div className="flex flex-col gap-2 overflow-y-auto pr-2 pb-4">
-                  {allPlayers
-                    .filter(p => {
-                      const teamPlayers = subModalTeam === "HOME" ? homePlayers : awayPlayers;
-                      return !teamPlayers.includes(p.playerName);
-                    })
-                    .sort((a, b) => a.playerName.localeCompare(b.playerName))
-                    .map(p => {
-                      const opposingTeamId = subModalTeam === "HOME" ? awayTeamId : homeTeamId;
-                      const isOpponent = p.teamId === opposingTeamId;
-                      const pNum = p.number || p.jerseyNumber || p.playerNumber;
-                      return (
-                        <button
-                          key={p.id}
-                          onClick={() => handleAddSub(p.playerName, subModalTeam)}
-                          className="py-4 px-4 bg-neutral-950 border border-white/5 rounded-2xl text-lg font-bold hover:bg-white/10 transition-colors text-left flex justify-between items-center"
-                        >
-                          <div className="flex items-center gap-2">
-                            {pNum && (
-                              <span className="px-2 py-0.5 rounded text-xs font-mono font-black bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
-                                #{String(pNum).replace(/^#/, "")}
-                              </span>
-                            )}
-                            <span>{p.playerName} {isOpponent && <span className="text-amber-500 ml-1" title="Currently on opposing team">*</span>}</span>
-                          </div>
-                          <Plus className="w-5 h-5 text-neutral-600" />
-                        </button>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <PlayByPlaySubModal
+        isOpen={isSubModalOpen}
+        onClose={() => setIsSubModalOpen(false)}
+        homeTeamName={homeTeamName}
+        awayTeamName={awayTeamName}
+        homeTeamId={homeTeamId}
+        awayTeamId={awayTeamId}
+        homePlayers={homePlayers}
+        awayPlayers={awayPlayers}
+        allPlayers={allPlayers}
+        onAddSub={handleAddSub}
+      />
 
       {/* SYNC SCOREBOARD & GAME CONTROLS */}
       <header data-tour="score-header" className="sticky bg-neutral-900 border-b border-cyan-500/30 px-1 py-1 sm:px-2 md:px-3 md:py-2 shrink-0 z-50 w-full [&_button]:items-center [&_button]:justify-center" style={{ top: "var(--role-switcher-height, 0px)" }}>
@@ -2761,63 +2650,16 @@ export default function PlayByPlayManager({ params }: { params: Promise<{ id: st
       </div>
 
       {/* PLAY LOG DRAWER MODAL */}
-      {isPlayLogDrawerOpen && (
-        <div data-tour="scoreboard-drawers" className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex justify-end animate-in fade-in">
-          <div className="bg-neutral-950 border-l border-white/10 w-full max-w-lg h-full p-6 flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
-              <div className="flex items-center gap-2">
-                <Flag className="w-5 h-5 text-amber-400" />
-                <h3 className="text-lg font-black uppercase text-white">Live Game Play Log</h3>
-              </div>
-              <div className="flex items-center gap-2">
-              <PageGuideButton />
-              <button
-                onClick={() => setIsPlayLogDrawerOpen(false)}
-                className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-4 space-y-2.5">
-              {matchPlaysList.length === 0 ? (
-                <div className="text-center py-12 text-[var(--text-muted)] text-sm italic">
-                  No plays logged yet.
-                </div>
-              ) : (
-                matchPlaysList.map((p, idx) => {
-                  const sentence = formatPlaySentence(p, {
-                    homeTeamName,
-                    awayTeamName,
-                    homeTeamId,
-                    downsPerSeries,
-                  });
-                  const isPenalty = p.playType === "Penalty";
-
-                  return (
-                    <div
-                      key={p.id || idx}
-                      className={`p-3.5 rounded-2xl border transition-all ${isPenalty
-                        ? "bg-amber-950/20 border-amber-500/30"
-                        : "bg-neutral-900 border-white/5"
-                        }`}
-                    >
-                      <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400 mb-1">
-                        <span className="font-bold text-cyan-400">
-                          {(periodType === 'quarters' || p.half > 2) ? `Q${p.half}` : (p.half === 2 ? "2nd Half" : "1st Half")} • {getOrdinal(p.down || 1)} Down
-                        </span>
-                        <span>{p.gameClock !== undefined && p.gameClock !== null ? formatTime(p.gameClock) : ""}</span>
-                      </div>
-                      <p className="text-xs font-bold text-white leading-relaxed">{sentence}</p>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <PlayByPlayLogDrawer
+        isOpen={isPlayLogDrawerOpen}
+        onClose={() => setIsPlayLogDrawerOpen(false)}
+        matchPlaysList={matchPlaysList}
+        homeTeamName={homeTeamName}
+        awayTeamName={awayTeamName}
+        homeTeamId={homeTeamId}
+        downsPerSeries={downsPerSeries}
+        periodType={periodType}
+      />
     </div>
   );
 }
