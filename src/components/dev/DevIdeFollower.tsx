@@ -249,7 +249,7 @@ export default function DevIdeFollower() {
             title="IDE Auto-Follower & Component Inspector"
           >
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-slate-200 tracking-tight">IDE Sync</span>
+            <span className="font-semibold text-slate-200 tracking-tight">VS Code Sync</span>
             <ChevronUp className="w-3 h-3 text-slate-400" />
           </button>
         ) : (
@@ -257,7 +257,7 @@ export default function DevIdeFollower() {
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
               <div className="flex items-center gap-1.5">
                 <Code className="w-4 h-4 text-emerald-500" />
-                <span className="font-bold text-xs">IDE Sync & Inspector</span>
+                <span className="font-bold text-xs">VS Code Sync & Inspector</span>
               </div>
               <button
                 onClick={() => setIsExpanded(false)}
@@ -334,3 +334,4 @@ export default function DevIdeFollower() {
     </>
   );
 }
+

@@ -106,28 +106,38 @@ export async function POST(req: Request) {
       );
     }
 
-    // Launch Antigravity IDE / VS Code
+    // Launch specifically in Visual Studio Code (not Antigravity)
     const targetArg = `${targetFile}:${targetLine}`;
-    const antigravityIdeBin =
-      "/Applications/Antigravity IDE.app/Contents/Resources/app/bin/antigravity-ide";
+    const vsCodeCandidateBins = [
+      "/Users/dextersargent/Desktop/Visual Studio Code.app/Contents/Resources/app/bin/code",
+      "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
+      "/Users/dextersargent/Downloads/Visual Studio Code 2.app/Contents/Resources/app/bin/code",
+      "code",
+    ];
 
-    if (fs.existsSync(/*turbopackIgnore: true*/ antigravityIdeBin)) {
-      const child = spawn(antigravityIdeBin, ["-r", "-g", targetArg], {
-        detached: true,
-        stdio: "ignore",
-      });
-      child.unref();
-    } else {
-      const child = spawn("code", ["-r", "-g", targetArg], {
+    let vsCodeBin: string | null = null;
+    for (const bin of vsCodeCandidateBins) {
+      if (bin === "code" || fs.existsSync(/*turbopackIgnore: true*/ bin)) {
+        vsCodeBin = bin;
+        break;
+      }
+    }
+
+    if (vsCodeBin) {
+      const child = spawn(vsCodeBin, ["-r", "-g", targetArg], {
         detached: true,
         stdio: "ignore",
       });
       child.on("error", () => {
-        const url = `antigravity-ide://file/${targetArg}`;
+        const url = `vscode://file/${targetArg}`;
         const openChild = spawn("open", [url], { detached: true, stdio: "ignore" });
         openChild.unref();
       });
       child.unref();
+    } else {
+      const url = `vscode://file/${targetArg}`;
+      const openChild = spawn("open", [url], { detached: true, stdio: "ignore" });
+      openChild.unref();
     }
 
     const relative = path.relative(PROJECT_ROOT, targetFile);
