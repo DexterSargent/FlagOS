@@ -138,12 +138,20 @@ export default function InteractiveDemoGuard() {
   }, [isEmbedded, pathname]);
 
   useEffect(() => {
-    if (!isBarredModalOpen) return;
+    if (!isBarredModalOpen) {
+      return;
+    }
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsBarredModalOpen(false);
+      if (event.key === "Escape") {
+        setIsBarredModalOpen(false);
+      }
     };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [isBarredModalOpen]);
 
   if (!isEmbedded || !isBarredModalOpen) {
