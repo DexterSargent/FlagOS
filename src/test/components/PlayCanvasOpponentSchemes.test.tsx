@@ -99,16 +99,16 @@ describe("PlayCanvas - Opponent Schemes & Rush Toggle", () => {
     fireEvent.click(screen.getByTestId("toggle-opponent-btn"));
     fireEvent.click(screen.getByTestId("opponent-play-selector-btn"));
     fireEvent.click(screen.getByRole("button", { name: /^Trips Flood/ }));
-    expect(screen.getAllByText("SL1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("H").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Run Play" }));
     expect(onChange).not.toHaveBeenCalled();
 
     const next = { ...play, id: "another-play", name: "Another defense" };
     view.rerender(<PlayCanvas play={next} onChange={onChange} readOnly />);
-    expect(screen.queryByText("SL1")).not.toBeInTheDocument();
+    expect(screen.queryByText("H")).not.toBeInTheDocument();
     expect(screen.getByTestId("opponent-play-selector-btn")).not.toHaveTextContent("Trips Flood");
     view.rerender(<PlayCanvas play={play} onChange={onChange} readOnly />);
-    expect(screen.queryByText("SL1")).not.toBeInTheDocument();
+    expect(screen.queryByText("H")).not.toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
 

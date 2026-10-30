@@ -311,7 +311,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     const { book } = await openFormationCards();
     fireEvent.click(screen.getByRole("button", { name: "Back to formations" }));
     fireEvent.click(screen.getByRole("button", { name: /Add Formation/i }));
-    fireEvent.change(screen.getByPlaceholderText("e.g. Spread 2x1, Trips Right, Pistol Bunch..."), {
+    fireEvent.change(screen.getByPlaceholderText("e.g. Spread 2x1, Trips Right, Bunch Left"), {
       target: { value: "Empty Install" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save Formation Alignment" }));
@@ -504,7 +504,7 @@ describe("Playbook RBAC & Studio Security Suite (TeamPlaybookPage)", () => {
     await waitFor(() => {
       // In embedded mode, the compact studio header appears
       expect(screen.getByRole("combobox", { name: "Play" })).toBeInTheDocument();
-      expect(screen.getByText(/SCRIMMAGE \(LOS\)/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/LINE OF SCRIMMAGE/i).length).toBeGreaterThan(0);
     });
   });
 

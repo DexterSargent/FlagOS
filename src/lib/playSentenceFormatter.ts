@@ -55,7 +55,7 @@ export const PENALTY_CATALOG: PenaltyDefinition[] = [
     side: "defense",
     defaultYards: 5,
     defaultDownResult: "repeat_down",
-    description: "Rushing from inside 7-yard rush cone or before designated count",
+    description: "Rushing from inside the 7-yard rush line or before the designated count",
   },
   {
     id: "early_flag_pull",
