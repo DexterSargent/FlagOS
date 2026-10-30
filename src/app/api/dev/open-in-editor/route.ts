@@ -340,38 +340,56 @@ export async function POST(req: Request) {
       targetLine = 1;
     }
 
-    // Launch in Visual Studio Code reusing existing window
+    // Launch in Visual Studio Code WITHOUT activating or resizing the locked window
     const targetArg = `${targetFile}:${targetLine}`;
-    const vsCodeCandidateBins = [
-      "/Users/dextersargent/Desktop/Visual Studio Code.app/Contents/Resources/app/bin/code",
-      "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
-      "/Users/dextersargent/Downloads/Visual Studio Code 2.app/Contents/Resources/app/bin/code",
-      "code",
+    const targetUrl = `vscode://file/${targetArg}`;
+
+    const vsCodeAppPaths = [
+      "/Users/dextersargent/Desktop/Visual Studio Code.app",
+      "/Applications/Visual Studio Code.app",
+      "/Users/dextersargent/Downloads/Visual Studio Code 2.app",
     ];
 
-    let vsCodeBin: string | null = null;
-    for (const bin of vsCodeCandidateBins) {
-      if (bin === "code" || fs.existsSync(/*turbopackIgnore: true*/ bin)) {
-        vsCodeBin = bin;
+    let foundAppPath: string | null = null;
+    for (const p of vsCodeAppPaths) {
+      if (fs.existsSync(/*turbopackIgnore: true*/ p)) {
+        foundAppPath = p;
         break;
       }
     }
 
-    if (vsCodeBin) {
+    // On macOS, launch via 'open -g' (background mode) targeting Visual Studio Code specifically.
+    // The -g flag prevents macOS from stealing focus or triggering window manager / tiling resize events,
+    // preserving the user's locked window dimensions and split layout.
+    if (process.platform === "darwin") {
+      const openArgs = foundAppPath
+        ? ["-a", foundAppPath, "-g", targetUrl]
+        : ["-b", "com.microsoft.VSCode", "-g", targetUrl];
+
+      const child = spawn("open", openArgs, {
+        detached: true,
+        stdio: "ignore",
+      });
+
+      child.on("error", () => {
+        // Fallback to code CLI if open fails
+        const vsCodeBin = foundAppPath
+          ? path.join(foundAppPath, "Contents", "Resources", "app", "bin", "code")
+          : "code";
+        const fallbackChild = spawn(vsCodeBin, ["-r", "-g", targetArg], {
+          detached: true,
+          stdio: "ignore",
+        });
+        fallbackChild.unref();
+      });
+      child.unref();
+    } else {
+      const vsCodeBin = "code";
       const child = spawn(vsCodeBin, ["-r", "-g", targetArg], {
         detached: true,
         stdio: "ignore",
       });
-      child.on("error", () => {
-        const url = `vscode://file/${targetArg}`;
-        const openChild = spawn("open", [url], { detached: true, stdio: "ignore" });
-        openChild.unref();
-      });
       child.unref();
-    } else {
-      const url = `vscode://file/${targetArg}`;
-      const openChild = spawn("open", [url], { detached: true, stdio: "ignore" });
-      openChild.unref();
     }
 
     const relative = path.relative(PROJECT_ROOT, targetFile);

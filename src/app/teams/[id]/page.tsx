@@ -90,15 +90,6 @@ const STAT_CATEGORY_COLORS: Record<string, string> = {
   discipline: "text-indigo-400",
 };
 
-const COLOR_PRESETS = [
-  { name: "Scarlet & White", primary: "#E31837", secondary: "#FFFFFF", tertiary: "#000000" },
-  { name: "Crimson & Gold", primary: "#990000", secondary: "#FFCC00", tertiary: "#111111" },
-  { name: "Royal Blue & White", primary: "#003366", secondary: "#FFFFFF", tertiary: "#FFBF00" },
-  { name: "Emerald & Gold", primary: "#006633", secondary: "#FFCC00", tertiary: "#111111" },
-  { name: "Electric Cyan", primary: "#06B6D4", secondary: "#FFFFFF", tertiary: "#0891B2" },
-  { name: "Midnight Stealth", primary: "#27272A", secondary: "#E31837", tertiary: "#FFFFFF" },
-];
-
 export default function TeamPortalHome({ params }: { params: Promise<{ id: string }> }) {
   usePageGuide(TEAM_HUB_WALKTHROUGH);
   const unwrappedParams = use(params);
@@ -1209,32 +1200,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                   <p className="text-[11px] text-neutral-400">
                     Primary colors the scoreboard, hero glow, and possession marker; secondary colors timeout indicators; tertiary colors wizard highlights.
                   </p>
-
-                  {/* Quick Color Presets */}
-                  <div className="pt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 block mb-1.5">
-                      Quick Colour Presets:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {COLOR_PRESETS.map((preset) => (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          onClick={() => {
-                            setEditPrimaryColor(preset.primary);
-                            setEditSecondaryColor(preset.secondary);
-                            setEditTertiaryColor(preset.tertiary);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-white/10 hover:border-white/30 text-[10px] font-semibold text-neutral-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-                          title={preset.name}
-                        >
-                          <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: preset.primary }} />
-                          <span>{preset.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="space-y-2 pt-2 border-t border-white/5">
                     {[
                       { label: "Primary Colour", value: editPrimaryColor, onChange: setEditPrimaryColor },
