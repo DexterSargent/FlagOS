@@ -12,13 +12,14 @@ function secretMatches(header: string, secret: string): boolean {
 
 /**
  * Scheduled platform health job. It is throttled to one run per ~20 hours and returns no
- * private data, so it stays safe even before CRON_SECRET is configured.
+ * private data, but like the notifications cron it refuses to run until CRON_SECRET is configured.
  */
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
-  const authorized = Boolean(secret) && secretMatches(request.headers.get("authorization") || "", secret as string);
-  if (secret && !authorized) return Response.json({ error: "Unauthorized." }, { status: 401 });
-  const force = authorized && new URL(request.url).searchParams.get("force") === "1";
+  if (!secret) return Response.json({ error: "Platform health scheduler is not configured." }, { status: 503 });
+  const authorized = secretMatches(request.headers.get("authorization") || "", secret);
+  if (!authorized) return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const force = new URL(request.url).searchParams.get("force") === "1";
   try {
     const result = await runPlatformHealthJob(Date.now(), { force });
     return Response.json(result);

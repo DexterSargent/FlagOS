@@ -43,6 +43,8 @@ export interface ScheduleBackup {
   matches: any[];
   savedAt: number;
   expiresAt: number;
+  /** League the snapshot belongs to; absent for the demo sandbox. */
+  leagueId?: string;
 }
 
 export const isDemoMatch = (matchId?: string | null, leagueId?: string | null): boolean => {
@@ -637,18 +639,27 @@ export const deleteSandboxPlaysForMatch = (matchId: string): void => {
 // 24-Hour Schedule Overwrite Backup (Single Snapshot)
 // ---------------------------------------------------------------------------
 
-export const saveSandboxScheduleBackup = (matches: any[]): ScheduleBackup | null => {
+/**
+ * Each real league keeps its own backup slot so one league's overwritten schedule can never be
+ * restored into another; the demo league uses the shared sandbox key.
+ */
+const scheduleBackupKey = (leagueId?: string | null): string =>
+  leagueId && !isDemoLeague(leagueId) ? `flagos_schedule_backup_v1_${leagueId}` : KEY_SCHEDULE_BACKUP;
+
+export const saveSandboxScheduleBackup = (matches: any[], leagueId?: string | null): ScheduleBackup | null => {
   if (typeof window === "undefined" || !matches || matches.length === 0) return null;
   const now = Date.now();
   const backup: ScheduleBackup = {
     matches,
     savedAt: now,
     expiresAt: now + 24 * 60 * 60 * 1000, // Strictly 24 hours
+    leagueId: leagueId || undefined,
   };
   try {
+    const key = scheduleBackupKey(leagueId);
     // Save to localStorage so it survives tab closes for 24h
-    localStorage.setItem(KEY_SCHEDULE_BACKUP, JSON.stringify(backup));
-    sessionStorage.setItem(KEY_SCHEDULE_BACKUP, JSON.stringify(backup));
+    localStorage.setItem(key, JSON.stringify(backup));
+    sessionStorage.setItem(key, JSON.stringify(backup));
     notifySandboxChange();
     return backup;
   } catch (err) {
@@ -657,21 +668,20 @@ export const saveSandboxScheduleBackup = (matches: any[]): ScheduleBackup | null
   }
 };
 
-export const getSandboxScheduleBackup = (): ScheduleBackup | null => {
+export const getSandboxScheduleBackup = (leagueId?: string | null): ScheduleBackup | null => {
   if (typeof window === "undefined") return null;
   try {
-    const raw =
-      localStorage.getItem(KEY_SCHEDULE_BACKUP) ||
-      sessionStorage.getItem(KEY_SCHEDULE_BACKUP);
+    const key = scheduleBackupKey(leagueId);
+    const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
     if (!raw) return null;
     const backup: ScheduleBackup = JSON.parse(raw);
     if (!backup || !Array.isArray(backup.matches) || !backup.expiresAt) {
-      clearSandboxScheduleBackup();
+      clearSandboxScheduleBackup(leagueId);
       return null;
     }
     // Check 24-hour expiration
     if (Date.now() > backup.expiresAt) {
-      clearSandboxScheduleBackup();
+      clearSandboxScheduleBackup(leagueId);
       return null;
     }
     return backup;
@@ -689,11 +699,12 @@ export const restoreSandboxScheduleBackup = (): boolean => {
   return true;
 };
 
-export const clearSandboxScheduleBackup = (): void => {
+export const clearSandboxScheduleBackup = (leagueId?: string | null): void => {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem(KEY_SCHEDULE_BACKUP);
-    sessionStorage.removeItem(KEY_SCHEDULE_BACKUP);
+    const key = scheduleBackupKey(leagueId);
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
     notifySandboxChange();
   } catch (err) {
     console.error("Error clearing schedule backup:", err);

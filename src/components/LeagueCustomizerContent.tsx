@@ -297,6 +297,10 @@ export default function LeagueCustomizerContent() {
       setSaveError("The logo must be a web address starting with https:// (or leave it blank for the FlagOS logo).");
       return;
     }
+    if (!leagueName.trim()) {
+      setSaveError("Enter a league name before saving.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {
@@ -310,7 +314,7 @@ export default function LeagueCustomizerContent() {
         : undefined;
 
       await updateSettings({
-        leagueName: leagueName.trim() || "FlagOS Demo League",
+        leagueName: leagueName.trim(),
         shortcode: shortcode.trim().toUpperCase() || "FLAG",
         tagline: tagline.trim(),
         seasonTitle: seasonTitle.trim() || "Active Season",

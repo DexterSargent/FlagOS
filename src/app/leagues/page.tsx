@@ -108,7 +108,7 @@ export default function LeagueDirectoryPage() {
     lat: 43.6532,
     lon: -79.3832,
   });
-  const [locationLabel, setLocationLabel] = useState<string>("Toronto / GTA");
+  const [locationLabel, setLocationLabel] = useState<string>("Toronto / GTA (default)");
   const [maxDistanceMiles, setMaxDistanceMiles] = useState<number>(0);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -424,7 +424,7 @@ export default function LeagueDirectoryPage() {
             </div>
             <div>
               <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Games &amp; Stats</span>
-              <span className="text-amber-700 dark:text-amber-400 font-bold text-base sm:text-lg">Refereed &amp; Tracked</span>
+              <span className="text-amber-700 dark:text-amber-400 font-bold text-base sm:text-lg">Live Scores &amp; Standings</span>
             </div>
           </div>
         </section>
@@ -776,7 +776,7 @@ export default function LeagueDirectoryPage() {
               {userCoords && maxDistanceMiles > 0 ? ` within ${maxDistanceMiles} miles` : ""}
             </span>
             <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
-              • All leagues include official refs &amp; stats
+              • Every league runs on FlagOS schedules, scores &amp; stats
             </span>
           </div>
         </section>

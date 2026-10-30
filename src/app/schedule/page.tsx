@@ -69,6 +69,7 @@ import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
 import { usePageGuide } from "@/lib/pageGuide";
 import { SCHEDULE_WALKTHROUGH, SCHEDULE_EVENT_MODAL_WALKTHROUGH, PLAYOFF_FORMAT_MODAL_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { toLocalDateString } from "@/lib/formatMatchTime";
 
 interface Match {
   id: string;
@@ -223,15 +224,18 @@ export default function Calendar() {
   // 24-Hour Overwrite Schedule Backup State (Single Snapshot)
   const [scheduleBackup, setScheduleBackup] = useState<ScheduleBackup | null>(null);
   const [backupTimeRemaining, setBackupTimeRemaining] = useState<string>("");
+  // Errors from schedule-wide actions (apply, clear, restore) shown at the top of the page.
+  const [scheduleActionError, setScheduleActionError] = useState<string | null>(null);
+  const backupLeagueId = isDemoLeague || isEmbedded ? null : activeLeagueId;
 
   useEffect(() => {
     const updateBackupState = () => {
-      const backup = getSandboxScheduleBackup();
+      const backup = getSandboxScheduleBackup(backupLeagueId);
       setScheduleBackup(backup);
       if (backup) {
         const msLeft = backup.expiresAt - Date.now();
         if (msLeft <= 0) {
-          clearSandboxScheduleBackup();
+          clearSandboxScheduleBackup(backupLeagueId);
           setScheduleBackup(null);
           setBackupTimeRemaining("");
         } else {
@@ -582,6 +586,7 @@ export default function Calendar() {
       return;
     }
 
+    setScheduleActionError(null);
     try {
       for (const d of await getLeagueSeasonMatchDocs(activeLeagueId)) {
         await deleteDoc(d.ref);
@@ -591,6 +596,8 @@ export default function Calendar() {
       setIsClearConfirmOpen(false);
     } catch (err) {
       console.error("Failed to clear matches:", err);
+      setIsClearConfirmOpen(false);
+      setScheduleActionError("Some games could not be removed. Refresh to see what remains, then try again.");
     }
   };
 
@@ -603,9 +610,10 @@ export default function Calendar() {
     // 1. If replacing/clearing an existing schedule, save a single backup copy for 24 hours.
     // Overwriting again permanently discards previous backup and starts a fresh 24h clock.
     if (clearExisting && matches.length > 0) {
-      saveSandboxScheduleBackup(matches);
-      setScheduleBackup(getSandboxScheduleBackup());
+      saveSandboxScheduleBackup(matches, backupLeagueId);
+      setScheduleBackup(getSandboxScheduleBackup(backupLeagueId));
     }
+    setScheduleActionError(null);
 
     // 2. Update playoff format in league settings
     await updateSettings({ playoffFormat: newPlayoffFormat });
@@ -642,6 +650,12 @@ export default function Calendar() {
       if (targetView) setActiveView(targetView);
     } catch (err) {
       console.error("Failed to apply generated schedule:", err);
+      setScheduleActionError(
+        "The generated schedule could not be fully saved, so the schedule may be incomplete. " +
+          (scheduleBackup || (clearExisting && matches.length > 0)
+            ? "Use “Restore previous schedule” below or run the builder again."
+            : "Run the builder again."),
+      );
     }
   };
 
@@ -653,7 +667,12 @@ export default function Calendar() {
       setScheduleBackup(null);
       return;
     }
+    if (scheduleBackup.leagueId && scheduleBackup.leagueId !== activeLeagueId) {
+      setScheduleActionError("That backup belongs to a different league and cannot be restored here.");
+      return;
+    }
 
+    setScheduleActionError(null);
     try {
       for (const d of await getLeagueSeasonMatchDocs(activeLeagueId)) {
         await deleteDoc(d.ref);
@@ -662,15 +681,16 @@ export default function Calendar() {
         const { id, ...data } = m as any;
         await createSecureRecord("match", { ...data, leagueId: activeLeagueId });
       }
-      clearSandboxScheduleBackup();
+      clearSandboxScheduleBackup(backupLeagueId);
       setScheduleBackup(null);
     } catch (err) {
       console.error("Failed to restore schedule backup:", err);
+      setScheduleActionError("The previous schedule could not be fully restored. The backup is still available; try again.");
     }
   };
 
   const handleClearBackup = () => {
-    clearSandboxScheduleBackup();
+    clearSandboxScheduleBackup(backupLeagueId);
     setScheduleBackup(null);
   };
 
@@ -755,7 +775,7 @@ export default function Calendar() {
                       (regularSeasonWeeks.length > 0
                         ? `Week ${parseInt(regularSeasonWeeks[regularSeasonWeeks.length - 1].replace(/\D/g, "") || "0", 10) + 1}`
                         : "Week 1"),
-                    date: new Date().toISOString().split("T")[0],
+                    date: toLocalDateString(new Date()),
                     time: "10:00 AM",
                     location: settings.defaultLocation || "Turf Field 1",
                   });
@@ -779,6 +799,19 @@ export default function Calendar() {
             </div>
           )}
         </div>
+
+        {scheduleActionError && (
+          <div role="alert" className="rounded-2xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 p-4 flex items-start justify-between gap-4 text-sm text-rose-900 dark:text-rose-200">
+            <span>{scheduleActionError}</span>
+            <button
+              type="button"
+              onClick={() => setScheduleActionError(null)}
+              className="shrink-0 text-xs font-bold uppercase tracking-wider underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* 24-Hour Schedule Restore Alert Banner (Single Snapshot) */}
         {canManageSchedule && scheduleBackup && (

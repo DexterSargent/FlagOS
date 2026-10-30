@@ -25,6 +25,7 @@ import { buildPlayoffFixtureTemplates } from "@/lib/standingsEngine";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
 import { SCHEDULE_BUILDER_WALKTHROUGH } from "@/lib/walkthroughs/league";
+import { parseLocalDate, toLocalDateString } from "@/lib/formatMatchTime";
 
 interface AutomatedScheduleBuilderModalProps {
   isOpen: boolean;
@@ -97,7 +98,7 @@ export default function AutomatedScheduleBuilderModal({
     // Default to next upcoming Saturday
     const d = new Date();
     d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7));
-    return d.toISOString().split("T")[0];
+    return toLocalDateString(d);
   });
   const [gameDays, setGameDays] = useState<"saturdays" | "sundays" | "weekends">(savedPrefs?.gameDays ?? "saturdays");
 
@@ -214,7 +215,7 @@ export default function AutomatedScheduleBuilderModal({
     const unplaced: string[] = [];
 
     // Compute calendar dates for each week
-    const baseDate = new Date(startDate);
+    const baseDate = parseLocalDate(startDate);
 
     // 1. Generate Regular Season Fixtures
     const n = eligibleTeams.length;
@@ -231,7 +232,7 @@ export default function AutomatedScheduleBuilderModal({
       // Calculate date for week
       const weekDate = new Date(baseDate);
       weekDate.setDate(weekDate.getDate() + (w - 1) * 7);
-      const dateString = weekDate.toISOString().split("T")[0];
+      const dateString = toLocalDateString(weekDate);
 
       await new Promise((r) => setTimeout(r, 180));
       setBuildProgress(Math.min(75, 20 + Math.round((w / totalRounds) * 55)));
@@ -262,7 +263,7 @@ export default function AutomatedScheduleBuilderModal({
         if (slot && slot.dayOffset > 0) {
           const d = new Date(weekDate);
           d.setDate(d.getDate() + slot.dayOffset);
-          gameDate = d.toISOString().split("T")[0];
+          gameDate = toLocalDateString(d);
         }
         if (!slot) unplaced.push(`Week ${w}: ${away.name} at ${home.name}`);
 
@@ -333,7 +334,7 @@ export default function AutomatedScheduleBuilderModal({
           homeTeamName: fixture.homeTeamName,
           awayTeamId: "",
           awayTeamName: fixture.awayTeamName,
-          date: roundDate.toISOString().split("T")[0],
+          date: toLocalDateString(roundDate),
           time: roundSlot ? roundSlot.time : "TBD",
           location: roundSlot ? roundSlot.location : "TBD",
           status: "scheduled",

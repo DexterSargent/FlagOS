@@ -154,7 +154,8 @@ export function isLeagueWidePath(pathname: string | null | undefined): boolean {
 
 /** Link to a league-wide portal page that stays on the league being viewed. */
 export function leaguePageHref(path: string, leagueId: string | null | undefined): string {
-  return leagueId && !checkIsDemoLeague(leagueId) ? `${path}?league=${encodeURIComponent(leagueId)}` : path;
+  if (!leagueId) return path;
+  return checkIsDemoLeague(leagueId) ? `${path}?demo=true` : `${path}?league=${encodeURIComponent(leagueId)}`;
 }
 
 /** League-scoped schedule link so the schedule opens on the league being viewed. */
@@ -643,8 +644,13 @@ const SelectedLeagueProvider = ({ pathname, routeLeagueId, suspended, children }
       });
 
       const path = window.location.pathname;
-      const isNonLeaguePage = ["/", "/login", "/pricing", "/my-story", "/profile", "/free-agents"].includes(path) || path.startsWith("/admin");
-      if (leagueName && !isNonLeaguePage) {
+      const isNonLeaguePage =
+        ["/", "/login", "/pricing", "/my-story", "/profile", "/free-agents", "/leagues", "/account"].includes(path) ||
+        path.startsWith("/admin");
+      // Only a league the visitor is actually browsing may name the tab; the fallback demo
+      // settings used on league-less pages must not retitle them "FlagOS Demo League".
+      const isBrowsingLeague = Boolean(routeLeagueId || portalLeagueRef.current);
+      if (leagueName && !isNonLeaguePage && isBrowsingLeague) {
         document.title = `${leagueName} | ${seasonTitle || "Active Season"}`;
       }
     }
@@ -794,11 +800,12 @@ const SelectedLeagueProvider = ({ pathname, routeLeagueId, suspended, children }
       if (linked) next = linked;
       else if (params.get("demo") === "true" || params.get("embed") === "true") next = "default";
       else if (params.get("team")) next = null;
-      else if (current && checkIsDemoLeague(current)) next = current;
       else if (current) {
+        // Keep the portal in the URL so a refresh or shared link reopens the same league.
         next = current;
         const url = new URL(window.location.href);
-        url.searchParams.set("league", next);
+        if (checkIsDemoLeague(current)) url.searchParams.set("demo", "true");
+        else url.searchParams.set("league", next);
         window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
       }
     }

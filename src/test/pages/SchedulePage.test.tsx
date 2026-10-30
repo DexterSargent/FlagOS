@@ -46,6 +46,7 @@ vi.mock("@/lib/secureWrites", () => ({
 vi.mock("@/lib/leagueDataCache", () => ({
   getLeagueSeasonMatchDocs: (...args: any[]) => (mockGetLeagueSeasonMatchDocs as any)(...args),
   subscribeLeagueSeasonMatches: (...args: any[]) => (mockSubscribeLeagueSeasonMatches as any)(...args),
+  getCachedLeagueTeams: vi.fn(async () => mockTeams.map((t) => ({ ...t, leagueId: "league_firestore_test" }))),
 }));
 
 let mockIsLeagueAdmin = true;

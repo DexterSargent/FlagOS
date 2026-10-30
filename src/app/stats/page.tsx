@@ -99,7 +99,11 @@ export default function StatsAndStandings() {
       setLoading(false);
       return;
     }
+    // Ignore results from a superseded league/season selection so a slow earlier request
+    // cannot overwrite the standings the user is now viewing.
+    let cancelled = false;
     const fetchAllData = async () => {
+      setLoading(true);
       try {
         let teams: any[];
         let players: any[];
@@ -145,20 +149,23 @@ export default function StatsAndStandings() {
           }
         }
 
+        if (cancelled) return;
         const { standings: computedStandings, playerStats } = computeLeagueSeasonStats({ teams, players, matches, plays });
         setStandings(computedStandings);
         setIndividualStats(playerStats);
       } catch (error) {
+        if (cancelled) return;
         console.error("Error fetching stats:", error);
       }
       setLoading(false);
     };
 
     fetchAllData();
-    if (isDemoLeague) {
-      const unsub = subscribeDemoSandbox(() => fetchAllData());
-      return () => unsub();
-    }
+    const unsub = isDemoLeague ? subscribeDemoSandbox(() => fetchAllData()) : null;
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, [isDemoLeague, activeLeagueId, currentSeasonId, noLeagueSelected]);
 
   // Helper for Top 3 in any category

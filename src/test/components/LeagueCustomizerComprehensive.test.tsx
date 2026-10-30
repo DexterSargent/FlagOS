@@ -431,7 +431,7 @@ describe("LeagueCustomizerContent Comprehensive Suite", () => {
     fireEvent.click(submitSeasonBtn);
 
     await waitFor(() => {
-      expect(mockStartNewSeason).toHaveBeenCalledWith("Winter 2026 Season");
+      expect(mockStartNewSeason).toHaveBeenCalledWith("Winter 2026 Season", expect.objectContaining({ teamSelectionMode: "keep_all" }));
     });
   });
 
@@ -729,7 +729,7 @@ describe("LeagueCustomizerContent Comprehensive Suite", () => {
     fireEvent.click(submitSeasonBtn);
 
     await waitFor(() => {
-      expect(mockStartNewSeason).toHaveBeenCalledWith("Fall 2026 Championship");
+      expect(mockStartNewSeason).toHaveBeenCalledWith("Fall 2026 Championship", expect.objectContaining({ teamSelectionMode: "keep_all" }));
     });
   });
 

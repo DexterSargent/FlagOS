@@ -16,7 +16,7 @@ import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { TeamLogo, getTeamShortcode, isRealTeam } from "@/components/TeamAssets";
 import { useLeague } from "@/lib/leagueContext";
 import { useLeagueArchived, isTeamSeasonArchived } from "@/lib/useLeagueArchived";
-import { formatMatchTime } from "@/lib/formatMatchTime";
+import { formatMatchTime, toLocalDateString } from "@/lib/formatMatchTime";
 import { useAuth } from "@/lib/authContext";
 import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
@@ -80,7 +80,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
   const [opponentName, setOpponentName] = useState("");
   const [isHostHome, setIsHostHome] = useState(true);
   const [gameType, setGameType] = useState<"regular" | "playoff" | "championship">("regular");
-  const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
+  const [matchDate, setMatchDate] = useState(toLocalDateString(new Date()));
   const [matchTime, setMatchTime] = useState("14:00");
   const [matchLocation, setMatchLocation] = useState(settings?.defaultLocation || "");
   const [isScheduling, setIsScheduling] = useState(false);

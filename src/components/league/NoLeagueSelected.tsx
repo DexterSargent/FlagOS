@@ -20,8 +20,11 @@ export default function NoLeagueSelected({ pagePath, noun }: { pagePath: string;
         </div>
         <div>
           <h1 className="text-2xl font-black uppercase">Choose a League</h1>
-          <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
-            {noun} live inside a league portal. Open one of your leagues below, or browse the public league directory.
+          <p className="text-sm text-slate-600 dark:text-neutral-400 mt-2 leading-relaxed">
+            {noun} {noun.trim().endsWith("s") ? "live" : "lives"} inside a league portal.{" "}
+            {leagues.length > 0
+              ? "Open one of your leagues below, or browse the public league directory."
+              : "Browse the public league directory, or open the link your league organizer shared with you."}
           </p>
         </div>
         {leagues.length > 0 && (
@@ -30,11 +33,11 @@ export default function NoLeagueSelected({ pagePath, noun }: { pagePath: string;
               <li key={league.id}>
                 <Link
                   href={`${pagePath}?league=${encodeURIComponent(league.id)}`}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-black/5 px-4 py-3 text-sm font-bold hover:bg-black/10 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 transition-colors"
                 >
                   <span className="truncate">{league.name}</span>
                   {league.shortcode && (
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 shrink-0">{league.shortcode}</span>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 dark:text-neutral-500 shrink-0">{league.shortcode}</span>
                   )}
                 </Link>
               </li>
