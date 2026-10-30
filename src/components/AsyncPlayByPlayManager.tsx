@@ -227,6 +227,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
           }
           allP = getSandboxPlayers();
         } else {
+          let loadFailed = false;
           try {
             const matchDoc = await getDoc(doc(db, "matches", matchId));
             if (matchDoc.exists()) {
@@ -234,15 +235,16 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
             }
           } catch (e) {
             console.warn("Could not load match from remote Firestore:", e);
+            loadFailed = true;
           }
 
           if (!mData) {
-            mData = getSandboxMatches().find((m: any) => m.id === matchId);
-          }
-
-          if (!mData) {
-            console.warn("Match not found:", matchId);
-            if (!isCancelled) setLoadingData(false);
+            if (isCancelled) return;
+            // A real game must never fall back to demo sandbox data.
+            if (loadFailed) {
+              setLoadError("The game could not be loaded. Check your connection and try again.");
+            }
+            setLoadingData(false);
             return;
           }
 
@@ -322,8 +324,11 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
     };
   }, [matchId, isDemo, reloadKey]);
 
-  // Fetch plays feed
+  // Fetch plays feed. Only the most recent request may update state so a slow earlier
+  // response cannot overwrite newer plays during live scoring.
+  const playsRequestRef = useRef(0);
   const loadPlays = async () => {
+    const request = ++playsRequestRef.current;
     try {
       let pList: any[] = [];
       let failure: unknown = null;
@@ -338,6 +343,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
           failure = e;
         }
       }
+      if (request !== playsRequestRef.current) return;
       setPlaysError(failure ? describePlaysError(failure, !!user) : null);
       setPlays(pList);
       if (pList.length > 0) {
@@ -377,6 +383,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
         setLastLoggedPlayStatement("");
       }
     } catch (e) {
+      if (request !== playsRequestRef.current) return;
       console.error("Error loading plays:", e);
       setPlaysError("Something went wrong loading the play log. Try refreshing.");
     }

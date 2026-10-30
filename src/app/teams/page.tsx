@@ -2,6 +2,9 @@
 import FlagOSLoader from "@/components/FlagOSLoader";
 
 import { useState, useEffect, useMemo } from "react";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useDialogKeyboard } from "@/components/ui/useDialogKeyboard";
 import Link from "next/link";
 import { ChevronLeft, Users, Shield, Plus, Check, X, ArrowRightLeft, Calendar, Trophy, Activity, History, Trash2, UserPlus, Search, CheckCircle2, CreditCard, SlidersHorizontal } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -24,6 +27,7 @@ import { getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors"
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
   getSandboxTeams,
+  addSandboxTeam,
   updateSandboxTeam,
   deleteSandboxTeam,
   getSandboxPlayers,
@@ -109,6 +113,12 @@ export default function TeamsPage() {
 
   // Admin States
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
+  const [pageNotice, setPageNotice] = useState<FormNoticeState | null>(null);
+  const [busyAction, setBusyAction] = useState<"add-player" | "add-team" | "delete-team" | null>(null);
+  const [pendingDeletePlayerId, setPendingDeletePlayerId] = useState<string | null>(null);
+  const [pendingAddTeamExpand, setPendingAddTeamExpand] = useState<string | null>(null);
+  const [teamDeletePrompt, setTeamDeletePrompt] = useState(false);
+  const showError = (message: string) => setPageNotice({ tone: "error", message });
   const [newPlayerName, setNewPlayerName] = useState("");
   const [newPlayerPositions, setNewPlayerPositions] = useState<string[]>(["ATH"]);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -217,13 +227,22 @@ export default function TeamsPage() {
   }, [isEffectiveDemo, noLeagueSelected]);
 
   const handleAddPlayer = async () => {
-    if (!newPlayerName.trim() || !activeTeamId) return;
+    if (!activeTeamId || busyAction) return;
+    if (!newPlayerName.trim()) {
+      showError("Enter the player's name.");
+      return;
+    }
+    if (newPlayerName.trim().length > 80) {
+      showError("Player names must be 80 characters or fewer.");
+      return;
+    }
     const maxRoster = effectiveMaxRoster(settings?.rules);
     const currentCount = players.filter(p => p.teamId === activeTeamId).length;
     if (currentCount >= maxRoster) {
-      alert(`Cannot add player: this team has reached the league's roster limit of ${maxRoster} players.`);
+      showError(`This team has reached the league's roster limit of ${maxRoster} players.`);
       return;
     }
+    setPageNotice(null);
     if (isDemoLeague) {
       const created = addSandboxPlayer({
         playerName: newPlayerName.trim(),
@@ -238,6 +257,7 @@ export default function TeamsPage() {
       setIsAddingPlayer(false);
       return;
     }
+    setBusyAction("add-player");
     try {
       const playerId = await createSecureRecord("player", {
         playerName: newPlayerName.trim(),
@@ -261,7 +281,9 @@ export default function TeamsPage() {
       notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Could not add the player.");
+      showError(e instanceof Error ? e.message : "The player could not be added. Please try again.");
+    } finally {
+      setBusyAction(null);
     }
   };
 
@@ -283,13 +305,13 @@ export default function TeamsPage() {
       notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Could not assign the player.");
+      showError(e instanceof Error ? e.message : "The player could not be assigned. Please try again.");
     }
   };
 
   const handleAssignFreeAgent = async (playerId: string, targetTeamId: string) => {
     if (!isLeagueAdmin) {
-      alert("Only league administrators can assign players to a team.");
+      showError("Only league administrators can assign players to a team.");
       return;
     }
     if (!targetTeamId) return;
@@ -299,7 +321,7 @@ export default function TeamsPage() {
     const maxRoster = effectiveMaxRoster(settings?.rules);
     const teamCount = players.filter((p) => p.teamId === targetTeamId).length;
     if (teamCount >= maxRoster) {
-      alert(`Cannot assign: ${targetTeam.name} has already reached the league's roster limit of ${maxRoster} players.`);
+      showError(`${targetTeam.name} has already reached the league's roster limit of ${maxRoster} players.`);
       return;
     }
 
@@ -340,13 +362,19 @@ export default function TeamsPage() {
       notifyDataChanged(activeLeagueId);
     } catch (err) {
       console.error("Error assigning free agent:", err);
-      alert("Failed to assign player to team.");
+      showError("The player could not be assigned. Please try again.");
     }
   };
 
-  const handleDeletePlayer = async (playerId: string) => {
+  const handleDeletePlayer = (playerId: string) => {
     if (!isLeagueAdmin) return;
-    if (!confirm("Are you SURE you want to delete this player? This action cannot be undone.")) return;
+    setPendingDeletePlayerId(playerId);
+  };
+
+  const confirmDeletePlayer = async () => {
+    const playerId = pendingDeletePlayerId;
+    if (!playerId) return;
+    setPendingDeletePlayerId(null);
     if (isDemoLeague) {
       deleteSandboxPlayer(playerId);
       setPlayers(players.filter(p => p.id !== playerId));
@@ -360,22 +388,71 @@ export default function TeamsPage() {
       notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Could not add the team.");
+      showError(e instanceof Error ? e.message : "The player could not be deleted. Please try again.");
+    }
+  };
+
+  const confirmExpandAndAddTeam = async () => {
+    const name = pendingAddTeamExpand;
+    if (!name) return;
+    setBusyAction("add-team");
+    try {
+      const { teamId } = await addTeamToSubscription(name, { teamsInUse: competitiveTeams.length });
+      setTeams([...teams, { id: teamId, name }].sort(compareByName));
+      setNewTeamName("");
+      setIsAddingTeam(false);
+      setPendingAddTeamExpand(null);
+    } catch (e) {
+      console.error(e);
+      setPendingAddTeamExpand(null);
+      showError(e instanceof Error ? e.message : "The team could not be added to your subscription. Please try again.");
+    } finally {
+      setBusyAction(null);
     }
   };
 
   const handleAddTeam = async () => {
-    if (!newTeamName.trim() || !isLeagueAdmin) return;
-    // One code path for every plan: the context fills an open slot for free, or (for paid plans)
-    // previews the prorated charge and only buys a seat after the manager confirms it.
+    if (!isLeagueAdmin || busyAction) return;
+    const name = newTeamName.trim();
+    if (!name) {
+      showError("Enter a team name.");
+      return;
+    }
+    if (name.length > 60) {
+      showError("Team names must be 60 characters or fewer.");
+      return;
+    }
+    if (teams.some((t) => t.name.trim().toLowerCase() === name.toLowerCase())) {
+      showError(`A team named "${name}" already exists in this league.`);
+      return;
+    }
+    setPageNotice(null);
+    const currentPaid = subscription?.teamCount ?? 8;
+    const isExpandingSubscription = competitiveTeams.length >= currentPaid;
+
+    if (isExpandingSubscription) {
+      setPendingAddTeamExpand(name);
+      return;
+    }
+
+    if (isDemoLeague) {
+      const created = addSandboxTeam(newTeamName.trim());
+      setTeams([...teams, created as unknown as Team].sort(compareByName));
+      setNewTeamName("");
+      setIsAddingTeam(false);
+      return;
+    }
+    setBusyAction("add-team");
     try {
-      const { teamId } = await addTeamToSubscription(newTeamName.trim(), { teamsInUse: competitiveTeams.length });
-      setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort(compareByName));
+      const { teamId } = await addTeamToSubscription(name, { teamsInUse: competitiveTeams.length });
+      setTeams([...teams, { id: teamId, name }].sort(compareByName));
       setNewTeamName("");
       setIsAddingTeam(false);
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Could not add the team.");
+      showError(e instanceof Error ? e.message : "The team could not be added. Please try again.");
+    } finally {
+      setBusyAction(null);
     }
   };
 
@@ -396,17 +473,29 @@ export default function TeamsPage() {
       notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
+      showError("The team name could not be saved. Please try again.");
     }
   };
 
-  const handleDeleteTeam = async () => {
+  const handleDeleteTeam = () => {
     if (!isLeagueAdmin || !activeTeamId) return;
-    const currentPaid = subscription?.teamCount ?? 8;
-    const nextCount = Math.max(2, currentPaid - 1);
+    setPageNotice(null);
+    setTeamDeletePrompt(true);
+  };
 
-    const reduceSubscription = window.confirm(
-      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}Delete "${activeTeam?.name || "this team"}"?\n\nClick OK to also remove this team slot${subscription?.paymentMethod === "complimentary" ? "" : ` and reduce your subscription by $20/month (new rate: $${40 + nextCount * 20}/mo at next monthly payment)`}.\n\nClick Cancel to choose if you want to keep the open slot.`
-    );
+  const performDeleteTeam = async (reduceSubscription: boolean) => {
+    if (!activeTeamId) return;
+    setTeamDeletePrompt(false);
+    setBusyAction("delete-team");
+    try {
+      await performDeleteTeamInner(reduceSubscription);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const performDeleteTeamInner = async (reduceSubscription: boolean) => {
+    if (!activeTeamId) return;
 
     if (reduceSubscription) {
       try {
@@ -416,15 +505,10 @@ export default function TeamsPage() {
         notifyDataChanged(activeLeagueId);
       } catch (e) {
         console.error(e);
-        alert(e instanceof Error ? e.message : "Failed to remove team from subscription.");
+        showError(e instanceof Error ? e.message : "The team could not be removed from your subscription. Please try again.");
       }
       return;
     }
-
-    const deleteTeamOnly = window.confirm(
-      `Would you like to delete "${activeTeam?.name || "this team"}" but KEEP your ${currentPaid} paid team slots for a future team?`
-    );
-    if (!deleteTeamOnly) return;
 
     if (isDemoLeague) {
       deleteSandboxTeam(activeTeamId);
@@ -439,10 +523,14 @@ export default function TeamsPage() {
       notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
+      showError("The team could not be deleted. Please try again.");
     }
   };
 
   const activeTeam = teams.find(t => t.id === activeTeamId);
+  const paidTeamCount = subscription?.teamCount ?? 8;
+  const isComplimentarySub = subscription?.paymentMethod === "complimentary";
+  const teamDeleteDialogRef = useDialogKeyboard<HTMLDivElement>(teamDeletePrompt, () => setTeamDeletePrompt(false), { busy: busyAction === "delete-team" });
   const teamPlayers = useMemo(
     () =>
       players
@@ -649,6 +737,7 @@ export default function TeamsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto space-y-8 relative z-10 w-full px-4 sm:px-6 py-6 sm:py-8 flex-1">
+        <FormNotice notice={pageNotice} onDismiss={() => setPageNotice(null)} />
         {/* Header */}
         <div data-tour="teams-controls" className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-6">
           <div>
@@ -698,7 +787,7 @@ export default function TeamsPage() {
                     {canManageTeam(activeTeam.id) && (
                       <div className="flex gap-2">
                         <button onClick={() => { setEditTeamNameValue(activeTeam.name); setIsEditingTeamName(true); }} className="text-[var(--text-muted)] hover:text-white transition-colors text-xs font-normal px-2.5 py-1 bg-white/5 rounded-md cursor-pointer">Edit Name</button>
-                        <button onClick={handleDeleteTeam} className="text-red-500/50 hover:text-red-500 transition-colors text-xs font-normal px-2.5 py-1 bg-red-500/10 rounded-md cursor-pointer">Delete Team</button>
+                        <button type="button" onClick={handleDeleteTeam} disabled={busyAction === "delete-team"} className="disabled:opacity-50 text-red-500/50 hover:text-red-500 transition-colors text-xs font-normal px-2.5 py-1 bg-red-500/10 rounded-md cursor-pointer">Delete Team</button>
                       </div>
                     )}
                   </span>
@@ -721,13 +810,15 @@ export default function TeamsPage() {
                   <input
                     type="text"
                     placeholder="Team Name" aria-label="New team name"
+                    maxLength={60}
                     aria-describedby="add-team-cost"
                     className="bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-cyan-400"
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleAddTeam(); } if (e.key === "Escape") setIsAddingTeam(false); }}
                     autoFocus
                   />
-                  <button onClick={handleAddTeam} aria-label="Add team" title={addTeamCost.label} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
+                  <button type="button" onClick={handleAddTeam} disabled={busyAction === "add-team"} aria-busy={busyAction === "add-team"} aria-label="Add team" title={addTeamCost.label} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer disabled:opacity-50">
                     <Check className="w-5 h-5" />
                   </button>
                   <button onClick={() => setIsAddingTeam(false)} aria-label="Cancel adding team" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
@@ -1187,6 +1278,7 @@ export default function TeamsPage() {
                     <input
                       type="text"
                       placeholder="New Player Name..." aria-label="New player name"
+                      maxLength={80}
                       value={newPlayerName}
                       onChange={(e) => setNewPlayerName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
@@ -1203,8 +1295,8 @@ export default function TeamsPage() {
                           </button>
                         ))}
                     </fieldset>
-                    <button onClick={handleAddPlayer} className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] cursor-pointer">
-                      Save Player
+                    <button type="button" onClick={handleAddPlayer} disabled={busyAction === "add-player"} aria-busy={busyAction === "add-player"} className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] cursor-pointer disabled:opacity-60">
+                      {busyAction === "add-player" ? "Saving…" : "Save Player"}
                     </button>
                   </div>
                 )}
@@ -1530,6 +1622,73 @@ export default function TeamsPage() {
         </div>
       )}
 
+      <ConfirmDialog
+        open={pendingDeletePlayerId !== null}
+        title="Delete this player?"
+        description="The player's profile and roster record will be permanently removed. This cannot be undone."
+        confirmLabel="Delete player"
+        tone="danger"
+        onConfirm={confirmDeletePlayer}
+        onCancel={() => setPendingDeletePlayerId(null)}
+      />
+      <ConfirmDialog
+        open={pendingAddTeamExpand !== null}
+        title="Add a team slot?"
+        description={`${isDemoLeague ? "Demo — nothing is saved or charged. " : ""}All ${paidTeamCount} team slots are in use. Adding "${pendingAddTeamExpand ?? ""}" will add a slot${isComplimentarySub ? " (complimentary, no charge)" : ` and increase your subscription by $20/month (new rate: $${40 + (paidTeamCount + 1) * 20}/mo from your next payment)`}.`}
+        confirmLabel={isComplimentarySub ? "Add team" : "Add team (+$20/mo)"}
+        onConfirm={confirmExpandAndAddTeam}
+        onCancel={() => setPendingAddTeamExpand(null)}
+      />
+      {teamDeletePrompt && activeTeam && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm dark:bg-black/80">
+          <div
+            ref={teamDeleteDialogRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-team-title"
+            aria-describedby="delete-team-desc"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl outline-none dark:border-white/10 dark:bg-[#0D121F] dark:text-white"
+          >
+            <h2 id="delete-team-title" className="text-base font-bold">Delete {activeTeam.name}?</h2>
+            <p id="delete-team-desc" className="mt-1.5 text-sm text-slate-600 dark:text-neutral-400">
+              {isDemoLeague ? "Demo — nothing is saved or charged. " : ""}
+              The team and its roster assignments will be removed. Choose what to do with its team slot.
+            </p>
+            <div className="mt-5 grid gap-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={() => void performDeleteTeam(true)}
+                className="rounded-xl bg-rose-600 px-4 py-2.5 text-left text-sm font-bold text-white shadow-md hover:bg-rose-500"
+              >
+                Delete and release the slot
+                <span className="block text-xs font-normal opacity-90">
+                  {isComplimentarySub ? "Capacity drops to " : `Subscription drops to $${40 + Math.max(2, paidTeamCount - 1) * 20}/mo at `}
+                  {isComplimentarySub ? `${Math.max(2, paidTeamCount - 1)} teams.` : "your next payment."}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void performDeleteTeam(false)}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-left text-sm font-bold hover:bg-slate-50 dark:border-white/15 dark:hover:bg-white/5"
+              >
+                Delete but keep the slot
+                <span className="block text-xs font-normal text-slate-600 dark:text-neutral-400">
+                  Keeps {paidTeamCount} slots open for a future team.
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTeamDeletePrompt(false)}
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:text-neutral-300 dark:hover:bg-white/10"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

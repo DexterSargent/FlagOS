@@ -181,6 +181,10 @@ function extractDistinctiveTokens(className: string | undefined): string[] {
 }
 
 export async function POST(req: Request) {
+  // Local developer tooling only: it reads source files and launches an editor process.
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+  }
   try {
     const PROJECT_ROOT = process.cwd();
     const APP_DIR = path.join(PROJECT_ROOT, "src", "app");

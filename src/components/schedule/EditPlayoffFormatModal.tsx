@@ -5,6 +5,7 @@ import { Trophy, X, Sparkles, Check, Shield } from "lucide-react";
 import FieldHelpTooltip from "@/components/FieldHelpTooltip";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { getNearestSimplePlayoffBracket } from "@/lib/leagueContext";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
 
 interface EditPlayoffFormatModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function EditPlayoffFormatModal({
     currentStructure
   );
   const [saving, setSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<FormNoticeState | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -63,9 +65,13 @@ export default function EditPlayoffFormatModal({
 
   const handleApply = async () => {
     setSaving(true);
+    setSaveNotice(null);
     try {
       await onSave(clampedCount, selectedStructure);
       onClose();
+    } catch (err) {
+      console.error("Failed to save playoff format:", err);
+      setSaveNotice({ tone: "error", message: err instanceof Error && err.message ? err.message : "The playoff format could not be saved. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -266,12 +272,18 @@ export default function EditPlayoffFormatModal({
           </div>
         </div>
 
+        {saveNotice ? (
+          <div className="px-6 pt-4">
+            <FormNotice notice={saveNotice} onDismiss={() => setSaveNotice(null)} />
+          </div>
+        ) : null}
         {/* Footer */}
         <div data-tour="playoff-format-actions" className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            disabled={saving}
+            className="px-5 py-2.5 rounded-xl text-xs font-bold text-neutral-400 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -279,9 +291,10 @@ export default function EditPlayoffFormatModal({
             type="button"
             onClick={handleApply}
             disabled={saving}
+            aria-busy={saving}
             className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 cursor-pointer"
           >
-            {saving ? "Saving..." : "Apply Playoff Format"}
+            {saving ? "Saving…" : "Apply Playoff Format"}
           </button>
         </div>
       </div>

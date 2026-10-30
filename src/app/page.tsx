@@ -113,13 +113,13 @@ export default function FlagOSPlatformLandingPage() {
   const getDisplayUrl = () => {
     switch (activeFeatureTab) {
       case "stats":
-        return `flagos.ca/matches/match_w16_12/play-by-play?mode=${wizardMode}`;
+        return `/matches/match_w16_12/play-by-play?mode=${wizardMode}`;
       case "playbook":
-        return `flagos.ca/teams/team_kc/playbook`;
+        return `/teams/team_kc/playbook`;
       case "live-clock":
-        return `flagos.ca/schedule`;
+        return `/schedule`;
       case "infrastructure":
-        return `flagos.ca/league/default`;
+        return `/league/default`;
     }
   };
 

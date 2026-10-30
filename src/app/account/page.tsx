@@ -12,6 +12,7 @@ import { useLeague } from "@/lib/leagueContext";
 import { useMyMemberships } from "@/lib/useMyMemberships";
 import { accountEmailRequest, confirmAccountOwner, connectAccountEmail } from "@/lib/accountEmails";
 import type { AccountEmailSettings } from "@/lib/accountEmailTypes";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
   User,
   Mail,
@@ -104,6 +105,7 @@ export default function AccountPage() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
+  const [pendingDisconnectUid, setPendingDisconnectUid] = useState<string | null>(null);
 
   // Password reset state
   const [resetSending, setResetSending] = useState(false);
@@ -161,9 +163,13 @@ export default function AccountPage() {
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    setProfileSaving(true);
     setProfileMessage("");
     setProfileError("");
+    if (!displayName.trim()) {
+      setProfileError("Enter a display name.");
+      return;
+    }
+    setProfileSaving(true);
     try {
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName: displayName.trim() });
@@ -374,7 +380,7 @@ export default function AccountPage() {
                 <p className="text-xs font-bold text-red-600 dark:text-red-400">{profileError}</p>
               )}
 
-              <form onSubmit={handleSaveProfile} className="space-y-3 max-w-md">
+              <form onSubmit={handleSaveProfile} noValidate className="space-y-3 max-w-md">
                 <div>
                   <label htmlFor="account-display-name" className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-neutral-400 mb-1">
                     Display Name
@@ -382,6 +388,9 @@ export default function AccountPage() {
                   <input
                     id="account-display-name"
                     type="text"
+                    required
+                    maxLength={80}
+                    autoComplete="name"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Your Full Name"
@@ -420,13 +429,7 @@ export default function AccountPage() {
                     <button
                       disabled={busy || !confirmed}
                       className="text-xs font-bold text-red-600 dark:text-red-300 hover:underline disabled:opacity-40"
-                      onClick={() => {
-                        if (!window.confirm("Disconnect this email? You will be signed out and other sessions will lose refresh access. Existing ID tokens may remain valid for up to one hour. The additional email can still sign in to its original account.")) return;
-                        void run(async () => {
-                          await accountEmailRequest(user, "disconnect", { uid: entry.uid });
-                          await logout();
-                        });
-                      }}
+                      onClick={() => setPendingDisconnectUid(entry.uid)}
                     >
                       Disconnect
                     </button>
@@ -643,6 +646,23 @@ export default function AccountPage() {
           </div>
         )}
       </main>
+      <ConfirmDialog
+        open={pendingDisconnectUid !== null}
+        title="Disconnect this email?"
+        description="You will be signed out and other sessions lose refresh access; existing ID tokens may stay valid for up to an hour. The additional email can still sign in to its original account."
+        confirmLabel="Disconnect Email"
+        tone="danger"
+        onConfirm={() => {
+          const uid = pendingDisconnectUid;
+          setPendingDisconnectUid(null);
+          if (!uid || !user) return;
+          void run(async () => {
+            await accountEmailRequest(user, "disconnect", { uid });
+            await logout();
+          });
+        }}
+        onCancel={() => setPendingDisconnectUid(null)}
+      />
     </div>
   );
 }

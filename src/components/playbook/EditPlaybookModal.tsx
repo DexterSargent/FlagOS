@@ -114,7 +114,7 @@ export default function EditPlaybookModal({
           </button>
         </div>
 
-        <form data-tour="edit-playbook-fields" onSubmit={handleSubmit} className="space-y-5">
+        <form data-tour="edit-playbook-fields" onSubmit={handleSubmit} noValidate className="space-y-5">
           {error && (
             <div
               role="alert"
@@ -138,6 +138,7 @@ export default function EditPlaybookModal({
               data-testid="edit-playbook-title-input"
               type="text"
               required
+              maxLength={80}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. 5v5 Spread Offense, Air Raid Attack"
@@ -270,6 +271,7 @@ export default function EditPlaybookModal({
               id="edit-playbook-description-input"
               data-testid="edit-playbook-description-input"
               rows={3}
+              maxLength={400}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Fast-paced quick passing attack focusing on open grass and boundary leverage..."

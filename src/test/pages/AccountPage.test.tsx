@@ -107,8 +107,7 @@ describe("connected email settings", () => {
     });
   });
 
-  it("disconnects a secondary email after confirming with window.confirm", async () => {
-    window.confirm = vi.fn(() => true);
+  it("disconnects a secondary email after confirming in the dialog", async () => {
     const mockLogout = vi.fn();
     useAuthMock.mockReturnValue({
       user,
@@ -129,6 +128,7 @@ describe("connected email settings", () => {
 
     const disconnectBtn = await screen.findByRole("button", { name: "Disconnect" });
     fireEvent.click(disconnectBtn);
+    fireEvent.click(await screen.findByRole("button", { name: "Disconnect Email" }));
 
     await waitFor(() => {
       expect(requestMock).toHaveBeenCalledWith(user, "disconnect", { uid: "secondary_id" });

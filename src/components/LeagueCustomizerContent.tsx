@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePageGuide } from "@/lib/pageGuide";
 import { LEAGUE_SETTINGS_GUIDES, LEAGUE_RULES_VIEW_GUIDE } from "@/lib/walkthroughs/admin";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { parseNonNegativeNumber, isValidHttpUrl, isValidHexColor, isValidEmail } from "@/lib/formValidation";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { useLeague, LeagueRules, DEFAULT_LEAGUE_RULES, IFAF_5V5_RULES } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
@@ -67,6 +69,8 @@ export default function LeagueCustomizerContent() {
   const [isUpdatingSub, setIsUpdatingSub] = useState(false);
   const [isOpeningBilling, setIsOpeningBilling] = useState(false);
   const [subSuccessMsg, setSubSuccessMsg] = useState("");
+  const [subErrorMsg, setSubErrorMsg] = useState("");
+  const [pendingRemoveTeam, setPendingRemoveTeam] = useState<{ id: string; name: string } | null>(null);
   const [subTeamsList, setSubTeamsList] = useState<{ id: string; name: string; shortcode?: string; primaryColor?: string }[]>([]);
   const [loadingSubTeams, setLoadingSubTeams] = useState(false);
   const [newSubTeamName, setNewSubTeamName] = useState("");
@@ -122,6 +126,7 @@ export default function LeagueCustomizerContent() {
   const handleUpdateSubscriptionCount = async (count: number) => {
     setIsUpdatingSub(true);
     setSubSuccessMsg("");
+    setSubErrorMsg("");
     try {
       const previous = subscription?.teamCount ?? 8;
       await updateSubscriptionTeamCount(count);
@@ -135,18 +140,32 @@ export default function LeagueCustomizerContent() {
       await loadSubTeams();
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Failed to update subscription.");
+      setSubErrorMsg(e instanceof Error ? e.message : "The subscription could not be updated. Please try again.");
     } finally {
       setIsUpdatingSub(false);
     }
   };
 
   const handleQuickAddTeam = async () => {
+    const trimmedName = newSubTeamName.trim();
+    setSubErrorMsg("");
+    if (!trimmedName) {
+      setSubErrorMsg("Enter a team name before adding it.");
+      return;
+    }
+    if (trimmedName.length > 60) {
+      setSubErrorMsg("Team names must be 60 characters or fewer.");
+      return;
+    }
+    if (subTeamsList.some((t) => (t.name || "").trim().toLowerCase() === trimmedName.toLowerCase())) {
+      setSubErrorMsg(`"${trimmedName}" already exists in this league.`);
+      return;
+    }
     setIsSubmittingNewTeam(true);
     setSubSuccessMsg("");
     try {
       const teamsInUse = subTeamsList.length;
-      const teamNameToUse = newSubTeamName.trim() || `Team ${teamsInUse + 1}`;
+      const teamNameToUse = trimmedName;
       const { newSubscription, seatAdded } = await addTeamToSubscription(teamNameToUse, { teamsInUse });
       setNewSubTeamName("");
       const seats = newSubscription?.teamCount ?? subscription?.teamCount ?? 8;
@@ -159,20 +178,30 @@ export default function LeagueCustomizerContent() {
       await loadSubTeams();
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Failed to add team to subscription.");
+      setSubErrorMsg(e instanceof Error ? e.message : "The team could not be added. Please try again.");
     } finally {
       setIsSubmittingNewTeam(false);
     }
   };
 
-  const handleQuickRemoveTeam = async (teamId: string, teamName: string) => {
+  const handleQuickRemoveTeam = (teamId: string, teamName: string) => {
+    setSubErrorMsg("");
+    setPendingRemoveTeam({ id: teamId, name: teamName });
+  };
+
+  const removeTeamDescription = (() => {
     const nextCount = Math.max(2, (subscription?.teamCount ?? 8) - 1);
-    const confirmed = window.confirm(
-      `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}${isComplimentary
-        ? `Remove "${teamName}" from the league and reduce capacity to ${nextCount} teams? No charges apply.`
-        : `Remove "${teamName}" from the league and reduce your subscription by $20/month starting at your next monthly payment (new cost: $${40 + nextCount * 20}/mo)?`}`
-    );
-    if (!confirmed) return;
+    const name = pendingRemoveTeam?.name ?? "";
+    const body = isComplimentary
+      ? `Remove "${name}" from the league and reduce capacity to ${nextCount} teams? No charges apply.`
+      : `Remove "${name}" from the league and reduce your subscription by $20/month starting at your next monthly payment (new cost: $${40 + nextCount * 20}/mo).`;
+    return isDemoLeague ? `Demo — nothing is saved or charged. ${body}` : body;
+  })();
+
+  const confirmRemoveTeam = async () => {
+    if (!pendingRemoveTeam) return;
+    const { id: teamId, name: teamName } = pendingRemoveTeam;
+    const nextCount = Math.max(2, (subscription?.teamCount ?? 8) - 1);
     setIsUpdatingSub(true);
     setSubSuccessMsg("");
     try {
@@ -184,9 +213,10 @@ export default function LeagueCustomizerContent() {
       await loadSubTeams();
     } catch (e) {
       console.error(e);
-      alert(e instanceof Error ? e.message : "Failed to remove team from subscription.");
+      setSubErrorMsg(e instanceof Error ? e.message : "The team could not be removed. Please try again.");
     } finally {
       setIsUpdatingSub(false);
+      setPendingRemoveTeam(null);
     }
   };
 
@@ -268,6 +298,7 @@ export default function LeagueCustomizerContent() {
     setDefaultLocation(settings.defaultLocation || "");
     setContactEmail(settings.contactEmail || "");
     setRulebookTitle(settings.rulebookTitle || "");
+    setRulebookUrl(settings.rulebookUrl || "");
     setAnnouncement(settings.announcement || "");
     setPrimaryColor(settings.primaryColor);
     setAccentColor(settings.accentColor);
@@ -280,6 +311,8 @@ export default function LeagueCustomizerContent() {
     setPlayerInfo(settings.playerInfo || {});
     setVenues(settings.venues || []);
     setRules(settings.rules || DEFAULT_LEAGUE_RULES);
+    setSaveError("");
+    setSubErrorMsg("");
 
     if (!isLeagueAdmin && activeTab === "branding") {
       setActiveTab("rules");
@@ -309,20 +342,56 @@ export default function LeagueCustomizerContent() {
       setSaveError("The logo must be a web address starting with https:// (or leave it blank for the FlagOS logo).");
       return;
     }
+    if (!leagueName.trim()) {
+      setSaveError("Enter a league name before saving.");
+      return;
+    }
+    if (leagueName.trim().length > 80) {
+      setSaveError("League names must be 80 characters or fewer.");
+      return;
+    }
+    if (shortcode.trim() && !/^[A-Za-z0-9]{2,6}$/.test(shortcode.trim())) {
+      setSaveError("The league shortcode must be 2–6 letters or numbers.");
+      return;
+    }
+    if (!isValidHexColor(primaryColor) || !isValidHexColor(accentColor)) {
+      setSaveError("Enter a valid six-digit hex color (for example #1E40AF) for both league colors.");
+      return;
+    }
+    if (contactEmail.trim() && !isValidEmail(contactEmail)) {
+      setSaveError("The contact email address is not valid.");
+      return;
+    }
+    if (publicContactEmail.trim() && !isValidEmail(publicContactEmail)) {
+      setSaveError("The public contact email address is not valid.");
+      return;
+    }
+    if (rulebookUrl.trim() && !isValidHttpUrl(rulebookUrl)) {
+      setSaveError("The rulebook link must be a full web address starting with http:// or https://.");
+      return;
+    }
+    const parsedTeamFee = registrationFeePerTeam.trim() !== "" ? parseNonNegativeNumber(registrationFeePerTeam) : undefined;
+    const parsedPlayerFee = individualFee.trim() !== "" ? parseNonNegativeNumber(individualFee) : undefined;
+    if (parsedTeamFee === null) {
+      setSaveError("The team registration fee must be a number of 0 or more.");
+      return;
+    }
+    if (parsedPlayerFee === null) {
+      setSaveError("The individual player fee must be a number of 0 or more.");
+      return;
+    }
     setSaving(true);
     setSaveError("");
     try {
       const sanitizedMinRoster = Math.max(rules.playersOnField, rules.minRosterSize);
       const rosterCap = rosterHardCap(rules.playersOnField);
       const sanitizedMaxRoster = Math.min(rosterCap, Math.max(sanitizedMinRoster, rules.maxRosterSize || rosterCap));
-      const parsedTeamFee = registrationFeePerTeam.trim() !== "" ? Number(registrationFeePerTeam) : undefined;
-      const parsedPlayerFee = individualFee.trim() !== "" ? Number(individualFee) : undefined;
       const parsedAmenities = amenitiesText.trim() !== ""
         ? amenitiesText.split(",").map((s) => s.trim()).filter(Boolean)
         : undefined;
 
       await updateSettings({
-        leagueName: leagueName.trim() || "FlagOS Demo League",
+        leagueName: leagueName.trim(),
         shortcode: shortcode.trim().toUpperCase() || "FLAG",
         tagline: tagline.trim(),
         seasonTitle: seasonTitle.trim() || "Active Season",
@@ -330,13 +399,14 @@ export default function LeagueCustomizerContent() {
         defaultLocation: defaultLocation.trim() || "Field 1",
         contactEmail: contactEmail.trim(),
         rulebookTitle: rulebookTitle.trim(),
+        rulebookUrl: rulebookUrl.trim(),
         announcement: announcement.trim(),
         primaryColor,
         accentColor,
         themePreset: "custom",
         visibility,
-        registrationFeePerTeam: Number.isFinite(parsedTeamFee) ? parsedTeamFee : undefined,
-        individualFee: Number.isFinite(parsedPlayerFee) ? parsedPlayerFee : undefined,
+        registrationFeePerTeam: parsedTeamFee,
+        individualFee: parsedPlayerFee,
         amenities: parsedAmenities,
         directoryListed: visibility === "public" && directoryListed,
         publicContactEmail: publicContactEmail.trim(),
@@ -405,6 +475,7 @@ export default function LeagueCustomizerContent() {
             </div>
             <PageGuideButton />
             <button
+              type="button"
               onClick={closeCustomizer}
               className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer shrink-0"
               title="Close"
@@ -415,11 +486,12 @@ export default function LeagueCustomizerContent() {
           </div>
 
           {/* Tab Navigation */}
-          <div className={`${isLeagueAdmin ? "grid grid-cols-2 sm:flex" : "flex"} items-center gap-1.5 sm:gap-2 p-1 bg-black/60 border border-white/10 rounded-2xl`}>
+          <div aria-label="Settings sections" className={`${isLeagueAdmin ? "grid grid-cols-2 sm:flex" : "flex"} items-center gap-1.5 sm:gap-2 p-1 bg-black/60 border border-white/10 rounded-2xl`}>
           {/* League Admin Tab: Branding */}
           {isLeagueAdmin && (
             <button
               type="button"
+              aria-pressed={activeTab === "branding"}
               onClick={() => setActiveTab("branding")}
               className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${activeTab === "branding"
                 ? "bg-amber-500/20 border border-amber-500/40 text-amber-300 shadow-md"
@@ -434,6 +506,7 @@ export default function LeagueCustomizerContent() {
           {/* Rules Tab (Edit for League Admin, View-Only for User/Player) */}
           <button
             type="button"
+              aria-pressed={activeTab === "rules"}
             onClick={() => setActiveTab("rules")}
             className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${activeTab === "rules"
               ? "bg-purple-500/20 border border-purple-500/40 text-purple-300 shadow-md"
@@ -448,6 +521,7 @@ export default function LeagueCustomizerContent() {
           {isLeagueAdmin && (
             <button
               type="button"
+              aria-pressed={activeTab === "subscription"}
               onClick={() => setActiveTab("subscription")}
               className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${
                 activeTab === "subscription"
@@ -464,6 +538,7 @@ export default function LeagueCustomizerContent() {
           {isLeagueAdmin && (
             <button
               type="button"
+              aria-pressed={activeTab === "season"}
               onClick={() => setActiveTab("season")}
               className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs font-bold leading-tight text-center transition-all cursor-pointer ${activeTab === "season"
                 ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-md"
@@ -571,6 +646,7 @@ export default function LeagueCustomizerContent() {
             isOpeningBilling={isOpeningBilling}
             setIsOpeningBilling={setIsOpeningBilling}
             subSuccessMsg={subSuccessMsg}
+            subErrorMsg={subErrorMsg}
             targetTeamCount={targetTeamCount}
             setTargetTeamCount={setTargetTeamCount}
             isUpdatingSub={isUpdatingSub}
@@ -614,6 +690,15 @@ export default function LeagueCustomizerContent() {
         )}
         </div>
       </div>
-    </div >
+      <ConfirmDialog
+        open={pendingRemoveTeam !== null}
+        title={`Remove ${pendingRemoveTeam?.name ?? "team"}?`}
+        description={removeTeamDescription}
+        confirmLabel="Remove team"
+        tone="danger"
+        onConfirm={confirmRemoveTeam}
+        onCancel={() => setPendingRemoveTeam(null)}
+      />
+    </div>
   );
 }

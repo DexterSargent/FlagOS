@@ -71,6 +71,8 @@ export const LeagueCustomizerSeasonTab = memo(function LeagueCustomizerSeasonTab
   const [leagueTeams, setLeagueTeams] = useState<LeagueTeamOption[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
+  const [teamLoadError, setTeamLoadError] = useState("");
+  const [resuming, setResuming] = useState(false);
 
   // Load league teams when new season workflow is active
   useEffect(() => {
@@ -79,6 +81,7 @@ export const LeagueCustomizerSeasonTab = memo(function LeagueCustomizerSeasonTab
 
     async function loadTeams() {
       setLoadingTeams(true);
+      setTeamLoadError("");
       try {
         if (isDemoLeague(leagueId)) {
           const demoTeams = (getSandboxTeams() as unknown as LeagueTeamOption[]).filter(isRealTeam);
@@ -100,6 +103,7 @@ export const LeagueCustomizerSeasonTab = memo(function LeagueCustomizerSeasonTab
         }
       } catch (err) {
         console.warn("Failed to load league teams for season rollover:", err);
+        if (!cancelled) setTeamLoadError("The team list could not be loaded. Close and reopen settings to retry.");
       } finally {
         if (!cancelled) setLoadingTeams(false);
       }
@@ -395,7 +399,9 @@ export const LeagueCustomizerSeasonTab = memo(function LeagueCustomizerSeasonTab
                           </div>
 
                           {loadingTeams ? (
-                            <p className="text-[11px] text-slate-400 py-2">Loading teams...</p>
+                            <p role="status" className="text-[11px] text-slate-400 py-2">Loading teams…</p>
+                          ) : teamLoadError ? (
+                            <p role="alert" className="text-[11px] text-rose-600 dark:text-rose-300 py-2">{teamLoadError}</p>
                           ) : leagueTeams.length === 0 ? (
                             <p className="text-[11px] text-slate-400 py-2">No existing teams found in this league.</p>
                           ) : (
@@ -474,7 +480,10 @@ export const LeagueCustomizerSeasonTab = memo(function LeagueCustomizerSeasonTab
                     </button>
                     <button
                       type="button"
-                      onClick={() => setNewSeasonTitle(null)}
+                      onClick={() => {
+                        setNewSeasonTitle(null);
+                        setSelectedTeamIds(leagueTeams.map((t) => t.id));
+                      }}
                       className="px-4 py-2.5 rounded-lg border border-slate-300 dark:border-white/15 text-xs font-bold text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                     >
                       Back
@@ -508,16 +517,22 @@ export const LeagueCustomizerSeasonTab = memo(function LeagueCustomizerSeasonTab
           <button
             type="button"
             onClick={async () => {
+              if (resuming) return;
               setSaveError("");
+              setResuming(true);
               try {
                 await resumeSubscription();
               } catch (err) {
                 setSaveError(describeSaveError(err));
+              } finally {
+                setResuming(false);
               }
             }}
-            className="py-2.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+            disabled={resuming}
+            aria-busy={resuming}
+            className="py-2.5 px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm disabled:opacity-60"
           >
-            Reactivate League / Start Next Season
+            {resuming ? "Reactivating…" : "Reactivate League / Start Next Season"}
           </button>
         </div>
       )}
@@ -535,16 +550,22 @@ export const LeagueCustomizerSeasonTab = memo(function LeagueCustomizerSeasonTab
           <button
             type="button"
             onClick={async () => {
+              if (resuming) return;
               setSaveError("");
+              setResuming(true);
               try {
                 await resumeSubscription();
               } catch (err) {
                 setSaveError(describeSaveError(err));
+              } finally {
+                setResuming(false);
               }
             }}
-            className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm"
+            disabled={resuming}
+            aria-busy={resuming}
+            className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-sm disabled:opacity-60"
           >
-            Update Payment &amp; Resume Subscription
+            {resuming ? "Opening…" : "Update Payment & Resume Subscription"}
           </button>
         </div>
       )}

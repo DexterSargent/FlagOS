@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LogIn, LogOut, Settings, Shield, Sliders, User, Users } from "lucide-react";
+import { BookOpen, ChevronDown, LogIn, LogOut, Settings, Shield, Sliders, User, Users } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 
@@ -23,6 +23,8 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
     setOpenPath(value ? pathname : null);
   };
   const rootRef = useRef<HTMLDivElement>(null);
+  // Mirrors the owner gate used by /my-story itself.
+  const canSeeStory = Boolean(isPlatformAdmin) || user?.email?.trim().toLowerCase() === "dextersargent@flagos.ca";
 
   useEffect(() => {
     if (!open) return;
@@ -136,6 +138,11 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
           {isPlatformAdmin && (
             <Link href="/admin" role="menuitem" className={itemClass} onClick={() => setOpen(false)}>
               <Shield className="w-4 h-4 shrink-0" /> Platform Admin
+            </Link>
+          )}
+          {canSeeStory && (
+            <Link href="/my-story" role="menuitem" className={itemClass} onClick={() => setOpen(false)}>
+              <BookOpen className="w-4 h-4 shrink-0" /> My Story
             </Link>
           )}
           {user && (

@@ -3,6 +3,11 @@ import FlagOSLoader from "@/components/FlagOSLoader";
 
 import VenueDirections from "@/components/VenueDirections";
 import { useState, useEffect, use } from "react";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useDialogKeyboard } from "@/components/ui/useDialogKeyboard";
+import { toTimeInputValue } from "@/lib/formatMatchTime";
+import { parseIntInRange } from "@/lib/formValidation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ShieldAlert, Clock, MapPin, Edit2, Trash2, X, Zap } from "lucide-react";
@@ -61,16 +66,37 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
   const [editForm, setEditForm] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editNotice, setEditNotice] = useState<FormNoticeState | null>(null);
+  const [pageNotice, setPageNotice] = useState<FormNoticeState | null>(null);
+  const [pendingAction, setPendingAction] = useState<"simulate" | "delete" | "reset" | null>(null);
+  const closeEditModal = () => {
+    if (isSavingEdit || isDeleting) return;
+    setIsEditModalOpen(false);
+  };
+  const editDialogRef = useDialogKeyboard<HTMLDivElement>(isEditModalOpen, closeEditModal, { busy: isSavingEdit || isDeleting });
 
-  const handleSimulateGame = async () => {
+  const runResetDemoGame = () => {
+    setPendingAction(null);
+    deleteSandboxPlaysForMatch(matchId);
+    updateSandboxMatch(matchId, {
+      status: "scheduled",
+      homeScore: 0,
+      awayScore: 0,
+      matchState: null,
+      didNotPlay: [],
+    });
+    window.location.reload();
+  };
+
+  const handleSimulateGame = () => {
     if (!isPlatformAdmin || !matchData) return;
-    if (
-      !window.confirm(
-        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flags, PBUs, sacks) between ${matchData.homeTeamName} and ${matchData.awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
-      )
-    ) {
-      return;
-    }
+    setPendingAction("simulate");
+  };
+
+  const runSimulateGame = async () => {
+    setPendingAction(null);
+    setPageNotice(null);
     setIsSimulating(true);
     try {
       const res = await simulateFullGame(matchId, {
@@ -85,11 +111,11 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
           awayScore: res.awayScore,
         }));
       } else {
-        alert(res.error || "Failed to simulate game.");
+        setPageNotice({ tone: "error", message: res.error || "The game could not be simulated." });
       }
     } catch (err: any) {
       console.error("Simulation error:", err);
-      alert(err.message || "Failed to simulate game.");
+      setPageNotice({ tone: "error", message: err?.message || "The game could not be simulated." });
     } finally {
       setIsSimulating(false);
     }
@@ -99,7 +125,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
     setEditForm({
       week: matchData.week || "",
       date: matchData.date || "",
-      time: matchData.time || "",
+      time: toTimeInputValue(matchData.time) || matchData.time || "",
       location: matchData.location || settings.defaultLocation || "Turf Field 1",
       homeTeamName: matchData.homeTeamName || "",
       awayTeamName: matchData.awayTeamName || "",
@@ -108,16 +134,42 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       status: matchData.status || "scheduled",
       isPreseason: matchData.isPreseason || false,
     });
+    setEditNotice(null);
     setIsEditModalOpen(true);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLeagueAdmin || !editForm) return;
+    if (!isLeagueAdmin || !editForm || isSavingEdit) return;
+    setEditNotice(null);
+
+    const homeScore = parseIntInRange(editForm.homeScore, 0, 200);
+    const awayScore = parseIntInRange(editForm.awayScore, 0, 200);
+    if (homeScore === null || awayScore === null) {
+      setEditNotice({ tone: "error", message: "Scores must be whole numbers from 0 to 200." });
+      return;
+    }
+    if (!String(editForm.week || "").trim() || !String(editForm.homeTeamName || "").trim() || !String(editForm.awayTeamName || "").trim()) {
+      setEditNotice({ tone: "error", message: "Week label and both team names are required." });
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(editForm.date || ""))) {
+      setEditNotice({ tone: "error", message: "Choose a valid game date." });
+      return;
+    }
+    const normalizedTime = toTimeInputValue(editForm.time);
+    if (!normalizedTime) {
+      setEditNotice({ tone: "error", message: "Choose a valid kickoff time." });
+      return;
+    }
 
     const updatedData = {
       ...matchData,
       ...editForm,
+      homeScore,
+      awayScore,
+      time: normalizedTime,
+      location: String(editForm.location || "").trim(),
       matchdayIndex: parseInt(editForm.week?.replace(/\D/g, "") || "0", 10) || matchData.matchdayIndex || 1,
     };
 
@@ -128,22 +180,26 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       return;
     }
 
+    setIsSavingEdit(true);
     try {
       await updateDoc(doc(db, "matches", matchId), updatedData);
       setMatchData(updatedData);
       setIsEditModalOpen(false);
     } catch (err) {
       console.error("Failed to update match:", err);
-      alert("Failed to save changes. Please try again.");
+      setEditNotice({ tone: "error", message: "The changes could not be saved. Check your connection and try again." });
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
-  const handleDeleteMatch = async () => {
+  const handleDeleteMatch = () => {
     if (!isLeagueAdmin) return;
-    if (!window.confirm("Are you sure you want to permanently delete this event? This action will remove the match and all recorded plays.")) {
-      return;
-    }
+    setPendingAction("delete");
+  };
 
+  const runDeleteMatch = async () => {
+    setPendingAction(null);
     setIsDeleting(true);
     try {
       if (isDemo) {
@@ -157,7 +213,7 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       router.push("/schedule");
     } catch (err) {
       console.error("Failed to delete match:", err);
-      alert("Failed to delete match. Please check permissions.");
+      setEditNotice({ tone: "error", message: "The game could not be deleted. You may not have permission, or the connection failed." });
       setIsDeleting(false);
     }
   };
@@ -360,21 +416,11 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                     Reopen Play-by-Play
                   </button>
                   <button
-                    onClick={() => {
-                      if (!confirm("Reset this demo game to pre-game state (0-0 score, all plays cleared)?")) return;
-                      deleteSandboxPlaysForMatch(matchId);
-                      updateSandboxMatch(matchId, {
-                        status: "scheduled",
-                        homeScore: 0,
-                        awayScore: 0,
-                        matchState: null,
-                        didNotPlay: [],
-                      });
-                      window.location.reload();
-                    }}
+                    type="button"
+                    onClick={() => setPendingAction("reset")}
                     className="px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold rounded-xl border border-white/10 transition-all whitespace-nowrap text-xs"
                   >
-                    Reset Game
+                    Reset Demo Game
                   </button>
                 </div>
               ) : null}
@@ -413,19 +459,60 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
       </div>
 
       {/* Edit Event Modal (League Admin Only) */}
+      {pageNotice ? (
+        <div className="mt-4">
+          <FormNotice notice={pageNotice} onDismiss={() => setPageNotice(null)} />
+        </div>
+      ) : null}
+
+      <ConfirmDialog
+        open={pendingAction === "simulate"}
+        title="Simulate full game?"
+        description={`This generates a complete, realistic play-by-play (passes, runs, touchdowns, conversions, flags, sacks) between ${matchData?.homeTeamName ?? "the home team"} and ${matchData?.awayTeamName ?? "the away team"}. All events and scores count toward official standings and player stats.`}
+        confirmLabel="Simulate Game"
+        onConfirm={runSimulateGame}
+        onCancel={() => setPendingAction(null)}
+      />
+      <ConfirmDialog
+        open={pendingAction === "delete"}
+        title="Delete this game permanently?"
+        description="This removes the game and every recorded play. This cannot be undone."
+        confirmLabel="Delete Game"
+        tone="danger"
+        onConfirm={runDeleteMatch}
+        onCancel={() => setPendingAction(null)}
+      />
+      <ConfirmDialog
+        open={pendingAction === "reset"}
+        title="Reset this demo game?"
+        description="The score returns to 0–0 and all plays are cleared so you can run the demo again."
+        confirmLabel="Reset Game"
+        tone="danger"
+        onConfirm={runResetDemoGame}
+        onCancel={() => setPendingAction(null)}
+      />
+
       {isEditModalOpen && editForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+          <div
+            ref={editDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="match-edit-title"
+            tabIndex={-1}
+            className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh] outline-none"
+          >
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-white">Edit Game Details</h2>
+                <h2 id="match-edit-title" className="text-2xl font-bold text-white">Edit Game Details</h2>
                 <p className="text-xs text-neutral-400 mt-0.5">League Admin Game Management</p>
               </div>
               <div className="flex items-center gap-2">
               <PageGuideButton />
               <button
-                onClick={() => setIsEditModalOpen(false)}
-                aria-label="Close"
+                type="button"
+                onClick={closeEditModal}
+                aria-label="Close edit game dialog"
                 className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-neutral-400 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -433,12 +520,15 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
               </div>
             </div>
 
-            <form data-tour="match-edit-fields" onSubmit={handleSaveEdit} className="space-y-4">
+            <form data-tour="match-edit-fields" onSubmit={handleSaveEdit} noValidate className="space-y-4">
+              <FormNotice notice={editNotice} onDismiss={() => setEditNotice(null)} />
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1">Week / Round Label</label>
+                <label htmlFor="match-edit-week" className="block text-xs font-semibold text-neutral-400 mb-1">Week / Round Label</label>
                 <input
+                  id="match-edit-week"
                   type="text"
                   required
+                  maxLength={40}
                   value={editForm.week}
                   onChange={(e) => setEditForm({ ...editForm, week: e.target.value })}
                   className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
@@ -448,20 +538,24 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Home Team</label>
+                  <label htmlFor="match-edit-home" className="block text-xs font-semibold text-neutral-400 mb-1">Home Team</label>
                   <input
+                    id="match-edit-home"
                     type="text"
                     required
+                    maxLength={60}
                     value={editForm.homeTeamName}
                     onChange={(e) => setEditForm({ ...editForm, homeTeamName: e.target.value })}
                     className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Away Team</label>
+                  <label htmlFor="match-edit-away" className="block text-xs font-semibold text-neutral-400 mb-1">Away Team</label>
                   <input
+                    id="match-edit-away"
                     type="text"
                     required
+                    maxLength={60}
                     value={editForm.awayTeamName}
                     onChange={(e) => setEditForm({ ...editForm, awayTeamName: e.target.value })}
                     className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
@@ -471,34 +565,36 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Date</label>
+                  <label htmlFor="match-edit-date" className="block text-xs font-semibold text-neutral-400 mb-1">Date</label>
                   <input
-                    type="text"
+                    id="match-edit-date"
+                    type="date"
                     required
                     value={editForm.date}
                     onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
-                    placeholder="YYYY-MM-DD"
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm [color-scheme:dark]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Kickoff Time</label>
+                  <label htmlFor="match-edit-time" className="block text-xs font-semibold text-neutral-400 mb-1">Kickoff Time</label>
                   <input
-                    type="text"
+                    id="match-edit-time"
+                    type="time"
                     required
                     value={editForm.time}
                     onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
-                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
-                    placeholder="e.g. 10:00 AM"
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm [color-scheme:dark]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1">Venue / Field</label>
+                <label htmlFor="match-edit-location" className="block text-xs font-semibold text-neutral-400 mb-1">Venue / Field</label>
                 <input
+                  id="match-edit-location"
                   type="text"
                   required
+                  maxLength={120}
                   value={editForm.location}
                   onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
                   className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white text-sm"
@@ -507,26 +603,37 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Home Score</label>
+                  <label htmlFor="match-edit-home-score" className="block text-xs font-semibold text-neutral-400 mb-1">Home Score</label>
                   <input
+                    id="match-edit-home-score"
                     type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={200}
+                    step={1}
                     value={editForm.homeScore}
-                    onChange={(e) => setEditForm({ ...editForm, homeScore: parseInt(e.target.value, 10) || 0 })}
+                    onChange={(e) => setEditForm({ ...editForm, homeScore: e.target.value })}
                     className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Away Score</label>
+                  <label htmlFor="match-edit-away-score" className="block text-xs font-semibold text-neutral-400 mb-1">Away Score</label>
                   <input
+                    id="match-edit-away-score"
                     type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={200}
+                    step={1}
                     value={editForm.awayScore}
-                    onChange={(e) => setEditForm({ ...editForm, awayScore: parseInt(e.target.value, 10) || 0 })}
+                    onChange={(e) => setEditForm({ ...editForm, awayScore: e.target.value })}
                     className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1">Status</label>
+                  <label htmlFor="match-edit-status" className="block text-xs font-semibold text-neutral-400 mb-1">Status</label>
                   <select
+                    id="match-edit-status"
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                     className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white text-sm"
@@ -555,25 +662,30 @@ export default function MatchDetails({ params }: { params: Promise<{ id: string 
                 <button
                   type="button"
                   onClick={handleDeleteMatch}
-                  className="px-4 py-2.5 bg-[var(--tint-danger)] hover:brightness-95 text-[var(--text-danger)] border border-[var(--tint-danger-border)] font-semibold rounded-xl transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                  disabled={isDeleting || isSavingEdit}
+                  aria-busy={isDeleting}
+                  className="disabled:opacity-50 px-4 py-2.5 bg-[var(--tint-danger)] hover:brightness-95 text-[var(--text-danger)] border border-[var(--tint-danger-border)] font-semibold rounded-xl transition-all flex items-center gap-1.5 text-xs cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Event</span>
+                  <span>{isDeleting ? "Deleting…" : "Delete Event"}</span>
                 </button>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsEditModalOpen(false)}
-                    className="px-4 py-2.5 font-semibold text-neutral-400 hover:text-white text-xs cursor-pointer"
+                    onClick={closeEditModal}
+                    disabled={isSavingEdit || isDeleting}
+                    className="px-4 py-2.5 font-semibold text-neutral-400 hover:text-white text-xs cursor-pointer disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
+                    disabled={isSavingEdit || isDeleting}
+                    aria-busy={isSavingEdit}
+                    className="px-5 py-2.5 bg-cyan-700 hover:bg-cyan-800 text-[#fff] font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer disabled:opacity-60"
                   >
-                    Save Changes
+                    {isSavingEdit ? "Saving…" : "Save Changes"}
                   </button>
                 </div>
               </div>

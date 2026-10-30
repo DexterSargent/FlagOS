@@ -47,6 +47,7 @@ import AdminFreeAgents from "@/components/admin/AdminFreeAgents";
 import AdminHealth from "@/components/admin/AdminHealth";
 import AdminNotifications from "@/components/admin/AdminNotifications";
 import type { PlatformHealthReport } from "@/lib/platformHealth";
+import { isValidEmail, isValidHexColor } from "@/lib/formValidation";
 
 const CONSOLE_TABS: Array<{ id: ConsoleTab; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -570,16 +571,28 @@ export default function PlatformAdminPage() {
     e.preventDefault();
     if (!editingLeague) return;
 
-    setActionInProgress(true);
     setError("");
+    if (!editForm.name.trim()) {
+      setError("Enter a league name.");
+      return;
+    }
+    if (!/^[A-Za-z0-9]{2,6}$/.test(editForm.shortcode.trim())) {
+      setError("Shortcode must be 2–6 letters or numbers.");
+      return;
+    }
+    if (!isValidHexColor(editForm.primaryColor) || !isValidHexColor(editForm.accentColor)) {
+      setError("Enter valid six-digit hex colors (e.g. #3CA505).");
+      return;
+    }
+    setActionInProgress(true);
 
     try {
       const isArchiving = editForm.subscriptionStatus === "archived";
       const wasArchived = editingLeague.subscriptionStatus === "archived";
       const updatedFields = {
-        leagueName: editForm.name,
-        shortcode: editForm.shortcode.toUpperCase(),
-        seasonTitle: editForm.seasonTitle,
+        leagueName: editForm.name.trim(),
+        shortcode: editForm.shortcode.trim().toUpperCase(),
+        seasonTitle: editForm.seasonTitle.trim(),
         visibility: editForm.visibility,
         primaryColor: editForm.primaryColor,
         accentColor: editForm.accentColor,
@@ -727,7 +740,7 @@ export default function PlatformAdminPage() {
     if (!adminManagingLeague) return;
 
     const cleanEmail = newAdminEmail.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes("@")) {
+    if (!isValidEmail(cleanEmail)) {
       setAdminActionError("Please enter a valid email address.");
       return;
     }
@@ -1465,13 +1478,14 @@ export default function PlatformAdminPage() {
               </button>
             </div>
 
-            <form data-tour="admin-edit-identity" onSubmit={handleSaveLeague} className="mt-6 space-y-4">
+            <form data-tour="admin-edit-identity" onSubmit={handleSaveLeague} noValidate className="mt-6 space-y-4">
               <div>
                 <label htmlFor="edit-league-name" className="block text-xs font-bold uppercase text-neutral-400 mb-1.5">League Name</label>
                 <input
                   id="edit-league-name"
                   type="text"
                   required
+                  maxLength={80}
                   autoFocus
                   value={editForm.name}
                   onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
@@ -1486,6 +1500,7 @@ export default function PlatformAdminPage() {
                     id="edit-league-shortcode"
                     type="text"
                     required
+                    maxLength={6}
                     value={editForm.shortcode}
                     onChange={(e) => setEditForm((f) => ({ ...f, shortcode: e.target.value }))}
                     className="w-full rounded-xl border border-white/10 bg-neutral-950 px-3.5 py-2.5 text-sm uppercase text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none"
@@ -1496,6 +1511,7 @@ export default function PlatformAdminPage() {
                   <input
                     id="edit-league-season"
                     type="text"
+                    maxLength={60}
                     value={editForm.seasonTitle}
                     onChange={(e) => setEditForm((f) => ({ ...f, seasonTitle: e.target.value }))}
                     className="w-full rounded-xl border border-white/10 bg-neutral-950 px-3.5 py-2.5 text-sm text-white placeholder-neutral-500 focus:border-cyan-400 focus:outline-none"
@@ -1548,6 +1564,8 @@ export default function PlatformAdminPage() {
                     <input
                       id="edit-league-primary-hex"
                       type="text"
+                      maxLength={7}
+                      pattern="#[0-9A-Fa-f]{6}"
                       value={editForm.primaryColor}
                       onChange={(e) => setEditForm((f) => ({ ...f, primaryColor: e.target.value }))}
                       className="w-full rounded-xl border border-white/10 bg-neutral-950 px-3 py-2 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
@@ -1567,6 +1585,8 @@ export default function PlatformAdminPage() {
                     <input
                       id="edit-league-accent-hex"
                       type="text"
+                      maxLength={7}
+                      pattern="#[0-9A-Fa-f]{6}"
                       value={editForm.accentColor}
                       onChange={(e) => setEditForm((f) => ({ ...f, accentColor: e.target.value }))}
                       className="w-full rounded-xl border border-white/10 bg-neutral-950 px-3 py-2 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
@@ -1670,6 +1690,9 @@ export default function PlatformAdminPage() {
                 <input
                   id="manage-admins-email"
                   type="email"
+                  inputMode="email"
+                  autoComplete="off"
+                  maxLength={254}
                   autoFocus
                   value={newAdminEmail}
                   onChange={(e) => {

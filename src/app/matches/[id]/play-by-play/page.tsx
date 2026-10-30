@@ -71,14 +71,10 @@ export default function PlayByPlayWrapper({ params }: { params: Promise<{ id: st
         const snap = await getDoc(doc(db, "matches", matchId));
         if (snap.exists()) {
           setMatchData({ ...snap.data(), id: snap.id });
-        } else {
-          const m = getSandboxMatch(matchId);
-          if (m) setMatchData(m);
         }
       } catch (err) {
-        console.warn("Unable to load remote match from Firestore, falling back to local/sandbox:", err);
-        const m = getSandboxMatch(matchId);
-        if (m) setMatchData(m);
+        // Never substitute demo data for a real game; the viewer shows its own error state.
+        console.warn("Unable to load match from Firestore:", err);
       }
       setIsFetching(false);
     };
