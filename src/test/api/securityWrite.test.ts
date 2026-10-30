@@ -664,6 +664,33 @@ describe("secure data write API", () => {
       );
     });
 
+    it("stamps independent games with the managing team's current season", async () => {
+      verifyIdTokenMock.mockResolvedValue({ ...validToken, email: "coach@example.com" });
+      transaction.get.mockImplementation(async (ref) => {
+        if ("collection" in ref) return { size: 0 };
+        return {
+          exists: ref.path === "teams/independent",
+          data: () => ref.path === "teams/independent"
+            ? {
+              leagueId: "", adminEmails: ["coach@example.com"], isStandalone: true,
+              currentSeasonId: "season-2-abc",
+              seasons: [
+                { id: "season-1", title: "Spring", status: "archived", number: 1 },
+                { id: "season-2-abc", title: "Fall", status: "active", number: 2 },
+              ],
+            }
+            : undefined,
+        };
+      });
+      const response = await POST(request({
+        entity: "match",
+        data: { ...exhibition, managingTeamId: "independent", homeTeamId: "independent" },
+      }));
+      expect(response.status).toBe(201);
+      expect(transaction.create).toHaveBeenCalledWith(expect.objectContaining({ id: "created-record-id" }),
+        expect.objectContaining({ leagueId: "", seasonId: "season-2-abc" }));
+    });
+
     it("rejects a missing managing team even for a known coach", async () => {
       verifyIdTokenMock.mockResolvedValue({ ...validToken, email: TEAM_ADMIN_EMAILS[1] });
       const response = await POST(request({ entity: "match", data: { ...exhibition, managingTeamId: "missing", homeTeamId: "missing" } }));

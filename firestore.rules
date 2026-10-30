@@ -521,6 +521,26 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Frozen team records, stat lines and results for completed team seasons; written only by the
+    // server. Readable by whoever can read the team itself.
+    match /team_seasons/{seasonDocId} {
+      allow get: if resource.data.teamId is string &&
+        (isPublicIndependentTeam(resource.data.teamId) ||
+          (signedIn() &&
+            (isPlatformAdmin() || isTeamAdmin(resource.data.teamId) ||
+              (resource.data.get('leagueId', '') != '' &&
+                (isLeagueAdmin(resource.data.leagueId) || canViewLeague(resource.data.leagueId) ||
+                  hasScorerLeagueAccess(resource.data.leagueId))))));
+      allow list: if hasBoundedListLimit(100) && resource.data.teamId is string &&
+        (isPublicIndependentTeam(resource.data.teamId) ||
+          (signedIn() &&
+            (isPlatformAdmin() || isTeamAdmin(resource.data.teamId) ||
+              (resource.data.get('leagueId', '') != '' &&
+                (isLeagueAdmin(resource.data.leagueId) || canViewLeague(resource.data.leagueId) ||
+                  hasScorerLeagueAccess(resource.data.leagueId))))));
+      allow write: if false;
+    }
+
     // A scorer can confirm their own grant; links and grants are only written by the server.
     match /scorer_grants/{grantId} {
       allow get: if signedIn() && resource.data.uid == request.auth.uid;

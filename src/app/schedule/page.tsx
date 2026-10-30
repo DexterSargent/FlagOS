@@ -23,6 +23,7 @@ import {
   ArrowRight,
   RotateCcw,
   AlertTriangle,
+  Archive,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where, limit } from "firebase/firestore";
@@ -95,7 +96,11 @@ interface Match {
 export default function Calendar() {
   usePageGuide(SCHEDULE_WALKTHROUGH);
   const { user, isLeagueAdmin, isPlatformAdmin } = useAuth();
-  const { settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId, portalLeagueId } = useLeague();
+  const {
+    settings, updateSettings, isDemoLeague, activeLeagueId, isLeagueArchived, currentSeasonId, portalLeagueId,
+    seasons, viewingSeasonId, setViewingSeasonId, isViewingArchivedSeason,
+  } = useLeague();
+  const viewingSeason = seasons.find((season) => season.id === viewingSeasonId);
   // `?league=` opens the schedule on a specific league; hold off loading until the provider has picked it up.
   const [awaitingLeague, setAwaitingLeague] = useState<string | null>(() =>
     typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("league"),
@@ -199,8 +204,8 @@ export default function Calendar() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Archived leagues are read-only; the server rejects schedule writes until reactivation.
-  const canManageSchedule = Boolean((isLeagueAdmin || isEmbedded) && !isLeagueArchived);
+  // Archived leagues and past seasons are read-only; the server rejects writes against either.
+  const canManageSchedule = Boolean((isLeagueAdmin || isEmbedded) && !isLeagueArchived && !isViewingArchivedSeason);
 
   // Manual Match Edit/Create Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -312,7 +317,7 @@ export default function Calendar() {
       console.warn("Failed to fetch teams from firestore:", err);
     });
 
-    // Listen to matches in real-time
+    // Listen to matches in real-time for the season being viewed (current by default)
     const unsub = subscribeLeagueSeasonMatches(
       activeLeagueId,
       (snap) => {
@@ -327,11 +332,11 @@ export default function Calendar() {
         console.warn("Schedule onSnapshot warning:", error);
         setLoading(false);
       },
-      currentSeasonId,
+      viewingSeasonId || currentSeasonId,
     );
 
     return () => unsub();
-  }, [isDemoLeague, isEmbedded, activeLeagueId, currentSeasonId, awaitingLeague, noLeagueSelected]);
+  }, [isDemoLeague, isEmbedded, activeLeagueId, currentSeasonId, viewingSeasonId, awaitingLeague, noLeagueSelected]);
 
   // Standings & Playoff Calculations
   const playoffActive = useMemo(() => isPlayoffActive(matches), [matches]);
@@ -364,7 +369,7 @@ export default function Calendar() {
   // Once the regular season is final, seed the playoff games from standings and advance winners.
   const appliedPlayoffUpdatesRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!isLeagueAdmin || isLeagueArchived || isDemoLeague || isEmbedded || loading || teams.length === 0) return;
+    if (!isLeagueAdmin || isLeagueArchived || isViewingArchivedSeason || isDemoLeague || isEmbedded || loading || teams.length === 0) return;
     const updates = computePlayoffMatchupUpdates(standings, playoffFormat, matches).filter((update) => {
       const key = `${update.matchId}:${update.homeTeamId}:${update.awayTeamId}`;
       if (appliedPlayoffUpdatesRef.current.has(key)) return false;
@@ -381,7 +386,7 @@ export default function Calendar() {
         }
       }
     })();
-  }, [isLeagueAdmin, isLeagueArchived, isDemoLeague, isEmbedded, loading, teams.length, standings, playoffFormat, matches]);
+  }, [isLeagueAdmin, isLeagueArchived, isViewingArchivedSeason, isDemoLeague, isEmbedded, loading, teams.length, standings, playoffFormat, matches]);
 
   // Unique list of Regular Season Weeks for the week pill filter
   const regularSeasonWeeks = useMemo(() => {
@@ -720,7 +725,7 @@ export default function Calendar() {
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-widest">
-                {settings.seasonTitle || "Current Season"} Schedule
+                {viewingSeason?.title || settings.seasonTitle || "Current Season"} {isViewingArchivedSeason ? "Archive" : "Schedule"}
               </span>
               <span className="text-slate-400 dark:text-[var(--text-muted)] text-xs">•</span>
               <span className="text-[11px] font-mono text-[var(--text-muted)] dark:text-neutral-400 flex items-center gap-1">
@@ -736,6 +741,23 @@ export default function Calendar() {
               Game times, fields, scores, and playoff brackets.
             </p>
           </div>
+
+          {seasons.length > 1 && !isDemoLeague && (
+            <label data-tour="schedule-season" className="flex flex-col gap-1 w-full md:w-auto">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Season</span>
+              <select
+                value={viewingSeasonId}
+                onChange={(event) => setViewingSeasonId(event.target.value)}
+                className="w-full md:w-60 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                {[...seasons].sort((a, b) => b.number - a.number).map((season) => (
+                  <option key={season.id} value={season.id}>
+                    {season.title}{season.id === currentSeasonId ? " (current)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           {canManageSchedule && (
             <div data-tour="schedule-actions" className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
@@ -779,6 +801,29 @@ export default function Calendar() {
             </div>
           )}
         </div>
+
+        {isViewingArchivedSeason && (
+          <div role="status" className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <Archive className="w-5 h-5 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="min-w-0 text-sm">
+                <p className="font-bold text-amber-900 dark:text-amber-200">
+                  Viewing the {viewingSeason?.title || "past season"} schedule (final)
+                </p>
+                <p className="text-amber-800/80 dark:text-amber-200/70">
+                  Past seasons are read-only. Scores and box scores stay available, but games can no longer be edited.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewingSeasonId(currentSeasonId)}
+              className="shrink-0 rounded-xl bg-amber-600 hover:bg-amber-700 text-[#fff] px-4 py-2 text-sm font-bold transition-colors"
+            >
+              Back to current season
+            </button>
+          </div>
+        )}
 
         {/* 24-Hour Schedule Restore Alert Banner (Single Snapshot) */}
         {canManageSchedule && scheduleBackup && (
@@ -1091,9 +1136,9 @@ export default function Calendar() {
                           </div>
                         </Link>
 
-                        {(canManageSchedule || (isPlatformAdmin && !isLeagueArchived)) && (
+                        {(canManageSchedule || (isPlatformAdmin && !isLeagueArchived && !isViewingArchivedSeason)) && (
                           <div className="absolute bottom-5 right-5 sm:bottom-6 sm:right-6 flex items-center gap-1.5 z-20">
-                            {isPlatformAdmin && !isLeagueArchived && match.status !== "completed" && (
+                            {isPlatformAdmin && !isLeagueArchived && !isViewingArchivedSeason && match.status !== "completed" && (
                               <button
                                 type="button"
                                 onClick={(e) => {

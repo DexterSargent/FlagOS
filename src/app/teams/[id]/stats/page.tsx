@@ -25,8 +25,10 @@ import {
   type TeamSeasonSnapshot,
 } from "@/lib/teamSeasons";
 import TeamSeasonHistoryPanel from "@/components/team/TeamSeasonHistoryPanel";
-import TeamRecordsSection from "@/components/team/TeamRecordsSection";
-import { calculateTeamRecords } from "@/lib/teamRecords";
+import RecordBookSection from "@/components/RecordBookSection";
+import SeasonResultsList from "@/components/league/SeasonResultsList";
+import { buildLiveRecordSeasonInput, buildRecordBook, type RecordSeasonInput } from "@/lib/recordBook";
+import { emptyPlayerStatLine, type PlayerStatLine } from "@/lib/leagueSeasons";
 import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
@@ -292,35 +294,75 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const currentSeasonId = useMemo(() => getCurrentTeamSeasonId(team), [team]);
   const teamName = team?.name || "Team";
 
-  const franchiseRecords = useMemo(() => {
-    return calculateTeamRecords({
-      teamId: team?.id || teamId,
-      teamName,
-      teamAliases: [teamId, team?.name, team?.id].filter(Boolean) as string[],
-      seasons,
-      snapshots,
-      livePlayerStats: stats,
-      liveRecord: teamStats ? {
+  const recordBook = useMemo(() => {
+    const scopedTeamId = team?.id || teamId;
+    const shortcode = String(team?.shortcode || team?.abbreviation || "");
+    const livePlayerStats: PlayerStatLine[] = stats.map((line: any) => ({
+      ...emptyPlayerStatLine({
+        playerId: String(line.playerId || line.id || ""),
+        name: String(line.name || ""),
+        number: String(line.number ?? ""),
+        teamId: scopedTeamId,
+        teamName,
+        teamShortcode: shortcode,
+      }),
+      ...Object.fromEntries(Object.entries(line).filter(([, value]) => typeof value === "number")),
+    }) as PlayerStatLine);
+    const currentSeason = seasons.find((season) => season.id === currentSeasonId);
+    const liveSeason = buildLiveRecordSeasonInput({
+      seasonId: currentSeasonId,
+      title: team?.seasonTitle || currentSeason?.title || "Current Season",
+      number: currentSeason?.number ?? seasons.length,
+      standings: teamStats ? [{
+        id: scopedTeamId,
+        name: teamName,
+        shortcode,
+        played: teamStats.gp,
         won: teamStats.wins,
         lost: teamStats.losses,
         tied: teamStats.ties,
         pf: teamStats.pf,
         pa: teamStats.pa,
-      } : undefined,
-      matches,
+      }] : [],
+      playerStats: livePlayerStats,
+      matches: matches.filter((m) => m.homeTeamId === scopedTeamId || m.awayTeamId === scopedTeamId),
       plays,
+      teamNames: { [scopedTeamId]: teamName },
+      rosterTeamId: scopedTeamId,
     });
-  }, [teamId, team, teamName, seasons, snapshots, stats, teamStats, matches, plays]);
+    const archived: RecordSeasonInput[] = snapshots.map((snap) => ({
+      seasonId: snap.seasonId,
+      title: snap.title,
+      number: snap.number,
+      isCurrent: false,
+      championTeamId: snap.isChampion ? scopedTeamId : undefined,
+      standings: [{
+        id: scopedTeamId,
+        name: teamName,
+        shortcode,
+        played: snap.gamesPlayed,
+        won: snap.won,
+        lost: snap.lost,
+        tied: snap.tied,
+        pf: snap.pf,
+        pa: snap.pa,
+      }],
+      playerStats: snap.playerStats,
+      results: snap.results,
+      gameLeaders: snap.gameLeaders,
+    }));
+    return buildRecordBook([...archived, liveSeason], { scope: "team", teamId: scopedTeamId });
+  }, [teamId, team, teamName, seasons, currentSeasonId, snapshots, stats, teamStats, matches, plays]);
 
+  const selectedSnapshot = selectedSeasonId !== "current"
+    ? snapshots.find((s) => s.seasonId === selectedSeasonId)
+    : undefined;
+
+  // An archived season is read-only history: never fall back to live numbers when it has none.
   const displayedStats = useMemo(() => {
-    if (selectedSeasonId !== "current") {
-      const snap = snapshots.find((s) => s.seasonId === selectedSeasonId);
-      if (snap && snap.playerStats && snap.playerStats.length > 0) {
-        return snap.playerStats.map((p) => ({ ...p, number: p.number || "" }));
-      }
-    }
+    if (selectedSnapshot) return selectedSnapshot.playerStats.map((p) => ({ ...p, number: p.number || "" }));
     return stats;
-  }, [selectedSeasonId, snapshots, stats]);
+  }, [selectedSnapshot, stats]);
 
   const getTop3 = (key: string) => {
     const sorted = [...displayedStats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
@@ -543,7 +585,12 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         )}
 
         {activeTab === "records" ? (
-          <TeamRecordsSection records={franchiseRecords} teamName={teamName} />
+          <RecordBookSection
+            book={recordBook}
+            scopeLabel={teamName}
+            emptyTitle="No Franchise Records Yet"
+            emptyDescription={`Single game, season, and all-time records for ${teamName} are tracked automatically as games are completed.`}
+          />
         ) : activeTab === "history" ? (
           <TeamSeasonHistoryPanel
             teamName={teamName}
@@ -573,8 +620,12 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
         ) : !hasAnyLeader ? (
           <div className="rounded-2xl border border-dashed border-white/10 bg-neutral-900/50 px-6 py-12 text-center">
             <Trophy className="mx-auto mb-3 h-10 w-10 text-neutral-600" />
-            <h2 className="text-lg font-black uppercase tracking-wider">No stats yet</h2>
-            <p className="mt-1 text-sm text-neutral-400">Leaders will appear here once {teamName} finishes a game with tracked plays.</p>
+            <h2 className="text-lg font-black uppercase tracking-wider">{selectedSnapshot ? "No archived player stats" : "No stats yet"}</h2>
+            <p className="mt-1 text-sm text-neutral-400">
+              {selectedSnapshot
+                ? `${selectedSnapshot.title} was archived without tracked player stats. Results are listed below.`
+                : `Leaders will appear here once ${teamName} finishes a game with tracked plays.`}
+            </p>
           </div>
         ) : (
           sections.map((section) => (
@@ -598,6 +649,21 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
               </div>
             </section>
           ))
+        )}
+
+        {activeTab === "leaders" && selectedSnapshot && (
+          <section aria-label={`${selectedSnapshot.title} results`} className="space-y-3">
+            <h2 className="flex items-center gap-2 text-sm sm:text-base font-black uppercase tracking-widest text-white">
+              <Calendar className="h-4 w-4" style={{ color: "var(--team-ink)" }} />
+              {selectedSnapshot.title} Results
+              <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+              <span className="text-[11px] font-bold text-neutral-400 normal-case tracking-normal">
+                {selectedSnapshot.won}-{selectedSnapshot.lost}{selectedSnapshot.tied ? `-${selectedSnapshot.tied}` : ""}
+                {selectedSnapshot.standing ? ` · ${selectedSnapshot.standing}` : ""}
+              </span>
+            </h2>
+            <SeasonResultsList results={selectedSnapshot.results} perspectiveTeamId={team?.id || teamId} />
+          </section>
         )}
       </div>
       <TeamPortalFooter section="Stat Leaders" />
