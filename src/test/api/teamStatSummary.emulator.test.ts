@@ -7,7 +7,7 @@ const enabled = process.env.FLAGOS_TEST_EMULATORS === "true";
 const teamId = `perf_summary_${Date.now()}`;
 const gameId = `${teamId}_game`;
 const playId = `${teamId}_play`;
-const scope: SummaryTeamScope = { teamId, matchTeamIds: [teamId], requiresSignIn: false };
+const scope: SummaryTeamScope = { teamId, matchTeamIds: [teamId], requiresSignIn: false, seasonId: "season-1" };
 let app: App;
 let db: Firestore;
 

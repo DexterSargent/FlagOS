@@ -152,7 +152,9 @@ describe("PlayCanvas lazy dialogs", () => {
 function fieldSvg() {
   const svg = screen.getByTestId("designer-field").querySelector("svg") as SVGSVGElement;
   svg.getScreenCTM = () => null;
-  // jsdom has no SVG layout; map client pixels 1:1 onto the 1000x700 viewBox via the rect fallback.
+  // jsdom has no SVG layout; map client pixels 1:1 onto the full 1000x700 field so `at(x%, y%)`
+  // keeps addressing field percentages even though the editor crops the unused deep backfield.
+  svg.setAttribute("viewBox", "0 0 1000 700");
   svg.getBoundingClientRect = () =>
     ({ left: 0, top: 0, width: 1000, height: 700, right: 1000, bottom: 700, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
   return svg;

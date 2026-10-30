@@ -10,7 +10,8 @@ import {
   FormationAlignment,
   PlayerNode,
   DEFAULT_LOS_Y,
-  RUSH_LINE_DISTANCE,
+  YARD_HEIGHT_PCT,
+  MAX_BACKFIELD_DEPTH_YARDS,
   clampLegalPosition,
   checkLegalPosition,
   ensureSquadMatchup,
@@ -18,6 +19,7 @@ import {
   applyFormationToSquad,
   FLAG_5V5_FORMATIONS
 } from "@/lib/playbookTypes";
+import { PlayCanvasFieldBackground } from "./PlayCanvasFieldBackground";
 import { X, CheckCircle2, AlertTriangle, Sparkles, Move, Zap, Shield, RotateCcw, Eye, EyeOff } from "lucide-react";
 
 interface CreateFormationModalProps {
@@ -47,8 +49,9 @@ export default function CreateFormationModal({
   const rushLineDistanceYards = settings?.rules?.rushLineDistance || 7;
 
   const losY = DEFAULT_LOS_Y;
-  const rushDistanceY = (rushLineDistanceYards * 12) / 7;
-  const rushY = losY - rushDistanceY;
+  const rushY = losY - rushLineDistanceYards * YARD_HEIGHT_PCT;
+  // Crop the unused deep backfield so the alignment area renders larger
+  const fieldViewHeight = Math.min(700, Math.round((losY + (MAX_BACKFIELD_DEPTH_YARDS + 2) * YARD_HEIGHT_PCT) * 7));
   const isOffense = playbook.type === "offense";
 
   // Initial players setup:
@@ -129,7 +132,8 @@ export default function CreateFormationModal({
     const rect = svgRef.current.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return null;
     const x = Math.max(4, Math.min(96, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(4, Math.min(96, ((e.clientY - rect.top) / rect.height) * 100));
+    // The svg is cropped below the backfield, so scale the pointer through the visible viewBox height
+    const y = Math.max(4, Math.min(96, ((e.clientY - rect.top) / rect.height) * (fieldViewHeight / 7)));
     return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
   };
 
@@ -230,8 +234,8 @@ export default function CreateFormationModal({
   };
 
   const presetList = isOffense
-    ? ["Spread 2x1", "Trips Right", "Trips Left", "Bunch Right", "Spread 2x2"]
-    : ["Cover 2 Zone", "Cover 1 Man Lock", "Cover 3 Cloud", "Goal Line Tight"];
+    ? ["Spread 2x1", "Trips Right", "Trips Left", "Bunch Right", "Bunch Left", "Single Back"]
+    : ["Cover 2 Zone", "Cover 1 Man", "Cover 3 Zone", "Goal Line Tight"];
 
   return (
     <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto">
@@ -278,17 +282,17 @@ export default function CreateFormationModal({
         )}
 
         {/* Formation Controls Bar */}
-        <div data-tour="formation-settings" className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex-1 max-w-xs">
+        <div data-tour="formation-settings" className="flex flex-wrap items-end gap-x-6 gap-y-3">
+          <div className="basis-full sm:basis-auto sm:flex-1 min-w-[220px] max-w-sm">
             <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider block mb-1">
-              Formation / Alignment Name
+              Formation Name
             </label>
             <input
               type="text"
               required
               value={formationName}
               onChange={(e) => setFormationName(e.target.value)}
-              placeholder="e.g. Spread 2x1, Trips Right, Pistol Bunch..."
+              placeholder={isOffense ? "e.g. Spread 2x1, Trips Right, Bunch Left" : "e.g. Cover 2 Zone, Cover 1 Man, Cover 0"}
               className="w-full px-3.5 py-2 rounded-xl bg-black/50 border border-white/10 focus:border-cyan-400 text-white text-xs outline-none"
             />
           </div>
@@ -330,9 +334,9 @@ export default function CreateFormationModal({
           </div>
 
           {/* Quick Preset Starters */}
-          <div>
+          <div className="basis-full">
             <label className="text-[11px] uppercase font-bold text-neutral-400 tracking-wider block mb-1">
-              Preset Template:
+              Start From:
             </label>
             <div className="flex flex-wrap gap-1.5">
               {presetList.map((preset) => (
@@ -342,7 +346,7 @@ export default function CreateFormationModal({
                   onClick={() => handleApplyPreset(preset)}
                   className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white border border-white/10 text-xs font-bold transition-all"
                 >
-                  {preset.split(" ")[0] + " " + (preset.split(" ")[1] || "")}
+                  {preset}
                 </button>
               ))}
             </div>
@@ -394,76 +398,23 @@ export default function CreateFormationModal({
             </div>
           </div>
 
-          <div className="w-full aspect-[16/10] bg-[#102319] rounded-2xl border border-white/10 overflow-hidden relative select-none touch-none cursor-crosshair shadow-inner">
+          <div
+            className="w-full bg-[#102319] rounded-2xl border border-white/10 overflow-hidden relative select-none touch-none cursor-crosshair shadow-inner"
+            style={{ aspectRatio: `1000 / ${fieldViewHeight}` }}
+          >
             <svg
               ref={svgRef}
-              viewBox="0 0 1000 700"
+              viewBox={`0 0 1000 ${fieldViewHeight}`}
               className="w-full h-full"
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
             >
-              <defs>
-                <pattern id="turfPattern" width="1000" height="70" patternUnits="userSpaceOnUse">
-                  <rect width="1000" height="35" fill="#132B1F" />
-                  <rect y="35" width="1000" height="35" fill="#0E2319" />
-                </pattern>
-              </defs>
-
-              {/* Field Base Turf */}
-              <rect width="1000" height="700" fill="url(#turfPattern)" />
-
-              {/* Endzone */}
-              <rect x="0" y="0" width="1000" height="84" fill="#0C1D15" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-              <text x="500" y="52" fill="rgba(255,255,255,0.15)" fontSize="32" fontWeight="900" textAnchor="middle" letterSpacing="10">
-                END ZONE
-              </text>
-
-              {/* Yard Lines */}
-              {[20, 30, 40, 50, 60, 70, 80, 90].map((pct) => (
-                <line
-                  key={pct}
-                  x1="20"
-                  y1={(pct / 100) * 700}
-                  x2="980"
-                  y2={(pct / 100) * 700}
-                  stroke="rgba(255,255,255,0.12)"
-                  strokeWidth="1.5"
-                />
-              ))}
-
-              {/* Sidelines */}
-              <line x1="20" y1="0" x2="20" y2="700" stroke="#FFFFFF" strokeWidth="3" />
-              <line x1="980" y1="0" x2="980" y2="700" stroke="#FFFFFF" strokeWidth="3" />
-
-              {/* 7-Yard Rush Cone Line */}
-              <line
-                x1="20"
-                y1={(rushY / 100) * 700}
-                x2="980"
-                y2={(rushY / 100) * 700}
-                stroke="#FACC15"
-                strokeWidth="2.5"
-                strokeDasharray="8 6"
+              <PlayCanvasFieldBackground
+                fieldLabelScale={1}
+                losY={losY}
+                rushY={rushY}
+                rushLineDistanceYards={rushLineDistanceYards}
               />
-              <rect x="25" y={(rushY / 100) * 700 - 10} width="130" height="20" rx="6" fill="#FACC15" />
-              <text x="90" y={(rushY / 100) * 700 + 4} fill="#000000" fontSize="10" fontWeight="900" textAnchor="middle">
-                {rushLineDistanceYards}-YD RUSH CONE
-              </text>
-
-              {/* Line of Scrimmage */}
-              <line
-                x1="20"
-                y1={(losY / 100) * 700}
-                x2="980"
-                y2={(losY / 100) * 700}
-                stroke="#3ca505"
-                strokeWidth="3.5"
-              />
-              <ellipse cx="500" cy={(losY / 100) * 700} rx="14" ry="8" fill="#78350F" stroke="#FBBF24" strokeWidth="1.5" />
-              <rect x="850" y={(losY / 100) * 700 - 10} width="120" height="20" rx="6" fill="#3ca505" />
-              <text x="910" y={(losY / 100) * 700 + 4} fill="#000000" fontSize="10" fontWeight="900" textAnchor="middle">
-                SCRIMMAGE (LOS)
-              </text>
 
               {/* Player Nodes (Both sides rendered if opposing toggled, otherwise only active unit) */}
               {visiblePlayers.map((player) => {

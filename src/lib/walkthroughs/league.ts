@@ -176,8 +176,7 @@ export const TEAMS_DIRECTORY_WALKTHROUGH: ToolWalkthrough = {
   steps: [
     { id: "overview", targetSelector: "", title: "League Teams", category: "Overview", description: "Browse teams and their rosters. League managers can also add teams and players, assign free agents, and update team details." },
     { id: "team-controls", targetSelector: '[data-tour="teams-controls"]', title: "Team Management", category: "Management", description: "Administrators can create teams, edit names, and review their team cards.", details: [
-      { label: "Create Team", text: "Open the form to create a team." },
-      { label: "Add Team to Subscription (+ $20/mo)", text: "Add a team slot to the league subscription." },
+      { label: "Create Team / Add Team", text: "Open the form to create a team. The button shows whether the team fills an open slot (no extra charge) or adds a $20/mo seat; paid plans confirm the prorated charge before anything is billed." },
       { label: "Manage Subscription", text: "Open league settings to review subscription options." },
       { label: "Edit Name", text: "Change the selected team's name." },
       { label: "Delete Team", text: "Remove the selected team after confirming." },

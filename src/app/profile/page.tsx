@@ -892,7 +892,7 @@ export default function PlayerProfilePage() {
                 </h3>
               </div>
               <p className="text-xs text-neutral-400 max-w-2xl leading-relaxed">
-                These rules are set and maintained by the League Commissioner. All match calculations, play designer field dimensions, rush cones, and roster requirements automatically adhere to these official policies.
+                These rules are set and maintained by the League Commissioner. All match calculations, play designer field dimensions, rush line distance, and roster requirements automatically adhere to these official policies.
               </p>
             </div>
 

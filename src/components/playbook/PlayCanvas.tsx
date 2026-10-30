@@ -14,6 +14,7 @@ import {
   Playbook,
   DEFAULT_LOS_Y,
   YARD_HEIGHT_PCT,
+  MAX_BACKFIELD_DEPTH_YARDS,
   getYardsFromLos,
   snapYToYard,
   ROUTE_PRESETS_CATALOG,
@@ -575,8 +576,8 @@ export default function PlayCanvas({
       ...(playbook?.formationsAreCategories
         ? []
         : play.type === "defense"
-        ? ["Cover 2 Zone", "Cover 1 Man", "Cover 3 Cloud", "Goal Line Tight"]
-        : ["Spread 2x1", "Trips Right", "Bunch Right", "Spread 2x2", "I-Formation", "Empty", "Double Wing"]),
+        ? ["Cover 2 Zone", "Cover 1 Man", "Cover 3 Zone", "Goal Line Tight"]
+        : ["Spread 2x1", "Trips Right", "Trips Left", "Bunch Right", "Bunch Left", "Single Back"]),
     ].filter(Boolean))
   );
 
@@ -668,11 +669,14 @@ export default function PlayCanvas({
   const defensePlayers = play.players.filter((p) => p.side === "defense");
 
   const losY = play.losY || DEFAULT_LOS_Y;
+  // Full view keeps the end zone through ~14 yards of backfield; the deeper canvas below is
+  // unused by legal alignments, so cropping it lets the playable field render larger.
+  const fullFieldHeight = Math.min(700, Math.round((losY + (MAX_BACKFIELD_DEPTH_YARDS + 2) * YARD_HEIGHT_PCT) * 7));
   const compactFieldViewBox = isCompactLandscape
     ? play.type === "defense"
       ? `0 ${Math.max(0, Math.round((losY - 40) * 7))} 1000 380`
       : `0 ${Math.max(0, Math.round((losY - 33) * 7))} 1000 440`
-    : "0 0 1000 700";
+    : `0 0 1000 ${fullFieldHeight}`;
   const rushDistanceY = rushLineDistanceYards * YARD_HEIGHT_PCT;
   const rushY = losY - rushDistanceY;
 
@@ -915,11 +919,16 @@ export default function PlayCanvas({
         console.warn("SVG getScreenCTM transform fallback:", err);
       }
 
-      // Fallback if getScreenCTM is unavailable
+      // Fallback if getScreenCTM is unavailable: map through the (possibly cropped) viewBox
       const rect = svg.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return null;
-      const x = Math.max(2, Math.min(98, ((e.clientX - rect.left) / rect.width) * 100));
-      const y = Math.max(2, Math.min(98, ((e.clientY - rect.top) / rect.height) * 100));
+      const [vbX = 0, vbY = 0, vbW = 1000, vbH = 700] = (svg.getAttribute("viewBox") || "0 0 1000 700")
+        .split(/\s+/)
+        .map(Number);
+      const svgX = vbX + ((e.clientX - rect.left) / rect.width) * vbW;
+      const svgY = vbY + ((e.clientY - rect.top) / rect.height) * vbH;
+      const x = Math.max(2, Math.min(98, (svgX / 1000) * 100));
+      const y = Math.max(2, Math.min(98, (svgY / 700) * 100));
       return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
     },
     []
@@ -2206,7 +2215,7 @@ export default function PlayCanvas({
             disabled={readOnly}
             value={zone.name}
             onChange={(e) => handleUpdateZone(zone.id, { name: e.target.value })}
-            placeholder="e.g. Deep 1/3, Robber, Flat Box"
+            placeholder="e.g. Deep Half, Hook/Curl, Flat"
             data-testid="zone-name-input"
             className="w-full bg-black/60 border border-white/20 rounded-lg px-2.5 py-1 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-400 font-medium"
           />
@@ -2628,7 +2637,7 @@ export default function PlayCanvas({
               disabled={readOnly}
               value={play.name}
               onChange={(e) => onChange({ ...play, name: e.target.value })}
-              placeholder="Play Name..."
+              placeholder="Name this play (e.g. Trips Right Flood)"
               className="min-w-0 w-full h-9 text-xs font-bold text-neutral-900 dark:text-white bg-neutral-100 dark:bg-black/40 hover:bg-neutral-200 dark:hover:bg-black/60 focus:bg-white dark:focus:bg-black/80 focus:border-cyan-500 rounded-lg px-2 border border-neutral-200 dark:border-white/10 outline-none transition-all"
             />
           </div>
@@ -2843,7 +2852,7 @@ export default function PlayCanvas({
 
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 px-2 block font-bold">
-                      Standard Opponent Presets:
+                      Common Opponent Looks:
                     </span>
                     <div className="grid grid-cols-1 gap-1">
                       {systemOpponentPresets.map((preset) => (
@@ -4614,7 +4623,7 @@ export default function PlayCanvas({
                 disabled={readOnly}
                 value={selectedPlayer.notes || ""}
                 onChange={(e) => handleUpdatePlayerNotes(selectedPlayer.id, e.target.value)}
-                placeholder="Coaching assignment and read notes..."
+                placeholder="Coaching points: reads, progressions, adjustments..."
                 className="w-full min-w-0 resize-y rounded-lg border border-neutral-200 dark:border-white/10 bg-neutral-50 dark:bg-black/40 px-2.5 py-2 text-xs leading-relaxed text-neutral-900 dark:text-white placeholder:text-neutral-400 dark:placeholder:text-neutral-500 outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
               />
             </details>

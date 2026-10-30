@@ -221,7 +221,12 @@ export default function AutomatedScheduleBuilderModal({
       setFormNotice({ tone: "error", message: "Add at least two active teams before building a schedule." });
       return;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+    const baseDate = parseLocalDate(startDate);
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+      !Number.isFinite(baseDate.getTime()) ||
+      toLocalDateString(baseDate) !== startDate
+    ) {
       setFormNotice({ tone: "error", message: "Choose a valid season start date." });
       return;
     }
@@ -240,8 +245,6 @@ export default function AutomatedScheduleBuilderModal({
     const unplaced: string[] = [];
 
     // Compute calendar dates for each week
-    const baseDate = parseLocalDate(startDate);
-
     // 1. Generate Regular Season Fixtures
     const n = eligibleTeams.length;
     const isOdd = n % 2 !== 0;

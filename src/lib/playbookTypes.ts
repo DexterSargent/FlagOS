@@ -51,7 +51,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     x: 28,
     rx: 24,
     ry: 13,
-    description: "Deep 1/2 zone covering the left sideline & hash",
+    description: "Deep half zone covering the left side of the field",
   },
   {
     id: "deep-half-r",
@@ -63,7 +63,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     x: 72,
     rx: 24,
     ry: 13,
-    description: "Deep 1/2 zone covering the right sideline & hash",
+    description: "Deep half zone covering the right side of the field",
   },
   {
     id: "deep-third-m",
@@ -112,7 +112,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     x: 50,
     rx: 18,
     ry: 9,
-    description: "Low hole / middle hook guarding crosses & checkdowns",
+    description: "Middle hook zone guarding crossers and checkdowns",
   },
   {
     id: "hook-curl-l",
@@ -124,7 +124,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     x: 32,
     rx: 15,
     ry: 9,
-    description: "Underneath intermediate hook/curl to the left hash",
+    description: "Underneath hook/curl zone on the left side",
   },
   {
     id: "hook-curl-r",
@@ -136,7 +136,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     x: 68,
     rx: 15,
     ry: 9,
-    description: "Underneath intermediate hook/curl to the right hash",
+    description: "Underneath hook/curl zone on the right side",
   },
   // Flats & Short
   {
@@ -149,7 +149,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     x: 18,
     rx: 16,
     ry: 7,
-    description: "Hard flat / cloud coverage on the left boundary",
+    description: "Flat zone on the left sideline",
   },
   {
     id: "flat-r",
@@ -161,7 +161,7 @@ export const STANDARD_DEFENSIVE_ZONES: StandardZoneTemplate[] = [
     x: 82,
     rx: 16,
     ry: 7,
-    description: "Hard flat / cloud coverage on the right boundary",
+    description: "Flat zone on the right sideline",
   },
   {
     id: "qb-spy",
@@ -454,8 +454,11 @@ export const DEFAULT_LOS_Y = 65;
 // Authentic game spacing: 1 yard = 1.75% of canvas height (e.g. in 700px height: 12.25px per yard)
 export const YARD_HEIGHT_PCT = 1.75;
 
-// In standard 50-yard flag field, 7 yards back is ~12.25% on the vertical axis
+// Pass rushers must start 7 yards off the ball: 7 * YARD_HEIGHT_PCT = 12.25% on the vertical axis
 export const RUSH_LINE_DISTANCE = 12.25;
+
+// Deepest legal backfield alignment (yards behind the LOS). Keeps players on the drawn field.
+export const MAX_BACKFIELD_DEPTH_YARDS = 12;
 
 /**
  * Snaps a vertical Y coordinate to the nearest yard line relative to the Line of Scrimmage (LOS).
@@ -492,9 +495,9 @@ export interface FieldPositionPreset {
 
 export const FIELD_POSITION_PRESETS: FieldPositionPreset[] = [
   { id: "own-5", label: "Own 5 (Backed Up)", shortLabel: "Own 5", yardLine: 5, side: "own", description: "Deep in own territory against the goal line" },
-  { id: "own-20", label: "Own 20 (Standard Start)", shortLabel: "Own 20", yardLine: 20, side: "own", description: "Standard starting drive spot after touchback" },
+  { id: "own-20", label: "Own 20 (Standard Start)", shortLabel: "Own 20", yardLine: 20, side: "own", description: "Typical drive start on a shorter flag field" },
   { id: "own-35", label: "Own 35", shortLabel: "Own 35", yardLine: 35, side: "own", description: "Approaching midfield" },
-  { id: "midfield", label: "Midfield (50 Yd Line)", shortLabel: "50", yardLine: 50, side: "midfield", description: "Center of the field / 1st down to-gain line" },
+  { id: "midfield", label: "Midfield (50 Yd Line)", shortLabel: "50", yardLine: 50, side: "midfield", description: "Midfield; crossing it earns a first down in most flag leagues" },
   { id: "opp-30", label: "Opponent 30", shortLabel: "Opp 30", yardLine: 30, side: "opp", description: "Opponent territory" },
   { id: "opp-20", label: "Opponent 20 (Red Zone)", shortLabel: "Opp 20", yardLine: 20, side: "opp", description: "High red zone scoring territory" },
   { id: "opp-10", label: "Opponent 10 (Low Red Zone)", shortLabel: "Opp 10", yardLine: 10, side: "opp", description: "Inside the 10-yard line" },
@@ -524,6 +527,7 @@ export function clampLegalPosition(
   losY = DEFAULT_LOS_Y
 ): { x: number; y: number } {
   const rushLineY = losY - RUSH_LINE_DISTANCE;
+  const maxBackfieldY = Math.min(94, losY + MAX_BACKFIELD_DEPTH_YARDS * YARD_HEIGHT_PCT);
   // Field sidelines: keep players inside the field bounds [4, 96]
   const clampedX = Math.max(4, Math.min(96, Math.round(targetCoords.x * 10) / 10));
   let clampedY = Math.round(targetCoords.y * 10) / 10;
@@ -534,14 +538,14 @@ export function clampLegalPosition(
       clampedY = losY;
     } else if (player.label === "QB") {
       // QB must be in the backfield (at least 4% behind scrimmage)
-      clampedY = Math.max(losY + 4, Math.min(94, clampedY));
+      clampedY = Math.max(losY + 4, Math.min(maxBackfieldY, clampedY));
     } else {
       // Receivers and runners can align on or behind LOS, but NEVER beyond it
-      clampedY = Math.max(losY, Math.min(94, clampedY));
+      clampedY = Math.max(losY, Math.min(maxBackfieldY, clampedY));
     }
   } else {
     if (isAssignedPassRusher(player)) {
-      // Pass Rusher must be at least 7 yards behind LOS (marked by yellow rush cone)
+      // Pass rushers must start at or beyond the 7-yard rush line
       clampedY = Math.max(12, Math.min(rushLineY, clampedY));
     } else {
       // Defenders must stay on defensive side of the Line of Scrimmage
@@ -582,7 +586,7 @@ export function checkLegalPosition(player: PlayerNode, losY = DEFAULT_LOS_Y): Le
     if (player.label === "QB" && player.y < losY + 3.5) {
       return {
         isLegal: false,
-        warning: "QB must be set in the backfield (shotgun/under center).",
+        warning: "QB must be set in the backfield behind the center.",
       };
     }
 
@@ -732,7 +736,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
     defaultBreakYards: 4,
     minBreakYards: 2,
     maxBreakYards: 10,
-    description: "Stems downfield then cuts 45° across the middle inside the hashes",
+    description: "Quick stem, then a sharp 45° cut across the middle of the field",
   },
   {
     name: "Out",
@@ -777,7 +781,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
     defaultBreakYards: 25,
     minBreakYards: 10,
     maxBreakYards: 35,
-    description: "Vertical burner straight downfield testing deep coverage",
+    description: "Vertical route straight downfield to stretch the coverage deep",
   },
   {
     name: "Curl / Hook",
@@ -804,7 +808,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
     defaultBreakYards: 12,
     minBreakYards: 8,
     maxBreakYards: 18,
-    description: "Sells vertical streak, then plants and cuts back 45° toward the sideline at 10 yards",
+    description: "Sells the vertical, then plants and works back toward the sideline at the break depth",
   },
   {
     name: "Drag / Cross",
@@ -858,7 +862,7 @@ export const ROUTE_PRESETS_CATALOG: RoutePresetDefinition[] = [
     defaultBreakYards: 1,
     minBreakYards: 0,
     maxBreakYards: 3,
-    description: "Sets up behind or at the scrimmage line for quick dump-off or lead block",
+    description: "Settles at or behind the line of scrimmage as a quick outlet for the QB",
   },
 ];
 
@@ -871,7 +875,7 @@ export const PRE_SNAP_MOTION_CATALOG: RoutePresetDefinition[] = [
     defaultBreakYards: 0,
     minBreakYards: 0,
     maxBreakYards: 4,
-    description: "Pre-snap sprint across the backfield behind the quarterback before the snap",
+    description: "Full-speed pre-snap motion across the formation behind the line of scrimmage",
   },
   {
     name: "Orbit Motion",
@@ -1431,37 +1435,37 @@ export const FLAG_5V5_FORMATIONS: Record<string, { label: string; role: string; 
   "Trips Right": [
     { label: "C", role: "Center", x: 50, y: 0 },
     { label: "QB", role: "Quarterback", x: 50, y: 9 },
-    { label: "X", role: "Solo Receiver Left", x: 18, y: 1 },
-    { label: "R", role: "Inside Slot Right", x: 68, y: 2 },
-    { label: "Z", role: "Outside Receiver Right", x: 84, y: 1 },
+    { label: "X", role: "#3 Receiver (Inside Trips)", x: 62, y: 2 },
+    { label: "R", role: "#2 Receiver (Middle Trips)", x: 74, y: 1 },
+    { label: "Z", role: "#1 Receiver (Outside Trips)", x: 86, y: 2 },
   ],
   "Trips Left": [
     { label: "C", role: "Center", x: 50, y: 0 },
     { label: "QB", role: "Quarterback", x: 50, y: 9 },
-    { label: "Z", role: "Solo Receiver Right", x: 82, y: 1 },
-    { label: "R", role: "Inside Slot Left", x: 32, y: 2 },
-    { label: "X", role: "Outside Receiver Left", x: 16, y: 1 },
+    { label: "Z", role: "#3 Receiver (Inside Trips)", x: 38, y: 2 },
+    { label: "R", role: "#2 Receiver (Middle Trips)", x: 26, y: 1 },
+    { label: "X", role: "#1 Receiver (Outside Trips)", x: 14, y: 2 },
   ],
   "Bunch Right": [
     { label: "C", role: "Center", x: 50, y: 0 },
     { label: "QB", role: "Quarterback", x: 50, y: 9 },
-    { label: "X", role: "Split Left", x: 20, y: 1 },
-    { label: "R", role: "Bunch Point", x: 68, y: 2 },
+    { label: "R", role: "Bunch Point", x: 72, y: 1 },
+    { label: "X", role: "Bunch Inside", x: 66, y: 3 },
     { label: "Z", role: "Bunch Outside", x: 78, y: 3 },
   ],
   "Bunch Left": [
     { label: "C", role: "Center", x: 50, y: 0 },
     { label: "QB", role: "Quarterback", x: 50, y: 9 },
-    { label: "Z", role: "Split Right", x: 80, y: 1 },
-    { label: "R", role: "Bunch Point", x: 32, y: 2 },
+    { label: "R", role: "Bunch Point", x: 28, y: 1 },
+    { label: "Z", role: "Bunch Inside", x: 34, y: 3 },
     { label: "X", role: "Bunch Outside", x: 22, y: 3 },
   ],
-  "Spread 2x2": [
+  "Single Back": [
     { label: "C", role: "Center", x: 50, y: 0 },
     { label: "QB", role: "Quarterback", x: 50, y: 9 },
-    { label: "X", role: "Wide Receiver Left", x: 15, y: 1 },
-    { label: "R", role: "Slot Left", x: 32, y: 1 },
-    { label: "Z", role: "Wide Receiver Right", x: 85, y: 1 },
+    { label: "X", role: "Receiver Left", x: 15, y: 1 },
+    { label: "R", role: "Running Back", x: 40, y: 8 },
+    { label: "Z", role: "Receiver Right", x: 85, y: 1 },
   ],
   // Defense Formations (5 players)
   "Cover 2 Zone": [
@@ -1471,19 +1475,19 @@ export const FLAG_5V5_FORMATIONS: Record<string, { label: string; role: string; 
     { label: "FS", role: "Free Safety (Deep Left)", x: 34, y: -16 },
     { label: "SS", role: "Strong Safety (Deep Right)", x: 66, y: -16 },
   ],
-  "Cover 1 Man Lock": [
+  "Cover 1 Man": [
     { label: "RUSH", role: "Pass Rusher (7 yds back)", x: 50, y: -13 },
-    { label: "CB1", role: "Cornerback Left (Man Lock)", x: 18, y: -3 },
-    { label: "CB2", role: "Cornerback Right (Man Lock)", x: 82, y: -3 },
-    { label: "NB", role: "Nickel Corner (Man Lock)", x: 68, y: -3 },
-    { label: "FS", role: "Centerfield Safety", x: 50, y: -20 },
+    { label: "CB1", role: "Cornerback Left (Man)", x: 18, y: -3 },
+    { label: "CB2", role: "Cornerback Right (Man)", x: 82, y: -3 },
+    { label: "NB", role: "Nickel Corner (Man)", x: 68, y: -3 },
+    { label: "FS", role: "Free Safety (Deep Middle)", x: 50, y: -20 },
   ],
-  "Cover 3 Cloud": [
+  "Cover 3 Zone": [
     { label: "RUSH", role: "Pass Rusher (7 yds back)", x: 50, y: -13 },
     { label: "CB1", role: "Cornerback Left (Deep 1/3)", x: 20, y: -8 },
     { label: "CB2", role: "Cornerback Right (Deep 1/3)", x: 80, y: -8 },
-    { label: "FS", role: "Free Safety (Deep 1/3 Mid)", x: 50, y: -18 },
-    { label: "MLB", role: "Middle Linebacker (Under)", x: 50, y: -6 },
+    { label: "FS", role: "Free Safety (Deep Middle 1/3)", x: 50, y: -18 },
+    { label: "MLB", role: "Linebacker (Hook/Curl)", x: 50, y: -6 },
   ],
   "Goal Line Tight": [
     { label: "RUSH", role: "Pass Rusher (7 yds back)", x: 50, y: -13 },
@@ -1492,6 +1496,13 @@ export const FLAG_5V5_FORMATIONS: Record<string, { label: string; role: string; 
     { label: "NB", role: "Inside Bracket", x: 50, y: -2 },
     { label: "FS", role: "Goal Line Safety", x: 50, y: -10 },
   ],
+};
+
+/** Legacy formation names saved before the presets were corrected. */
+export const FORMATION_NAME_ALIASES: Record<string, string> = {
+  "Spread 2x2": "Spread 2x1",
+  "Cover 1 Man Lock": "Cover 1 Man",
+  "Cover 3 Cloud": "Cover 3 Zone",
 };
 
 /**
@@ -1597,7 +1608,7 @@ export function applyFormationToSquad(
   side: PlaySide,
   losY = DEFAULT_LOS_Y
 ): PlayerNode[] {
-  const formationConfig = FLAG_5V5_FORMATIONS[formationName];
+  const formationConfig = FLAG_5V5_FORMATIONS[FORMATION_NAME_ALIASES[formationName] || formationName];
   if (!formationConfig) return players;
 
   const otherSidePlayers = players.filter((p) => p.side !== side);
@@ -1682,11 +1693,11 @@ export const DEFAULT_FLAG_PLAYS: PlayDiagram[] = [
     ],
   },
 
-  // 5v5 OFFENSE 2: Trips Right - Flood Overload vs Cover 3
+  // 5v5 OFFENSE 2: Trips Right - Flood vs Cover 3
   {
     id: "offense-trips-flood",
     teamId: "default",
-    name: "5v5 Trips - Flood Overload",
+    name: "5v5 Trips Right Flood",
     type: "offense",
     formation: "Trips Right",
     situation: "3rd & Medium",
@@ -1714,7 +1725,7 @@ export const DEFAULT_FLAG_PLAYS: PlayDiagram[] = [
     ],
   },
 
-  // 5v5 OFFENSE 3: Bunch Right - Mesh Rub vs Man Lock
+  // 5v5 OFFENSE 3: Bunch Right - Mesh Rub vs Man Coverage
   {
     id: "offense-bunch-mesh",
     teamId: "default",
@@ -1733,9 +1744,9 @@ export const DEFAULT_FLAG_PLAYS: PlayDiagram[] = [
       { id: "z", label: "Z", role: "Bunch Outside", x: 78, y: DEFAULT_LOS_Y + 3, side: "offense", route: [{ x: 86, y: DEFAULT_LOS_Y - 4 }, { x: 88, y: DEFAULT_LOS_Y - 32 }], quickRouteName: "Wheel" },
       // 5 Defense
       { id: "rush", label: "RUSH", role: "Pass Rusher (7 yds back)", x: 50, y: DEFAULT_LOS_Y - 13, side: "defense", coverageType: "rush", route: [{ x: 50, y: DEFAULT_LOS_Y + 9 }], routeType: "rush" },
-      { id: "cb1", label: "CB1", role: "Cornerback Left (Man Lock)", x: 20, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "x" },
-      { id: "cb2", label: "CB2", role: "Cornerback Right (Man Lock)", x: 78, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "z" },
-      { id: "nb", label: "NB", role: "Nickel Corner (Man Lock)", x: 68, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "r" },
+      { id: "cb1", label: "CB1", role: "Cornerback Left (Man)", x: 20, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "x" },
+      { id: "cb2", label: "CB2", role: "Cornerback Right (Man)", x: 78, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "z" },
+      { id: "nb", label: "NB", role: "Nickel Corner (Man)", x: 68, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "r" },
       { id: "fs", label: "FS", role: "Centerfield Safety", x: 50, y: DEFAULT_LOS_Y - 20, side: "defense", coverageType: "zone", route: [{ x: 50, y: DEFAULT_LOS_Y - 28 }] },
     ],
   },
@@ -1772,22 +1783,22 @@ export const DEFAULT_FLAG_PLAYS: PlayDiagram[] = [
     ],
   },
 
-  // 5v5 DEFENSE 2: Cover 1 Man-to-Man Lock vs Trips
+  // 5v5 DEFENSE 2: Cover 1 Press Man vs Trips
   {
     id: "defense-man-press",
     teamId: "default",
-    name: "5v5 Man Press Lock",
+    name: "5v5 Cover 1 Press Man",
     type: "defense",
-    formation: "Man Press 1-High",
+    formation: "Cover 1 Man",
     situation: "Extra Point / Short Yardage",
     notes: "Aggressive 5v5 man coverage. Rusher attacks from 7-yard mark. 3 Defenders lock man-to-man; Free Safety patrols center field.",
     losY: DEFAULT_LOS_Y,
     players: [
       // 5 Defense
       { id: "rush", label: "RUSH", role: "Pass Rusher (7 yds back)", x: 50, y: DEFAULT_LOS_Y - 13, side: "defense", coverageType: "rush", route: [{ x: 50, y: DEFAULT_LOS_Y + 9 }], routeType: "rush" },
-      { id: "cb1", label: "CB1", role: "Cornerback Left (Man Lock)", x: 18, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "x" },
-      { id: "cb2", label: "CB2", role: "Cornerback Right (Man Lock)", x: 84, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "z" },
-      { id: "nb", label: "NB", role: "Nickel Slot (Man Lock)", x: 68, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "r" },
+      { id: "cb1", label: "CB1", role: "Cornerback Left (Man)", x: 18, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "x" },
+      { id: "cb2", label: "CB2", role: "Cornerback Right (Man)", x: 84, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "z" },
+      { id: "nb", label: "NB", role: "Nickel Slot (Man)", x: 68, y: DEFAULT_LOS_Y - 3, side: "defense", coverageType: "man", manTargetId: "r" },
       { id: "fs", label: "FS", role: "Centerfield Free Safety", x: 50, y: DEFAULT_LOS_Y - 20, side: "defense", coverageType: "zone", route: [{ x: 50, y: DEFAULT_LOS_Y - 28 }] },
       // 5 Offense
       { id: "c", label: "C", role: "Center", x: 50, y: DEFAULT_LOS_Y, side: "offense" },
@@ -1798,13 +1809,13 @@ export const DEFAULT_FLAG_PLAYS: PlayDiagram[] = [
     ],
   },
 
-  // 5v5 DEFENSE 3: Cover 3 Cloud Zone vs Bunch
+  // 5v5 DEFENSE 3: Cover 3 Zone vs Bunch
   {
     id: "defense-cover3-zone",
     teamId: "default",
-    name: "5v5 Cover 3 Deep Cloud",
+    name: "5v5 Cover 3 Zone",
     type: "defense",
-    formation: "Cover 3 Cloud",
+    formation: "Cover 3 Zone",
     situation: "3rd & Long",
     notes: "Protects against deep chunk plays. Corners bail to deep thirds, safety guards deep middle, middle linebacker patrols intermediate hole.",
     losY: DEFAULT_LOS_Y,
@@ -1855,12 +1866,12 @@ export function createDefaultPlaybooks(teamId: string, playersPerSide: number = 
     title: `${squadSize}v${squadSize} Spread & Trips Offense`,
     type: "offense",
     playersOnField: squadSize,
-    description: "Primary offensive playbook featuring spread quick game, flood overloads, and red zone rub concepts.",
+    description: "Primary offensive playbook featuring spread quick game, trips flood concepts, and red zone rub routes.",
     formations: [
-      { id: "form-spread", name: "Spread 2x1", side: "offense", description: "Balanced 2-receiver right, 1-receiver left spread.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Spread 2x1", "offense", DEFAULT_LOS_Y) },
-      { id: "form-trips", name: "Trips Right", side: "offense", description: "Overload three receivers to the field side with backside solo X.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Trips Right", "offense", DEFAULT_LOS_Y) },
-      { id: "form-bunch", name: "Bunch Right", side: "offense", description: "Compressed 3-man bunch creating natural rub action.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Bunch Right", "offense", DEFAULT_LOS_Y) },
-      { id: "form-empty", name: "Spread 2x2", side: "offense", description: "Empty backfield 4-receiver spread.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Spread 2x2", "offense", DEFAULT_LOS_Y) },
+      { id: "form-spread", name: "Spread 2x1", side: "offense", description: "Two receivers to the right, one to the left, with the slot off the line.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Spread 2x1", "offense", DEFAULT_LOS_Y) },
+      { id: "form-trips", name: "Trips Right", side: "offense", description: "Three receivers stacked to the right side.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Trips Right", "offense", DEFAULT_LOS_Y) },
+      { id: "form-bunch", name: "Bunch Right", side: "offense", description: "Three receivers compressed into a tight bunch for natural rubs and picks.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Bunch Right", "offense", DEFAULT_LOS_Y) },
+      { id: "form-single-back", name: "Single Back", side: "offense", description: "Two split receivers with a running back offset in the backfield.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Single Back", "offense", DEFAULT_LOS_Y) },
     ],
     plays: offensivePlays,
     createdAt: new Date().toISOString(),
@@ -1873,12 +1884,12 @@ export function createDefaultPlaybooks(teamId: string, playersPerSide: number = 
     title: `${squadSize}v${squadSize} Lockdown Defense`,
     type: "defense",
     playersOnField: squadSize,
-    description: "Core defensive schemes featuring 2-deep zone shells, man lock press, and cloud coverage.",
+    description: "Core defensive schemes featuring Cover 2 zone, Cover 1 press man, and Cover 3 zone.",
     formations: [
       { id: "form-cover2", name: "Cover 2 Zone", side: "defense", description: "Base 2-deep safety shell with aggressive flat defenders.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Cover 2 Zone", "defense", DEFAULT_LOS_Y) },
-      { id: "form-cover1", name: "Cover 1 Man Lock", side: "defense", description: "Tight man-to-man coverage with 1 centerfield safety.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Cover 1 Man Lock", "defense", DEFAULT_LOS_Y) },
-      { id: "form-cover3", name: "Cover 3 Cloud", side: "defense", description: "3-deep zone thirds with intermediate hook coverage.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Cover 3 Cloud", "defense", DEFAULT_LOS_Y) },
-      { id: "form-goalline", name: "Goal Line Tight", side: "defense", description: "Condensed goal line press bracket.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Goal Line Tight", "defense", DEFAULT_LOS_Y) },
+      { id: "form-cover1", name: "Cover 1 Man", side: "defense", description: "Man-to-man coverage with one deep safety in the middle of the field.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Cover 1 Man", "defense", DEFAULT_LOS_Y) },
+      { id: "form-cover3", name: "Cover 3 Zone", side: "defense", description: "Three deep thirds with a linebacker in the hook/curl zone.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Cover 3 Zone", "defense", DEFAULT_LOS_Y) },
+      { id: "form-goalline", name: "Goal Line Tight", side: "defense", description: "Condensed goal line look with press corners and an inside bracket.", players: applyFormationToSquad(ensureSquadMatchup([], DEFAULT_LOS_Y, squadSize), "Goal Line Tight", "defense", DEFAULT_LOS_Y) },
     ],
     plays: defensivePlays,
     createdAt: new Date().toISOString(),
@@ -1926,7 +1937,7 @@ export function migrateRawPlaysToPlaybooks(rawPlays: PlayDiagram[], teamId: stri
 
   if (defPlays.length > 0) {
     const formationsInUse = Array.from(new Set(defPlays.map((p) => p.formation || "Cover 2 Zone")));
-    if (formationsInUse.length === 0) formationsInUse.push("Cover 2 Zone", "Cover 1 Man Lock");
+    if (formationsInUse.length === 0) formationsInUse.push("Cover 2 Zone", "Cover 1 Man");
 
     playbooks.push({
       id: `pb-def-${teamId}`,
@@ -1987,11 +1998,11 @@ export function createPlayInFormation(
   return {
     id: `play-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     teamId: playbook.teamId,
-    name: `${formationName} - Concept ${Math.floor(Math.random() * 90) + 10}`,
+    name: `${formationName} Play ${(playbook.plays?.filter((p) => p.formation === formationName).length || 0) + 1}`,
     type: playbook.type,
     formation: formationName,
     situation: "Standard",
-    notes: `Created within ${formationName} alignment (${squadCount}v${squadCount}).`,
+    notes: "",
     losY,
     players: alignedPlayers,
     createdAt: new Date().toISOString(),

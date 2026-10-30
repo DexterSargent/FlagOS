@@ -22,6 +22,8 @@ import { useDemoSandbox } from "@/lib/useDemoSandbox";
 import DemoLoadError from "@/components/DemoLoadError";
 import { isPrimaryTeamAdmin, isDexterUser } from "@/lib/teamAdminRbac";
 import { loadTeamManagedMatches } from "@/lib/teamSeasonData";
+import { getCurrentTeamSeasonId } from "@/lib/teamSeasons";
+import { isMatchInSeason } from "@/lib/leagueSeasons";
 import { getCachedLeagueTeams, subscribeLeagueSeasonMatches } from "@/lib/leagueDataCache";
 import { invalidatePublicTeamData } from "@/lib/publicTeamCache";
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
@@ -264,7 +266,10 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
 
         const leagueId = typeof teamData?.leagueId === "string" ? teamData.leagueId : "";
         if (teamData && !leagueId) {
-          const teamMatches = await loadTeamManagedMatches(teamId);
+          // Past seasons are explored read-only from the team stats page; the schedule stays current.
+          const currentSeasonId = getCurrentTeamSeasonId(teamData as Record<string, unknown>);
+          const teamMatches = (await loadTeamManagedMatches(teamId))
+            .filter((match) => isMatchInSeason(match, currentSeasonId));
           if (cancelled) return;
           if (isRealTeam(teamData)) setTeam(teamData);
           else setTeam(null);

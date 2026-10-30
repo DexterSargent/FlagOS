@@ -83,6 +83,11 @@ vi.mock("@/lib/leagueContext", async (importOriginal) => {
       },
       updateSettings: mockUpdateSettings,
       isDemoLeague: mockIsDemoLeague,
+      currentSeasonId: "season-1",
+      seasons: [{ id: "season-1", title: "2026 Season", status: "active", number: 1 }],
+      viewingSeasonId: "season-1",
+      setViewingSeasonId: vi.fn(),
+      isViewingArchivedSeason: false,
     }),
   };
 });
@@ -173,6 +178,8 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsLeagueAdmin = true;
+    mockIsDemoLeague = true;
+    mockGetSandboxScheduleBackup.mockReturnValue(null);
     delete (window as any).location;
     window.location = new URL("http://localhost:3000/schedule?week=Week+1") as any;
     window.confirm = vi.fn(() => true);
@@ -328,6 +335,25 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
 
     fireEvent.click(restoreBtn);
     expect(mockRestoreSandboxScheduleBackup).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses to restore an untagged backup into a real league", async () => {
+    mockIsLeagueAdmin = true;
+    mockIsDemoLeague = false;
+    (mockGetSandboxScheduleBackup as any).mockReturnValue({
+      timestamp: Date.now(),
+      matches: mockMatches,
+    });
+
+    await renderSchedule();
+
+    fireEvent.click(await screen.findByRole("button", { name: /Restore Schedule/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "That backup belongs to a different league and cannot be restored here.",
+    );
+    expect(mockDeleteDoc).not.toHaveBeenCalled();
+    expect(mockCreateSecureRecord).not.toHaveBeenCalled();
   });
 
   it("opens Schedule Game modal, enters details, and creates a new game", async () => {
@@ -720,6 +746,4 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     });
   });
 });
-
-
 

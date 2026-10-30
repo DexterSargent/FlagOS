@@ -76,7 +76,8 @@ vi.mock("@/lib/authContext", () => ({
 }));
 
 const mockOpenCustomizer = vi.fn();
-const mockAddTeamToSubscription = vi.fn().mockResolvedValue({ id: "team_new", name: "Shadow Wolves" });
+const mockSubscription: { status: string; plan: string; teamCount: number; paymentMethod?: string } = { status: "active", plan: "league", teamCount: 8 };
+const mockAddTeamToSubscription = vi.fn().mockResolvedValue({ teamId: "team_new", newSubscription: { status: "active", teamCount: 8 }, seatAdded: false });
 const mockRemoveTeamFromSubscription = vi.fn().mockResolvedValue({});
 
 vi.mock("@/lib/leagueContext", () => ({
@@ -94,7 +95,7 @@ vi.mock("@/lib/leagueContext", () => ({
     activeLeagueId: "league_1",
     portalLeagueId: "league_1",
     userLeagues: [{ id: "league_1", name: "Apex League Circuit", shortcode: "APX", role: "owner" }],
-    subscription: { status: "active", plan: "league", teamCount: 8 },
+    subscription: mockSubscription,
     updateSubscriptionTeamCount: vi.fn(),
     addTeamToSubscription: mockAddTeamToSubscription,
     removeTeamFromSubscription: mockRemoveTeamFromSubscription,
@@ -203,15 +204,24 @@ describe("TeamsPage Comprehensive Suite", () => {
     const addTeamBtn = screen.getByLabelText("Add team");
     fireEvent.click(addTeamBtn);
 
+    // Two of eight slots are used, so the context fills an open slot instead of buying a seat.
     await waitFor(() => {
-      expect(mockCreateSecureRecord).toHaveBeenCalledWith(
-        "team",
-        expect.objectContaining({
-          name: "Shadow Wolves",
-          leagueId: "league_1",
-        })
-      );
+      expect(mockAddTeamToSubscription).toHaveBeenCalledWith("Shadow Wolves", { teamsInUse: 2 });
     });
+    expect(screen.getByText("Shadow Wolves")).toBeInTheDocument();
+  });
+
+  it("warns the league admin about the seat cost before adding a team when every slot is used", async () => {
+    mockSubscription.teamCount = 2;
+    mockSubscription.paymentMethod = "paid";
+    try {
+      await renderPage();
+      await screen.findByRole("button", { name: /Create Team \(\+\$20\/mo\)/i });
+      expect(screen.getByText(/All 2 slots are in use\. Adding a team adds a seat: a prorated charge is billed now, then \$100\/mo/i)).toBeInTheDocument();
+    } finally {
+      mockSubscription.teamCount = 8;
+      delete mockSubscription.paymentMethod;
+    }
   });
 
   it("navigates into team detailed view, adds a player to roster, and swaps a player", async () => {

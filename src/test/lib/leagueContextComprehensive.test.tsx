@@ -8,6 +8,7 @@ import {
   IFAF_5V5_RULES,
   DEFAULT_LEAGUE_SETTINGS,
   LeagueProvider,
+  leaguePageHref,
   useLeague,
   type UserLeagueSummary,
 } from "@/lib/leagueContext";
@@ -138,6 +139,17 @@ describe("leagueContext Comprehensive Suite", () => {
       expect(result.some((l) => l.id === "league_1")).toBe(true);
       expect(result.some((l) => l.id === "default")).toBe(true);
       expect(new Set(result.map((l) => l.id)).size).toBe(result.length);
+    });
+  });
+
+  describe("leaguePageHref utility", () => {
+    it("uses the supplied league ID instead of the current demo URL flag", () => {
+      window.history.replaceState({}, "", "/schedule?demo=true");
+
+      expect(leaguePageHref("/schedule", "league_real")).toBe("/schedule?league=league_real");
+      expect(leaguePageHref("/schedule", "default")).toBe("/schedule?demo=true");
+
+      window.history.replaceState({}, "", "/");
     });
   });
 

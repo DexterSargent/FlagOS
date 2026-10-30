@@ -60,6 +60,30 @@ export interface SeasonResult {
   playoffRound?: string;
 }
 
+/** Stat categories tracked as single-game records. */
+export const GAME_LEADER_KEYS = [
+  "passTD", "passComp", "passAtt", "receptions", "recTD", "rushAtt", "rushTD", "totalTDs",
+  "flagPulls", "sacks", "int", "pbu", "defTD",
+] as const satisfies readonly PlayerStatKey[];
+export type GameLeaderKey = typeof GAME_LEADER_KEYS[number];
+/** Entries kept per category in archived snapshots; enough for a top-3 plus a full-leaderboard view. */
+export const GAME_LEADERS_PER_KEY = 10;
+
+export interface GameLeaderEntry {
+  playerId: string;
+  name: string;
+  number: string;
+  teamId: string;
+  teamName: string;
+  teamShortcode: string;
+  matchId: string;
+  date: string;
+  opponentName: string;
+  value: number;
+}
+
+export type GameLeaderBoard = Partial<Record<GameLeaderKey, GameLeaderEntry[]>>;
+
 export interface SeasonSnapshot {
   leagueId: string;
   seasonId: string;
@@ -72,9 +96,204 @@ export interface SeasonSnapshot {
   standings: SeasonStandingRow[];
   playerStats: PlayerStatLine[];
   results: SeasonResult[];
+  /** Best single-game performances per category; absent on snapshots archived before it was tracked. */
+  gameLeaders?: GameLeaderBoard;
 }
 
 type AnyRecord = Record<string, any>;
+
+export function emptyPlayerStatLine(base: Pick<PlayerStatLine, "playerId" | "name" | "number" | "teamId" | "teamName" | "teamShortcode">): PlayerStatLine {
+  const line = { ...base } as PlayerStatLine;
+  PLAYER_STAT_KEYS.forEach((key) => { line[key] = 0; });
+  return line;
+}
+
+/**
+ * Applies one play to the stat lines returned by `lineFor`. This is the single source of truth for
+ * how plays become player stats: season totals, archived snapshots and single-game leaders all use it.
+ * `lineFor` decides eligibility (roster membership, possession) and returns undefined to skip a name.
+ */
+export function accumulatePlayStats(
+  play: AnyRecord,
+  lineFor: (name: unknown, side: "offense" | "defense") => Record<PlayerStatKey, number> | undefined,
+): void {
+  const offense = (name: unknown) => lineFor(name, "offense");
+  const defense = (name: unknown) => lineFor(name, "defense");
+  const isConversion = Boolean(
+    play.isConversion === true ||
+    play.playType === "Conversion" ||
+    (!play.isTouchdown && (
+      (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
+      play.conversionSuccess === true
+    )),
+  );
+
+  if (play.playType === "Pass" && !isConversion) {
+    const qb = offense(play.qbPlayerId);
+    if (qb) {
+      qb.passAtt += 1;
+      if (play.passOutcome === "Complete") qb.passComp += 1;
+      else if (play.passOutcome === "Interception") qb.passInt += 1;
+      if (play.isTouchdown) qb.passTD += 1;
+    }
+    if (play.passOutcome === "Complete") {
+      const receiver = offense(play.receiverPlayerId);
+      if (receiver) {
+        receiver.receptions += 1;
+        if (play.isTouchdown) { receiver.recTD += 1; receiver.totalTDs += 1; }
+      }
+    }
+  }
+  if (play.playType === "Run" && !isConversion) {
+    const runner = offense(play.runnerPlayerId);
+    if (runner) {
+      runner.rushAtt += 1;
+      if (play.isTouchdown) { runner.rushTD += 1; runner.totalTDs += 1; }
+    }
+  }
+
+  if (isConversion) {
+    if (play.conversionSuccess || play.passOutcome === "Complete" || (play.points && play.points > 0)) {
+      const passer = offense(play.conversionPasser || play.qbPlayerId);
+      const receiver = offense(play.conversionReceiver || play.receiverPlayerId);
+      const runner = offense(play.conversionRunner || play.runnerPlayerId);
+      if (play.playType === "Pass") {
+        if (passer) passer.convPass += 1;
+        if (receiver) receiver.convRec += 1;
+      } else if (play.playType === "Run" && runner) {
+        runner.convRec += 1;
+      }
+    }
+  } else if (play.conversionSuccess) {
+    const passer = offense(play.conversionPasser);
+    const receiver = offense(play.conversionReceiver);
+    const runner = offense(play.conversionRunner);
+    if (passer) passer.convPass += 1;
+    if (receiver) receiver.convRec += 1;
+    if (runner) runner.convRec += 1;
+  }
+
+  if (Array.isArray(play.defenders)) {
+    play.defenders.forEach((name: unknown) => {
+      const defender = defense(name);
+      if (!defender) return;
+      if (play.passOutcome === "Interception") {
+        defender.int += 1;
+        if (play.isPick6) { defender.defTD += 1; defender.totalTDs += 1; }
+      } else if (play.passOutcome === "PBU") {
+        defender.pbu += 1;
+      } else if (play.passOutcome === "Sack") {
+        defender.sacks += 1;
+        defender.flagPulls += 1;
+        if (play.isSafety) defender.safeties += 1;
+      } else if (play.passOutcome === "FFL") {
+        defender.ffl += 1;
+        defender.flagPulls += 1;
+        if (play.isSafety) defender.safeties += 1;
+      } else {
+        defender.flagPulls += 1;
+        if (play.isSafety) defender.safeties += 1;
+      }
+    });
+  }
+  if (play.passOutcome === "Interception" && Array.isArray(play.flaggers)) {
+    play.flaggers.forEach((name: unknown) => {
+      const flagger = defense(name);
+      if (flagger) flagger.flagPulls += 1;
+    });
+  }
+}
+
+/**
+ * Best single-game stat lines per category across completed matches. Each (match, player) pair is
+ * accumulated with {@link accumulatePlayStats}; only players present in `playerStats` count.
+ */
+export function computeGameLeaders({ playerStats, matches, plays, limit = GAME_LEADERS_PER_KEY, rosterTeamId }: {
+  playerStats: PlayerStatLine[];
+  matches: AnyRecord[];
+  plays: AnyRecord[];
+  limit?: number;
+  /** When set, offense only counts on this team's possessions and defense only on the opponent's. */
+  rosterTeamId?: string;
+}): GameLeaderBoard {
+  const playersByName = new Map(playerStats.map((line) => [line.name, line]));
+  const matchById = new Map<string, AnyRecord>();
+  matches.forEach((match) => { if (isCompleted(match)) matchById.set(String(match.id), match); });
+  const perGame = new Map<string, PlayerStatLine & { matchId: string }>();
+
+  plays.forEach((play) => {
+    const matchId = String(play.matchId || "");
+    if (!matchById.has(matchId)) return;
+    const possession = play.possessionTeamId ? String(play.possessionTeamId) : "";
+    accumulatePlayStats(play, (name, side) => {
+      if (typeof name !== "string" || !name) return undefined;
+      if (rosterTeamId && possession) {
+        if (side === "offense" && possession !== rosterTeamId) return undefined;
+        if (side === "defense" && possession === rosterTeamId) return undefined;
+      }
+      const player = playersByName.get(name);
+      if (!player) return undefined;
+      const key = `${matchId}\u0000${name}`;
+      let line = perGame.get(key);
+      if (!line) {
+        line = { ...emptyPlayerStatLine(player), matchId };
+        perGame.set(key, line);
+      }
+      return line;
+    });
+  });
+
+  const board: GameLeaderBoard = {};
+  const lines = [...perGame.values()];
+  GAME_LEADER_KEYS.forEach((key) => {
+    const entries = lines
+      .filter((line) => line[key] > 0)
+      .sort((a, b) => b[key] - a[key] || a.name.localeCompare(b.name))
+      .slice(0, limit)
+      .map((line): GameLeaderEntry => {
+        const match = matchById.get(line.matchId)!;
+        const isHome = String(match.homeTeamId) === line.teamId;
+        return {
+          playerId: line.playerId,
+          name: line.name,
+          number: line.number,
+          teamId: line.teamId,
+          teamName: line.teamName,
+          teamShortcode: line.teamShortcode,
+          matchId: line.matchId,
+          date: String(match.date || ""),
+          opponentName: String((isHome ? match.awayTeamName : match.homeTeamName) || "Opponent"),
+          value: line[key],
+        };
+      });
+    if (entries.length) board[key] = entries;
+  });
+  return board;
+}
+
+export function parseGameLeaders(raw: unknown): GameLeaderBoard | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const board: GameLeaderBoard = {};
+  GAME_LEADER_KEYS.forEach((key) => {
+    const entries = (raw as AnyRecord)[key];
+    if (!Array.isArray(entries)) return;
+    board[key] = entries
+      .filter((entry) => entry && typeof entry.name === "string" && typeof entry.value === "number")
+      .map((entry) => ({
+        playerId: String(entry.playerId || ""),
+        name: entry.name,
+        number: String(entry.number ?? ""),
+        teamId: String(entry.teamId || ""),
+        teamName: String(entry.teamName || ""),
+        teamShortcode: String(entry.teamShortcode || ""),
+        matchId: String(entry.matchId || ""),
+        date: String(entry.date || ""),
+        opponentName: String(entry.opponentName || ""),
+        value: entry.value,
+      }));
+  });
+  return board;
+}
 
 function shortcodeFor(team: AnyRecord | undefined): string {
   if (!team) return "";
@@ -216,83 +435,9 @@ export function computeLeagueSeasonStats({ teams, players, matches, plays }: {
     .forEach((team, index) => { team.rank = index + 1; });
 
   const completedMatchIds = new Set(matches.filter(isCompleted).map((match) => match.id));
-  const eligible = (name: unknown): name is string => typeof name === "string" && !!name && !!statsMap[name];
-
   plays.forEach((play) => {
     if (!play.matchId || !completedMatchIds.has(play.matchId)) return;
-    const isConversion = Boolean(
-      play.isConversion === true ||
-      play.playType === "Conversion" ||
-      (!play.isTouchdown && (
-        (play.conversionAttempt !== undefined && play.conversionAttempt !== null) ||
-        play.conversionSuccess === true
-      )),
-    );
-
-    if (play.playType === "Pass" && eligible(play.qbPlayerId) && !isConversion) {
-      const qb = statsMap[play.qbPlayerId];
-      qb.passAtt += 1;
-      if (play.passOutcome === "Complete") qb.passComp += 1;
-      else if (play.passOutcome === "Interception") qb.passInt += 1;
-      if (play.isTouchdown) qb.passTD += 1;
-    }
-    if (play.playType === "Pass" && play.passOutcome === "Complete" && eligible(play.receiverPlayerId) && !isConversion) {
-      const receiver = statsMap[play.receiverPlayerId];
-      receiver.receptions += 1;
-      if (play.isTouchdown) { receiver.recTD += 1; receiver.totalTDs += 1; }
-    }
-    if (play.playType === "Run" && eligible(play.runnerPlayerId) && !isConversion) {
-      const runner = statsMap[play.runnerPlayerId];
-      runner.rushAtt += 1;
-      if (play.isTouchdown) { runner.rushTD += 1; runner.totalTDs += 1; }
-    }
-
-    if (isConversion) {
-      if (play.conversionSuccess || play.passOutcome === "Complete" || (play.points && play.points > 0)) {
-        const passer = play.conversionPasser || play.qbPlayerId;
-        const receiver = play.conversionReceiver || play.receiverPlayerId;
-        const runner = play.conversionRunner || play.runnerPlayerId;
-        if (play.playType === "Pass") {
-          if (eligible(passer)) statsMap[passer].convPass += 1;
-          if (eligible(receiver)) statsMap[receiver].convRec += 1;
-        } else if (play.playType === "Run") {
-          if (eligible(runner)) statsMap[runner].convRec += 1;
-        }
-      }
-    } else if (play.conversionSuccess) {
-      if (eligible(play.conversionPasser)) statsMap[play.conversionPasser].convPass += 1;
-      if (eligible(play.conversionReceiver)) statsMap[play.conversionReceiver].convRec += 1;
-      if (eligible(play.conversionRunner)) statsMap[play.conversionRunner].convRec += 1;
-    }
-
-    if (Array.isArray(play.defenders)) {
-      play.defenders.forEach((name: unknown) => {
-        if (!eligible(name)) return;
-        const defender = statsMap[name];
-        if (play.passOutcome === "Interception") {
-          defender.int += 1;
-          if (play.isPick6) { defender.defTD += 1; defender.totalTDs += 1; }
-        } else if (play.passOutcome === "PBU") {
-          defender.pbu += 1;
-        } else if (play.passOutcome === "Sack") {
-          defender.sacks += 1;
-          defender.flagPulls += 1;
-          if (play.isSafety) defender.safeties += 1;
-        } else if (play.passOutcome === "FFL") {
-          defender.ffl += 1;
-          defender.flagPulls += 1;
-          if (play.isSafety) defender.safeties += 1;
-        } else {
-          defender.flagPulls += 1;
-          if (play.isSafety) defender.safeties += 1;
-        }
-      });
-    }
-    if (play.passOutcome === "Interception" && Array.isArray(play.flaggers)) {
-      play.flaggers.forEach((name: unknown) => {
-        if (eligible(name)) statsMap[name].flagPulls += 1;
-      });
-    }
+    accumulatePlayStats(play, (name) => (typeof name === "string" && name ? statsMap[name] : undefined));
   });
 
   return { standings, playerStats: Object.values(statsMap) };
@@ -460,6 +605,7 @@ export function buildSeasonSnapshot({ leagueId, season, teams, players, matches,
     standings,
     playerStats: playerStats.filter(hasPlayerStats).map((line) => compactPlayerLine(line) as PlayerStatLine),
     results: buildSeasonResults(seasonMatches, teamNames),
+    gameLeaders: computeGameLeaders({ playerStats, matches: seasonMatches, plays: seasonPlays }),
   };
 }
 
@@ -478,5 +624,6 @@ export function parseSeasonSnapshot(raw: AnyRecord | undefined | null): SeasonSn
     standings: Array.isArray(raw.standings) ? raw.standings as SeasonStandingRow[] : [],
     playerStats: Array.isArray(raw.playerStats) ? raw.playerStats.map(inflatePlayerLine) : [],
     results: Array.isArray(raw.results) ? raw.results as SeasonResult[] : [],
+    gameLeaders: parseGameLeaders(raw.gameLeaders),
   };
 }

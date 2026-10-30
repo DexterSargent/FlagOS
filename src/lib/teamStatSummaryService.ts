@@ -12,6 +12,8 @@ import {
   type TeamIdentity,
 } from "./teamSeasonAggregation";
 import type { TeamComprehensiveStats } from "./teamStatsCalculator";
+import { getCurrentSeasonId, isMatchInSeason } from "./leagueSeasons";
+import { getCurrentTeamSeasonId } from "./teamSeasons";
 
 /**
  * Server-side, correction-aware team season summaries.
@@ -69,6 +71,8 @@ export interface SummaryTeamScope extends TeamIdentity {
   leagueId?: string;
   /** Whether the caller must be signed in, as the rules require for public-league data. */
   requiresSignIn: boolean;
+  /** Only games of this season count: the league's current season, or the independent team's own. */
+  seasonId: string;
 }
 
 const TEAM_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -96,12 +100,14 @@ export async function resolveSummaryTeamScope(db: Firestore, teamId: string): Pr
   if (!leagueId) {
     const isPublicTeam = team.get("visibility") === "public" &&
       TEAM_PII_FIELDS.every((field) => team.get(field) === undefined);
-    return isPublicTeam ? { ...identity, requiresSignIn: false } : null;
+    return isPublicTeam
+      ? { ...identity, requiresSignIn: false, seasonId: getCurrentTeamSeasonId(team.data()) }
+      : null;
   }
   if (typeof leagueId !== "string" || !TEAM_ID_PATTERN.test(leagueId)) return null;
   const league = await db.collection("leagues").doc(leagueId).get();
   if (!league.exists || league.get("visibility") !== "public") return null;
-  return { ...identity, leagueId, requiresSignIn: true };
+  return { ...identity, leagueId, requiresSignIn: true, seasonId: getCurrentSeasonId(league.data()) };
 }
 
 type TimestampLike = { seconds: number; nanoseconds: number } | undefined | null;
@@ -249,6 +255,7 @@ async function readSeasonGames(db: Firestore, identity: SummaryTeamScope, transa
       const data: DocumentData = { ...doc.data(), id: doc.id };
       return data.isHidden === false &&
         (!identity.leagueId || data.leagueId === identity.leagueId) &&
+        isMatchInSeason(data, identity.seasonId) &&
         isCompletedMatch(data) && isTeamGame(identity, data);
     })
     .sort((a, b) => a.id.localeCompare(b.id));

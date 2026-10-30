@@ -50,14 +50,15 @@ describe("buildTeamSeasonSnapshot", () => {
     ];
 
     const plays = [
-      // Marcus passes to Devin for TD
-      { matchId: "m1", passer: "Marcus Jones", receiver: "Devin White", result: "Touchdown", isTouchdown: true },
-      // Marcus rushes for TD
-      { matchId: "m1", rusher: "Marcus Jones", result: "Touchdown", isTouchdown: true },
-      // Chris flag pull
-      { matchId: "m2", defender: "Chris Evans", result: "Flag Pull", isFlagPull: true },
-      // Chris interception
-      { matchId: "m3", defender: "Chris Evans", result: "Interception" },
+      { matchId: "m1", possessionTeamId: "team_apex", playType: "Pass", qbPlayerId: "Marcus Jones", receiverPlayerId: "Devin White", passOutcome: "Complete", isTouchdown: true },
+      { matchId: "m1", possessionTeamId: "team_apex", playType: "Run", runnerPlayerId: "Marcus Jones", isTouchdown: true },
+      { matchId: "m2", possessionTeamId: "team_rivals", playType: "Run", runnerPlayerId: "Rival Back", defenders: ["Chris Evans"] },
+      { matchId: "m3", possessionTeamId: "team_rivals", playType: "Pass", qbPlayerId: "Rival QB", passOutcome: "Interception", defenders: ["Chris Evans"] },
+      // Opponent possession naming one of our players on offense must not count for us
+      { matchId: "m3", possessionTeamId: "team_rivals", playType: "Pass", qbPlayerId: "Marcus Jones", passOutcome: "Complete", receiverPlayerId: "Rival WR" },
+      // Hidden plays and plays from another season are ignored
+      { matchId: "m1", possessionTeamId: "team_apex", playType: "Run", runnerPlayerId: "Marcus Jones", isTouchdown: true, isHidden: true },
+      { matchId: "m4", possessionTeamId: "team_apex", playType: "Run", runnerPlayerId: "Marcus Jones", isTouchdown: true },
     ];
 
     const snapshot = buildTeamSeasonSnapshot({
@@ -88,7 +89,7 @@ describe("buildTeamSeasonSnapshot", () => {
     expect(marcus.passTD).toBe(1);
     expect(marcus.rushAtt).toBe(1);
     expect(marcus.rushTD).toBe(1);
-    expect(marcus.totalTDs).toBe(2);
+    expect(marcus.totalTDs).toBe(1);
     expect(marcus.gamesPlayed).toBe(3);
 
     const devin = snapshot.playerStats.find((p) => p.name === "Devin White")!;
@@ -99,6 +100,10 @@ describe("buildTeamSeasonSnapshot", () => {
     const chris = snapshot.playerStats.find((p) => p.name === "Chris Evans")!;
     expect(chris.flagPulls).toBe(1);
     expect(chris.int).toBe(1);
+
+    expect(snapshot.gameLeaders?.rushTD?.[0]).toMatchObject({ name: "Marcus Jones", matchId: "m1", value: 1, opponentName: "Opponent" });
+    expect(snapshot.gameLeaders?.int?.[0]).toMatchObject({ name: "Chris Evans", matchId: "m3", value: 1 });
+    expect(snapshot.gameLeaders?.passComp).toHaveLength(1);
   });
 
   it("generates correct snapshot document IDs", () => {

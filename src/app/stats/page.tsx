@@ -1,7 +1,7 @@
 "use client";
 import FlagOSLoader from "@/components/FlagOSLoader";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { shortPlayerName } from "@/lib/shortPlayerName";
 import {
@@ -25,6 +25,8 @@ import {
   History,
   Crown,
   Archive,
+  Calendar,
+  Award,
 } from "lucide-react";
 import {
   getCachedLeagueTeams,
@@ -37,6 +39,9 @@ import { useLeague } from "@/lib/leagueContext";
 import { usePageGuide } from "@/lib/pageGuide";
 import { STATS_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import { computeLeagueSeasonStats, type PlayerStatLine } from "@/lib/leagueSeasons";
+import { buildLiveRecordSeasonInput, buildRecordBook, type RecordSeasonInput } from "@/lib/recordBook";
+import RecordBookSection from "@/components/RecordBookSection";
+import SeasonResultsList from "@/components/league/SeasonResultsList";
 import { useLeagueSeasonHistory } from "@/lib/useLeagueSeasonHistory";
 import { isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
 import NoLeagueSelected from "@/components/league/NoLeagueSelected";
@@ -70,7 +75,7 @@ export default function StatsAndStandings() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { isDenied, deniedElement } = usePrivateLeagueAccess();
-  const [activeTab, setActiveTab] = useState<"team" | "individual" | "history">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "individual" | "results" | "records" | "history">("team");
   const [indivViewMode, setIndivViewMode] = useState<"leaders" | "table">("leaders");
   const [individualTab, setIndividualTab] = useState<"passing" | "receiving" | "defense">("passing");
 
@@ -79,6 +84,8 @@ export default function StatsAndStandings() {
 
   const [standings, setStandings] = useState<any[]>([]);
   const [individualStats, setIndividualStats] = useState<any[]>([]);
+  const [liveMatches, setLiveMatches] = useState<any[]>([]);
+  const [livePlays, setLivePlays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const hasArchivedSeasons = !isDemoLeague && seasons.some((season) => season.status === "archived");
   const seasonHistory = useLeagueSeasonHistory(activeLeagueId, hasArchivedSeasons);
@@ -90,12 +97,45 @@ export default function StatsAndStandings() {
   const teamCodeById = new Map<string, string>(displayStandings.filter((r: any) => r?.id && r?.shortcode).map((r: any) => [r.id, r.shortcode]));
   const displayPlayerStats: any[] = archivedSnapshot ? archivedSnapshot.playerStats : individualStats;
 
+  // Results are only shown for archived seasons; the live schedule page covers the current one.
+  useEffect(() => {
+    if (activeTab === "results" && !isViewingArchivedSeason) setActiveTab("team");
+  }, [activeTab, isViewingArchivedSeason]);
+
+  const recordBook = useMemo(() => {
+    const currentSeason = seasons.find((season) => season.id === currentSeasonId);
+    const liveSeason = buildLiveRecordSeasonInput({
+      seasonId: currentSeasonId,
+      title: currentSeason?.title || settings.seasonTitle || "Current Season",
+      number: currentSeason?.number ?? seasons.length,
+      standings,
+      playerStats: individualStats as PlayerStatLine[],
+      matches: liveMatches,
+      plays: livePlays,
+      teamNames: Object.fromEntries(standings.map((row: any) => [row.id, row.name])),
+    });
+    const archived: RecordSeasonInput[] = seasonHistory.snapshots.map((snapshot) => ({
+      seasonId: snapshot.seasonId,
+      title: snapshot.title,
+      number: snapshot.number,
+      isCurrent: false,
+      championTeamId: snapshot.championTeamId,
+      standings: snapshot.standings,
+      playerStats: snapshot.playerStats,
+      results: snapshot.results,
+      gameLeaders: snapshot.gameLeaders,
+    }));
+    return buildRecordBook([...archived, liveSeason], { scope: "league" });
+  }, [seasons, currentSeasonId, settings.seasonTitle, standings, individualStats, liveMatches, livePlays, seasonHistory.snapshots]);
+
 
 
   useEffect(() => {
     if (noLeagueSelected) {
       setStandings([]);
       setIndividualStats([]);
+      setLiveMatches([]);
+      setLivePlays([]);
       setLoading(false);
       return;
     }
@@ -153,6 +193,8 @@ export default function StatsAndStandings() {
         const { standings: computedStandings, playerStats } = computeLeagueSeasonStats({ teams, players, matches, plays });
         setStandings(computedStandings);
         setIndividualStats(playerStats);
+        setLiveMatches(matches);
+        setLivePlays(plays);
       } catch (error) {
         if (cancelled) return;
         console.error("Error fetching stats:", error);
@@ -374,7 +416,7 @@ export default function StatsAndStandings() {
         )}
 
         {/* Main Tab Switcher */}
-        <div data-tour="stats-tabs" className="flex p-1.5 bg-slate-100 dark:bg-neutral-900/80 rounded-2xl w-full max-w-md mx-auto backdrop-blur-md border border-slate-200 dark:border-white/10">
+        <div data-tour="stats-tabs" className="flex flex-wrap p-1.5 bg-slate-100 dark:bg-neutral-900/80 rounded-2xl w-full max-w-3xl mx-auto backdrop-blur-md border border-slate-200 dark:border-white/10">
           <button
             onClick={() => setActiveTab("team")}
             className={`flex-1 flex items-center justify-center gap-2 min-w-0 py-3 px-2 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all ${
@@ -390,6 +432,24 @@ export default function StatsAndStandings() {
             }`}
           >
             <Users className="w-4 h-4" /> Individual Stats
+          </button>
+          {isViewingArchivedSeason && (
+            <button
+              onClick={() => setActiveTab("results")}
+              className={`flex-1 flex items-center justify-center gap-2 min-w-0 py-3 px-2 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                activeTab === "results" ? "bg-purple-700 text-[#fff] shadow-lg shadow-purple-500/20" : "text-[var(--text-muted)] dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Calendar className="w-4 h-4" /> Results
+            </button>
+          )}
+          <button
+            onClick={() => setActiveTab("records")}
+            className={`flex-1 flex items-center justify-center gap-2 min-w-0 py-3 px-2 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeTab === "records" ? "bg-amber-700 text-[#fff] shadow-lg shadow-amber-500/20" : "text-[var(--text-muted)] dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Award className="w-4 h-4" /> Records
           </button>
           {hasArchivedSeasons && (
             <button
@@ -820,6 +880,50 @@ export default function StatsAndStandings() {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === "results" && isViewingArchivedSeason && (
+            <section aria-label={`${viewingSeason?.title || "Season"} results`} className="mt-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-6 h-6 text-purple-500 dark:text-purple-400" />
+                <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tight">{viewingSeason?.title || "Season"} Results</h2>
+                  <p className="text-xs text-[var(--text-muted)] dark:text-neutral-400">
+                    Every completed game from this archived season. Read-only.
+                  </p>
+                </div>
+              </div>
+              {seasonHistory.loading ? (
+                <div role="status" className="h-40 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-neutral-900/50 animate-pulse">
+                  <span className="sr-only">Loading archived results...</span>
+                </div>
+              ) : (
+                <SeasonResultsList
+                  results={archivedSnapshot?.results || []}
+                  emptyMessage={seasonHistory.error || "This season's archive could not be found."}
+                />
+              )}
+            </section>
+          )}
+
+          {activeTab === "records" && (
+            <section data-tour="stats-records" aria-label="League records" className="mt-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <Award className="w-6 h-6 text-amber-500 dark:text-amber-400" />
+                <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tight">League Records</h2>
+                  <p className="text-xs text-[var(--text-muted)] dark:text-neutral-400">
+                    All-time team and individual marks across every season, including the one in progress.
+                  </p>
+                </div>
+              </div>
+              <RecordBookSection
+                book={recordBook}
+                scopeLabel={settings.leagueName || "League"}
+                showHolderTeam
+                emptyTitle="No League Records Yet"
+              />
+            </section>
           )}
 
           {activeTab === "history" && hasArchivedSeasons && (

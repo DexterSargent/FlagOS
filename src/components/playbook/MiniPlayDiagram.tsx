@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useLeague } from "@/lib/leagueContext";
-import { PlayDiagram, DEFAULT_LOS_Y, RUSH_LINE_DISTANCE, playerHasMotion, getPlayerMotionPath, getReceiverShadedHalf } from "@/lib/playbookTypes";
+import { PlayDiagram, DEFAULT_LOS_Y, YARD_HEIGHT_PCT, MAX_BACKFIELD_DEPTH_YARDS, playerHasMotion, getPlayerMotionPath, getReceiverShadedHalf } from "@/lib/playbookTypes";
 
 interface MiniPlayDiagramProps {
   play: PlayDiagram;
@@ -23,8 +23,10 @@ export default function MiniPlayDiagram({
   const rushLineDistanceYards = settings?.rules?.rushLineDistance || 7;
 
   const losY = play.losY || DEFAULT_LOS_Y;
-  const rushDistanceY = (rushLineDistanceYards * 12) / 7;
-  const rushY = losY - rushDistanceY;
+  const rushY = losY - rushLineDistanceYards * YARD_HEIGHT_PCT;
+  // Match the editor: crop the unused deep backfield so the thumbnail reads larger
+  const viewHeight = Math.min(700, Math.round((losY + (MAX_BACKFIELD_DEPTH_YARDS + 2) * YARD_HEIGHT_PCT) * 7));
+  const yardsToPx = (yardsFromLos: number) => ((losY - yardsFromLos * YARD_HEIGHT_PCT) / 100) * 700;
   const isLight = theme === "light";
   const shouldShowOpposingSide = showOpposingSide || (
     play.type === "defense" && play.players.some(
@@ -50,7 +52,7 @@ export default function MiniPlayDiagram({
 
   return (
     <svg
-      viewBox="0 0 1000 700"
+      viewBox={`0 0 1000 ${viewHeight}`}
       className={className}
       preserveAspectRatio="xMidYMid meet"
     >
@@ -95,23 +97,28 @@ export default function MiniPlayDiagram({
 
       {/* Goal Line & Yard Lines */}
       <line x1="0" y1="84" x2="1000" y2="84" stroke={isLight ? "#64748B" : "#FFFFFF"} strokeWidth="3" />
-      {[20, 30, 40, 50, 60, 70, 80, 90].map((pct) => (
-        <line
-          key={pct}
-          x1="20"
-          y1={(pct / 100) * 700}
-          x2="980"
-          y2={(pct / 100) * 700}
-          stroke={yardLineColor}
-          strokeWidth="1"
-        />
-      ))}
+      {/* 5-yard lines measured from the LOS */}
+      {[-10, -5, 5, 10, 15, 20, 25, 30].map((yd) => {
+        const y = yardsToPx(yd);
+        if (y < 90 || y > viewHeight - 4) return null;
+        return (
+          <line
+            key={yd}
+            x1="20"
+            y1={y}
+            x2="980"
+            y2={y}
+            stroke={yardLineColor}
+            strokeWidth={yd % 10 === 0 ? 1.5 : 1}
+          />
+        );
+      })}
 
       {/* Sidelines */}
       <line x1="20" y1="0" x2="20" y2="700" stroke={sidelineColor} strokeWidth="2" />
       <line x1="980" y1="0" x2="980" y2="700" stroke={sidelineColor} strokeWidth="2" />
 
-      {/* 7-Yard Rush Cone Line */}
+      {/* Rush Line */}
       <line
         x1="20"
         y1={(rushY / 100) * 700}
@@ -128,7 +135,7 @@ export default function MiniPlayDiagram({
         fontSize="9"
         fontWeight="800"
       >
-        {rushLineDistanceYards}-YD RUSH
+        {rushLineDistanceYards}-YD RUSH LINE
       </text>
 
       {/* Line of Scrimmage */}
@@ -187,7 +194,7 @@ export default function MiniPlayDiagram({
           )
         )}
 
-      {/* Man Lock Lines (Visible when both sides are shown) */}
+      {/* Man coverage lines (Visible when both sides are shown) */}
       {shouldShowOpposingSide &&
         play.players
           .filter((p) => p.side === "defense" && p.coverageType === "man" && p.manTargetId)

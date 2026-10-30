@@ -19,6 +19,7 @@ import {
 import { createSecureRecord } from "@/lib/secureWrites";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
+import { describeAddTeamCost } from "@/lib/leaguePlanCost";
 import { effectiveMaxRoster } from "@/lib/rosterLimits";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam, TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
@@ -396,7 +397,7 @@ export default function TeamsPage() {
     if (!name) return;
     setBusyAction("add-team");
     try {
-      const { teamId } = await addTeamToSubscription(name);
+      const { teamId } = await addTeamToSubscription(name, { teamsInUse: competitiveTeams.length });
       setTeams([...teams, { id: teamId, name }].sort(compareByName));
       setNewTeamName("");
       setIsAddingTeam(false);
@@ -443,15 +444,10 @@ export default function TeamsPage() {
     }
     setBusyAction("add-team");
     try {
-      const teamId = await createSecureRecord("team", {
-        name: newTeamName.trim(),
-        leagueId: activeLeagueId,
-        createdAt: new Date().toISOString()
-      });
-      setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort(compareByName));
+      const { teamId } = await addTeamToSubscription(name, { teamsInUse: competitiveTeams.length });
+      setTeams([...teams, { id: teamId, name }].sort(compareByName));
       setNewTeamName("");
       setIsAddingTeam(false);
-      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
       showError(e instanceof Error ? e.message : "The team could not be added. Please try again.");
@@ -545,6 +541,8 @@ export default function TeamsPage() {
 
   const teamIdSet = useMemo(() => new Set(teams.map((t) => t.id)), [teams]);
   const competitiveTeams = teams.filter((team) => isRealTeam(team));
+  const addTeamCost = describeAddTeamCost({ subscription, teamsInUse: competitiveTeams.length, isDemo: isDemoLeague });
+  const createTeamCost = describeAddTeamCost({ subscription, teamsInUse: competitiveTeams.length, isDemo: isDemoLeague, verb: "Create Team" });
   const freeAgentPlayers = useMemo(
     () =>
       players.filter(
@@ -806,20 +804,21 @@ export default function TeamsPage() {
           </div>
 
           {!activeTeamId && isLeagueAdmin && (
-            <div className="mt-4 md:mt-0 flex gap-2">
+            <div className="mt-4 md:mt-0 flex flex-col items-start md:items-end gap-2">
               {isAddingTeam ? (
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     placeholder="Team Name" aria-label="New team name"
                     maxLength={60}
+                    aria-describedby="add-team-cost"
                     className="bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-cyan-400"
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleAddTeam(); } if (e.key === "Escape") setIsAddingTeam(false); }}
                     autoFocus
                   />
-                  <button type="button" onClick={handleAddTeam} disabled={busyAction === "add-team"} aria-busy={busyAction === "add-team"} aria-label="Add team" className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer disabled:opacity-50">
+                  <button type="button" onClick={handleAddTeam} disabled={busyAction === "add-team"} aria-busy={busyAction === "add-team"} aria-label="Add team" title={addTeamCost.label} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer disabled:opacity-50">
                     <Check className="w-5 h-5" />
                   </button>
                   <button onClick={() => setIsAddingTeam(false)} aria-label="Cancel adding team" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
@@ -831,9 +830,15 @@ export default function TeamsPage() {
                   onClick={() => setIsAddingTeam(true)}
                   className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 font-bold flex items-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-5 h-5" /> Create Team
+                  <Plus className="w-5 h-5" /> {createTeamCost.label}
                 </button>
               )}
+              <p
+                id="add-team-cost"
+                className={`text-[11px] max-w-xs md:text-right ${addTeamCost.free ? "text-neutral-400" : "text-amber-400 font-semibold"}`}
+              >
+                {addTeamCost.detail}
+              </p>
             </div>
           )}
         </div>
@@ -889,7 +894,7 @@ export default function TeamsPage() {
                 className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>{subscription?.paymentMethod === "complimentary" ? "Add Team Slot" : "Add Team to Subscription (+ $20/mo)"}</span>
+                <span>{addTeamCost.label}</span>
               </button>
 
               <button

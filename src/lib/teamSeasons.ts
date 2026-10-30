@@ -1,15 +1,20 @@
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import {
+  accumulatePlayStats,
   buildCareerSummaries,
+  computeGameLeaders,
+  emptyPlayerStatLine,
   inflatePlayerLine,
   INITIAL_SEASON_ID,
   isMatchInSeason,
+  parseGameLeaders,
   type CareerSummary,
-  type PlayerStatKey,
+  type GameLeaderBoard,
   type PlayerStatLine,
   type SeasonResult,
 } from "./leagueSeasons";
+import { isPlayoffMatch } from "./standingsCore";
 
 export const TEAM_SEASON_SNAPSHOT_COLLECTION = "team_seasons";
 
@@ -51,6 +56,8 @@ export interface TeamSeasonSnapshot {
   isChampion?: boolean;
   playerStats: PlayerStatLine[];
   results: SeasonResult[];
+  /** Best single-game performances per category; absent on snapshots archived before it was tracked. */
+  gameLeaders?: GameLeaderBoard;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -160,95 +167,54 @@ export function buildTeamSeasonSnapshot({
       awayTeamName: m.awayTeamName || "Away",
       homeScore: m.homeScore || 0,
       awayScore: m.awayScore || 0,
-      isPlayoff: Boolean(m.isPlayoff),
+      isPlayoff: isPlayoffMatch(m),
       playoffRound: m.playoffRound,
     };
   });
 
   const playerStatsMap = new Map<string, PlayerStatLine>();
+  const linesByName = new Map<string, PlayerStatLine>();
   for (const player of players) {
-    playerStatsMap.set(player.id, {
-      playerId: player.id,
-      name: player.playerName || player.name || "Player",
-      number: player.number || player.jerseyNumber || "",
+    const line = emptyPlayerStatLine({
+      playerId: String(player.id || ""),
+      name: String(player.playerName || player.name || "Player"),
+      number: String(player.number ?? player.jerseyNumber ?? ""),
       teamId,
       teamName,
       teamShortcode: shortcode,
-      gamesPlayed: 0,
-      passAtt: 0,
-      passComp: 0,
-      passTD: 0,
-      passInt: 0,
-      receptions: 0,
-      recTD: 0,
-      rushAtt: 0,
-      rushTD: 0,
-      flagPulls: 0,
-      sacks: 0,
-      int: 0,
-      defTD: 0,
-      convPass: 0,
-      convRec: 0,
-      pbu: 0,
-      safeties: 0,
-      ffl: 0,
-      totalTDs: 0,
     });
+    playerStatsMap.set(player.id, line);
+    if (!linesByName.has(line.name)) linesByName.set(line.name, line);
   }
 
-  // Count games played per player
   for (const match of seasonMatches) {
     const dnp = new Set(Array.isArray(match.didNotPlay) ? match.didNotPlay : []);
-    for (const player of players) {
-      const line = playerStatsMap.get(player.id);
-      if (line && !dnp.has(line.name)) {
-        line.gamesPlayed += 1;
-      }
+    for (const line of playerStatsMap.values()) {
+      if (!dnp.has(line.name)) line.gamesPlayed += 1;
     }
   }
 
-  // Count play stats
+  // Plays record offense for the possessing team; only credit this roster for the correct side.
+  const matchesById = new Map(seasonMatches.map((m) => [String(m.id), m]));
+  const lineFor = (play: AnyRecord) => (name: unknown, side: "offense" | "defense"): PlayerStatLine | undefined => {
+    if (typeof name !== "string" || !name) return undefined;
+    const possession = play.possessionTeamId ? String(play.possessionTeamId) : "";
+    if (possession) {
+      if (side === "offense" && possession !== teamId) return undefined;
+      if (side === "defense" && possession === teamId) return undefined;
+    }
+    return linesByName.get(name);
+  };
   for (const play of seasonPlays) {
-    const applyStat = (playerName: string | undefined, stat: PlayerStatKey, amount = 1) => {
-      if (!playerName) return;
-      for (const line of playerStatsMap.values()) {
-        if (line.name === playerName) {
-          line[stat] = (line[stat] || 0) + amount;
-          break;
-        }
-      }
-    };
-
-    if (play.passer) {
-      applyStat(play.passer, "passAtt");
-      if (play.result === "Complete" || play.result === "Touchdown") applyStat(play.passer, "passComp");
-      if (play.isTouchdown || play.result === "Touchdown") {
-        applyStat(play.passer, "passTD");
-        applyStat(play.passer, "totalTDs");
-      }
-      if (play.result === "Interception") applyStat(play.passer, "passInt");
-    }
-    if (play.rusher) {
-      applyStat(play.rusher, "rushAtt");
-      if (play.isTouchdown || play.result === "Touchdown") {
-        applyStat(play.rusher, "rushTD");
-        applyStat(play.rusher, "totalTDs");
-      }
-    }
-    if (play.receiver && (play.result === "Complete" || play.result === "Touchdown")) {
-      applyStat(play.receiver, "receptions");
-      if (play.isTouchdown || play.result === "Touchdown") {
-        applyStat(play.receiver, "recTD");
-        applyStat(play.receiver, "totalTDs");
-      }
-    }
-    if (play.defender) {
-      if (play.result === "Flag Pull" || play.isFlagPull) applyStat(play.defender, "flagPulls");
-      if (play.result === "Sack" || play.isSack) applyStat(play.defender, "sacks");
-      if (play.result === "Interception") applyStat(play.defender, "int");
-      if (play.result === "Pass Breakup" || play.isPBU) applyStat(play.defender, "pbu");
-    }
+    accumulatePlayStats(play, lineFor(play));
   }
+  const playerStats = Array.from(playerStatsMap.values());
+  const gameLeaders = computeGameLeaders({
+    playerStats,
+    matches: Array.from(matchesById.values()),
+    plays: seasonPlays,
+    rosterTeamId: teamId,
+  });
 
   const diff = pf - pa;
   const pts = won * 2 + tied;
@@ -271,8 +237,9 @@ export function buildTeamSeasonSnapshot({
     gamesPlayed,
     standing,
     isChampion,
-    playerStats: Array.from(playerStatsMap.values()),
+    playerStats,
     results,
+    gameLeaders,
   };
 }
 
@@ -326,6 +293,7 @@ export async function loadTeamSeasonSnapshots(teamId: string, seasons: TeamSeaso
           isChampion: Boolean(data.isChampion),
           playerStats: Array.isArray(data.playerStats) ? data.playerStats.map(inflatePlayerLine) : [],
           results: Array.isArray(data.results) ? data.results : [],
+          gameLeaders: parseGameLeaders(data.gameLeaders),
         };
         teamSeasonSnapshotCache.set(cacheKey, snap);
         snapshots.push(snap);

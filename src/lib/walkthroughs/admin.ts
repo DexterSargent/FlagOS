@@ -111,9 +111,9 @@ export const LEAGUE_SUBSCRIPTION_GUIDE = guide("league-settings-subscription", "
     ["Team slot slider", "Drag to choose a proposed capacity between 2 and 32 teams; the monthly price updates as you go."],
     ["Confirm Teams", "Save the proposed capacity. Paid plans show the exact charge first: added slots are charged a prorated amount right away, and removed slots lower the price from your next renewal."],
   ]),
-  step("settings-add-team", "Add an actual team", "Create a team record and increase the subscription together.", [
+  step("settings-add-team", "Add an actual team", "Create a team record. It fills an open slot when one exists; otherwise the plan grows by one seat.", [
     ["Team name", "Type a name in the field, or leave it blank for the suggested Team number."],
-    ["Add Team to Subscription (+$20/mo)", "Create the team and add one slot. The listed rate is $20 per month per slot; complimentary accounts remain free. Wait for Adding... to finish."],
+    ["Add Team", "When a slot is open the team is added at no extra cost. When every slot is used, paid plans show the prorated charge first and add a $20 per month seat only after you confirm; complimentary accounts remain free. Wait for Adding... to finish."],
   ]),
   step("settings-current-teams", "Current league teams", "Review the real team records included in your league.", [
     ["Remove (-$20/mo)", "Ask to remove this team and reduce capacity. Read the confirmation before continuing; the fee change applies at the next payment."],
