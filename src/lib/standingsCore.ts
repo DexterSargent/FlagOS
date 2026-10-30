@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Dependency-free standings helpers shared by client pages and server routes.
 
+import { compareNatural } from "./sortUtils";
+
 export interface StandingSortRow {
   winPct: number;
   diff: number;
@@ -14,7 +16,7 @@ export function compareStandingRows(a: StandingSortRow, b: StandingSortRow): num
   if (b.diff !== a.diff) return b.diff - a.diff;
   if (b.pointsFor !== a.pointsFor) return b.pointsFor - a.pointsFor;
   if (a.pointsAgainst !== b.pointsAgainst) return a.pointsAgainst - b.pointsAgainst;
-  return (a.name || "").localeCompare(b.name || "");
+  return compareNatural(a.name, b.name);
 }
 
 export function isPlayoffMatch(m: any): boolean {

@@ -199,7 +199,7 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
     if (matchStatus === "completed") setActiveTab("play-by-play");
     else if (!canEdit) setActiveTab("box-score");
   }, [canEdit, matchStatus]);
-  const [boxScoreTab, setBoxScoreTab] = useState<"home" | "away">("home");
+  const [boxScoreTab, setBoxScoreTab] = useState<"home">("home");
   const [plays, setPlays] = useState<any[]>([]);
   const [historicalPlays, setHistoricalPlays] = useState<any[]>([]);
   const [lastLoggedPlayStatement, setLastLoggedPlayStatement] = useState<string>("");
@@ -1993,33 +1993,8 @@ export default function AsyncPlayByPlayManager({ matchId, backUrl, hasScorerGran
         {activeTab === "box-score" && (
           <div data-tour="async-box-score" role="region" aria-label="Player box score" tabIndex={0} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain pr-1 pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
-              <h3 className="text-base sm:text-xl font-black uppercase text-white">Player Box Score</h3>
-              <div className="grid grid-cols-2 gap-2 min-w-0">
-                <button
-                  onClick={() => setBoxScoreTab("home")}
-                  title={homeTeamName}
-                  className={`min-w-0 truncate px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                    boxScoreTab === "home"
-                      ? "bg-emerald-500 text-black border-emerald-500 font-black"
-                      : "bg-neutral-800 text-neutral-300 border-white/10"
-                  }`}
-                >
-                  {homeTeamName}
-                </button>
-                <button
-                  onClick={() => setBoxScoreTab("away")}
-                  title={awayTeamName}
-                  className={`min-w-0 truncate px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                    boxScoreTab === "away"
-                      ? "bg-emerald-500 text-black border-emerald-500 font-black"
-                      : "bg-neutral-800 text-neutral-300 border-white/10"
-                  }`}
-                >
-                  {awayTeamName}
-                </button>
-              </div>
+              <h3 className="text-base text-center sm:text-xl font-black uppercase text-white">Box Score</h3>
             </div>
-
             <div className="bg-neutral-900 border border-white/10 rounded-2xl p-4 overflow-x-auto shadow-xl scrollbar-thin">
               <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead>

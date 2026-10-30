@@ -363,14 +363,33 @@ async function authorizeWrite(
   }
 
   if (entity === "team") {
-    if (data.leagueId === "") {
+    const isStandaloneTeam = data.leagueId === "" || !data.leagueId || data.isStandalone === true;
+    if (isStandaloneTeam) {
+      data.leagueId = "";
+      data.isStandalone = true;
       if (!isPlatformAdmin(token)) {
         const claim = await readBillingClaim(transaction, data.billingRequestId, token.uid, "team");
         data.subscription = paidSubscriptionRecord(claim);
-        data.adminEmails = [normalizeEmail(token.email)];
         billingClaims.set(data, claim);
+      } else {
+        // Platform admin accounts provision complimentary active independent teams
+        if (!data.subscription || typeof data.subscription !== "object" || Array.isArray(data.subscription)) {
+          data.subscription = {
+            plan: "team",
+            status: "active",
+            monthlyFee: 40,
+            billingCycle: "monthly",
+            paymentMethod: "complimentary",
+            renewsAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          };
+        }
       }
-      data.isStandalone = true;
+      // Creator must always be an administrator of their independent team
+      const creatorEmail = normalizeEmail(token.email);
+      const existingAdmins = Array.isArray(data.adminEmails)
+        ? data.adminEmails.map(String).map(normalizeEmail)
+        : [];
+      data.adminEmails = [...new Set([creatorEmail, ...existingAdmins].filter(Boolean))];
       return;
     }
     if (!isDocumentId(data.leagueId)) fail("A valid league ID is required.");
@@ -1452,6 +1471,9 @@ export async function POST(request: Request) {
         if (value !== undefined && value !== "" && !validEmail(value)) {
           fail(`${emailField} is invalid.`);
         }
+      }
+      if (data.leagueId === undefined || data.leagueId === null) {
+        data.leagueId = "";
       }
       if (typeof data.leagueId !== "string" ||
         (data.shortcode !== undefined && (typeof data.shortcode !== "string" || data.shortcode.length > 6)) ||

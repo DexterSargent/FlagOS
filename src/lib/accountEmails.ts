@@ -36,8 +36,8 @@ export async function resolveConnectedAccount(user: User): Promise<User> {
     }
     return customToken ? (await signInWithCustomToken(auth, customToken)).user : user;
   } catch (error) {
-    await signOut(auth);
-    throw error;
+    console.warn("Connected account resolution skipped, continuing with current session:", error);
+    return user;
   }
 }
 

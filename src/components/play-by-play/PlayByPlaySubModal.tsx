@@ -3,6 +3,7 @@
 import React, { memo, useState } from "react";
 import { X, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
+import { compareNatural } from "@/lib/sortUtils";
 
 export interface PlayByPlaySubModalProps {
   isOpen: boolean;
@@ -102,7 +103,7 @@ export const PlayByPlaySubModal = memo(function PlayByPlaySubModal({
                   const teamPlayers = subModalTeam === "HOME" ? homePlayers : awayPlayers;
                   return !teamPlayers.includes(p.playerName);
                 })
-                .sort((a, b) => a.playerName.localeCompare(b.playerName))
+                .sort((a, b) => compareNatural(a.playerName, b.playerName))
                 .map((p) => {
                   const opposingTeamId = subModalTeam === "HOME" ? awayTeamId : homeTeamId;
                   const isOpponent = p.teamId === opposingTeamId;

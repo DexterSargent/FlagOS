@@ -31,6 +31,7 @@ import { useAuth } from "@/lib/authContext";
 import { useLeague, PlayoffFormat, resolveLeaguePlayoffFormat } from "@/lib/leagueContext";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam } from "@/components/TeamAssets";
+import { compareByName } from "@/lib/sortUtils";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { simulateFullGame } from "@/lib/gameSimulator";
 import {
@@ -287,7 +288,7 @@ export default function Calendar() {
 
     if (isDemoLeague || isEmbedded) {
       const loadDemoData = () => {
-        const tList = getSandboxTeams().filter(isRealTeam);
+        const tList = getSandboxTeams().filter(isRealTeam).sort(compareByName);
         setTeams(tList);
         const mList = (getSandboxMatches() as unknown as Match[]).filter(
           (m) => m.homeTeamId !== "team_free_agents" && m.awayTeamId !== "team_free_agents"
@@ -305,6 +306,7 @@ export default function Calendar() {
       setTeams(
         teamsList
           .filter((t: any) => isRealTeam(t) && (!t.leagueId || t.leagueId === activeLeagueId))
+          .sort(compareByName)
       );
     }).catch((err) => {
       console.warn("Failed to fetch teams from firestore:", err);

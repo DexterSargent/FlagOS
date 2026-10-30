@@ -6,7 +6,7 @@ import { TEAM_STATS_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, History, Calendar, type LucideIcon } from "lucide-react";
+import { Activity, Trophy, Crosshair, Shield, Flame, Hand, Zap, Target, ShieldAlert, History, Calendar, Eye, Award, type LucideIcon } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { loadTeamPlayers } from "@/lib/matchRoster";
 import { loadTeamRecord } from "@/lib/teamRecord";
@@ -22,14 +22,14 @@ import {
   getTeamSeasons,
   getCurrentTeamSeasonId,
   loadTeamSeasonSnapshots,
-  buildTeamCareerSummaries,
   type TeamSeasonSnapshot,
 } from "@/lib/teamSeasons";
 import TeamSeasonHistoryPanel from "@/components/team/TeamSeasonHistoryPanel";
+import TeamRecordsSection from "@/components/team/TeamRecordsSection";
+import { calculateTeamRecords } from "@/lib/teamRecords";
 import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
-
 export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: string }> }) {
   usePageGuide(TEAM_STATS_WALKTHROUGH);
   const unwrappedParams = use(params);
@@ -48,8 +48,10 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   const [reloadKey, setReloadKey] = useState(0);
   const [teamMissing, setTeamMissing] = useState(false);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string>("current");
-  const [activeTab, setActiveTab] = useState<"leaders" | "history">("leaders");
+  const [activeTab, setActiveTab] = useState<"leaders" | "records" | "history">("leaders");
   const [snapshots, setSnapshots] = useState<TeamSeasonSnapshot[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [plays, setPlays] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +107,17 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             setStats(Object.entries(summary.playerStats).map(([name, player]) => ({ ...player, name, number: getPlayerNumber(summary, name) })));
             setLoadError(null);
             setStatsLoading(false);
+            if (leagueId) {
+              getCachedLeagueMatches(leagueId).then((m) => { if (!cancelled) setMatches(m); }).catch(() => {});
+              getCachedLeaguePlays(leagueId).then((p) => { if (!cancelled) setPlays(p); }).catch(() => {});
+            } else {
+              loadTeamSeasonData(teamId).then((s) => {
+                if (!cancelled) {
+                  setMatches(s.matches || []);
+                  setPlays(s.plays || []);
+                }
+              }).catch(() => {});
+            }
             return;
           } catch (error) {
             if (!(error instanceof TeamSeasonSummaryError) || error.status !== 404) throw error;
@@ -250,6 +263,8 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           }
         });
 
+        setMatches(matches);
+        setPlays(plays);
         setStats(Object.values(statsMap));
         setTeamStats(calculateTeamComprehensiveStats(targetTeamId, matches, plays, {
           teamName: tObj?.name,
@@ -275,73 +290,37 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
   const seasons = useMemo(() => getTeamSeasons(team), [team]);
   const currentSeasonId = useMemo(() => getCurrentTeamSeasonId(team), [team]);
+  const teamName = team?.name || "Team";
+
+  const franchiseRecords = useMemo(() => {
+    return calculateTeamRecords({
+      teamId: team?.id || teamId,
+      teamName,
+      teamAliases: [teamId, team?.name, team?.id].filter(Boolean) as string[],
+      seasons,
+      snapshots,
+      livePlayerStats: stats,
+      liveRecord: teamStats ? {
+        won: teamStats.wins,
+        lost: teamStats.losses,
+        tied: teamStats.ties,
+        pf: teamStats.pf,
+        pa: teamStats.pa,
+      } : undefined,
+      matches,
+      plays,
+    });
+  }, [teamId, team, teamName, seasons, snapshots, stats, teamStats, matches, plays]);
 
   const displayedStats = useMemo(() => {
-    if (selectedSeasonId === "career") {
-      const careerSummaries = buildTeamCareerSummaries(
-        snapshots,
-        stats.map((s) => ({
-          playerId: s.playerId || s.name,
-          name: s.name,
-          number: s.number || "",
-          teamId,
-          teamName: team?.name || "Team",
-          teamShortcode: team?.shortcode || "",
-          gamesPlayed: s.gamesPlayed || 0,
-          passAtt: s.passAtt || 0,
-          passComp: s.passComp || 0,
-          passTD: s.passTD || 0,
-          passInt: s.passInt || 0,
-          receptions: s.receptions || 0,
-          recTD: s.recTD || 0,
-          rushAtt: s.rushAtt || 0,
-          rushTD: s.rushTD || 0,
-          flagPulls: s.flagPulls || 0,
-          sacks: s.sacks || 0,
-          int: s.int || 0,
-          defTD: s.defTD || 0,
-          convPass: s.convPass || 0,
-          convRec: s.convRec || 0,
-          pbu: s.pbu || 0,
-          safeties: s.safeties || 0,
-          ffl: s.ffl || 0,
-          totalTDs: s.totalTDs || 0,
-        })),
-        team?.seasonTitle || "Current Season",
-        seasons.length,
-        currentSeasonId,
-      );
-
-      return careerSummaries.map((c) => ({
-        name: c.name,
-        number: "",
-        gamesPlayed: c.totals.gamesPlayed,
-        passAtt: c.totals.passAtt,
-        passComp: c.totals.passComp,
-        passTD: c.totals.passTD,
-        passInt: c.totals.passInt,
-        receptions: c.totals.receptions,
-        recTD: c.totals.recTD,
-        rushAtt: c.totals.rushAtt,
-        rushTD: c.totals.rushTD,
-        flagPulls: c.totals.flagPulls,
-        sacks: c.totals.sacks,
-        int: c.totals.int,
-        defTD: c.totals.defTD,
-        pbu: c.totals.pbu,
-        totalTDs: c.totals.totalTDs,
-      }));
-    }
-
     if (selectedSeasonId !== "current") {
       const snap = snapshots.find((s) => s.seasonId === selectedSeasonId);
-      if (snap && snap.playerStats.length > 0) {
-        return snap.playerStats.map((p) => ({ ...p }));
+      if (snap && snap.playerStats && snap.playerStats.length > 0) {
+        return snap.playerStats.map((p) => ({ ...p, number: p.number || "" }));
       }
     }
-
     return stats;
-  }, [selectedSeasonId, snapshots, stats, team, seasons.length, currentSeasonId, teamId]);
+  }, [selectedSeasonId, snapshots, stats]);
 
   const getTop3 = (key: string) => {
     const sorted = [...displayedStats].sort((a, b) => (b[key] || 0) - (a[key] || 0)).filter((p) => (p[key] || 0) > 0);
@@ -428,7 +407,6 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
   }
 
 
-  const teamName = team?.name || "Team";
   const hasAnyLeader = sections.some((section) => section.categories.some((cat) => getTop3(cat.key).length > 0));
 
   return (
@@ -463,8 +441,8 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
 
         {/* View Mode & Season Navigation */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-2 border-b border-white/10">
-          {/* Main Tabs: Leaders vs History */}
-          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-neutral-900 border border-white/10 text-xs font-bold uppercase tracking-wider">
+          {/* Main Tabs: Leaders vs Records vs History */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-neutral-900 border border-white/10 text-xs font-bold uppercase tracking-wider">
             <button
               type="button"
               onClick={() => setActiveTab("leaders")}
@@ -479,22 +457,36 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("history")}
+              onClick={() => setActiveTab("records")}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-                activeTab === "history"
+                activeTab === "records"
                   ? "bg-cyan-500 text-black font-black shadow-md"
                   : "text-neutral-400 hover:text-white"
               }`}
             >
-              <History className="w-3.5 h-3.5" />
-              <span>Franchise History ({seasons.length})</span>
+              <Zap className="w-3.5 h-3.5" />
+              <span>Franchise Records</span>
             </button>
+            {(seasons.length > 1 || snapshots.length > 0) && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("history")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                  activeTab === "history"
+                    ? "bg-cyan-500 text-black font-black shadow-md"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>Season History</span>
+              </button>
+            )}
           </div>
 
-          {/* Season Filter Selector (Shown when on Stat Leaders tab) */}
-          {activeTab === "leaders" && (
+          {/* Season Filter Selector (Shown when on Stat Leaders tab & past seasons exist) */}
+          {activeTab === "leaders" && snapshots.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
-              <span className="text-neutral-400 text-[11px] uppercase tracking-wider mr-1">Scope:</span>
+              <span className="text-neutral-400 text-[11px] uppercase tracking-wider mr-1">Season:</span>
               <button
                 type="button"
                 onClick={() => setSelectedSeasonId("current")}
@@ -505,17 +497,6 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
                 }`}
               >
                 {team?.seasonTitle || "Current Season"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedSeasonId("career")}
-                className={`px-3 py-1.5 rounded-xl border transition-all ${
-                  selectedSeasonId === "career"
-                    ? "bg-amber-500/20 border-amber-400 text-amber-300 font-bold"
-                    : "bg-white/5 border-white/10 text-neutral-400 hover:text-white"
-                }`}
-              >
-                All-Time Career
               </button>
               {snapshots.map((snap) => (
                 <button
@@ -535,7 +516,35 @@ export default function TeamStatLeadersPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {activeTab === "history" ? (
+        {/* View-Only Historical Exploration Banner */}
+        {activeTab === "leaders" && selectedSeasonId !== "current" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-200">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300">
+                <Eye className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-purple-300">
+                  Viewing {snapshots.find((s) => s.seasonId === selectedSeasonId)?.title || "Past Season"}
+                </span>
+                <span className="text-[11px] text-purple-200/70 block">
+                  Archived Season (View-only historical stats)
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedSeasonId("current")}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-500 hover:bg-purple-400 text-black transition-colors shadow-xs"
+            >
+              Return to Current Season
+            </button>
+          </div>
+        )}
+
+        {activeTab === "records" ? (
+          <TeamRecordsSection records={franchiseRecords} teamName={teamName} />
+        ) : activeTab === "history" ? (
           <TeamSeasonHistoryPanel
             teamName={teamName}
             teamId={teamId}

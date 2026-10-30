@@ -508,16 +508,91 @@ async function processEvent(event: Stripe.Event): Promise<void> {
     case "customer.subscription.resumed":
       await syncSubscription(event.data.object);
       return;
-    case "invoice.paid":
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = idOf((invoice as any).parent?.subscription_details?.subscription) || idOf((invoice as any).subscription);
+      let sub: Stripe.Subscription | null = null;
+      if (subscriptionId) {
+        sub = await getStripe().subscriptions.retrieve(subscriptionId);
+        await syncSubscription(sub);
+      }
+
+      // Zero-Touch Financial Ledger Automation: Record subscription income
+      const amountPaid = (invoice.amount_paid ?? 0) / 100;
+      if (amountPaid > 0) {
+        const entityKind = (sub?.metadata?.kind as "league" | "team") || "league";
+        const entityId = sub?.metadata?.entityId || "";
+        const entityName = sub?.metadata?.entityName || invoice.customer_name || "Customer";
+        const invoiceDate = new Date((invoice.created || Math.floor(Date.now() / 1000)) * 1000).toISOString().split("T")[0];
+
+        try {
+          const existingLedger = await adminDb.collection("platform_ledger")
+            .where("stripeInvoiceId", "==", invoice.id)
+            .limit(1)
+            .get();
+
+          if (existingLedger.empty) {
+            await adminDb.collection("platform_ledger").add({
+              type: "income",
+              amount: Math.round(amountPaid * 100) / 100,
+              date: invoiceDate,
+              category: "Subscription",
+              description: `Stripe automated invoice #${invoice.number || invoice.id.slice(-6)}`,
+              customerId: entityId,
+              customerKind: entityKind,
+              customerName: entityName,
+              stripeInvoiceId: invoice.id,
+              createdBy: "stripe_webhook",
+              createdAt: FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (ledgerErr) {
+          console.error("Failed to auto-record income ledger entry for invoice:", invoice.id, ledgerErr);
+        }
+      }
+      return;
+    }
     case "invoice.payment_failed": {
       // Fetch current state rather than inferring it from the invoice alone.
-      const subscriptionId = idOf(event.data.object.parent?.subscription_details?.subscription);
+      const subscriptionId = idOf((event.data.object as any).parent?.subscription_details?.subscription) || idOf((event.data.object as any).subscription);
       if (subscriptionId) await syncSubscription(await getStripe().subscriptions.retrieve(subscriptionId));
       return;
     }
-    case "charge.refunded":
-      await flagRiskEvent(event, idOf(event.data.object.payment_intent), "Charge refunded");
+    case "charge.refunded": {
+      const charge = event.data.object as Stripe.Charge;
+      await flagRiskEvent(event, idOf(charge.payment_intent), "Charge refunded");
+
+      // Zero-Touch Financial Ledger Automation: Record refund expense
+      const amountRefunded = (charge.amount_refunded ?? 0) / 100;
+      if (amountRefunded > 0) {
+        const refundDate = new Date((charge.created || Math.floor(Date.now() / 1000)) * 1000).toISOString().split("T")[0];
+        try {
+          const existingRefund = await adminDb.collection("platform_ledger")
+            .where("stripeChargeId", "==", charge.id)
+            .limit(1)
+            .get();
+
+          if (existingRefund.empty) {
+            await adminDb.collection("platform_ledger").add({
+              type: "expense",
+              amount: Math.round(amountRefunded * 100) / 100,
+              date: refundDate,
+              category: "Refund",
+              description: `Stripe charge refund (${charge.id.slice(-6)})`,
+              customerId: "",
+              customerKind: "",
+              customerName: charge.billing_details?.name || "Customer",
+              stripeChargeId: charge.id,
+              createdBy: "stripe_webhook",
+              createdAt: FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (refundErr) {
+          console.error("Failed to auto-record refund ledger entry for charge:", charge.id, refundErr);
+        }
+      }
       return;
+    }
     case "charge.dispute.created":
       await flagRiskEvent(event, idOf(event.data.object.payment_intent), `Dispute opened: ${event.data.object.reason}`);
       return;

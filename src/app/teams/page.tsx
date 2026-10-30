@@ -38,6 +38,7 @@ import { isStandaloneTeam, isDemoExplicitlyRequested } from "@/lib/demoSandboxRu
 import NoLeagueSelected from "@/components/league/NoLeagueSelected";
 import { usePageGuide } from "@/lib/pageGuide";
 import { TEAMS_DIRECTORY_WALKTHROUGH } from "@/lib/walkthroughs/league";
+import { compareByName, compareNatural } from "@/lib/sortUtils";
 
 interface Team {
   id: string;
@@ -153,7 +154,7 @@ export default function TeamsPage() {
     }
     if (isEffectiveDemo) {
       const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-      const t = [...baseTeams].sort((a, b) => a.name.localeCompare(b.name));
+      const t = [...baseTeams].sort(compareByName);
       const p = getSandboxPlayers() as unknown as Player[];
       const m = getSandboxMatches();
       const pl = getSandboxPlays();
@@ -174,7 +175,7 @@ export default function TeamsPage() {
 
       const tData = (rawTeams as Team[])
         .filter(t => isRealTeam(t) && !isStandaloneTeam(t as any) && (t as any).leagueId === activeLeagueId);
-      tData.sort((a, b) => a.name.localeCompare(b.name));
+      tData.sort(compareByName);
       setTeams(tData);
 
       const pData = rawPlayers as Player[];
@@ -205,7 +206,7 @@ export default function TeamsPage() {
     if (isEffectiveDemo) {
       const unsub = subscribeDemoSandbox(() => {
         const baseTeams = (getSandboxTeams() as unknown as Team[]).filter(isRealTeam);
-        const t = [...baseTeams].sort((a, b) => a.name.localeCompare(b.name));
+        const t = [...baseTeams].sort(compareByName);
         setTeams(t);
         setPlayers(getSandboxPlayers() as unknown as Player[]);
         setMatches(getSandboxMatches());
@@ -375,7 +376,7 @@ export default function TeamsPage() {
       if (!confirmExpand) return;
       try {
         const { teamId } = await addTeamToSubscription(newTeamName.trim());
-        setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
+        setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort(compareByName));
         setNewTeamName("");
         setIsAddingTeam(false);
       } catch (e) {
@@ -387,7 +388,7 @@ export default function TeamsPage() {
 
     if (isDemoLeague) {
       const created = addSandboxTeam(newTeamName.trim());
-      setTeams([...teams, created as unknown as Team].sort((a, b) => a.name.localeCompare(b.name)));
+      setTeams([...teams, created as unknown as Team].sort(compareByName));
       setNewTeamName("");
       setIsAddingTeam(false);
       return;
@@ -398,7 +399,7 @@ export default function TeamsPage() {
         leagueId: activeLeagueId,
         createdAt: new Date().toISOString()
       });
-      setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort((a, b) => a.name.localeCompare(b.name)));
+      setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort(compareByName));
       setNewTeamName("");
       setIsAddingTeam(false);
       notifyDataChanged(activeLeagueId);
@@ -412,7 +413,7 @@ export default function TeamsPage() {
     if (!editTeamNameValue.trim() || !activeTeamId || !canManageTeam(activeTeamId)) return;
     if (isDemoLeague) {
       updateSandboxTeam(activeTeamId, editTeamNameValue.trim());
-      setTeams(teams.map(t => t.id === activeTeamId ? { ...t, name: editTeamNameValue.trim() } : t).sort((a, b) => a.name.localeCompare(b.name)));
+      setTeams(teams.map(t => t.id === activeTeamId ? { ...t, name: editTeamNameValue.trim() } : t).sort(compareByName));
       setIsEditingTeamName(false);
       return;
     }
@@ -420,7 +421,7 @@ export default function TeamsPage() {
       await updateDoc(doc(db, "teams", activeTeamId), {
         name: editTeamNameValue.trim()
       });
-      setTeams(teams.map(t => t.id === activeTeamId ? { ...t, name: editTeamNameValue.trim() } : t).sort((a, b) => a.name.localeCompare(b.name)));
+      setTeams(teams.map(t => t.id === activeTeamId ? { ...t, name: editTeamNameValue.trim() } : t).sort(compareByName));
       setIsEditingTeamName(false);
       notifyDataChanged(activeLeagueId);
     } catch (e) {
@@ -476,7 +477,7 @@ export default function TeamsPage() {
     () =>
       players
         .filter(p => p.teamId === activeTeamId)
-        .sort((a, b) => a.playerName.localeCompare(b.playerName)),
+        .sort((a, b) => compareNatural(a.playerName, b.playerName)),
     [players, activeTeamId]
   );
 

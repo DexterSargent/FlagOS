@@ -43,6 +43,7 @@ import { getFormationPositions, getPlayerPositions, keepDepthChartPositions, typ
 import { resolveTeamColorPalette, getReadableTextColor } from "@/lib/teamColors";
 import { useTeamColors } from "@/lib/teamColorContext";
 import TeamNavBar from "@/components/team/TeamNavBar";
+import { compareNatural } from "@/lib/sortUtils";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 import { usePageGuide } from "@/lib/pageGuide";
 import { TEAM_ROSTER_WALKTHROUGH, TEAM_ADD_PLAYER_WALKTHROUGH, TEAM_EDIT_PLAYER_WALKTHROUGH, TEAM_PLAYER_STATS_WALKTHROUGH } from "@/lib/walkthroughData";
@@ -58,7 +59,7 @@ function compareByJersey(a: any, b: any): number {
   const hasB = Number.isFinite(numB);
   if (hasA && hasB && numA !== numB) return numA - numB;
   if (hasA !== hasB) return hasA ? -1 : 1;
-  return String(a.playerName || "").localeCompare(String(b.playerName || ""));
+  return compareNatural(a.playerName, b.playerName);
 }
 
 export default function TeamRosterPage({ params }: { params: Promise<{ id: string }> }) {

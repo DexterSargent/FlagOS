@@ -17,6 +17,7 @@ import {
 } from "@/lib/leagueDirectoryData";
 import { mapsSearchUrl } from "@/lib/leaguePublicProfile";
 import { FLAGOS_SUPPORT_EMAIL } from "@/lib/platformAdmin";
+import { compareNatural } from "@/lib/sortUtils";
 
 function formatVenueAddress(venue: DirectoryLeague["venue"]): string {
   return [venue.address, venue.city, [venue.stateOrProvince, venue.postalCode].filter(Boolean).join(" ")]
@@ -265,7 +266,7 @@ export default function LeagueDirectoryPage() {
           return feeA - feeB;
         }
         if (sortBy === "name") {
-          return a.name.localeCompare(b.name);
+          return compareNatural(a.name, b.name);
         }
         // Priority sort: Active -> User created -> Live remote -> Sample
         if (a.isActive && !b.isActive) return -1;
@@ -366,15 +367,6 @@ export default function LeagueDirectoryPage() {
                 <Globe className="w-3.5 h-3.5" />
                 <span><span className="normal-case">FlagOS</span> League Directory</span>
               </span>
-              <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-cyan-500/10 border border-slate-200 dark:border-cyan-500/20 text-xs font-mono font-bold text-slate-700 dark:text-cyan-300">
-                {processedLeagues.length} {processedLeagues.length === 1 ? "League Available" : "Leagues Available"}
-              </span>
-              {liveCount > 0 && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 text-xs font-mono font-bold text-emerald-800 dark:text-emerald-300">
-                  <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                  {liveCount} Live FlagOS {liveCount === 1 ? "League" : "Leagues"}
-                </span>
-              )}
             </div>
 
             <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -1013,7 +1005,7 @@ export default function LeagueDirectoryPage() {
                       </ul>
                     ) : (
                       <p className="text-[11px] text-slate-500 dark:text-neutral-400 italic">
-                        Contact commissioner for more details
+                        Contact commissioner for more detail
                       </p>
                     )}
                   </div>

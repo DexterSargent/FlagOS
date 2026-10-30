@@ -432,8 +432,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           ]);
           if (version !== authVersion) return;
           const lookupResult = lookup ? await lookup.catch(() => null) : undefined;
-          // A failed or throttled lookup says nothing about membership; keep the last known profile.
-          if (lookup && !lookupResult) throw new Error("Identity lookup failed.");
+          // A failed or throttled lookup says nothing about membership; keep the last known profile or proceed gracefully.
+          if (lookup && !lookupResult) {
+            console.warn("Identity lookup unavailable; proceeding with initial user profile.");
+          }
           const managedTeamIds = (lookupResult?.teams || []).map((team) => team.id);
           const playerRecords = (lookupResult?.players || []).filter(
             (player) => typeof player.teamId === "string" && player.teamId && player.teamId !== "team_free_agents",

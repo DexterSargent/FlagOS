@@ -10,6 +10,7 @@ import {
   type PlayerStatLine,
   type SeasonSnapshot,
 } from "@/lib/leagueSeasons";
+import { compareNatural } from "@/lib/sortUtils";
 
 const LEADER_CATEGORIES: Array<{ key: PlayerStatKey; label: string }> = [
   { key: "totalTDs", label: "Touchdowns" },
@@ -80,7 +81,7 @@ export default function SeasonHistoryPanel({
     const term = search.trim().toLowerCase();
     return careers
       .filter((career) => !term || career.name.toLowerCase().includes(term))
-      .sort((a, b) => b.totals.totalTDs - a.totals.totalTDs || b.totals.gamesPlayed - a.totals.gamesPlayed || a.name.localeCompare(b.name));
+      .sort((a, b) => b.totals.totalTDs - a.totals.totalTDs || b.totals.gamesPlayed - a.totals.gamesPlayed || compareNatural(a.name, b.name));
   }, [careers, search]);
 
   const orderedSeasons = [...seasons].sort((a, b) => b.number - a.number);

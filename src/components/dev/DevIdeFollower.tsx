@@ -9,15 +9,20 @@ interface InspectableTarget {
   rect: DOMRect;
   name: string;
   tag: string;
+  rawTag?: string;
   className?: string;
+  rawClassName?: string;
   file?: string;
+  line?: number;
   component?: string;
+  componentChain?: string[];
   href?: string;
   onClickText?: string;
   text?: string;
   ariaLabel?: string | null;
   dataTour?: string | null;
   id?: string;
+  ancestorTexts?: string[];
 }
 
 function getFiberFromElement(element: Element | null): any {
@@ -31,22 +36,222 @@ function getFiberFromElement(element: Element | null): any {
   return key ? (element as any)[key] : null;
 }
 
+const FRAMEWORK_PREFIXES = [
+  "Next",
+  "Lucide",
+  "svg",
+  "Segment",
+  "Layout",
+  "Inner",
+  "Outer",
+  "Redirect",
+  "HTTP",
+  "Loading",
+  "Error",
+  "Scroll",
+  "GlobalShell",
+  "AuthGuard",
+  "PortalIdentity",
+  "SelectedLeague",
+  "ThemeProvider",
+  "DevIde",
+  "Toast",
+  "Head",
+];
+
+const FRAMEWORK_EXACT = new Set([
+  "Link",
+  "LinkComponent",
+  "NextLink",
+  "Image",
+  "NextImage",
+  "ClientPageRoot",
+  "SegmentViewNode",
+  "LayoutRouterContext",
+  "InnerLayoutRouter",
+  "OuterLayoutRouter",
+  "RedirectErrorBoundary",
+  "RedirectBoundary",
+  "HTTPAccessFallbackBoundary",
+  "LoadingBoundary",
+  "ErrorBoundary",
+  "InnerScrollHandler",
+  "ScrollHandler",
+  "GlobalShellInner",
+  "GlobalShell",
+  "AuthGuard",
+  "PortalIdentityScope",
+  "PortalIdentityBoundary",
+  "SelectedLeagueProvider",
+  "ThemeProvider",
+  "Fragment",
+  "Suspense",
+  "DevIdeFollower",
+  "DynamicComponent",
+]);
+
+function isUserComponentName(name: string | null | undefined): boolean {
+  if (!name || typeof name !== "string") return false;
+  if (FRAMEWORK_EXACT.has(name)) return false;
+  for (const prefix of FRAMEWORK_PREFIXES) {
+    if (name.startsWith(prefix)) return false;
+  }
+  return true;
+}
+
 function getComponentName(type: any): string | null {
   if (!type) return null;
   if (typeof type === "string") return null;
-  if (typeof type === "function") return type.displayName || type.name || null;
+  if (typeof type === "function") {
+    const n = type.displayName || type.name;
+    return isUserComponentName(n) ? n : null;
+  }
   if (typeof type === "object") {
-    return (
-      type.displayName ||
-      type.name ||
-      type.render?.displayName ||
-      type.render?.name ||
-      type.type?.displayName ||
-      type.type?.name ||
-      null
-    );
+    const candidates = [
+      type.displayName,
+      type.name,
+      type.render?.displayName,
+      type.render?.name,
+      type.type?.displayName,
+      type.type?.name,
+    ];
+    for (const c of candidates) {
+      if (isUserComponentName(c)) return c;
+    }
   }
   return null;
+}
+
+interface FiberSourceInfo {
+  componentName?: string;
+  componentChain: string[];
+  file?: string;
+  line?: number;
+  onClickText?: string;
+}
+
+function extractFiberSourceInfo(startFiber: any): FiberSourceInfo {
+  const result: FiberSourceInfo = { componentChain: [] };
+  if (!startFiber) return result;
+
+  const seenComponents = new Set<string>();
+
+  const parseStackOrPath = (str: unknown): { file: string; line?: number } | null => {
+    if (!str) return null;
+    const raw = typeof str === "string" ? str : (str as any)?.stack || String(str || "");
+    if (!raw) return null;
+
+    // 1. Turbopack URL: turbopack://[project]/src/components/X.tsx:12:34
+    const turboMatch = raw.match(/turbopack:\/\/(?:\[project\]\/)?(src\/[^\s:()]+\.[jt]sx?)(?::(\d+))?/i);
+    if (turboMatch) {
+      return { file: turboMatch[1], line: turboMatch[2] ? parseInt(turboMatch[2], 10) : undefined };
+    }
+
+    // 2. Webpack or file URL: webpack-internal:///./src/... or file:///.../src/...
+    const srcMatch = raw.match(/(?:file:\/\/)?(?:[A-Za-z0-9_.\-\/]+\/)?(src\/[A-Za-z0-9_.\-\/]+\.[jt]sx?)(?::(\d+))?/i);
+    if (srcMatch) {
+      return { file: srcMatch[1], line: srcMatch[2] ? parseInt(srcMatch[2], 10) : undefined };
+    }
+
+    // 3. Turbopack chunk name: src_components_team_TeamSeasonHistoryPanel_tsx
+    const chunkMatch = raw.match(/(src_[a-zA-Z0-9_%]+_(?:tsx|ts|jsx|js))/i);
+    if (chunkMatch) {
+      return { file: decodeURIComponent(chunkMatch[1]) };
+    }
+    return null;
+  };
+
+  const inspectFiber = (f: any) => {
+    if (!f) return;
+
+    // Check component name from type, elementType, or _debugOwner
+    const comp =
+      getComponentName(f.type) ||
+      getComponentName(f.elementType) ||
+      (f._debugOwner ? getComponentName(f._debugOwner.type) : null);
+
+    if (comp && isUserComponentName(comp)) {
+      if (!seenComponents.has(comp)) {
+        seenComponents.add(comp);
+        result.componentChain.push(comp);
+        if (!result.componentName) {
+          result.componentName = comp;
+        }
+      }
+    }
+
+    // Check onClick
+    if (!result.onClickText && f.memoizedProps?.onClick) {
+      const fn = f.memoizedProps.onClick;
+      if (typeof fn === "function") {
+        if (fn.name && fn.name !== "onClick" && !fn.name.startsWith("bound ")) {
+          result.onClickText = fn.name;
+        } else {
+          const fnStr = fn.toString();
+          const match = fnStr.match(
+            /(set[A-Z0-9_a-z]+|handle[A-Z0-9_a-z]+|[a-zA-Z0-9_]+Modal|open[A-Z0-9_a-z]+|close[A-Z0-9_a-z]+|toggle[A-Z0-9_a-z]+)/
+          );
+          if (match) result.onClickText = match[1];
+        }
+      }
+    }
+
+    // Check _debugSource directly on fiber, owner, or memoizedProps
+    const debugSource = f._debugSource || f.memoizedProps?.__source;
+    if (!result.file && debugSource && debugSource.fileName) {
+      result.file = String(debugSource.fileName);
+      result.line = typeof debugSource.lineNumber === "number" ? debugSource.lineNumber : undefined;
+    }
+
+    // Check _debugStack
+    if (!result.file && f._debugStack) {
+      const parsed = parseStackOrPath(f._debugStack);
+      if (parsed) {
+        result.file = parsed.file;
+        result.line = parsed.line;
+      }
+    }
+
+    // Check _debugInfo (React 19 Server/Client component info)
+    if (!result.file && f._debugInfo && Array.isArray(f._debugInfo)) {
+      for (const info of f._debugInfo) {
+        if (info?.name && !result.componentName && isUserComponentName(String(info.name))) {
+          result.componentName = String(info.name);
+        }
+        if (info?.env) {
+          const parsed = parseStackOrPath(info.env);
+          if (parsed) {
+            result.file = parsed.file;
+            result.line = parsed.line;
+            break;
+          }
+        }
+      }
+    }
+  };
+
+  // 1. Walk the _debugOwner chain (the JSX creators!)
+  let owner = startFiber._debugOwner;
+  let ownerHops = 0;
+  while (owner && ownerHops < 25) {
+    inspectFiber(owner);
+    owner = owner._debugOwner;
+    ownerHops++;
+  }
+
+  // 2. Walk the return (parent fiber) chain
+  let curr = startFiber;
+  let hops = 0;
+  while (curr && hops < 50) {
+    inspectFiber(curr);
+    if (curr._debugOwner) {
+      inspectFiber(curr._debugOwner);
+    }
+    curr = curr.return;
+    hops++;
+  }
+
+  return result;
 }
 
 /**
@@ -63,19 +268,21 @@ function findInspectableTarget(
   if (!rawTarget || !(rawTarget instanceof HTMLElement)) return null;
   if (rawTarget.closest("#dev-ide-follower-ui")) return null;
 
-  // Walk up ancestors looking for the primary semantic element
+  // Walk up ancestors looking for the primary semantic element and all identifiers
   let curr: HTMLElement | null = rawTarget;
   let targetElement: HTMLElement | null = null;
   let href: string | undefined = undefined;
   let dataTour: string | undefined = undefined;
   let ariaLabel: string | undefined = undefined;
   let id: string | undefined = undefined;
-  let onClickText: string | undefined = undefined;
-  let compName: string | undefined = undefined;
-  let sourceFile: string | undefined = undefined;
+  const ancestorTexts: string[] = [];
+
+  // Extract React Fiber info from the clicked element
+  const fiber = getFiberFromElement(rawTarget);
+  const fiberInfo = extractFiberSourceInfo(fiber);
 
   let depth = 0;
-  while (curr && curr !== document.body && depth < 5) {
+  while (curr && curr !== document.body && depth < 25) {
     if (!href) {
       const rawHref = curr.getAttribute("href") || (curr as any).href;
       if (typeof rawHref === "string" && rawHref) href = rawHref;
@@ -92,46 +299,39 @@ function findInspectableTarget(
       id = curr.id;
     }
 
-    // Inspect React Fiber
-    const fiber = getFiberFromElement(curr);
-    if (fiber) {
-      if (!onClickText) {
-        const fn = fiber.memoizedProps?.onClick;
-        if (typeof fn === "function") {
-          if (fn.name && fn.name !== "onClick" && !fn.name.startsWith("bound ")) {
-            onClickText = fn.name;
-          } else {
-            const fnStr = fn.toString();
-            const match = fnStr.match(/(set[A-Z0-9_a-z]+|handle[A-Z0-9_a-z]+|[a-zA-Z0-9_]+Modal)/);
-            if (match) onClickText = match[1];
-          }
-        }
-      }
+    const tag = curr.tagName.toLowerCase();
+    // Remember interactive container
+    if (!targetElement && (["button", "a", "input", "select", "textarea", "summary"].includes(tag) || curr.getAttribute("role") === "button")) {
+      targetElement = curr;
+    }
 
-      if (!compName) {
-        const name = getComponentName(fiber.type);
-        if (name && name !== "Link" && name !== "NextLink") {
-          compName = name;
-        }
-      }
-
-      if (!sourceFile && fiber._debugStack) {
-        const stackStr = String(fiber._debugStack);
-        const chunkMatch = stackStr.match(/(src_[a-zA-Z0-9_%]+_(?:tsx|ts|jsx|js))/i);
-        if (chunkMatch) {
-          sourceFile = decodeURIComponent(chunkMatch[1]);
-        }
+    // Capture ancestor section/header text
+    if (["h1", "h2", "h3", "h4", "h5", "h6", "th"].includes(tag)) {
+      const hText = curr.innerText?.trim();
+      if (hText && hText.length >= 3 && !ancestorTexts.includes(hText)) {
+        ancestorTexts.push(hText.slice(0, 45));
       }
     }
 
-    // Interactive containers take precedence as the bounding target
-    const tag = curr.tagName.toLowerCase();
-    if (
-      ["button", "a", "input", "select", "textarea", "summary"].includes(tag) ||
-      curr.getAttribute("role") === "button"
-    ) {
-      targetElement = curr;
-      break;
+    // If fiber on target didn't have source, check fiber on ancestor
+    if (!fiberInfo.file || !fiberInfo.componentName) {
+      const parentFiber = getFiberFromElement(curr);
+      if (parentFiber) {
+        const parentInfo = extractFiberSourceInfo(parentFiber);
+        if (!fiberInfo.file && parentInfo.file) {
+          fiberInfo.file = parentInfo.file;
+          fiberInfo.line = parentInfo.line;
+        }
+        if (!fiberInfo.componentName && parentInfo.componentName) {
+          fiberInfo.componentName = parentInfo.componentName;
+        }
+        for (const c of parentInfo.componentChain) {
+          if (!fiberInfo.componentChain.includes(c)) fiberInfo.componentChain.push(c);
+        }
+        if (!fiberInfo.onClickText && parentInfo.onClickText) {
+          fiberInfo.onClickText = parentInfo.onClickText;
+        }
+      }
     }
 
     curr = curr.parentElement;
@@ -141,11 +341,13 @@ function findInspectableTarget(
   // Choose the bounding element: either interactive container or raw semantic element
   const el = targetElement || rawTarget;
   const tag = el.tagName.toLowerCase();
+  const rawTag = rawTarget.tagName.toLowerCase();
   const rawText = (el.innerText || rawTarget.innerText || el.textContent || "")
     .split("\n")[0]
     ?.trim() || "";
-  const cleanText = rawText.slice(0, 45) || undefined;
-  const className = el.className && typeof el.className === "string" ? el.className.slice(0, 80) : undefined;
+  const cleanText = rawText.slice(0, 100) || undefined;
+  const className = el.className && typeof el.className === "string" ? el.className.slice(0, 400) : undefined;
+  const rawClassName = rawTarget.className && typeof rawTarget.className === "string" ? rawTarget.className.slice(0, 400) : undefined;
 
   // =========================================================================
   // STRICT "CLEAR PATH" VALIDATION:
@@ -159,10 +361,10 @@ function findInspectableTarget(
     // 3. Is a form control (input, select, textarea, form)
     // 4. Is a custom React component with logic
     const hasLogicPath = Boolean(
-      onClickText ||
+      fiberInfo.onClickText ||
       (href && href.startsWith("/")) ||
       ["input", "select", "textarea", "form"].includes(tag) ||
-      (compName && compName !== "Link")
+      (fiberInfo.componentName && fiberInfo.componentName !== "Link")
     );
 
     if (!hasLogicPath) {
@@ -186,9 +388,11 @@ function findInspectableTarget(
       id ||
       ariaLabel ||
       href ||
-      compName ||
-      onClickText ||
+      fiberInfo.componentName ||
+      fiberInfo.file ||
+      fiberInfo.onClickText ||
       (isSemanticTextTag && hasDistinctText) ||
+      (ancestorTexts.length > 0) ||
       (tag === "div" && (dataTour || id || (hasDistinctText && cleanText && cleanText.length >= 5)))
     );
 
@@ -197,7 +401,7 @@ function findInspectableTarget(
     }
   }
 
-  const baseDisplay = compName || (tag === "a" ? "Link" : tag);
+  const baseDisplay = fiberInfo.componentName || (tag === "a" ? "Link" : tag);
   const name = cleanText ? `<${baseDisplay}> "${cleanText}"` : `<${baseDisplay}>`;
 
   return {
@@ -205,15 +409,20 @@ function findInspectableTarget(
     rect: el.getBoundingClientRect(),
     name,
     tag,
+    rawTag,
     className,
-    file: sourceFile,
-    component: compName,
+    rawClassName,
+    file: fiberInfo.file,
+    line: fiberInfo.line,
+    component: fiberInfo.componentName,
+    componentChain: fiberInfo.componentChain,
     href,
-    onClickText,
+    onClickText: fiberInfo.onClickText,
     text: cleanText,
     ariaLabel,
     dataTour,
     id,
+    ancestorTexts,
   };
 }
 
@@ -273,7 +482,9 @@ export default function DevIdeFollower() {
     async (payload: {
       mode: "ui" | "logic";
       file?: string;
+      line?: number;
       component?: string;
+      componentChain?: string[];
       route?: string;
       href?: string;
       onClickText?: string;
@@ -282,7 +493,10 @@ export default function DevIdeFollower() {
       dataTour?: string | null;
       id?: string;
       tag?: string;
+      rawTag?: string;
       className?: string;
+      rawClassName?: string;
+      ancestorTexts?: string[];
     }) => {
       try {
         const res = await fetch("/api/dev/open-in-editor", {
@@ -400,7 +614,9 @@ export default function DevIdeFollower() {
       openTarget({
         mode,
         file: inspectable.file,
+        line: inspectable.line,
         component: inspectable.component,
+        componentChain: inspectable.componentChain,
         route: pathname,
         href: inspectable.href,
         onClickText: inspectable.onClickText,
@@ -409,7 +625,10 @@ export default function DevIdeFollower() {
         dataTour: inspectable.dataTour,
         id: inspectable.id,
         tag: inspectable.tag,
+        rawTag: inspectable.rawTag,
         className: inspectable.className,
+        rawClassName: inspectable.rawClassName,
+        ancestorTexts: inspectable.ancestorTexts,
       });
     };
 

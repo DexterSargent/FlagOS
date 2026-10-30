@@ -84,20 +84,28 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
           </span>
         </Link>
 
-        <ul className="flex flex-1 items-stretch justify-end gap-0 lg:gap-1 min-w-0">
+        <ul className="flex flex-1 items-stretch justify-evenly lg:justify-end lg:gap-1 min-w-0">
           {sections.map(({ key, label, mobileLabel, path, icon: Icon }) => {
             const isActive = active === key;
             return (
-              <li key={key} className="flex-1 lg:flex-none min-w-0">
+              <li key={key} className="min-w-0">
                 <Link
                   href={`/teams/${teamId}${path}`}
                   aria-label={label}
                   aria-current={isActive ? "page" : undefined}
-                  className={`relative flex flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1.5 h-12 lg:h-10 px-0.5 lg:px-3 rounded-lg text-[10px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-colors ${isActive ? "text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  className={`relative flex flex-col lg:flex-row items-center justify-center gap-0.5 lg:gap-1.5 h-12 lg:h-10 px-1 lg:px-3 rounded-lg text-[10px] lg:text-xs font-bold uppercase tracking-wide lg:tracking-wide tracking-tight whitespace-nowrap transition-colors ${isActive ? "text-white" : "text-neutral-400 hover:text-white hover:bg-white/5"
                     }`}
                   style={isActive ? { backgroundColor: `${accent}22`, color: "var(--team-ink)" } : undefined}
                 >
-                  <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  {key === "home" && team?.logoUrl ? (
+                    <img
+                      src={team.logoUrl}
+                      alt=""
+                      className="w-4 h-4 shrink-0 object-contain rounded-xs"
+                    />
+                  ) : (
+                    <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  )}
                   <span className="lg:hidden">{mobileLabel}</span>
                   <span className="hidden lg:inline">{label}</span>
                 </Link>
@@ -105,7 +113,10 @@ export default function TeamNavBar({ teamId, className = "" }: { teamId: string;
             );
           })}
         </ul>
-        <SiteControls guideLabelClassName="hidden lg:inline" />
+        <SiteControls
+          className="gap-1 sm:gap-1.5"
+          guideLabelClassName="hidden lg:inline"
+        />
       </div>
     </nav>
   );

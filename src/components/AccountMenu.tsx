@@ -14,7 +14,7 @@ import { useLeague } from "@/lib/leagueContext";
 export default function AccountMenu({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   const { user, userProfile, isPlayer, playerId, playerData, playerTeamId, managedTeamId, isLeagueAdmin, isPlatformAdmin, isAuthorized, logout } = useAuth();
-  const { openCustomizer, activeLeagueId, portalLeagueId } = useLeague();
+  const { openCustomizer, activeLeagueId, portalLeagueId, isDemoLeague } = useLeague();
   // Remember the path the menu was opened on so navigating away closes it.
   const [openPath, setOpenPath] = useState<string | null>(null);
   const open = openPath !== null && openPath === pathname;
@@ -40,13 +40,14 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
     };
   }, [open]);
 
-  if (!user) {
+  // If not logged in and not a demo commissioner, show standard Sign In button
+  if (!user && !isLeagueAdmin) {
     if (pathname === "/login") return null;
     const redirect = pathname && pathname !== "/" ? `?redirect=${encodeURIComponent(pathname)}` : "";
     return (
       <Link
         href={`/login${redirect}`}
-        className={`inline-flex items-center gap-1.5 h-10 sm:h-8 px-2.5 sm:px-3 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-primary text-xs font-bold transition-colors shrink-0 ${className}`}
+        className={`inline-flex items-center gap-1.5 h-9 sm:h-8 px-2.5 sm:px-3 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-primary text-xs font-bold transition-colors shrink-0 ${className}`}
         aria-label="Sign in"
       >
         <LogIn className="w-3.5 h-3.5 shrink-0" />
@@ -55,8 +56,8 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
     );
   }
 
-  const displayName = (isPlayer && playerData?.playerName) || user.displayName || user.email?.split("@")[0] || "Account";
-  const initial = displayName.trim().charAt(0).toUpperCase() || "?";
+  const displayName = (isPlayer && playerData?.playerName) || user?.displayName || user?.email?.split("@")[0] || (isLeagueAdmin ? "Commissioner" : "Account");
+  const initial = displayName.trim().charAt(0).toUpperCase() || "A";
   // "My" links point at the portal being browsed; outside a portal, Profile lists every roster to pick from.
   const teamId = managedTeamId || playerTeamId;
   const realPortalLeague = portalLeagueId && portalLeagueId !== "default" ? portalLeagueId : null;
@@ -65,7 +66,7 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
     : isPlayer && playerId && playerTeamId && !portalLeagueId
       ? `/profile?team=${encodeURIComponent(playerTeamId)}&player=${encodeURIComponent(playerId)}`
       : "/profile";
-  const showProfile = isPlayer || Boolean(userProfile?.playerRecords?.length);
+  const showProfile = Boolean(user && (isPlayer || userProfile?.playerRecords?.length));
   const itemClass =
     "flex w-full items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-left cursor-pointer";
 
@@ -77,57 +78,81 @@ export default function AccountMenu({ className = "" }: { className?: string }) 
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu for ${displayName}`}
-        className="inline-flex items-center gap-1 h-10 sm:h-8 pl-1 sm:pl-0.5 pr-1.5 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+        className="inline-flex items-center gap-0.5 h-9 sm:h-8 pl-0.5 pr-1 rounded-xl bg-surface-inset hover:bg-surface-hover border border-token text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
       >
-        <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-black flex items-center justify-center">
+        <span className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-[11px] font-black flex items-center justify-center">
           {initial}
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
       </button>
 
       {open && (
         <div
           role="menu"
           aria-label="Account"
-          className="absolute right-0 top-full mt-2 z-[70] w-60 max-w-[calc(100vw-1rem)] rounded-2xl border border-token bg-surface-raised p-1.5 shadow-2xl"
+          className="absolute right-0 top-full mt-2 z-[70] w-64 max-w-[calc(100vw-1rem)] rounded-2xl border border-token bg-surface-raised p-1.5 shadow-2xl"
         >
           <div className="px-3 py-2 border-b border-token mb-1">
             <p className="text-sm font-bold text-text-primary truncate">{displayName}</p>
-            {user.email && <p className="text-xs text-text-muted truncate">{user.email}</p>}
+            {user?.email ? (
+              <p className="text-xs text-text-muted truncate">{user.email}</p>
+            ) : (
+              <p className="text-xs text-text-muted truncate font-medium">Demo Administrator</p>
+            )}
           </div>
           {showProfile && (
-            <Link href={profileHref} role="menuitem" className={itemClass}>
+            <Link href={profileHref} role="menuitem" className={itemClass} onClick={() => setOpen(false)}>
               <User className="w-4 h-4 shrink-0" /> My Profile
             </Link>
           )}
           {teamId && (
-            <Link href={`/teams/${teamId}`} role="menuitem" className={itemClass}>
+            <Link href={`/teams/${teamId}`} role="menuitem" className={itemClass} onClick={() => setOpen(false)}>
               <Users className="w-4 h-4 shrink-0" /> My Team
             </Link>
           )}
-          <Link href="/account" role="menuitem" className={itemClass}>
-            <Settings className="w-4 h-4 shrink-0" /> Account Settings
-          </Link>
-          {isAuthorized && isLeagueAdmin && Boolean(activeLeagueId) && (
-            <button type="button" role="menuitem" className={itemClass} onClick={() => { setOpen(false); openCustomizer(); }}>
-              <Sliders className="w-4 h-4 shrink-0" /> League Settings
-            </button>
-          )}
-          {isPlatformAdmin && (
-            <Link href="/admin" role="menuitem" className={itemClass}>
-              <Shield className="w-4 h-4 shrink-0" /> Platform Admin
-            </Link>
-          )}
-          <div className="border-t border-token mt-1 pt-1">
+          {isAuthorized && isLeagueAdmin && !pathname?.startsWith("/admin") && (
             <button
               type="button"
               role="menuitem"
-              onClick={() => { setOpen(false); void logout(); }}
-              className={`${itemClass} hover:!text-red-500`}
+              className={`${itemClass} text-amber-600 dark:text-amber-400 font-bold hover:!text-amber-500`}
+              onClick={() => {
+                setOpen(false);
+                openCustomizer();
+              }}
             >
-              <LogOut className="w-4 h-4 shrink-0" /> Sign Out
+              <Sliders className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400" />
+              <span>League Settings</span>
             </button>
-          </div>
+          )}
+          {user ? (
+            <Link href="/account" role="menuitem" className={itemClass} onClick={() => setOpen(false)}>
+              <Settings className="w-4 h-4 shrink-0" /> Account Settings
+            </Link>
+          ) : (
+            <Link href="/login" role="menuitem" className={itemClass} onClick={() => setOpen(false)}>
+              <LogIn className="w-4 h-4 shrink-0" /> Sign In / Create Account
+            </Link>
+          )}
+          {isPlatformAdmin && (
+            <Link href="/admin" role="menuitem" className={itemClass} onClick={() => setOpen(false)}>
+              <Shield className="w-4 h-4 shrink-0" /> Platform Admin
+            </Link>
+          )}
+          {user && (
+            <div className="border-t border-token mt-1 pt-1">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  void logout();
+                }}
+                className={`${itemClass} hover:!text-red-500`}
+              >
+                <LogOut className="w-4 h-4 shrink-0" /> Sign Out
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

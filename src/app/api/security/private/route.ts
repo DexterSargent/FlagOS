@@ -107,7 +107,7 @@ async function syncLeagueAccess(uid: string, leagueIds: string[]): Promise<strin
   if (!unchanged) {
     if (next.length || snapshot.exists) await ref.set({ leagueIds: next, updatedAt: Date.now() });
   }
-  const granted = next.filter((id) => !previous.includes(id));
+  const granted = next.filter((id) => !previous.includes(id) && Boolean(id) && !id.includes("/"));
   if (!granted.length) return [];
   // Public leagues were already readable, so only private grants change what the client can see.
   const leagueDocs = await adminDb.getAll(...granted.map((id) => adminDb.doc(`leagues/${id}`)));
@@ -165,12 +165,14 @@ async function lookupByEmail(token: DecodedIdToken) {
   for (const [id, data] of legacyPlayers) {
     if (!playerPrivate.has(id)) playerPrivate.set(id, data);
   }
+  const validTeamIds = [...teamPrivate.keys()].filter((id) => id && typeof id === "string" && !id.includes("/"));
+  const validPlayerIds = [...playerPrivate.keys()].filter((id) => id && typeof id === "string" && !id.includes("/"));
   const [teamDocs, playerDocs] = await Promise.all([
-    teamPrivate.size
-      ? adminDb.getAll(...[...teamPrivate.keys()].map((id) => adminDb.doc(`teams/${id}`)))
+    validTeamIds.length
+      ? adminDb.getAll(...validTeamIds.map((id) => adminDb.doc(`teams/${id}`)))
       : [],
-    playerPrivate.size
-      ? adminDb.getAll(...[...playerPrivate.keys()].map((id) => adminDb.doc(`players/${id}`)))
+    validPlayerIds.length
+      ? adminDb.getAll(...validPlayerIds.map((id) => adminDb.doc(`players/${id}`)))
       : [],
   ]);
 
@@ -181,7 +183,7 @@ async function lookupByEmail(token: DecodedIdToken) {
   const rosterTeamIds = [...new Set(playerDocs
     .filter((snapshot) => snapshot.exists && !stringField(snapshot.data()?.leagueId))
     .map((snapshot) => stringField(snapshot.data()?.teamId))
-    .filter((teamId) => teamId && !knownTeamIds.has(teamId)))];
+    .filter((teamId) => teamId && !knownTeamIds.has(teamId) && !teamId.includes("/"))) ];
   const rosterTeamDocs = rosterTeamIds.length
     ? await adminDb.getAll(...rosterTeamIds.map((id) => adminDb.doc(`teams/${id}`)))
     : [];

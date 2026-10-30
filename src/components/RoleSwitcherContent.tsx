@@ -10,6 +10,7 @@ import { getSandboxTeams, getSandboxPlayers, subscribeDemoSandbox } from "@/lib/
 import { DEMO_TEAM_IDS, isDemoLeaguePagePath, isDemoMatchId, isDemoTeamId } from "@/lib/demoSandboxRuntime";
 import ThemeToggle from "@/components/ThemeToggle";
 import { DEMO_NOTICE_TEXT } from "@/components/DemoNoticeStrip";
+import { compareByName, compareNatural } from "@/lib/sortUtils";
 
 // Kansas City has sample plays, so demo coaches and players start there.
 const DEMO_DEFAULT_TEAM_ID = "team_kc";
@@ -84,7 +85,7 @@ export default function RoleSwitcherContent() {
       try {
         const tList = getSandboxTeams()
           .map((t) => ({ id: t.id, name: t.name }));
-        tList.sort((a, b) => a.name.localeCompare(b.name));
+        tList.sort(compareByName);
         setTeams(tList);
 
         const pList = getSandboxPlayers().map((p) => ({
@@ -93,7 +94,7 @@ export default function RoleSwitcherContent() {
           playerName: p.playerName || "Unnamed Athlete",
           number: p.number || "00",
         }));
-        pList.sort((a, b) => a.playerName.localeCompare(b.playerName));
+        pList.sort((a, b) => compareNatural(a.playerName, b.playerName));
         setPlayers(pList);
       } catch (err) {
         console.error("Failed to load demo data for role switcher:", err);

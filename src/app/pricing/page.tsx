@@ -49,7 +49,8 @@ export default function PricingPage() {
 
   // Until real billing exists, only the platform owner's verified account can "pay" (or ?preview mode).
   const isOwnerEmail =
-    (!!user?.emailVerified && isPlatformAdminEmail(user.email)) ||
+    isPlatformAdmin ||
+    (!!user?.emailVerified && isPlatformAdminEmail(user?.email)) ||
     (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("preview"));
 
   // League interactive slider
@@ -384,7 +385,7 @@ export default function PricingPage() {
               </Link>
             )}
 
-            {isAuthorized ? (
+            {!isAuthorized ? (
               <Link
                 href={`/league/${activeLeagueId || "default"}`}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-white/5 dark:hover:bg-white/10 text-neutral-900 dark:text-white text-xs font-bold rounded-xl border border-neutral-200 dark:border-white/10 transition-colors flex items-center gap-1.5"
@@ -502,7 +503,7 @@ export default function PricingPage() {
               <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Zero per-player or roster surcharges
             </span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-xs text-neutral-700 dark:text-neutral-300 shadow-sm">
-              <Check className="w-3.5 h-3.5 text-blue-600 dark:text-[#60a5fa]" /> Free spectator access
+              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Free spectator access
             </span>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { getCachedLeagueTeams, getCachedLeaguePlayers, getCachedLeaguePlays, sub
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
 import { isRealTeam, getTeamShortcode } from "@/components/TeamAssets";
+import { compareByName } from "@/lib/sortUtils";
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import { compareStandingRows, isPlayoffMatch } from "@/lib/standingsEngine";
 import {
@@ -68,7 +69,7 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
   useEffect(() => {
     if (isEffectiveDemo) {
       const loadDemoData = () => {
-        const tList = getSandboxTeams().filter(isRealTeam);
+        const tList = getSandboxTeams().filter(isRealTeam).sort(compareByName);
         const pList = getSandboxPlayers();
         const plList = getSandboxPlays();
         const mList = getSandboxMatches()
@@ -95,7 +96,8 @@ export function useLeagueDashboardData(leagueIdParam?: string) {
       ]).then(([rawTeams, rawPlayers, rawPlays]) => {
         if (!isSubscribed) return;
         const tList = rawTeams
-          .filter((t) => isRealTeam(t) && (!t.leagueId || t.leagueId === targetLeagueId));
+          .filter((t) => isRealTeam(t) && (!t.leagueId || t.leagueId === targetLeagueId))
+          .sort(compareByName);
         const pList = rawPlayers
           .filter((p) => !p.leagueId || p.leagueId === targetLeagueId || tList.some((t) => t.id === p.teamId));
         setTeams(tList);

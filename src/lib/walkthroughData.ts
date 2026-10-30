@@ -457,614 +457,133 @@ export const PLAYBOOK_STUDIO_WALKTHROUGH: ToolWalkthrough = {
 };
 
 export const TEAM_ROSTER_WALKTHROUGH: ToolWalkthrough = {
-  "id": "team-roster",
-  "toolName": "Team Roster",
-  "subtitle": "Everyone can view the roster and recorded player stats. Coaches can add and edit players; deletion is restricted to authorized primary admins. Depth charts are coach-only until shared with rostered players.",
-  "steps": [
+  id: "team-roster",
+  toolName: "Team Roster",
+  subtitle: "Manage your player roster, track season stat lines, and organize formation depth charts.",
+  steps: [
     {
-      "id": "roster-overview",
-      "targetSelector": "",
-      "title": "Meet the roster",
-      "description": "Everyone can view the roster and recorded player stats. Coaches can add and edit players; deletion is restricted to authorized primary admins. Depth charts are coach-only until shared with rostered players."
+      id: "roster-overview",
+      targetSelector: "",
+      title: "Team Roster & Depth Charts",
+      description: "Manage all rostered players, view individual offensive and defensive season stats, and set up positional depth charts."
     },
     {
-      "id": "team-navigation",
-      "targetSelector": "[data-tour=\"team-navigation\"]",
-      "title": "Move around your team",
-      "description": "The same navigation follows you through the team portal.",
-      "details": [
-        {
-          "label": "Overview / Home",
-          "text": "Return to the team overview."
-        },
-        {
-          "label": "Schedule / Games",
-          "text": "See upcoming games and past results."
-        },
-        {
-          "label": "Roster",
-          "text": "See players and, when shared, depth charts."
-        },
-        {
-          "label": "Stats",
-          "text": "See season leaders."
-        },
-        {
-          "label": "Playbook / Plays",
-          "text": "Open private plays if you coach this team or are on its roster."
-        },
-        {
-          "label": "Guide",
-          "text": "Open the guide for the current page or dialog.",
-          "targetSelector": "[data-testid=\"page-guide-button\"]"
-        },
-        {
-          "label": "Theme",
-          "text": "Switch the site appearance; other site controls depend on your sign-in."
-        }
-      ]
+      id: "add-player-btn",
+      targetSelector: '[data-tour="add-player-btn"]',
+      title: "Add Teammates",
+      description: "Coaches can add roster members, set jersey numbers, assign primary and secondary positions, and link sign-in emails so players can access private playbooks.",
+      actionHint: "Click '+ Add Player' to add a new teammate to your active roster."
     },
     {
-      "id": "add-player-btn",
-      "targetSelector": "[data-tour=\"add-player-btn\"]",
-      "title": "Add a teammate",
-      "description": "Coaches add roster records and link a player's sign-in emails.",
-      "details": [
-        {
-          "label": "Add Player",
-          "text": "Open the player form and its own Guide."
-        },
-        {
-          "label": "Roster Full",
-          "text": "The roster limit prevents another addition."
-        }
-      ]
+      id: "roster-tabs",
+      targetSelector: '[data-tour="roster-tabs"]',
+      title: "View Modes",
+      description: "Toggle between the full Roster Table and formation-based Depth Charts. Use 'Show Stats' to reveal live season totals."
     },
     {
-      "id": "roster-tabs",
-      "targetSelector": "[data-tour=\"roster-tabs\"]",
-      "title": "Choose the view",
-      "description": "Switch between the player table and positional lineups.",
-      "details": [
-        {
-          "label": "Roster Table",
-          "text": "Show the full list of players."
-        },
-        {
-          "label": "Depth Chart",
-          "text": "Open formation-based depth charts."
-        },
-        {
-          "label": "Show Stats / Hide Stats",
-          "text": "Show or hide season stat columns in the current view."
-        }
-      ]
-    },
-    {
-      "id": "roster-list-table",
-      "targetSelector": "[data-tour=\"roster-list-table\"]",
-      "title": "Player table",
-      "description": "Scroll sideways on a phone to see more columns.",
-      "details": [
-        {
-          "label": "Player name",
-          "text": "Open that player's season totals."
-        },
-        {
-          "label": "View Player Stats",
-          "text": "The activity icon opens the same stats dialog."
-        },
-        {
-          "label": "Edit Player Details",
-          "text": "Coaches change name, jersey number, linked emails and positions."
-        },
-        {
-          "label": "Remove Player from Team",
-          "text": "Authorized admins remove the player after confirmation."
-        },
-        {
-          "label": "GP / Pass TD / Rec TD / Flags / INT",
-          "text": "Extra columns appear with Show Stats; these summarize recorded games."
-        }
-      ]
-    },
-    {
-      "id": "depth-chart-section",
-      "targetSelector": "[data-tour=\"depth-chart-section\"]",
-      "title": "Depth charts",
-      "description": "Choose a named chart to view its lineup. Changes use buttons and dropdowns, not drag-and-drop.",
-      "details": [
-        {
-          "label": "Chart buttons",
-          "text": "Switch between saved depth charts."
-        },
-        {
-          "label": "Allow rostered players to view depth charts",
-          "text": "Coaches decide whether their players can see the lineups."
-        },
-        {
-          "label": "Save Depth Charts",
-          "text": "Persist edits and visibility changes; unsaved edits are not published."
-        },
-        {
-          "label": "Retry depth charts",
-          "text": "Reload if depth-chart loading failed."
-        }
-      ]
-    },
-    {
-      "id": "depth-chart-creation",
-      "targetSelector": "[data-tour=\"depth-chart-section\"] fieldset",
-      "title": "Create a chart",
-      "description": "Coaches can build up to 20 charts from available formations.",
-      "details": [
-        {
-          "label": "Chart name",
-          "text": "Name the lineup."
-        },
-        {
-          "label": "Formation",
-          "text": "Choose its positions from a playbook formation or a default formation."
-        },
-        {
-          "label": "Create Depth Chart",
-          "text": "Add the chart, then use Save Depth Charts to store it."
-        }
-      ]
-    },
-    {
-      "id": "depth-chart-lineup",
-      "targetSelector": "[data-tour=\"depth-chart-section\"] [role=\"group\"]",
-      "title": "Set the player order",
-      "description": "The first name at each position is the starter.",
-      "details": [
-        {
-          "label": "Add player to [position]",
-          "text": "Choose a rostered player for that position."
-        },
-        {
-          "label": "Move up / Move down",
-          "text": "Raise or lower a player's priority."
-        },
-        {
-          "label": "Remove player",
-          "text": "Remove this assignment, not the roster record."
-        },
-        {
-          "label": "Delete chart",
-          "text": "Delete the selected lineup, then save the depth charts."
-        }
-      ]
+      id: "roster-list-table",
+      targetSelector: '[data-tour="roster-list-table"]',
+      title: "Player Directory & Stats",
+      description: "Click any player to review their individual season stat line, or click Edit to update jersey numbers and positions."
     }
   ]
 };
 
 export const TEAM_HUB_WALKTHROUGH: ToolWalkthrough = {
-  "id": "team-hub",
-  "toolName": "Team Hub",
-  "subtitle": "Players and visitors can browse the team, schedule, roster and stats. This team's coaches can edit its identity, manage staff and schedule games; private playbooks are for its coaches and rostered players.",
-  "steps": [
+  id: "team-hub",
+  toolName: "Team Hub",
+  subtitle: "Explore team results, manage roster records, and access private team playbooks.",
+  steps: [
     {
-      "id": "hub-overview",
-      "targetSelector": "",
-      "title": "Your team at a glance",
-      "description": "Players and visitors can browse the team, schedule, roster and stats. This team's coaches can edit its identity, manage staff and schedule games; private playbooks are for its coaches and rostered players."
+      id: "hub-overview",
+      targetSelector: "",
+      title: "Your Team Portal",
+      description: "Welcome to your team hub. Players and fans can follow schedule results and stat leaders. Coaches can manage the roster, update branding, and design private playbooks."
     },
     {
-      "id": "team-navigation",
-      "targetSelector": "[data-tour=\"team-navigation\"]",
-      "title": "Move around your team",
-      "description": "The same navigation follows you through the team portal.",
-      "details": [
-        {
-          "label": "Overview / Home",
-          "text": "Return to the team overview."
-        },
-        {
-          "label": "Schedule / Games",
-          "text": "See upcoming games and past results."
-        },
-        {
-          "label": "Roster",
-          "text": "See players and, when shared, depth charts."
-        },
-        {
-          "label": "Stats",
-          "text": "See season leaders."
-        },
-        {
-          "label": "Playbook / Plays",
-          "text": "Open private plays if you coach this team or are on its roster."
-        },
-        {
-          "label": "Guide",
-          "text": "Open the guide for the current page or dialog.",
-          "targetSelector": "[data-testid=\"page-guide-button\"]"
-        },
-        {
-          "label": "Theme",
-          "text": "Switch the site appearance; other site controls depend on your sign-in."
-        }
-      ]
+      id: "team-header-identity",
+      targetSelector: '[data-tour="team-header-identity"]',
+      title: "Team Identity & Staff",
+      description: "Your team's official emblem, team colours, and coaching staff are displayed here. Coaches can click Edit Team Details to upload a new logo or customize color palettes."
     },
     {
-      "id": "team-header-identity",
-      "targetSelector": "[data-tour=\"team-header-identity\"]",
-      "title": "Team identity",
-      "description": "Your name, logo and colours identify the team.",
-      "details": [
-        {
-          "label": "Add Logo / Change Logo",
-          "text": "Coaches open Edit Team Details to upload or change the emblem."
-        }
-      ]
+      id: "edit-team-btn",
+      targetSelector: '[data-tour="edit-team-btn"]',
+      title: "Coach Administration",
+      description: "Use these controls to edit team info, add assistant coaches or team admins, and manage active season settings.",
+      actionHint: "Click Edit Team Details to update your team's name, shortcode, or uploaded logo."
     },
     {
-      "id": "team-schedule-game-btn",
-      "targetSelector": "[data-tour=\"team-schedule-game-btn\"]",
-      "title": "Schedule Game",
-      "description": "Coaches can create an untimed exhibition game against a custom opponent.",
-      "details": [
-        {
-          "label": "Schedule Game",
-          "text": "Open the scheduling dialog; use its own Guide for every field."
-        }
-      ]
+      id: "team-record-badge",
+      targetSelector: '[data-tour="team-record-badge"]',
+      title: "Record & Season Stats",
+      description: "Headline performance cards summarize your team's record, scoring, and defense. Coaches can customize which stat categories are highlighted."
     },
     {
-      "id": "team-staff-btn",
-      "targetSelector": "[data-tour=\"team-staff-btn\"]",
-      "title": "Coaches & Admins",
-      "description": "Manage the people who help run this team.",
-      "details": [
-        {
-          "label": "Coaches & Admins",
-          "text": "Open the staff dialog. Only the primary admin can remove staff."
-        }
-      ]
-    },
-    {
-      "id": "edit-team-btn",
-      "targetSelector": "[data-tour=\"edit-team-btn\"]",
-      "title": "Edit Team Info",
-      "description": "Coaches can update the team's public identity.",
-      "details": [
-        {
-          "label": "Edit Team Info",
-          "text": "Open the name, shortcode, colours and logo editor. Its Guide explains the form."
-        }
-      ]
-    },
-    {
-      "id": "team-archive",
-      "targetSelector": "[data-tour=\"team-archive\"]",
-      "title": "Conclude or reopen a season",
-      "description": "Only independent non-demo teams show these season controls.",
-      "details": [
-        {
-          "label": "Conclude & Archive Season",
-          "text": "Freeze roster, schedule and stats editing for the completed season."
-        },
-        {
-          "label": "Reopen Season",
-          "text": "Restore editing for an archived team season."
-        }
-      ]
-    },
-    {
-      "id": "team-manage-billing",
-      "targetSelector": "[data-tour=\"team-manage-billing\"]",
-      "title": "Manage billing",
-      "description": "Paid independent teams only. Opens the secure Stripe billing portal to update your card, download invoices or cancel your plan."
-    },
-    {
-      "id": "team-record-badge",
-      "targetSelector": "[data-tour=\"team-record-badge\"]",
-      "title": "Record and team stats",
-      "description": "Headline numbers summarize the team's season.",
-      "details": [
-        {
-          "label": "Customize Stats",
-          "text": "Choose which recorded numbers are displayed, without changing the underlying stats."
-        },
-        {
-          "label": "Choose stats to show",
-          "text": "When no stats are selected, reopen the customizer to choose some."
-        }
-      ]
-    },
-    {
-      "id": "team-stats-retry",
-      "targetSelector": "[data-tour=\"team-stats-retry\"]",
-      "title": "Stats not loading?",
-      "description": "A failed stats request does not mean your stats were erased.",
-      "details": [
-        {
-          "label": "Retry",
-          "text": "Try loading the team summary again."
-        }
-      ]
-    },
-    {
-      "id": "team-quick-links",
-      "targetSelector": "[data-tour=\"team-quick-links\"]",
-      "title": "Choose your next stop",
-      "description": "Large cards take you straight to the main team areas.",
-      "details": [
-        {
-          "label": "Schedule",
-          "text": "Upcoming games and completed results."
-        },
-        {
-          "label": "Roster",
-          "text": "Player list and depth charts."
-        },
-        {
-          "label": "Stat Leaders",
-          "text": "Offensive and defensive season leaders."
-        },
-        {
-          "label": "Playbooks",
-          "text": "Private formations and plays, visible only to this team's coaches and rostered players."
-        }
-      ]
+      id: "team-quick-links",
+      targetSelector: '[data-tour="team-quick-links"]',
+      title: "Team Navigation",
+      description: "Jump straight to your game schedule, full player roster, statistical leaderboards, or private playbooks."
     }
   ]
 };
 
 
 export const TEAM_SCHEDULE_WALKTHROUGH: ToolWalkthrough = {
-  "id": "team-schedule",
-  "toolName": "Team Schedule",
-  "subtitle": "Players and visitors can watch games and review results. Coaches can schedule and track games. Only authorized primary admins can delete events; archived seasons are read-only.",
-  "steps": [
+  id: "team-schedule",
+  toolName: "Team Schedule",
+  subtitle: "Track games, log scores and review recaps across the season.",
+  steps: [
     {
-      "id": "schedule-overview",
-      "targetSelector": "",
-      "title": "Follow your season",
-      "description": "Players and visitors can watch games and review results. Coaches can schedule and track games. Only authorized primary admins can delete events; archived seasons are read-only."
+      id: "schedule-overview",
+      targetSelector: "",
+      title: "Season Schedule & Results",
+      description: "Review upcoming matchups, live game tracking, and completed game box scores. Authorized coaches can also schedule exhibition games."
     },
     {
-      "id": "team-navigation",
-      "targetSelector": "[data-tour=\"team-navigation\"]",
-      "title": "Move around your team",
-      "description": "The same navigation follows you through the team portal.",
-      "details": [
-        {
-          "label": "Overview / Home",
-          "text": "Return to the team overview."
-        },
-        {
-          "label": "Schedule / Games",
-          "text": "See upcoming games and past results."
-        },
-        {
-          "label": "Roster",
-          "text": "See players and, when shared, depth charts."
-        },
-        {
-          "label": "Stats",
-          "text": "See season leaders."
-        },
-        {
-          "label": "Playbook / Plays",
-          "text": "Open private plays if you coach this team or are on its roster."
-        },
-        {
-          "label": "Guide",
-          "text": "Open the guide for the current page or dialog.",
-          "targetSelector": "[data-testid=\"page-guide-button\"]"
-        },
-        {
-          "label": "Theme",
-          "text": "Switch the site appearance; other site controls depend on your sign-in."
-        }
-      ]
+      id: "team-schedule-actions",
+      targetSelector: '[data-tour="team-schedule-actions"]',
+      title: "Schedule Exhibition",
+      description: "Create non-league exhibition matchups with custom opponents and venues."
     },
     {
-      "id": "team-schedule-actions",
-      "targetSelector": "[data-tour=\"team-schedule-actions\"]",
-      "title": "Schedule a game",
-      "description": "Team-created games are untimed and support a custom opponent.",
-      "details": [
-        {
-          "label": "Schedule Game",
-          "text": "Open the exhibition scheduling form and its Guide."
-        }
-      ]
+      id: "team-upcoming",
+      targetSelector: '[data-tour="team-upcoming"]',
+      title: "Upcoming & Live Matchups",
+      description: "Match cards show kickoff time, opponent and venue. Coaches can launch clockless Stat Keeper or timed Live Tracking."
     },
     {
-      "id": "team-upcoming",
-      "targetSelector": "[data-tour=\"team-upcoming\"]",
-      "title": "Upcoming and active games",
-      "description": "Each card shows the opponent, date, start time and venue.",
-      "details": [
-        {
-          "label": "Record Stats",
-          "text": "Coaches open the clockless stat keeper for an untimed game."
-        },
-        {
-          "label": "Track Game",
-          "text": "Coaches open timed tracking for a league game."
-        },
-        {
-          "label": "Watch Game",
-          "text": "Players and visitors follow game activity without editing."
-        },
-        {
-          "label": "Delete Event",
-          "text": "Authorized admins remove a scheduled event after confirmation."
-        },
-        {
-          "label": "LIVE NOW / PAUSED / Untimed",
-          "text": "These badges show activity and whether a clock is used."
-        }
-      ]
-    },
-    {
-      "id": "team-past-results",
-      "targetSelector": "[data-tour=\"team-past-results\"]",
-      "title": "Past Results & Box Scores",
-      "description": "Completed games show your score, the opponent's score and the result.",
-      "details": [
-        {
-          "label": "Result card",
-          "text": "Open the game recap or untimed stat keeper.",
-          "targetSelector": "a"
-        },
-        {
-          "label": "Delete Event",
-          "text": "Authorized admins can remove an event after confirmation; check carefully before deleting."
-        }
-      ]
+      id: "team-past-results",
+      targetSelector: '[data-tour="team-past-results"]',
+      title: "Past Results & Box Scores",
+      description: "Browse completed games with final scores. Click any card to open full play-by-play logs, player box scores, and recap stats."
     }
   ]
 };
 
 
 export const TEAM_STATS_WALKTHROUGH: ToolWalkthrough = {
-  "id": "team-stats",
-  "toolName": "Team Stat Leaders",
-  "subtitle": "Coaches, players and visitors can compare the team's top three players in each category. Only completed, non-hidden games with tracked plays contribute here; this page does not edit stats.",
-  "steps": [
+  id: "team-stats",
+  toolName: "Team Stat Leaders",
+  subtitle: "Explore season leaders across passing, rushing, receiving and defense.",
+  steps: [
     {
-      "id": "stats-overview",
-      "targetSelector": "",
-      "title": "Season leaders",
-      "description": "Coaches, players and visitors can compare the team's top three players in each category. Only completed, non-hidden games with tracked plays contribute here; this page does not edit stats."
+      id: "stats-overview",
+      targetSelector: "",
+      title: "Team Stat Hub",
+      description: "Aggregates individual and team milestones from every completed, non-hidden game with play-by-play tracking."
     },
     {
-      "id": "team-navigation",
-      "targetSelector": "[data-tour=\"team-navigation\"]",
-      "title": "Move around your team",
-      "description": "The same navigation follows you through the team portal.",
-      "details": [
-        {
-          "label": "Overview / Home",
-          "text": "Return to the team overview."
-        },
-        {
-          "label": "Schedule / Games",
-          "text": "See upcoming games and past results."
-        },
-        {
-          "label": "Roster",
-          "text": "See players and, when shared, depth charts."
-        },
-        {
-          "label": "Stats",
-          "text": "See season leaders."
-        },
-        {
-          "label": "Playbook / Plays",
-          "text": "Open private plays if you coach this team or are on its roster."
-        },
-        {
-          "label": "Guide",
-          "text": "Open the guide for the current page or dialog.",
-          "targetSelector": "[data-testid=\"page-guide-button\"]"
-        },
-        {
-          "label": "Theme",
-          "text": "Switch the site appearance; other site controls depend on your sign-in."
-        }
-      ]
+      id: "team-stats-offense",
+      targetSelector: '[data-tour="team-stats-offense"]',
+      title: "Offensive Leaders",
+      description: "Rankings and totals for Total Touchdowns, Passing TDs, Completions, Receptions, Receiving TDs, and Rushing TDs."
     },
     {
-      "id": "team-stats-summary",
-      "targetSelector": "[data-tour=\"team-stats-summary\"]",
-      "title": "Season snapshot",
-      "description": "The header identifies the team and counts completed games. Leaders below require tracked plays.",
-      "details": [
-        {
-          "label": "Season Leaderboards",
-          "text": "These are season totals, not live game statistics."
-        },
-        {
-          "label": "Completed games",
-          "text": "The count summarizes completed games contributing to the season."
-        },
-        {
-          "label": "No stats yet",
-          "text": "Complete a game with recorded plays to populate leaders."
-        }
-      ]
-    },
-    {
-      "id": "team-stats-offense",
-      "targetSelector": "[data-tour=\"team-stats-offense\"]",
-      "title": "Offense leaders",
-      "description": "Each card ranks up to three players with a positive recorded total.",
-      "details": [
-        {
-          "label": "Total Touchdowns",
-          "text": "Rushing, receiving and defensive scoring credits."
-        },
-        {
-          "label": "Passing TDs",
-          "text": "Touchdown passes thrown."
-        },
-        {
-          "label": "Completions",
-          "text": "Completed passes by the quarterback."
-        },
-        {
-          "label": "Receptions",
-          "text": "Completed catches."
-        },
-        {
-          "label": "Receiving TDs",
-          "text": "Touchdown catches."
-        },
-        {
-          "label": "Rushing TDs",
-          "text": "Touchdowns scored on a run."
-        }
-      ]
-    },
-    {
-      "id": "team-stats-defense",
-      "targetSelector": "[data-tour=\"team-stats-defense\"]",
-      "title": "Defense leaders",
-      "description": "Read the first-place total and compare the bars beneath it.",
-      "details": [
-        {
-          "label": "Flags Pulled",
-          "text": "Credited flag pulls, including sacks where counted."
-        },
-        {
-          "label": "Sacks",
-          "text": "Quarterback sacks."
-        },
-        {
-          "label": "Interceptions",
-          "text": "Intercepted passes."
-        },
-        {
-          "label": "Pass Breakups",
-          "text": "Credited passes defended without an interception."
-        },
-        {
-          "label": "No recorded stats yet",
-          "text": "Nobody has a positive total in this category."
-        }
-      ]
-    },
-    {
-      "id": "team-stats-error",
-      "targetSelector": "[data-tour=\"team-stats-error\"]",
-      "title": "Recover from a loading error",
-      "description": "If the stats could not load, try again rather than entering replacement data.",
-      "details": [
-        {
-          "label": "Retry",
-          "text": "Reload the stats request."
-        },
-        {
-          "label": "Back to Team",
-          "text": "Return to the team overview."
-        }
-      ]
+      id: "team-stats-defense",
+      targetSelector: '[data-tour="team-stats-defense"]',
+      title: "Defensive Leaders",
+      description: "Rankings for Flag Pulls, Sacks, Interceptions, and Pass Breakups (PBUs)."
     }
   ]
 };
@@ -2011,411 +1530,39 @@ export const PLAY_VIEWER_WALKTHROUGH: ToolWalkthrough = {
 
 
 export const ASYNC_STAT_KEEPER_WALKTHROUGH: ToolWalkthrough = {
-  "id": "async-stat-keeper",
-  "toolName": "Untimed Stat Keeper",
-  "subtitle": "Authorized coaches record plays, change possession and finalize the result. League games track both rosters; team-run games track your roster against an unrostered opponent. Players and visitors can read the Play Log, Box Score and Team Stats without entering plays. Only controls available in your current tab and play-entry stage are highlighted; reopen Guide after advancing.",
-  "steps": [
+  id: "async-stat-keeper",
+  toolName: "Untimed Stat Keeper",
+  subtitle: "Record plays, downs, and conversions without clock management.",
+  steps: [
     {
-      "id": "async-overview",
-      "targetSelector": "",
-      "title": "Record a game without a clock",
-      "description": "Authorized coaches record plays, change possession and finalize the result. League games track both rosters; team-run games track your roster against an unrostered opponent. Players and visitors can read the Play Log, Box Score and Team Stats without entering plays. Only controls available in your current tab and play-entry stage are highlighted; reopen Guide after advancing."
+      id: "async-overview",
+      targetSelector: "",
+      title: "Clockless Game Tracking",
+      description: "Designed for exhibition and rec league games without official game clocks. Coaches log downs, completions, touchdowns, flag pulls, and turnovers."
     },
     {
-      "id": "async-navigation",
-      "targetSelector": "[data-tour=\"async-navigation\"]",
-      "title": "Choose the view",
-      "description": "Switch tabs without leaving the game.",
-      "details": [
-        {
-          "label": "Exit / Exit Stat Keeper",
-          "text": "Return to the schedule or parent game page."
-        },
-        {
-          "label": "Stat Keeper",
-          "text": "Authorized coaches enter plays here."
-        },
-        {
-          "label": "Play Log",
-          "text": "Review saved plays in order."
-        },
-        {
-          "label": "Box Score",
-          "text": "Compare individual player totals."
-        },
-        {
-          "label": "Team Stats",
-          "text": "Compare team totals."
-        }
-      ]
+      id: "async-navigation",
+      targetSelector: '[data-tour="async-navigation"]',
+      title: "Navigation & View Modes",
+      description: "Switch seamlessly between live Stat Keeper entry, chronological Play Log, Player Box Score, and Team Totals."
     },
     {
-      "id": "async-scoreboard",
-      "targetSelector": "[data-tour=\"async-scoreboard\"]",
-      "title": "Score and period",
-      "description": "The scoreboard updates from recorded plays.",
-      "details": [
-        {
-          "label": "Possession dot",
-          "text": "Shows which side has the ball."
-        },
-        {
-          "label": "First Half / Second Half / Final",
-          "text": "Shows the game phase without a running clock."
-        },
-        {
-          "label": "Down",
-          "text": "Shows the current down in the series."
-        }
-      ]
+      id: "async-controls",
+      targetSelector: '[data-tour="async-controls"]',
+      title: "Down & Possession Control",
+      description: "Manage possession, set 1st through 4th down, advance to Halftime, and undo accidental entries in one tap."
     },
     {
-      "id": "async-controls",
-      "targetSelector": "[data-tour=\"async-controls\"]",
-      "title": "Prepare the next play",
-      "description": "Check possession and down before entering a play.",
-      "details": [
-        {
-          "label": "Possession: team buttons",
-          "text": "Choose the offense."
-        },
-        {
-          "label": "1st / 2nd / 3rd / 4th Down",
-          "text": "Set the current down; available downs follow league rules."
-        },
-        {
-          "label": "Halftime (2nd Half)",
-          "text": "Move the game to its second half."
-        },
-        {
-          "label": "Game Over",
-          "text": "Open the finalization step; do not use this just to leave the page."
-        },
-        {
-          "label": "Undo",
-          "text": "Remove the last saved play after confirmation."
-        },
-        {
-          "label": "Add Player",
-          "text": "Open Add Player / Sub to make a missing player available."
-        }
-      ]
+      id: "async-entry",
+      targetSelector: '[data-tour="async-type"] > div',
+      title: "Log Plays & Scores",
+      description: "Tap 'Start Next Play' to record Pass, Run, or Penalty plays. Assign eligible QBs, receivers, rushers, or defenders to earn official credit."
     },
     {
-      "id": "async-start",
-      "targetSelector": "[data-tour=\"async-start\"]",
-      "title": "Start the next play",
-      "description": "The Last Play summary helps you avoid entering the same play twice.",
-      "details": [
-        {
-          "label": "START NEXT PLAY",
-          "text": "Open the play-type chooser."
-        }
-      ]
-    },
-    {
-      "id": "async-entry",
-      "targetSelector": "[data-tour=\"async-type\"] > div",
-      "title": "Choose the play type",
-      "description": "After START NEXT PLAY choose the action you need.",
-      "details": [
-        {
-          "label": "Pass Play",
-          "text": "Enter a pass outcome and participating players."
-        },
-        {
-          "label": "Run Play",
-          "text": "Enter a rushing outcome and ball carrier."
-        },
-        {
-          "label": "Penalty",
-          "text": "Record the penalty, team, player and enforcement using the penalty wizard."
-        },
-        {
-          "label": "Cancel",
-          "text": "Leave the entry without recording a play."
-        }
-      ]
-    },
-    {
-      "id": "async-outcome",
-      "targetSelector": "[data-tour=\"async-outcome\"]",
-      "title": "Describe the outcome",
-      "description": "Choose one outcome; use its summary to reopen the choice.",
-      "details": [
-        {
-          "label": "Complete",
-          "text": "Credit a completed pass."
-        },
-        {
-          "label": "Incomplete",
-          "text": "Record a pass that was not caught."
-        },
-        {
-          "label": "Pass Breakup (PBU)",
-          "text": "Record a defended pass."
-        },
-        {
-          "label": "Interception",
-          "text": "Credit the turnover and eligible interceptor."
-        },
-        {
-          "label": "Sack",
-          "text": "Credit a quarterback sack."
-        },
-        {
-          "label": "Flag For Loss (FFL)",
-          "text": "Record a flag pull behind the line of scrimmage. This is a defensive stat, not a flag-guarding penalty."
-        },
-        {
-          "label": "Positive Gain / Loss of Yards",
-          "text": "Choose the result direction for a run."
-        }
-      ]
-    },
-    {
-      "id": "async-players",
-      "targetSelector": "[data-tour=\"async-players\"]",
-      "title": "Credit the players",
-      "description": "Tap a summary or its Change control to reopen a collapsed section.",
-      "details": [
-        {
-          "label": "Quarterback / Ball Carrier",
-          "text": "Choose the passer or runner."
-        },
-        {
-          "label": "Receiver",
-          "text": "Choose the eligible targeted or catching player; the passer is excluded."
-        },
-        {
-          "label": "Pass Breakup / Interceptor(s) / Sacker(s) / Flagger(s)",
-          "text": "Choose defenders for the outcome shown."
-        },
-        {
-          "label": "Flagger(s) on Interception Return",
-          "text": "Credit an offensive player's pull on the return when relevant."
-        },
-        {
-          "label": "TEAM",
-          "text": "Use team credit when offered instead of assigning an individual."
-        },
-        {
-          "label": "Cancel play",
-          "text": "The X discards this entry."
-        }
-      ]
-    },
-    {
-      "id": "penalty-side",
-      "targetSelector": "[data-tour=\"penalty-side\"]",
-      "title": "Penalty: who committed it?",
-      "description": "The penalty wizard has three stages; reopen Guide in each stage.",
-      "details": [
-        {
-          "label": "Defense / Offense",
-          "text": "Select the penalized side."
-        },
-        {
-          "label": "Back to Play Type",
-          "text": "Cancel this penalty entry and return to play selection."
-        }
-      ]
-    },
-    {
-      "id": "penalty-infraction",
-      "targetSelector": "[data-tour=\"penalty-infraction\"]",
-      "title": "Penalty: select the infraction",
-      "description": "Each named infraction shows its default yardage and down impact.",
-      "details": [
-        {
-          "label": "Infraction buttons",
-          "text": "Choose the actual foul committed; defaults fill the enforcement stage."
-        },
-        {
-          "label": "Continue to enforcement",
-          "text": "Review yardage, acceptance and down impact next."
-        }
-      ]
-    },
-    {
-      "id": "penalty-enforcement",
-      "targetSelector": "[data-tour=\"penalty-enforcement\"]",
-      "title": "Penalty: enforcement",
-      "description": "Adjust the ruling to match the official decision.",
-      "details": [
-        {
-          "label": "Accepted / Declined / Offset",
-          "text": "Choose whether and how the penalty applies."
-        },
-        {
-          "label": "Yardage buttons",
-          "text": "Choose the displayed enforcement distance."
-        },
-        {
-          "label": "Auto 1st / Replay / Loss Down",
-          "text": "Set the effect on the down."
-        },
-        {
-          "label": "Back / Back to infraction",
-          "text": "Return to the previous stage."
-        },
-        {
-          "label": "Continue to player",
-          "text": "Choose optional individual responsibility next."
-        }
-      ]
-    },
-    {
-      "id": "penalty-player",
-      "targetSelector": "[data-tour=\"penalty-player\"]",
-      "title": "Penalty: responsible player",
-      "description": "Review the live penalty statement before applying it.",
-      "details": [
-        {
-          "label": "TEAM Infraction",
-          "text": "Record team responsibility without an individual."
-        },
-        {
-          "label": "Athlete buttons",
-          "text": "Optionally select the responsible player."
-        },
-        {
-          "label": "Back / Back to enforcement",
-          "text": "Review enforcement again."
-        },
-        {
-          "label": "Enforce penalty",
-          "text": "Save the penalty and apply the ruling."
-        }
-      ]
-    },
-    {
-      "id": "async-save",
-      "targetSelector": "[data-tour=\"async-save\"]",
-      "title": "Save the play result",
-      "description": "The available result buttons depend on outcome and required player selections.",
-      "details": [
-        {
-          "label": "TOUCHDOWN (+6) / PICK 6 (+6)",
-          "text": "Save the scoring play, then enter the conversion."
-        },
-        {
-          "label": "FIRST DOWN / SHORT OF LINE",
-          "text": "Save the gain and set the next down correctly."
-        },
-        {
-          "label": "OUT OF BOUNDS",
-          "text": "Show the OOB follow-up choices."
-        },
-        {
-          "label": "OOB - FIRST DOWN / OOB - SHORT",
-          "text": "Save the out-of-bounds gain with its down result."
-        },
-        {
-          "label": "FLAGGED (Save Turnover) / OOB / DOWNED (Save Turnover)",
-          "text": "Save the interception return result and flip possession."
-        },
-        {
-          "label": "SAVE & NEXT DOWN",
-          "text": "Save a non-scoring outcome and advance."
-        },
-        {
-          "label": "LOSS OF YARDS / SAFETY (+2 DEF)",
-          "text": "Save the loss or credit a defensive safety."
-        },
-        {
-          "label": "Missing players message",
-          "text": "Choose required participants to enable result buttons."
-        }
-      ]
-    },
-    {
-      "id": "async-conversion",
-      "targetSelector": "[data-tour=\"async-conversion\"] > div",
-      "title": "After a touchdown",
-      "description": "Complete the conversion before starting the next possession.",
-      "details": [
-        {
-          "label": "1 POINT / 2 POINTS",
-          "text": "Choose the conversion value."
-        },
-        {
-          "label": "GOOD (+1 PTS) / GOOD (+2 PTS) / NO GOOD (0 PTS)",
-          "text": "Record whether the conversion scored."
-        },
-        {
-          "label": "Conversion Passer / Runner",
-          "text": "Choose the player responsible for a successful conversion."
-        },
-        {
-          "label": "Conversion Receiver",
-          "text": "Choose a receiver for a completed conversion pass."
-        },
-        {
-          "label": "Confirm Conversion & Flip Possession",
-          "text": "Save the conversion and move the ball to the other team."
-        }
-      ]
-    },
-    {
-      "id": "async-finalize",
-      "targetSelector": "[data-tour=\"async-finalize\"]",
-      "title": "Finalize Game",
-      "description": "Review the displayed final score before confirming.",
-      "details": [
-        {
-          "label": "Confirm Final Score",
-          "text": "Complete the game and save the final result."
-        },
-        {
-          "label": "Resume Game",
-          "text": "Return to the game without finalizing."
-        }
-      ]
-    },
-    {
-      "id": "async-log",
-      "targetSelector": "[data-tour=\"async-log\"]",
-      "title": "Game Play Log",
-      "description": "Read each saved play and its scoring or possession outcome. Scroll within this panel to see older entries."
-    },
-    {
-      "id": "async-box-score",
-      "targetSelector": "[data-tour=\"async-box-score\"]",
-      "title": "Player Box Score",
-      "description": "The individual stats update from recorded plays.",
-      "details": [
-        {
-          "label": "Team buttons",
-          "text": "Choose which team's player totals to display."
-        },
-        {
-          "label": "Player rows",
-          "text": "Read passing, rushing, receiving and defensive totals; these are not editable cells."
-        }
-      ]
-    },
-    {
-      "id": "async-team-stats",
-      "targetSelector": "[data-tour=\"async-team-stats\"] > div",
-      "title": "Team Stats",
-      "description": "Compare the team-level totals generated from recorded plays."
-    },
-    {
-      "id": "async-notices",
-      "targetSelector": "[data-tour=\"async-notices\"]",
-      "title": "Check save notices",
-      "description": "A failed request is not a successful save.",
-      "details": [
-        {
-          "label": "Retry",
-          "text": "Reload the play log after a loading failure."
-        },
-        {
-          "label": "Dismiss",
-          "text": "Hide the displayed notice; it does not retry a failed save."
-        }
-      ]
+      id: "async-finalize",
+      targetSelector: '[data-tour="async-finalize"]',
+      title: "Finalize & Publish",
+      description: "Review the confirmed final score and complete the match to lock official stats into the franchise record books."
     }
   ]
 };

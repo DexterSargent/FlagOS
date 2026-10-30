@@ -643,16 +643,6 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     className="w-full h-full object-contain filter drop-shadow-md"
                   />
                 </div>
-                {canEditTeam && (
-                  <button
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-white dark:bg-black/90 border border-slate-200 dark:border-white/20 text-slate-800 dark:text-white hover:text-[var(--team-ink)] dark:hover:text-[var(--team-ink)] opacity-90 group-hover/logo:opacity-100 transition-all shadow-lg flex items-center gap-1 cursor-pointer whitespace-nowrap"
-                    title="Change Logo"
-                  >
-                    <Edit3 className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                    <span>Change Logo</span>
-                  </button>
-                )}
               </div>
             ) : (
               <button

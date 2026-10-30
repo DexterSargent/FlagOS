@@ -234,7 +234,7 @@ export default function FlagOSPlatformLandingPage() {
               <Link
                 href="/admin"
                 aria-label="Platform Admin"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-bold text-amber-300 transition-colors hover:bg-amber-500/10"
               >
                 <Shield className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Platform Admin</span>

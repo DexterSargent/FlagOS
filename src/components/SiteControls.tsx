@@ -8,13 +8,15 @@ import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 export default function SiteControls({
   className = "",
   guideLabelClassName,
+  guideClassName,
 }: {
   className?: string;
   guideLabelClassName?: string;
+  guideClassName?: string;
 }) {
   return (
     <div className={`flex items-center gap-1.5 sm:gap-2 shrink-0 ${className}`}>
-      <PageGuideButton labelClassName={guideLabelClassName} />
+      <PageGuideButton labelClassName={guideLabelClassName} className={guideClassName} />
       <ThemeToggle size="md" />
       <AccountMenu />
     </div>

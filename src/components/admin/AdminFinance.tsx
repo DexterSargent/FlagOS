@@ -28,6 +28,7 @@ import {
   type LedgerType,
   type PeriodKey,
 } from "@/lib/adminMetrics";
+import { compareNatural } from "@/lib/sortUtils";
 import { usePageGuide } from "@/lib/pageGuide";
 import { ADMIN_LEDGER_GUIDE, ADMIN_BILLING_GUIDE } from "@/lib/walkthroughs/admin";
 import type { LedgerDraft, SubscriptionDraft } from "@/lib/adminBusiness";
@@ -116,7 +117,7 @@ export default function AdminFinance({
         .filter((record) =>
           billingFilter === "all" ||
           (billingFilter === "inactive" ? !isRecurring(record) : isRecurring(record) && record.paymentMethod === billingFilter))
-        .sort((a, b) => b.monthlyFee - a.monthlyFee || a.name.localeCompare(b.name)),
+        .sort((a, b) => b.monthlyFee - a.monthlyFee || compareNatural(a.name, b.name)),
     [records, billingFilter],
   );
 

@@ -28,6 +28,7 @@ import { useMatchTeamColors } from "@/lib/useMatchTeamColors";
 import { getReadableTextColor, getTeamBadgeStyle } from "@/lib/teamColors";
 import GameTeamStats from "@/components/match/GameTeamStats";
 import { FootballGlossaryModal, GlossaryDefinitionBar, type GlossaryKey } from "@/components/match/FootballGlossary";
+import { compareByName } from "@/lib/sortUtils";
 import { shortPlayerName } from "@/lib/shortPlayerName";
 import SiteControls from "@/components/SiteControls";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
@@ -331,7 +332,7 @@ export default function ViewerView({ params }: { params: Promise<{ id: string }>
       return p.teamId === targetTeamId;
     });
 
-    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+    return filtered.sort(compareByName);
   };
 
   const FootballIcon = ({ className, active }: { className?: string, active: boolean }) => (

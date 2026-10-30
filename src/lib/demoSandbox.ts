@@ -15,6 +15,7 @@ import {
 } from "./demoSeedData";
 import { getGeneratedSeasonPlays } from "./demoPlayGenerator";
 import { DEMO_EVENT, isDemoLeague, isDemoMatchId, notifySandboxChange } from "./demoSandboxRuntime";
+import { compareByName } from "./sortUtils";
 export { DEMO_EVENT, isDemoLeague, notifySandboxChange, subscribeDemoSandbox } from "./demoSandboxRuntime";
 
 export type { DemoTeam, DemoPlayer, DemoMatch, DemoPlay };
@@ -271,7 +272,7 @@ export const addSandboxTeam = (name: string): DemoTeam => {
     name: name.trim(),
     createdAt: new Date().toISOString(),
   };
-  const updated = [...teams, newTeam].sort((a, b) => a.name.localeCompare(b.name));
+  const updated = [...teams, newTeam].sort(compareByName);
   if (typeof window !== "undefined") {
     sessionStorage.setItem(KEY_TEAMS, JSON.stringify(updated));
     notifySandboxChange();
@@ -287,7 +288,7 @@ export const updateSandboxTeam = (id: string, updates: string | Partial<DemoTeam
       const normalizedUpdates = typeof updates === "string" ? { name: updates.trim() } : updates;
       return { ...t, ...normalizedUpdates };
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(compareByName);
   if (typeof window !== "undefined") {
     sessionStorage.setItem(KEY_TEAMS, JSON.stringify(updated));
     notifySandboxChange();

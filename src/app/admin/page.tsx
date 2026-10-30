@@ -13,6 +13,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  CreditCard,
   Edit3,
   ExternalLink,
   Layers,
@@ -38,6 +39,7 @@ import { createSecureRecord, requestPrivateData } from "@/lib/secureWrites";
 import { adminBusinessRequest, type BusinessSnapshot, type LedgerDraft, type SubscriptionDraft } from "@/lib/adminBusiness";
 import { computeKpis, formatMoney, toBillingRecords, type BillingRecord, type LedgerEntry, type PlatformUser } from "@/lib/adminMetrics";
 import AdminOverview, { type ConsoleTab } from "@/components/admin/AdminOverview";
+import { compareByName } from "@/lib/sortUtils";
 import AdminFinance, { BillingModal, LedgerEntryModal } from "@/components/admin/AdminFinance";
 import AdminUsers, { type Membership } from "@/components/admin/AdminUsers";
 import AdminActivity from "@/components/admin/AdminActivity";
@@ -289,6 +291,7 @@ export default function PlatformAdminPage() {
         };
       });
 
+      loadedTeams.sort(compareByName);
       setTeams(loadedTeams);
     } catch (loadError) {
       console.error("Failed to load platform records:", loadError);
@@ -430,12 +433,47 @@ export default function PlatformAdminPage() {
   );
 
   const filteredTeams = useMemo(
-    () => teams.filter((team) => `${team.name} ${team.shortcode} ${team.id} ${team.leagueId || ""}`.toLowerCase().includes(search.toLowerCase())),
+    () => teams.filter((team) => `${team.name} ${team.shortcode} ${team.id} ${team.leagueId || ""}`.toLowerCase().includes(search.toLowerCase())).sort(compareByName),
     [teams, search]
   );
 
   // Tab for the Teams column: "independent" (teams not in a league) or "all"
   const [teamTab, setTeamTab] = useState<"independent" | "all">("independent");
+  const [isAddingIndependentTeam, setIsAddingIndependentTeam] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamShortcode, setNewTeamShortcode] = useState("");
+  const [newTeamColor, setNewTeamColor] = useState("#06B6D4");
+  const [newTeamVisibility, setNewTeamVisibility] = useState<"public" | "private">("public");
+  const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
+  const [teamCreateError, setTeamCreateError] = useState<string | null>(null);
+
+  const handleCreateIndependentTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTeamName.trim()) return;
+    setIsSubmittingTeam(true);
+    setTeamCreateError(null);
+    try {
+      await createSecureRecord("team", {
+        name: newTeamName.trim(),
+        shortcode: newTeamShortcode.trim().toUpperCase() || undefined,
+        leagueId: "",
+        isStandalone: true,
+        visibility: newTeamVisibility,
+        primaryColor: newTeamColor,
+        adminEmails: user?.email ? [user.email.trim().toLowerCase()] : [],
+      });
+      setIsAddingIndependentTeam(false);
+      setNewTeamName("");
+      setNewTeamShortcode("");
+      setTeamCreateError(null);
+      await loadRecords();
+    } catch (err) {
+      console.error(err);
+      setTeamCreateError(err instanceof Error ? err.message : "Failed to create independent team.");
+    } finally {
+      setIsSubmittingTeam(false);
+    }
+  };
 
   const reviewCustomer = useCallback((id: string) => {
     setSearch(id);
@@ -866,7 +904,7 @@ export default function PlatformAdminPage() {
               >
                 {entry.label}
                 {entry.id === "users" && business && <span className="ml-1.5 text-xs font-normal text-neutral-500">{business.users.length}</span>}
-                {entry.id === "customers" && <span className="ml-1.5 text-xs font-normal text-neutral-500">{leagues.length + teams.length}</span>}
+                {entry.id === "customers" && <span className="ml-1.5 text-xs font-normal text-neutral-500">{billingRecords.length}</span>}
                 {tab === entry.id && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-cyan-400" />}
               </button>
             ))}
@@ -933,19 +971,29 @@ export default function PlatformAdminPage() {
           </div>
         ) : (
         <>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-3">
           <div className="flex items-center gap-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
-            <Building2 className="h-8 w-8 text-cyan-300" />
+            <Users className="h-8 w-8 text-cyan-300 shrink-0" />
             <div>
-              <div className="text-2xl font-black">{leagues.length}</div>
-              <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">Leagues</div>
+              <div className="text-2xl font-black">{billingRecords.length}</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">Billable Customers</div>
+              <div className="text-[11px] text-neutral-500 mt-0.5">{leagues.length} leagues + {independentTeams.length} independent {independentTeams.length === 1 ? "team" : "teams"}</div>
             </div>
           </div>
           <div className="flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-            <Shield className="h-8 w-8 text-emerald-300" />
+            <Building2 className="h-8 w-8 text-emerald-300 shrink-0" />
+            <div>
+              <div className="text-2xl font-black">{kpis.activeCustomers}</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">Active Subscriptions</div>
+              <div className="text-[11px] text-neutral-500 mt-0.5">{kpis.paidCustomers} paid · {kpis.complimentaryCustomers} complimentary</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+            <Shield className="h-8 w-8 text-amber-300 shrink-0" />
             <div>
               <div className="text-2xl font-black">{teams.length}</div>
-              <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">Teams (League & Independent)</div>
+              <div className="text-xs font-bold uppercase tracking-wide text-neutral-400">Total Teams Managed</div>
+              <div className="text-[11px] text-neutral-500 mt-0.5">{teams.length - independentTeams.length} enrolled in leagues · {independentTeams.length} independent</div>
             </div>
           </div>
         </div>
@@ -1066,6 +1114,16 @@ export default function PlatformAdminPage() {
                         >
                           Manage league <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
+                        {Boolean(league.subscription?.stripeCustomerId || league.stripeCustomerId) && (
+                          <a
+                            href={`https://dashboard.stripe.com/customers/${String(league.subscription?.stripeCustomerId || league.stripeCustomerId)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-300 hover:bg-purple-500/20 transition-colors"
+                          >
+                            <CreditCard className="h-3.5 w-3.5 text-purple-400" /> Stripe <ExternalLink className="h-3 w-3 opacity-60" />
+                          </a>
+                        )}
                         <button
                           type="button"
                           onClick={() => openEditModal(league)}
@@ -1216,29 +1274,41 @@ export default function PlatformAdminPage() {
                   <Shield className="h-5 w-5 text-emerald-300" />
                   {teamTab === "independent" ? `Independent Teams (${independentTeams.length})` : `All Teams (${filteredTeams.length})`}
                 </h2>
-                <div className="flex rounded-lg border border-white/10 bg-neutral-900 p-0.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setTeamTab("independent")}
-                    className={`rounded-md px-3 py-1 font-bold transition-colors ${
-                      teamTab === "independent"
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : "text-neutral-400 hover:text-white"
-                    }`}
-                  >
-                    Independent ({independentTeams.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTeamTab("all")}
-                    className={`rounded-md px-3 py-1 font-bold transition-colors ${
-                      teamTab === "all"
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : "text-neutral-400 hover:text-white"
-                    }`}
-                  >
-                    All ({filteredTeams.length})
-                  </button>
+                <div className="flex items-center gap-2">
+                  {teamTab === "independent" && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingIndependentTeam(true)}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors flex items-center gap-1 shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>New Independent Team</span>
+                    </button>
+                  )}
+                  <div className="flex rounded-lg border border-white/10 bg-neutral-900 p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setTeamTab("independent")}
+                      className={`rounded-md px-3 py-1 font-bold transition-colors ${
+                        teamTab === "independent"
+                          ? "bg-emerald-500/20 text-emerald-300"
+                          : "text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      Independent ({independentTeams.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTeamTab("all")}
+                      className={`rounded-md px-3 py-1 font-bold transition-colors ${
+                        teamTab === "all"
+                          ? "bg-emerald-500/20 text-emerald-300"
+                          : "text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      All ({filteredTeams.length})
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1301,6 +1371,16 @@ export default function PlatformAdminPage() {
                           )}
                         </span>
                         <div className="flex items-center gap-2">
+                          {Boolean(team.subscription?.stripeCustomerId || team.stripeCustomerId) && (
+                            <a
+                              href={`https://dashboard.stripe.com/customers/${String(team.subscription?.stripeCustomerId || team.stripeCustomerId)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-xs font-bold text-purple-300 hover:bg-purple-500/20 transition-colors"
+                            >
+                              <CreditCard className="h-3.5 w-3.5 text-purple-400" /> Stripe <ExternalLink className="h-3 w-3 opacity-60" />
+                            </a>
+                          )}
                           <button
                             type="button"
                             onClick={() => { setError(""); setDeletingTeam(team); }} aria-label={`Delete team ${team.name}`}
@@ -1723,6 +1803,122 @@ export default function PlatformAdminPage() {
                 {actionInProgress ? "Deleting…" : "Delete Team"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE INDEPENDENT TEAM MODAL */}
+      {isAddingIndependentTeam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-labelledby="create-team-title" className="w-full max-w-md rounded-3xl border border-white/10 bg-neutral-900 p-6 sm:p-8 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 id="create-team-title" className="text-lg font-black text-white">Create Independent Team</h2>
+                  <p className="text-xs text-neutral-400">Standalone varsity, tournament, or club team</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddingIndependentTeam(false)}
+                className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {teamCreateError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{teamCreateError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateIndependentTeam} className="space-y-4">
+              <div>
+                <label htmlFor="ind-team-name" className="block text-xs font-bold text-neutral-300 mb-1">
+                  Team Name *
+                </label>
+                <input
+                  id="ind-team-name"
+                  type="text"
+                  required
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  placeholder="e.g. York Lions Women's Flag"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-800 border border-white/10 text-white placeholder:text-neutral-500 text-sm focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="ind-team-shortcode" className="block text-xs font-bold text-neutral-300 mb-1">
+                    Shortcode (max 6)
+                  </label>
+                  <input
+                    id="ind-team-shortcode"
+                    type="text"
+                    maxLength={6}
+                    value={newTeamShortcode}
+                    onChange={(e) => setNewTeamShortcode(e.target.value.toUpperCase())}
+                    placeholder="e.g. YORK"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-800 border border-white/10 text-white uppercase text-sm font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="ind-team-visibility" className="block text-xs font-bold text-neutral-300 mb-1">
+                    Visibility
+                  </label>
+                  <select
+                    id="ind-team-visibility"
+                    value={newTeamVisibility}
+                    onChange={(e) => setNewTeamVisibility(e.target.value as "public" | "private")}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-800 border border-white/10 text-white text-sm focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="public">Public</option>
+                    <option value="private">Private</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="ind-team-color" className="block text-xs font-bold text-neutral-300 mb-1">
+                  Primary Color
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="ind-team-color"
+                    type="color"
+                    value={newTeamColor}
+                    onChange={(e) => setNewTeamColor(e.target.value)}
+                    className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border-0"
+                  />
+                  <span className="font-mono text-xs text-neutral-400 uppercase">{newTeamColor}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={isSubmittingTeam}
+                  onClick={() => setIsAddingIndependentTeam(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold border border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingTeam || !newTeamName.trim()}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors disabled:opacity-50"
+                >
+                  {isSubmittingTeam ? "Creating..." : "Create Team"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

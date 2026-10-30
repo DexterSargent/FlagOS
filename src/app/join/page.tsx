@@ -15,6 +15,7 @@ import { renderFlagOS } from "@/components/FlagOSText";
 import { getSandboxPlayers, addSandboxPlayer } from "@/lib/demoSandbox";
 import { isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
 import NoLeagueSelected from "@/components/league/NoLeagueSelected";
+import { compareNatural } from "@/lib/sortUtils";
 
 const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
@@ -65,7 +66,7 @@ export default function JoinLeague() {
       if (isDemoLeague) {
         const pData = getSandboxPlayers() as unknown as Player[];
         const filtered = pData.filter(p => p.teamId !== "Free Agent" && p.teamId !== "team_free_agents");
-        filtered.sort((a, b) => a.playerName.localeCompare(b.playerName));
+        filtered.sort((a, b) => compareNatural(a.playerName, b.playerName));
         setPlayers(filtered);
         setLoading(false);
         return;
@@ -79,7 +80,7 @@ export default function JoinLeague() {
         const pData = snap.docs.map(d => ({ ...d.data(), id: d.id } as Player));
         // Sort alphabetically and exclude current free agents from the search list
         const filtered = pData.filter(p => p.teamId !== "Free Agent");
-        filtered.sort((a, b) => a.playerName.localeCompare(b.playerName));
+        filtered.sort((a, b) => compareNatural(a.playerName, b.playerName));
         setPlayers(filtered);
       } catch (e) {
         console.error(e);

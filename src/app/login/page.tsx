@@ -15,6 +15,7 @@ import { useTheme } from "@/lib/themeContext";
 import { FlagOSLogo } from "@/components/FlagOSLogo";
 import EmailVerificationNotice from "@/components/EmailVerificationNotice";
 import OAuthProviderButtons from "@/components/auth/OAuthProviderButtons";
+import { compareByName, compareNatural } from "@/lib/sortUtils";
 
 export default function LoginPage() {
   usePageGuide(LOGIN_WALKTHROUGH);
@@ -76,13 +77,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     const tList = getSandboxTeams().filter(isRealTeam);
-    tList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    tList.sort(compareByName);
     setTeams(tList);
     // Kansas City has sample plays, so it makes the best first impression for coaches and players.
     if (tList.length > 0) setSelectedTeamId((tList.find((t) => t.id === "team_kc") || tList[0]).id);
 
     const pList = getSandboxPlayers();
-    pList.sort((a, b) => (a.playerName || "").localeCompare(b.playerName || ""));
+    pList.sort((a, b) => compareNatural(a.playerName, b.playerName));
     setPlayers(pList);
     if (pList.length > 0) setSelectedPlayerId((pList.find((p) => p.teamId === "team_kc") || pList[0]).id);
   }, []);

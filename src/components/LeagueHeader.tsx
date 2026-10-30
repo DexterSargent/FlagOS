@@ -14,12 +14,8 @@ import {
   Trophy,
   UserPlus,
   Shield,
-  Crown,
   BadgeDollarSign,
-  Eye,
   Megaphone,
-  Settings,
-  User,
   ChevronDown,
   Check,
   Plus,
@@ -31,6 +27,7 @@ import {
   LogIn,
   LogOut,
   Globe,
+  Sliders,
 } from "lucide-react";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { FlagOSLogo, FLAGOS_LOGO, isDefaultFlagOSLogo } from "@/components/FlagOSLogo";
@@ -221,7 +218,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               {/* League Identity Text */}
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-1 sm:gap-1.5">
-                  <span className="text-xs sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight break-words line-clamp-2 sm:line-clamp-1 max-w-[170px] sm:max-w-[210px] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                  <span className="text-xs sm:text-base font-black uppercase tracking-tight text-slate-900 dark:text-white leading-tight break-words line-clamp-2 sm:line-clamp-1 max-w-[200px] sm:max-w-[280px] md:max-w-[360px] lg:max-w-[440px] xl:max-w-[560px] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
                     {isCustomOrPaidLeague ? settings.leagueName : renderFlagOS(settings.leagueName)}
                   </span>
                   {settings.visibility === "private" ? (
@@ -234,7 +231,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 </div>
 
                 <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-neutral-400 font-medium leading-none mt-0.5">
-                  <span className="truncate max-w-[80px] xs:max-w-[120px]">{settings.seasonTitle || "Active Season"}</span>
+                  <span className="truncate max-w-[120px] xs:max-w-[180px] sm:max-w-[260px]">{settings.seasonTitle || "Active Season"}</span>
                   {settings.shortcode && (
                     <>
                       <span className="hidden sm:inline">•</span>
@@ -353,10 +350,10 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
           </div>
 
           {/* Center: Segmented Navigation Pills (Desktop) */}
-          <nav className="hidden lg:flex items-center gap-1 bg-slate-100/70 dark:bg-white/[0.04] p-1 rounded-2xl border border-slate-200/70 dark:border-white/[0.06]">
+          <nav className="hidden lg:flex items-center gap-1.5 bg-slate-100/70 dark:bg-white/[0.04] p-1.5 rounded-2xl border border-slate-200/70 dark:border-white/[0.06]">
             <Link
               href={`/league/${activeLeagueId || "default"}`}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                 resolvedActivePage === "league"
                   ? "bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-white/10"
                   : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/5"
@@ -368,7 +365,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
             <Link
               href="/schedule"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                 resolvedActivePage === "schedule"
                   ? "bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-white/10"
                   : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/5"
@@ -380,7 +377,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
             <Link
               href="/stats"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                 resolvedActivePage === "stats"
                   ? "bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-white/10"
                   : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/5"
@@ -392,7 +389,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
 
             <Link
               href="/teams"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                 resolvedActivePage === "teams"
                   ? "bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-white/10"
                   : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/5"
@@ -402,23 +399,11 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <span>Teams</span>
             </Link>
 
-            <Link
-              href="/leagues"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
-                resolvedActivePage === "leagues"
-                  ? "bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-white/10"
-                  : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/5"
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              <span>Find a League</span>
-            </Link>
-
             {myTeamId && (
               <Link
                 href={`/teams/${myTeamId}`}
                 data-tour="nav-my-team"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                   resolvedActivePage === "my-team"
                     ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-white/10"
                     : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
@@ -433,7 +418,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             {!isLeagueAdmin && (playerTeamId || managedTeamId) && (
               <Link
                 href={`/teams/${playerTeamId || managedTeamId}/playbook`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                   resolvedActivePage === "playbook"
                     ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-white/10"
                     : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
@@ -448,7 +433,7 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             {settings.rules?.enableFreeAgents !== false && canRegisterAsPlayer && (
               <Link
                 href="/join"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
                   resolvedActivePage === "join"
                     ? "bg-white dark:bg-white/10 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200 dark:border-white/10"
                     : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:bg-slate-200/50 dark:hover:bg-white/5"
@@ -460,103 +445,15 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
             )}
           </nav>
 
-          {/* Right: Controls & Role Status */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            <PageGuideButton labelClassName="hidden 2xl:inline" />
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <PageGuideButton labelClassName="hidden xl:inline" />
             <span className="hidden sm:contents">
               <ThemeToggle size="md" />
             </span>
 
-            {/* League Settings Trigger for Commissioners */}
-            {isAuthorized && isLeagueAdmin && (
-              <button
-                onClick={openCustomizer}
-                className="flex items-center justify-center gap-1.5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 px-2 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold border border-amber-500/25 transition-all shadow-sm cursor-pointer shrink-0"
-                title="League Settings, Rules & Custom Colors"
-              >
-                <Settings className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                <span className="hidden sm:inline">Settings</span>
-              </button>
-            )}
-
-            {/* User Identity / Role Pill */}
-            {isPlayer ? (
-              <Link
-                href="/profile"
-                className="flex items-center gap-1.5 min-h-10 sm:min-h-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-xs font-bold transition-all shadow-sm shrink-0"
-              >
-                <User className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
-                <span className="truncate max-w-[70px] sm:max-w-[120px]">#{playerData?.number || "00"} {playerData?.playerName || "My Profile"}</span>
-              </Link>
-            ) : isDemoLeague ? (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <div className="hidden sm:flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-neutral-300 text-xs font-bold border border-slate-200 dark:border-white/10 shrink-0">
-                  {isLeagueAdmin ? (
-                    <>
-                      <Crown className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                      <span className="hidden sm:inline">League Admin</span>
-                    </>
-                  ) : role === "team_admin" ? (
-                    <>
-                      <Shield className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 shrink-0" />
-                      <span className="hidden sm:inline">Team Admin</span>
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="w-3.5 h-3.5 text-slate-500 dark:text-neutral-400 shrink-0" />
-                      <span className="hidden sm:inline">Spectator</span>
-                    </>
-                  )}
-                </div>
-
-                <Link
-                  href="/pricing"
-                  className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-xs font-bold transition-all shadow-sm shrink-0"
-                >
-                  <BadgeDollarSign className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                  <span>Pricing</span>
-                </Link>
-
-                <Link
-                  href="/login"
-                  aria-label="Sign in"
-                  className="flex items-center justify-center gap-1 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
-                >
-                  <LogIn className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden sm:inline">Sign In</span>
-                </Link>
-              </div>
-            ) : (
-              <Link
-                href={user ? "/profile" : "/login"}
-                aria-label={user ? "My account" : "Sign in"}
-                className="flex items-center justify-center gap-1.5 min-h-10 min-w-10 sm:min-h-0 sm:min-w-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-slate-900 dark:bg-neutral-800 text-white dark:text-neutral-100 hover:opacity-90 text-xs font-bold transition-all border border-slate-700 dark:border-white/10 shadow-sm shrink-0"
-              >
-                {isLeagueAdmin ? (
-                  <>
-                    <Crown className="w-3.5 h-3.5 text-amber-400 dark:text-amber-600 shrink-0" />
-                    <span className="hidden sm:inline">League Admin</span>
-                  </>
-                ) : role === "team_admin" ? (
-                  <>
-                    <Shield className="w-3.5 h-3.5 text-cyan-400 dark:text-cyan-600 shrink-0" />
-                    <span className="hidden sm:inline">Team Admin</span>
-                  </>
-                ) : user ? (
-                  <>
-                    <User className="w-3.5 h-3.5 shrink-0" />
-                    <span className="hidden sm:inline">My Account</span>
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-3.5 h-3.5 shrink-0" />
-                    <span className="hidden sm:inline">Sign In</span>
-                  </>
-                )}
-              </Link>
-            )}
-
-            {user && !isDemoLeague && <AccountMenu />}
+            {/* Unified Account / Profile Dropdown (Hosts League Settings for Commissioners) */}
+            <AccountMenu />
 
             {/* Mobile Menu Toggle */}
             <button
@@ -620,17 +517,6 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
               <span>Teams</span>
             </Link>
 
-            <Link
-              href="/leagues"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${
-                resolvedActivePage === "leagues" ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30" : "text-slate-700 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-white/5"
-              }`}
-            >
-              <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span>Find a League</span>
-            </Link>
-
             {myTeamId && (
               <Link
                 href={`/teams/${myTeamId}`}
@@ -668,6 +554,19 @@ export default function LeagueHeader({ activePage }: LeagueHeaderProps) {
                 <UserPlus className="w-4 h-4" />
                 <span>Player Registration</span>
               </Link>
+            )}
+
+            {isAuthorized && isLeagueAdmin && (
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  openCustomizer();
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+              >
+                <Sliders className="w-4 h-4 text-amber-500" />
+                <span>League Settings</span>
+              </button>
             )}
 
             {user && !isDemoLeague && (

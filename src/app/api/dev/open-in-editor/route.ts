@@ -49,6 +49,137 @@ function resolveTurbopackChunkToPath(chunkStr: string, projectRoot: string): str
   return null;
 }
 
+/**
+ * Resolves a URL pathname (e.g. /teams/york_lions or /admin) to its physical page.tsx on disk.
+ */
+function resolveRouteFile(pathname: string, appDir: string): string | null {
+  const clean = pathname.split("?")[0].replace(/^\/+|\/+$/g, "");
+  const segments = clean ? clean.split("/") : [];
+
+  let current = appDir;
+  for (const seg of segments) {
+    if (!fs.existsSync(/*turbopackIgnore: true*/ current)) return null;
+    const entries = fs.readdirSync(/*turbopackIgnore: true*/ current, { withFileTypes: true });
+    const directMatch = entries.find(
+      (e) => e.isDirectory() && e.name.toLowerCase() === seg.toLowerCase()
+    );
+    if (directMatch) {
+      current = path.join(current, directMatch.name);
+      continue;
+    }
+    const dynamicMatch = entries.find(
+      (e) => e.isDirectory() && e.name.startsWith("[") && e.name.endsWith("]")
+    );
+    if (dynamicMatch) {
+      current = path.join(current, dynamicMatch.name);
+      continue;
+    }
+    return null;
+  }
+  const pageCandidate = path.join(current, "page.tsx");
+  return fs.existsSync(/*turbopackIgnore: true*/ pageCandidate) ? pageCandidate : null;
+}
+
+/**
+ * Reads a source file and extracts all physical file paths imported from @/components/... or ./...
+ */
+function findImportedComponentFiles(sourceFile: string, projectRoot: string, visited = new Set<string>()): string[] {
+  const result: string[] = [];
+  if (!sourceFile || !fs.existsSync(sourceFile) || visited.has(sourceFile)) return result;
+  visited.add(sourceFile);
+
+  try {
+    const content = fs.readFileSync(sourceFile, "utf8");
+    const importRegex = /from\s+["'](@\/components\/[^"']+|\.\/[^"']+|@\/lib\/[^"']+)["']/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = importRegex.exec(content)) !== null) {
+      const importPath = match[1];
+      let candidate: string;
+      if (importPath.startsWith("@/")) {
+        candidate = path.join(projectRoot, "src", importPath.slice(2));
+      } else {
+        candidate = path.resolve(path.dirname(sourceFile), importPath);
+      }
+
+      for (const ext of [".tsx", ".ts", ".jsx", "/index.tsx"]) {
+        const full = candidate + ext;
+        if (fs.existsSync(full)) {
+          if (!result.includes(full)) {
+            result.push(full);
+          }
+          break;
+        }
+      }
+    }
+  } catch {}
+  return result;
+}
+
+/**
+ * Recursively searches a directory for a file named {componentName}.tsx | .ts | .jsx.
+ */
+function findFileByComponentName(componentName: string, searchDirs: string[]): string | null {
+  const clean = componentName.trim();
+  if (!clean || ["Link", "NextLink", "Fragment", "div", "span", "button", "a", "p"].includes(clean)) {
+    return null;
+  }
+
+  const targetNames = [
+    `${clean}.tsx`,
+    `${clean}.ts`,
+    `${clean}.jsx`,
+    `${clean}.js`,
+  ].map((n) => n.toLowerCase());
+
+  for (const dir of searchDirs) {
+    if (!fs.existsSync(dir)) continue;
+
+    const findInDir = (currentDir: string): string | null => {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const full = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          if (entry.name === "node_modules" || entry.name === ".next" || entry.name.startsWith(".")) continue;
+          if (entry.name.toLowerCase() === clean.toLowerCase()) {
+            const idxCandidate = path.join(full, "index.tsx");
+            if (fs.existsSync(idxCandidate)) return idxCandidate;
+          }
+          const found = findInDir(full);
+          if (found) return found;
+        } else if (entry.isFile()) {
+          if (targetNames.includes(entry.name.toLowerCase())) {
+            return full;
+          }
+        }
+      }
+      return null;
+    };
+
+    const found = findInDir(dir);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Extracts distinctive class tokens from a className string, filtering out trivial tokens.
+ */
+function extractDistinctiveTokens(className: string | undefined): string[] {
+  if (!className || typeof className !== "string") return [];
+  const IGNORED = new Set([
+    "relative", "absolute", "fixed", "flex", "inline-flex", "grid", "inline-grid", "block", "hidden",
+    "w-full", "h-full", "min-w-0", "max-w-full", "items-center", "justify-center", "justify-between",
+    "overflow-hidden", "overflow-x-clip", "gap-1", "gap-2", "p-1", "p-2", "px-3", "py-2", "m-0",
+    "border", "rounded", "rounded-md", "rounded-lg", "rounded-full", "text-sm", "text-xs", "font-bold"
+  ]);
+
+  return className
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 4 && !IGNORED.has(t));
+}
+
 export async function POST(req: Request) {
   try {
     const PROJECT_ROOT = process.cwd();
@@ -59,7 +190,9 @@ export async function POST(req: Request) {
     const {
       mode = "ui", // "ui" (Ctrl+Click) or "logic" (Option+Click)
       file,
+      line,
       component,
+      componentChain = [],
       route,
       href,
       onClickText,
@@ -67,299 +200,520 @@ export async function POST(req: Request) {
       ariaLabel,
       dataTour,
       id,
+      tag,
+      rawTag,
       className,
+      rawClassName,
+      ancestorTexts = [],
     } = body || {};
 
-    let targetFile: string | null = null;
-    let targetLine: number | null = null;
-
-    // Helper: resolve route pathname to physical page.tsx
-    const resolveRouteFile = (pathname: string): string | null => {
-      const clean = pathname.split("?")[0].replace(/^\/+|\/+$/g, "");
-      const segments = clean ? clean.split("/") : [];
-
-      let current = APP_DIR;
-      for (const seg of segments) {
-        if (!fs.existsSync(/*turbopackIgnore: true*/ current)) return null;
-        const entries = fs.readdirSync(/*turbopackIgnore: true*/ current, { withFileTypes: true });
-        const directMatch = entries.find(
-          (e) => e.isDirectory() && e.name.toLowerCase() === seg.toLowerCase()
-        );
-        if (directMatch) {
-          current = path.join(current, directMatch.name);
-          continue;
+    // =========================================================================
+    // STEP 1: CONSTRUCT THE ACTIVE WORKING SET
+    // =========================================================================
+    // Find the current page and all components imported by it.
+    const activeRoutePage = route ? resolveRouteFile(route, APP_DIR) : null;
+    const directImports = activeRoutePage ? findImportedComponentFiles(activeRoutePage, PROJECT_ROOT) : [];
+    
+    // Transitive imports (components imported by direct components)
+    const transitiveImports: string[] = [];
+    for (const d of directImports) {
+      const subs = findImportedComponentFiles(d, PROJECT_ROOT);
+      for (const s of subs) {
+        if (!directImports.includes(s) && !transitiveImports.includes(s)) {
+          transitiveImports.push(s);
         }
-        const dynamicMatch = entries.find(
-          (e) => e.isDirectory() && e.name.startsWith("[") && e.name.endsWith("]")
-        );
-        if (dynamicMatch) {
-          current = path.join(current, dynamicMatch.name);
-          continue;
-        }
-        return null;
       }
-      const pageCandidate = path.join(current, "page.tsx");
-      return fs.existsSync(/*turbopackIgnore: true*/ pageCandidate) ? pageCandidate : null;
+    }
+
+    // Global layout files
+    const layoutFile = path.join(APP_DIR, "layout.tsx");
+    const layoutImports = fs.existsSync(layoutFile) ? findImportedComponentFiles(layoutFile, PROJECT_ROOT) : [];
+
+    const activeWorkingSet = new Set<string>(
+      [activeRoutePage, ...directImports, ...transitiveImports, layoutFile, ...layoutImports].filter(Boolean) as string[]
+    );
+
+    // =========================================================================
+    // STEP 2: DISCOVER AND SCORE CANDIDATE FILES
+    // =========================================================================
+    const candidates = new Map<string, number>();
+
+    const addCandidate = (filePath: string | null | undefined, score: number) => {
+      if (!filePath || typeof filePath !== "string") return;
+      let clean = filePath;
+      if (clean.startsWith("file://")) clean = clean.slice(7);
+      if (!path.isAbsolute(clean)) clean = path.join(PROJECT_ROOT, clean);
+      if (fs.existsSync(clean)) {
+        const existing = candidates.get(clean) || 0;
+        candidates.set(clean, Math.max(existing, score));
+      }
     };
 
-    // 1. LOGIC MODE ROUTE JUMP:
-    // If the user Option+clicks a link/card with href (e.g. /teams/york_lions/roster),
-    // jump straight to that target route's page/logic file!
-    if (mode === "logic" && href && typeof href === "string" && href.startsWith("/")) {
-      const targetRouteFile = resolveRouteFile(href);
-      if (targetRouteFile) {
-        targetFile = targetRouteFile;
-      }
-    }
-
-    // 2. Resolve file from Turbopack chunk or path
-    if (!targetFile && file && typeof file === "string") {
+    // 1. Direct file passed from React Fiber (_debugSource or Turbopack chunk)
+    if (file && typeof file === "string") {
       if (file.includes("src_")) {
-        targetFile = resolveTurbopackChunkToPath(file, PROJECT_ROOT);
+        addCandidate(resolveTurbopackChunkToPath(file, PROJECT_ROOT), 250);
       }
-      if (!targetFile) {
-        const srcMatch = file.match(/src\/[^\s\?:\)]+/);
-        if (srcMatch) {
-          const candidate = path.join(PROJECT_ROOT, srcMatch[0]);
-          if (fs.existsSync(/*turbopackIgnore: true*/ candidate)) {
-            targetFile = candidate;
+      let directPath = file;
+      if (directPath.startsWith("file://")) directPath = directPath.slice(7);
+      if (directPath.includes("turbopack://")) {
+        const match = directPath.match(/src\/[^\s:()]+\.[jt]sx?/);
+        if (match) directPath = match[0];
+      }
+      addCandidate(directPath, 240);
+    }
+
+    // 2. Logic mode destination route (Option+Click on internal link navigates to destination page logic)
+    if (mode === "logic" && href && typeof href === "string" && href.startsWith("/")) {
+      const destRoute = resolveRouteFile(href, APP_DIR);
+      if (destRoute) addCandidate(destRoute, 350);
+    }
+
+    // 3. User components in the Fiber hierarchy (innermost leaf has highest score)
+    const userComponents: string[] = [component, ...componentChain].filter(Boolean) as string[];
+    userComponents.forEach((compName, idx) => {
+      // First check active working set files
+      for (const activePath of activeWorkingSet) {
+        const baseName = path.basename(activePath, path.extname(activePath));
+        if (baseName.toLowerCase() === compName.toLowerCase()) {
+          addCandidate(activePath, 220 - idx * 15);
+        } else {
+          try {
+            const content = fs.readFileSync(activePath, "utf8");
+            if (
+              content.includes(`export default function ${compName}`) ||
+              content.includes(`export function ${compName}`) ||
+              content.includes(`function ${compName}`) ||
+              content.includes(`const ${compName} =`)
+            ) {
+              addCandidate(activePath, 200 - idx * 15);
+            }
+          } catch {}
+        }
+      }
+
+      // If not in active working set, check filesystem
+      const generalFile = findFileByComponentName(compName, [COMPONENTS_DIR, APP_DIR]);
+      if (generalFile) {
+        addCandidate(generalFile, 140 - idx * 15);
+      }
+    });
+
+    // 4. Always include active route page & direct imports as baseline candidates
+    if (activeRoutePage) addCandidate(activeRoutePage, 80);
+    for (const d of directImports) addCandidate(d, 70);
+    for (const l of layoutImports) addCandidate(l, 50);
+
+    // Fallback if empty
+    if (candidates.size === 0) {
+      const defaultPage = activeRoutePage || path.join(APP_DIR, "page.tsx");
+      addCandidate(defaultPage, 10);
+    }
+
+    // =========================================================================
+    // STEP 3: SCORE CANDIDATES TO PICK THE WINNING TARGET FILE
+    // =========================================================================
+    let targetFile: string | null = null;
+    let highestScore = -Infinity;
+
+    const combinedClasses = `${className || ""} ${rawClassName || ""}`.trim();
+    const distinctiveClasses = extractDistinctiveTokens(combinedClasses);
+    const activeTags = [tag, rawTag].filter(Boolean).map((t) => t.toLowerCase());
+
+    for (const [candidatePath, baseScore] of candidates.entries()) {
+      try {
+        const content = fs.readFileSync(candidatePath, "utf8");
+        const lines = content.split("\n");
+        let score = baseScore;
+
+        // Active working set bonus: active files receive +60
+        if (activeWorkingSet.has(candidatePath)) {
+          score += 60;
+        }
+
+        // data-tour match: +120
+        if (dataTour && (content.includes(`data-tour="${dataTour}"`) || content.includes(`data-tour='${dataTour}'`))) {
+          score += 120;
+        }
+
+        // id match: +90
+        if (id && (content.includes(`id="${id}"`) || content.includes(`id='${id}'`))) {
+          score += 90;
+        }
+
+        // aria-label match: +80
+        if (ariaLabel && content.includes(ariaLabel)) {
+          score += 80;
+        }
+
+        // href match: +70
+        if (href && (content.includes(`href="${href}"`) || content.includes(`href={'${href}'}`))) {
+          score += 70;
+        }
+
+        // onClickText match: +80
+        if (onClickText && (content.includes(`const ${onClickText}`) || content.includes(`function ${onClickText}`) || content.includes(`onClick={${onClickText}}`))) {
+          score += 80;
+        }
+
+        // Exact text match (non-import): +75
+        if (text && text.trim().length >= 3) {
+          const cleanText = text.trim();
+          const hasText = lines.some((l) => !l.trim().startsWith("import") && !l.trim().startsWith("//") && l.includes(cleanText));
+          if (hasText) score += 75;
+        }
+
+        // Substring / phrase match: +50
+        if (text && text.trim().length >= 8) {
+          const words = text.trim().split(/\s+/);
+          if (words.length >= 3) {
+            const phrase = words.slice(0, 3).join(" ");
+            if (content.includes(phrase)) score += 50;
           }
         }
-      }
-    }
 
-    // 3. Resolve by component name in src/components or src/app
-    if (!targetFile && component && typeof component === "string" && component !== "Link") {
-      const findInDir = (dir: string): string | null => {
-        if (!fs.existsSync(/*turbopackIgnore: true*/ dir)) return null;
-        const entries = fs.readdirSync(/*turbopackIgnore: true*/ dir, { withFileTypes: true });
-        for (const entry of entries) {
-          const full = path.join(dir, entry.name);
-          if (entry.isDirectory()) {
-            const found = findInDir(full);
-            if (found) return found;
-          } else if (
-            entry.isFile() &&
-            (entry.name === `${component}.tsx` ||
-              entry.name === `${component}.ts` ||
-              entry.name === `${component}.jsx`)
-          ) {
-            return full;
-          }
-        }
-        return null;
-      };
-      targetFile = findInDir(COMPONENTS_DIR) || findInDir(APP_DIR);
-    }
-
-    // 4. Fallback to active route page.tsx
-    if (!targetFile && route && typeof route === "string") {
-      targetFile = resolveRouteFile(route);
-    }
-
-    // If still not resolved, default to app homepage or return 404
-    if (!targetFile || !fs.existsSync(/*turbopackIgnore: true*/ targetFile)) {
-      const fallback = path.join(APP_DIR, "page.tsx");
-      if (fs.existsSync(/*turbopackIgnore: true*/ fallback)) {
-        targetFile = fallback;
-      } else {
-        return NextResponse.json({ ok: false, error: "Target file not found" }, { status: 404 });
-      }
-    }
-
-    // ========== LOCATE EXACT TARGET LINE ==========
-    try {
-      const fileContent = fs.readFileSync(/*turbopackIgnore: true*/ targetFile, "utf8");
-      const fileLines = fileContent.split("\n");
-
-      if (mode === "logic") {
-        // ========== LOGIC MODE (Option+Click) ==========
-        let logicLine: number | null = null;
-
-        // A. If targetFile was resolved from an href link (navigating to another page):
-        // Jump directly to the component's state/logic definition
-        if (href && targetFile.endsWith("page.tsx")) {
-          const compIdx = fileLines.findIndex(
-            (l) => l.includes("export default function") || l.includes("export function")
-          );
-          if (compIdx !== -1) logicLine = compIdx + 1;
-        }
-
-        // B. Handler function search: const handleX = or function handleX
-        if (!logicLine && onClickText && typeof onClickText === "string") {
-          const raw = onClickText.replace(/^set/, "");
-          const fnIdx = fileLines.findIndex(
-            (l) =>
-              l.includes(`const ${onClickText} =`) ||
-              l.includes(`async function ${onClickText}`) ||
-              l.includes(`function ${onClickText}`) ||
-              l.includes(`let ${onClickText} =`) ||
-              l.includes(`const handle${raw} =`) ||
-              l.includes(`function handle${raw}`)
-          );
-          if (fnIdx !== -1) logicLine = fnIdx + 1;
-
-          // State setter definition: const [isStats..., setIsStats...] = useState
-          if (!logicLine) {
-            const stateIdx = fileLines.findIndex(
-              (l) => l.includes(onClickText) && l.includes("useState")
-            );
-            if (stateIdx !== -1) logicLine = stateIdx + 1;
-          }
-        }
-
-        // C. Data fetching / mutation logic in component
-        if (!logicLine) {
-          const dataLogicIdx = fileLines.findIndex(
-            (l) =>
-              l.includes("requestPrivateData") ||
-              l.includes("createSecureRecord") ||
-              l.includes("useEffect(") ||
-              l.includes("useState(")
-          );
-          if (dataLogicIdx !== -1) logicLine = dataLogicIdx + 1;
-        }
-
-        // D. Fallback to component definition line
-        if (!logicLine) {
-          const defIdx = fileLines.findIndex(
-            (l) => l.includes("export default function") || l.includes("export function")
-          );
-          if (defIdx !== -1) logicLine = defIdx + 1;
-        }
-
-        targetLine = logicLine || null;
-      } else {
-        // ========== UI MODE (Ctrl+Click) ==========
-        let uiLine: number | null = null;
-
-        // 1. Match by data-tour attribute (100% unique when present)
-        if (dataTour && typeof dataTour === "string") {
-          const matchIdx = fileLines.findIndex(
-            (l) => l.includes(`data-tour="${dataTour}"`) || l.includes(`data-tour='${dataTour}'`)
-          );
-          if (matchIdx !== -1) uiLine = matchIdx + 1;
-        }
-
-        // 2. Match by id attribute
-        if (!uiLine && id && typeof id === "string") {
-          const matchIdx = fileLines.findIndex(
-            (l) => l.includes(`id="${id}"`) || l.includes(`id={'${id}'}`) || l.includes(`id='${id}'`)
-          );
-          if (matchIdx !== -1) uiLine = matchIdx + 1;
-        }
-
-        // 3. Match by aria-label attribute
-        if (!uiLine && ariaLabel && typeof ariaLabel === "string") {
-          const matchIdx = fileLines.findIndex(
-            (l) => l.includes("aria-label=") && l.includes(ariaLabel)
-          );
-          if (matchIdx !== -1) uiLine = matchIdx + 1;
-        }
-
-        // 4. Match by href attribute
-        if (!uiLine && href && typeof href === "string") {
-          const cleanSeg = href.split("?")[0].replace(/\/+$/, "").split("/").pop();
-          if (cleanSeg) {
-            const matchIdx = fileLines.findIndex(
-              (l) => l.includes("href=") && l.includes(cleanSeg)
-            );
-            if (matchIdx !== -1) {
-              // If line above is <Link, jump to <Link
-              if (matchIdx > 0 && fileLines[matchIdx - 1].includes("<Link")) {
-                uiLine = matchIdx;
-              } else {
-                uiLine = matchIdx + 1;
-              }
+        // Tag + Distinctive class tokens match: +90
+        if (distinctiveClasses.length > 0) {
+          let bestTagClassMatches = 0;
+          for (let i = 0; i < lines.length; i++) {
+            const l = lines[i];
+            const hasTag = activeTags.some((t) => l.includes(`<${t}`) || (t === "a" && l.includes("<Link")));
+            if (hasTag) {
+              const windowText = lines.slice(i, Math.min(lines.length, i + 8)).join(" ");
+              const matchedCount = distinctiveClasses.filter((cls) => windowText.includes(cls)).length;
+              if (matchedCount > bestTagClassMatches) bestTagClassMatches = matchedCount;
             }
           }
+          if (bestTagClassMatches >= 3) score += 90;
+          else if (bestTagClassMatches >= 1) score += 40;
         }
 
-        // 5. Match by onClick prop
-        if (!uiLine && onClickText && typeof onClickText === "string") {
-          const matchIdx = fileLines.findIndex(
-            (l) => l.includes("onClick=") && l.includes(onClickText)
-          );
+        if (score > highestScore) {
+          highestScore = score;
+          targetFile = candidatePath;
+        }
+      } catch {}
+    }
+
+    if (!targetFile || !fs.existsSync(targetFile)) {
+      return NextResponse.json({ ok: false, error: "Target file could not be determined" }, { status: 404 });
+    }
+
+    // =========================================================================
+    // STEP 4: PINPOINT THE EXACT TARGET LINE IN THE WINNING FILE
+    // =========================================================================
+    let targetLine: number | null = null;
+    const fileContent = fs.readFileSync(targetFile, "utf8");
+    const fileLines = fileContent.split("\n");
+
+    const walkToOpeningTag = (idx: number): number => {
+      for (let i = idx; i >= Math.max(0, idx - 15); i--) {
+        const l = fileLines[i].trim();
+        if (
+          l.startsWith("<button") ||
+          l.startsWith("<Link") ||
+          l.startsWith("<a ") ||
+          l.startsWith("<input") ||
+          l.startsWith("<select") ||
+          l.startsWith("<form") ||
+          l.startsWith("<div") ||
+          l.startsWith("<section") ||
+          l.startsWith("<header") ||
+          l.startsWith("<nav") ||
+          l.startsWith("<h1") ||
+          l.startsWith("<h2") ||
+          l.startsWith("<h3") ||
+          l.startsWith("<h4") ||
+          l.startsWith("<h5") ||
+          l.startsWith("<h6") ||
+          l.startsWith("<p") ||
+          l.startsWith("<span") ||
+          l.startsWith("<li")
+        ) {
+          return i + 1;
+        }
+      }
+      return idx + 1;
+    };
+
+    if (mode === "logic") {
+      // =======================================================================
+      // LOGIC MODE (Option+Click): Locate handlers, mutations, effects, or state
+      // =======================================================================
+
+      // 1. Explicit onClick handler name
+      if (onClickText) {
+        const patterns = [
+          `const ${onClickText} =`,
+          `function ${onClickText}`,
+          `async function ${onClickText}`,
+          `const [`, // e.g. const [isOpen, setIsOpen]
+        ];
+        for (const p of patterns) {
+          const matchIdx = fileLines.findIndex((l) => l.includes(p) && l.includes(onClickText));
           if (matchIdx !== -1) {
-            // Check if <button tag started 1-2 lines earlier
-            let tagStart = matchIdx;
-            for (let i = matchIdx; i >= Math.max(0, matchIdx - 3); i--) {
-              if (fileLines[i].includes("<button") || fileLines[i].includes("<Link")) {
-                tagStart = i;
-                break;
-              }
+            targetLine = matchIdx + 1;
+            break;
+          }
+        }
+      }
+
+      // 2. Link destination or routing logic
+      if (!targetLine && href && typeof href === "string" && href.startsWith("/")) {
+        const matchIdx = fileLines.findIndex((l) => l.includes(href));
+        if (matchIdx !== -1) targetLine = walkToOpeningTag(matchIdx);
+      }
+
+      // 3. Data mutation or action calls (ignore import statements)
+      if (!targetLine) {
+        const mutationPatterns = [
+          "createSecureRecord(",
+          "updateDoc(",
+          "setDoc(",
+          "requestPrivateData(",
+          "openBillingPortal(",
+          "fetch(",
+          "router.push(",
+        ];
+        for (const p of mutationPatterns) {
+          const matchIdx = fileLines.findIndex((l) => !l.trim().startsWith("import") && l.includes(p));
+          if (matchIdx !== -1) {
+            targetLine = matchIdx + 1;
+            break;
+          }
+        }
+      }
+
+      // 4. Primary data loading effect (ignore import statements)
+      if (!targetLine) {
+        const effectIdx = fileLines.findIndex((l) => !l.trim().startsWith("import") && (l.includes("useEffect(") || l.includes("useEffect(() =>")));
+        if (effectIdx !== -1) targetLine = effectIdx + 1;
+      }
+
+      // 5. Component state
+      if (!targetLine) {
+        const stateIdx = fileLines.findIndex((l) => !l.trim().startsWith("import") && l.includes("useState("));
+        if (stateIdx !== -1) targetLine = stateIdx + 1;
+      }
+
+      // 6. Component declaration fallback
+      if (!targetLine) {
+        const comp = component || userComponents[0];
+        if (comp) {
+          const declIdx = fileLines.findIndex(
+            (l) => l.includes(`function ${comp}`) || l.includes(`const ${comp} =`)
+          );
+          if (declIdx !== -1) targetLine = declIdx + 1;
+        }
+      }
+    } else {
+      // =======================================================================
+      // UI MODE (Ctrl+Click): Locate exact JSX element definition
+      // =======================================================================
+
+      // 1. Direct line passed from Fiber
+      if (typeof line === "number" && line > 0 && line <= fileLines.length) {
+        targetLine = line;
+      }
+
+      // 2. data-tour attribute match
+      if (!targetLine && dataTour) {
+        const matchIdx = fileLines.findIndex(
+          (l) => l.includes(`data-tour="${dataTour}"`) || l.includes(`data-tour='${dataTour}'`)
+        );
+        if (matchIdx !== -1) targetLine = walkToOpeningTag(matchIdx);
+      }
+
+      // 3. id attribute match
+      if (!targetLine && id) {
+        const matchIdx = fileLines.findIndex(
+          (l) => l.includes(`id="${id}"`) || l.includes(`id={'${id}'}`) || l.includes(`id='${id}'`)
+        );
+        if (matchIdx !== -1) targetLine = walkToOpeningTag(matchIdx);
+      }
+
+      // 4. aria-label attribute match (case-insensitive)
+      if (!targetLine && ariaLabel) {
+        const cleanAria = ariaLabel.trim().toLowerCase();
+        const matchIdx = fileLines.findIndex(
+          (l) => l.toLowerCase().includes("aria-label=") && l.toLowerCase().includes(cleanAria)
+        );
+        if (matchIdx !== -1) targetLine = walkToOpeningTag(matchIdx);
+      }
+
+      // 5. href match (for links / nav items - checks full href or final pathname segment)
+      if (!targetLine && href && typeof href === "string") {
+        const segs = href.split("/").filter(Boolean);
+        const lastSeg = segs.length > 0 ? `/${segs[segs.length - 1]}` : null;
+        
+        // Try full href first
+        let matchIdx = fileLines.findIndex((l) => l.includes(href));
+        // If not found, try last segment e.g. "/roster" or path: "/roster"
+        if (matchIdx === -1 && lastSeg && lastSeg.length >= 3) {
+          matchIdx = fileLines.findIndex((l) => l.includes(`"${lastSeg}"`) || l.includes(`'${lastSeg}'`));
+        }
+        if (matchIdx !== -1) targetLine = walkToOpeningTag(matchIdx);
+      }
+
+      // 6. Tag + Distinctive Tailwind Classes Match (MOST ACCURATE FOR DYNAMIC CONTENT)
+      if (!targetLine && distinctiveClasses.length > 0) {
+        let bestLine = -1;
+        let maxMatches = 0;
+
+        for (let i = 0; i < fileLines.length; i++) {
+          const l = fileLines[i];
+          const hasTag = activeTags.some((t) => l.includes(`<${t}`) || (t === "a" && l.includes("<Link")));
+          if (hasTag) {
+            const windowText = fileLines.slice(i, Math.min(fileLines.length, i + 8)).join(" ");
+            const matchedCount = distinctiveClasses.filter((cls) => windowText.includes(cls)).length;
+            if (matchedCount > maxMatches) {
+              maxMatches = matchedCount;
+              bestLine = i + 1;
             }
-            uiLine = tagStart + 1;
           }
         }
 
-        // 6. Match by distinct visible text
-        if (!uiLine && text && typeof text === "string") {
-          const clean = text.trim();
-          if (clean.length >= 3) {
+        // Require at least 2 distinctive tokens or >= 50% match
+        if (maxMatches >= 2 || (distinctiveClasses.length === 1 && maxMatches === 1)) {
+          targetLine = bestLine;
+        }
+      }
+
+      // 7. Exact text match (case-insensitive, non-import, non-comment, whole word or JSX content)
+      if (!targetLine && text && text.trim().length >= 3) {
+        const clean = text.trim();
+        // Look for whole-word or quoted or tag-wrapped occurrences
+        const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const wordRegex = new RegExp(`(?:>|'|"|\\s|\\b)${escaped}(?:<|'|"|\\s|\\b|,)`, "i");
+
+        const matchIdx = fileLines.findIndex((l) => {
+          const tr = l.trim();
+          if (
+            tr.startsWith("import") ||
+            tr.startsWith("//") ||
+            tr.startsWith("/*") ||
+            tr.startsWith("{/*") ||
+            tr.startsWith("*") ||
+            tr.startsWith("type ") ||
+            tr.startsWith("interface ")
+          ) {
+            return false;
+          }
+          return wordRegex.test(tr);
+        });
+        if (matchIdx !== -1) targetLine = walkToOpeningTag(matchIdx);
+      }
+
+      // 8. Static Substring / Phrase / Segment Match (Handles dynamic text like "Coaching Staff: {team.coachName}")
+      if (!targetLine && text && text.trim().length >= 5) {
+        // A. Check punctuation-separated segments (e.g. "Coaching Staff: Dexter Sargent" -> "Coaching Staff")
+        const segments = text
+          .split(/[:•|\-—–]/)
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length >= 4 && !/^\d+$/.test(s));
+
+        for (const seg of segments) {
+          const segLower = seg.toLowerCase();
+          const matchIdx = fileLines.findIndex((l) => {
+            const tr = l.trim();
+            if (
+              tr.startsWith("import") ||
+              tr.startsWith("//") ||
+              tr.startsWith("/*") ||
+              tr.startsWith("{/*") ||
+              tr.startsWith("*")
+            ) {
+              return false;
+            }
+            return tr.toLowerCase().includes(segLower);
+          });
+          if (matchIdx !== -1) {
+            targetLine = walkToOpeningTag(matchIdx);
+            break;
+          }
+        }
+
+        // B. Check 2-word and 3-word windows
+        if (!targetLine) {
+          const words = text.trim().split(/\s+/);
+          const candidatePhrases: string[] = [];
+          if (words.length >= 2) candidatePhrases.push(words.slice(0, 2).join(" ").toLowerCase());
+          if (words.length >= 3) candidatePhrases.push(words.slice(0, 3).join(" ").toLowerCase());
+
+          for (const phrase of candidatePhrases) {
             const matchIdx = fileLines.findIndex((l) => {
               const tr = l.trim();
-              if (tr.startsWith("import ") || tr.startsWith("import{") || tr.startsWith("//") || tr.startsWith("/*")) {
+              if (
+                tr.startsWith("import") ||
+                tr.startsWith("//") ||
+                tr.startsWith("/*") ||
+                tr.startsWith("{/*") ||
+                tr.startsWith("*")
+              ) {
                 return false;
               }
-              return l.includes(clean);
+              return tr.toLowerCase().includes(phrase);
             });
             if (matchIdx !== -1) {
-              let tagStart = matchIdx;
-              for (let i = matchIdx; i >= Math.max(0, matchIdx - 3); i--) {
-                if (
-                  fileLines[i].includes("<button") ||
-                  fileLines[i].includes("<Link") ||
-                  fileLines[i].includes("<a ")
-                ) {
-                  tagStart = i;
-                  break;
-                }
-              }
-              uiLine = tagStart + 1;
+              targetLine = walkToOpeningTag(matchIdx);
+              break;
             }
           }
         }
+      }
 
-        // 7. Match by distinctive class tokens (handles dynamic text like {team.name})
-        if (!uiLine && className && typeof className === "string") {
-          const distinctiveTokens = className
-            .split(/\s+/)
-            .filter((t) => t.length > 5 && !t.includes(":") && !["border", "rounded", "flex", "relative", "overflow-hidden"].includes(t));
-          if (distinctiveTokens.length > 0) {
-            const query = distinctiveTokens.slice(0, 2).join(" ");
-            const matchIdx = fileLines.findIndex(
-              (l) => l.includes(query) || (distinctiveTokens.length >= 2 && l.includes(distinctiveTokens[0]) && l.includes(distinctiveTokens[1]))
-            );
-            if (matchIdx !== -1) uiLine = matchIdx + 1;
+      // 9. Ancestor text match
+      if (!targetLine && ancestorTexts && Array.isArray(ancestorTexts)) {
+        for (const aText of ancestorTexts) {
+          if (aText.length >= 3) {
+            const cleanA = aText.trim().toLowerCase();
+            const matchIdx = fileLines.findIndex((l) => !l.trim().startsWith("import") && l.toLowerCase().includes(cleanA));
+            if (matchIdx !== -1) {
+              targetLine = walkToOpeningTag(matchIdx);
+              break;
+            }
           }
         }
+      }
 
-        // 8. Match by component JSX tag
-        if (!uiLine && component && typeof component === "string" && component !== "Link") {
-          const matchIdx = fileLines.findIndex((l) => l.includes(`<${component}`));
-          if (matchIdx !== -1) uiLine = matchIdx + 1;
+      // 10. onClick handler reference in JSX
+      if (!targetLine && onClickText) {
+        const matchIdx = fileLines.findIndex(
+          (l) => l.includes("onClick=") && l.includes(onClickText)
+        );
+        if (matchIdx !== -1) targetLine = walkToOpeningTag(matchIdx);
+      }
+
+      // 11. Component's main JSX return statement fallback
+      if (!targetLine) {
+        const comp = component || userComponents[0];
+        let compStartIdx = 0;
+        if (comp) {
+          const declIdx = fileLines.findIndex(
+            (l) => l.includes(`function ${comp}`) || l.includes(`const ${comp} =`)
+          );
+          if (declIdx !== -1) compStartIdx = declIdx;
         }
 
-        targetLine = uiLine || null;
+        for (let i = compStartIdx; i < fileLines.length; i++) {
+          const l = fileLines[i].trim();
+          // Must be JSX return, NOT arrow function cleanup e.g. return () => {
+          if ((l.startsWith("return (") || l.startsWith("return <")) && !l.includes("=>")) {
+            const prev = fileLines.slice(Math.max(0, i - 5), i).join(" ");
+            if (!prev.includes("useEffect") && !prev.includes("useLayoutEffect")) {
+              targetLine = i + 1;
+              break;
+            }
+          }
+        }
       }
-    } catch {
-      targetLine = null;
     }
 
-    // If an element was clicked (not just a background route auto-follow),
-    // require a verified, high-confidence targetLine. Never jump blindly to line 1!
-    const isElementClick = Boolean(component || text || onClickText || href || dataTour || id || ariaLabel || className);
-    if (isElementClick && (!targetLine || targetLine <= 0)) {
-      return NextResponse.json(
-        { ok: false, error: "No clear code segment found in source file" },
-        { status: 422 }
-      );
-    }
+    const finalLine = targetLine && targetLine > 0 ? targetLine : 1;
 
-    const finalLine = targetLine || 1;
-
-    // Launch in Visual Studio Code WITHOUT activating or resizing the locked window
+    // =========================================================================
+    // STEP 5: LAUNCH VISUAL STUDIO CODE BACKGROUND TAB
+    // =========================================================================
     const targetArg = `${targetFile}:${finalLine}`;
     const targetUrl = `vscode://file/${targetArg}`;
 
@@ -371,15 +725,13 @@ export async function POST(req: Request) {
 
     let foundAppPath: string | null = null;
     for (const p of vsCodeAppPaths) {
-      if (fs.existsSync(/*turbopackIgnore: true*/ p)) {
+      if (fs.existsSync(p)) {
         foundAppPath = p;
         break;
       }
     }
 
-    // On macOS, launch via 'open -g' (background mode) targeting Visual Studio Code specifically.
-    // The -g flag prevents macOS from stealing focus or triggering window manager / tiling resize events,
-    // preserving the user's locked window dimensions and split layout.
+    // Launch in background (-g) so the developer's window layout / sizes are undisturbed
     if (process.platform === "darwin") {
       const openArgs = foundAppPath
         ? ["-a", foundAppPath, "-g", targetUrl]
@@ -391,7 +743,6 @@ export async function POST(req: Request) {
       });
 
       child.on("error", () => {
-        // Fallback to code CLI if open fails
         const vsCodeBin = foundAppPath
           ? path.join(foundAppPath, "Contents", "Resources", "app", "bin", "code")
           : "code";

@@ -392,7 +392,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight">
               {teamName} <span className="text-neutral-500 font-normal">Schedule</span>
             </h1>
-            <p className="text-neutral-400 text-sm mt-1">Upcoming matchups, box scores, and live game tracking.</p>
+            <p className="text-neutral-400 text-sm mt-1">Past scores, upcoming matchups, and live game tracking.</p>
             {wonChampionship && (
               <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-300">
                 <Trophy className="w-3.5 h-3.5" /> Champions {localMatchDate(wonChampionship.date).getFullYear()}
@@ -466,11 +466,6 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                             <span className="text-[11px] font-mono text-neutral-400 bg-white/5 px-2 sm:px-2.5 py-1 rounded-md border border-white/5 whitespace-nowrap">
                               {m.week || "Gameday"}
                             </span>
-                            {isAsyncMatch && (
-                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                                <Sparkles className="w-3 h-3" /> <span>Untimed</span>
-                              </span>
-                            )}
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest whitespace-nowrap ${m.status === "in_progress" ? (getGameDisplayState(m, now) === "live" ? "text-red-600 dark:text-red-300" : "text-amber-400") : "text-emerald-400"}`}>
@@ -588,11 +583,6 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                           <span className="text-[10px] uppercase font-bold tracking-widest text-neutral-500 font-mono">
                             {localMatchDate(m.date).toLocaleDateString()}
                           </span>
-                          {isAsyncMatch && (
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                              Untimed
-                            </span>
-                          )}
                           {m.isPlayoff && (
                             <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded">
                               {m.playoffRound || "Playoffs"}

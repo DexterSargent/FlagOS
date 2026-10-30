@@ -37,6 +37,7 @@ import { TeamLogo } from "@/components/TeamAssets";
 import SiteHeader from "@/components/SiteHeader";
 import PoweredByFooter from "@/components/PoweredByFooter";
 import { GAME_STATE_LABEL, getGameDisplayState, useNow, type GameDisplayState } from "@/lib/gameLiveState";
+import { compareByName, compareNatural } from "@/lib/sortUtils";
 
 // Date-only strings parse as UTC and display a day early in western time zones.
 function gameDate(game: MembershipGame): Date | null {
@@ -199,7 +200,7 @@ function LeagueCard({ league }: { league: LeagueMembership }) {
       {league.teams.length > 0 && (
         <div className="space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Your {league.teams.length > 1 ? "teams" : "team"}</p>
-          {league.teams.map((team) => <TeamRow key={team.id} team={team} />)}
+          {[...league.teams].sort(compareByName).map((team) => <TeamRow key={team.id} team={team} />)}
         </div>
       )}
     </CardShell>
@@ -383,7 +384,7 @@ export default function SignedInHome() {
   const name = firstName(user?.displayName) || firstName(userProfile?.displayName) || firstName(playerData?.playerName);
   const hasAny = Boolean(data && (data.leagues.length || data.independentTeams.length));
   const leagues = data
-    ? [...data.leagues].sort((a, b) => Number(b.isCommissioner) - Number(a.isCommissioner) || a.name.localeCompare(b.name))
+    ? [...data.leagues].sort((a, b) => Number(b.isCommissioner) - Number(a.isCommissioner) || compareNatural(a.name, b.name))
     : [];
   const showLoading = loading || (!user && !data);
 
@@ -438,7 +439,7 @@ export default function SignedInHome() {
           ) : hasAny ? (
             <div className="grid items-start gap-4 md:grid-cols-2">
               {leagues.map((league) => <LeagueCard key={league.id} league={league} />)}
-              {data!.independentTeams.map((team) => <IndependentTeamCard key={team.id} team={team} />)}
+              {[...data!.independentTeams].sort(compareByName).map((team) => <IndependentTeamCard key={team.id} team={team} />)}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-token bg-surface-raised/60 p-6 text-center space-y-2">
