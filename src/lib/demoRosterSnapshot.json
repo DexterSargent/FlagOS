@@ -4,7 +4,7 @@
   "sourceUrl": "https://github.com/nflverse/nflverse-data/releases/tag/rosters",
   "rosterUrl": "https://github.com/nflverse/nflverse-data/releases/download/rosters/roster_2026.csv",
   "depthChartUrl": "https://github.com/nflverse/nflverse-data/releases/download/depth_charts/depth_charts_2026.csv.gz",
-  "sourceUpdatedAt": "2026-10-28T14:00:18.000Z",
+  "sourceUpdatedAt": "2026-10-30T14:07:07.000Z",
   "players": [
     {
       "id": "nfl_00-0034857",
@@ -3279,30 +3279,30 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0038101",
+      "id": "nfl_00-0036884",
       "teamId": "team_car",
-      "playerName": "Akayleb Evans",
-      "number": "29",
+      "playerName": "Marco Wilson",
+      "number": "35",
       "position": "DB",
       "positions": [
         "DB"
       ],
       "status": "Active",
-      "nflId": "00-0038101",
+      "nflId": "00-0036884",
       "nflPosition": "CB",
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0036934",
+      "id": "nfl_00-0037007",
       "teamId": "team_car",
-      "playerName": "Jaelan Phillips",
-      "number": "5",
+      "playerName": "Patrick Jones II",
+      "number": "91",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0036934",
+      "nflId": "00-0037007",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -3321,16 +3321,16 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0037007",
+      "id": "nfl_00-0036305",
       "teamId": "team_car",
-      "playerName": "Patrick Jones II",
-      "number": "91",
+      "playerName": "Trevis Gipson",
+      "number": "52",
       "position": "RUSH",
       "positions": [
         "RUSH"
       ],
       "status": "Active",
-      "nflId": "00-0037007",
+      "nflId": "00-0036305",
       "nflPosition": "OLB",
       "sourceStatus": "ACT"
     },
@@ -3989,17 +3989,17 @@
       "sourceStatus": "ACT"
     },
     {
-      "id": "nfl_00-0038797",
+      "id": "nfl_00-0039165",
       "teamId": "team_sea",
-      "playerName": "Emanuel Wilson",
-      "number": "23",
+      "playerName": "Zach Charbonnet",
+      "number": "26",
       "position": "RB",
       "positions": [
         "RB",
         "ATH"
       ],
       "status": "Active",
-      "nflId": "00-0038797",
+      "nflId": "00-0039165",
       "nflPosition": "RB",
       "sourceStatus": "ACT"
     },
