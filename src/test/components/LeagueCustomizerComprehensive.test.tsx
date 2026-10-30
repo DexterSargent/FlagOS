@@ -24,7 +24,7 @@ const {
   const mockResumeSubscription = vi.fn().mockResolvedValue(undefined);
   const mockUpdateSubscriptionTeamCount = vi.fn().mockResolvedValue({ status: "active", teamCount: 10 });
   const mockStartNewSeason = vi.fn().mockResolvedValue(undefined);
-  const mockAddTeamToSubscription = vi.fn().mockResolvedValue({ id: "team_new", name: "Thunderbirds" });
+  const mockAddTeamToSubscription = vi.fn().mockResolvedValue({ teamId: "team_new", newSubscription: { status: "active", teamCount: 8 }, seatAdded: false });
   const mockRemoveTeamFromSubscription = vi.fn().mockResolvedValue(undefined);
   const mockOpenBillingPortal = vi.fn().mockResolvedValue(undefined);
 
@@ -395,12 +395,13 @@ describe("LeagueCustomizerContent Comprehensive Suite", () => {
     fireEvent.click(confirmBtn);
     expect(mockUpdateSubscriptionTeamCount).toHaveBeenCalledWith(9);
 
-    // Add new team to subscription
+    // Add new team: two of eight slots are used, so the team fills an open slot at no extra cost
+    await waitFor(() => expect(screen.getByText("Apex Predators")).toBeInTheDocument());
     const teamNameInput = screen.getByPlaceholderText(/e.g. Team/i);
     fireEvent.change(teamNameInput, { target: { value: "Thunderbirds" } });
-    const addTeamBtn = screen.getByRole("button", { name: /Add Team to Subscription/i });
+    const addTeamBtn = screen.getByRole("button", { name: /Add Team \(slot available\)/i });
     fireEvent.click(addTeamBtn);
-    expect(mockLeague.addTeamToSubscription).toHaveBeenCalledWith("Thunderbirds");
+    expect(mockLeague.addTeamToSubscription).toHaveBeenCalledWith("Thunderbirds", { teamsInUse: 2 });
   });
 
   it("handles complete season transition by starting the next season", async () => {
@@ -586,14 +587,15 @@ describe("LeagueCustomizerContent Comprehensive Suite", () => {
     });
 
     // 3. Quick add team
+    await waitFor(() => expect(screen.getByText("Apex Predators")).toBeInTheDocument());
     const teamNameInput = screen.getByLabelText("New team name");
     fireEvent.change(teamNameInput, { target: { value: "Thunderbirds" } });
 
-    const addTeamBtn = screen.getByRole("button", { name: /Add Team to Subscription/i });
+    const addTeamBtn = screen.getByRole("button", { name: /Add Team \(slot available\)/i });
     fireEvent.click(addTeamBtn);
 
     await waitFor(() => {
-      expect(mockAddTeamToSubscription).toHaveBeenCalledWith("Thunderbirds");
+      expect(mockAddTeamToSubscription).toHaveBeenCalledWith("Thunderbirds", { teamsInUse: 2 });
     });
 
     // 4. Quick remove team

@@ -8,6 +8,7 @@ import { LEAGUE_SETTINGS_GUIDES, LEAGUE_RULES_VIEW_GUIDE } from "@/lib/walkthrou
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { useLeague, LeagueRules, DEFAULT_LEAGUE_RULES, IFAF_5V5_RULES } from "@/lib/leagueContext";
 import { useAuth } from "@/lib/authContext";
+import { leagueMonthlyTotal } from "@/lib/leaguePlanCost";
 import { rosterHardCap } from "@/lib/rosterLimits";
 import {
   Palette,
@@ -122,8 +123,14 @@ export default function LeagueCustomizerContent() {
     setIsUpdatingSub(true);
     setSubSuccessMsg("");
     try {
+      const previous = subscription?.teamCount ?? 8;
       await updateSubscriptionTeamCount(count);
-      setSubSuccessMsg(`Subscription updated to ${count} teams! Next monthly payment adjusted to $${40 + count * 20}/mo.`);
+      const total = leagueMonthlyTotal(subscription, count);
+      setSubSuccessMsg(isComplimentary
+        ? `Capacity updated to ${count} teams.`
+        : count > previous
+          ? `Plan updated to ${count} teams. The added slots were charged a prorated amount today; your renewal price is now $${total}/mo.`
+          : `Plan updated to ${count} teams. Your price drops to $${total}/mo from your next renewal.`);
       setTimeout(() => setSubSuccessMsg(""), 5000);
       await loadSubTeams();
     } catch (e) {
@@ -138,11 +145,16 @@ export default function LeagueCustomizerContent() {
     setIsSubmittingNewTeam(true);
     setSubSuccessMsg("");
     try {
-      const nextCount = (subscription?.teamCount ?? 8) + 1;
-      const teamNameToUse = newSubTeamName.trim() || `Team ${nextCount}`;
-      await addTeamToSubscription(teamNameToUse);
+      const teamsInUse = subTeamsList.length;
+      const teamNameToUse = newSubTeamName.trim() || `Team ${teamsInUse + 1}`;
+      const { newSubscription, seatAdded } = await addTeamToSubscription(teamNameToUse, { teamsInUse });
       setNewSubTeamName("");
-      setSubSuccessMsg(`Added "${teamNameToUse}" and increased subscription to ${nextCount} teams ($${40 + nextCount * 20}/mo at next payment).`);
+      const seats = newSubscription?.teamCount ?? subscription?.teamCount ?? 8;
+      setSubSuccessMsg(!seatAdded
+        ? `Added "${teamNameToUse}" to an open slot (${teamsInUse + 1} of ${seats} used). No change to your bill.`
+        : isComplimentary
+          ? `Added "${teamNameToUse}" and raised capacity to ${seats} teams.`
+          : `Added "${teamNameToUse}" and grew your plan to ${seats} teams. Today's prorated charge is complete; renewals are now $${leagueMonthlyTotal(newSubscription, seats)}/mo.`);
       setTimeout(() => setSubSuccessMsg(""), 5000);
       await loadSubTeams();
     } catch (e) {
