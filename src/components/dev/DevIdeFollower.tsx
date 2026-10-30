@@ -320,9 +320,15 @@ export default function DevIdeFollower() {
     };
   }, [pathname, autoFollow, isDev, openTarget]);
 
-  // 2. Track modifier keys
+  // 2. Track modifier keys with automatic reset on blur / visibility change
   useEffect(() => {
     if (!isDev || !inspectorActive) return;
+
+    const resetState = () => {
+      setActiveMode(null);
+      setHoveredTarget(null);
+      lastTargetRef.current = null;
+    };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey || e.key === "Alt") {
@@ -334,8 +340,7 @@ export default function DevIdeFollower() {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (!e.ctrlKey && !e.altKey) {
-        setActiveMode(null);
-        setHoveredTarget(null);
+        resetState();
       } else if (e.altKey) {
         setActiveMode("logic");
       } else if (e.ctrlKey) {
@@ -345,29 +350,33 @@ export default function DevIdeFollower() {
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", resetState);
+    window.addEventListener("focus", resetState);
+    document.addEventListener("visibilitychange", resetState);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", resetState);
+      window.removeEventListener("focus", resetState);
+      document.removeEventListener("visibilitychange", resetState);
     };
   }, [isDev, inspectorActive]);
 
-  // 3. Mousemove & Click handler
+  // 3. Mousemove & Click handler (STRICTLY requires active hardware modifier keys)
   useEffect(() => {
     if (!isDev || !inspectorActive) return;
 
-    const getModeFromEvent = (e: MouseEvent): "ui" | "logic" | null => {
-      if (e.altKey) return "logic";
-      if (e.ctrlKey) return "ui";
-      return activeMode;
-    };
-
     const handleMouseMove = (e: MouseEvent) => {
-      const mode = getModeFromEvent(e);
-      if (!mode) {
-        if (hoveredTarget) setHoveredTarget(null);
+      // If the user is NOT actively pressing Ctrl or Alt/Option, do nothing & clear highlights
+      if (!e.ctrlKey && !e.altKey) {
+        if (activeMode !== null) setActiveMode(null);
+        if (hoveredTarget !== null) setHoveredTarget(null);
         return;
       }
+
+      const mode: "ui" | "logic" = e.altKey ? "logic" : "ui";
+      if (activeMode !== mode) setActiveMode(mode);
 
       const target = document.elementFromPoint(e.clientX, e.clientY);
       const inspectable = findInspectableTarget(target, mode);
@@ -380,10 +389,7 @@ export default function DevIdeFollower() {
       }
     };
 
-    const triggerOpen = (e: MouseEvent) => {
-      const mode = getModeFromEvent(e);
-      if (!mode) return;
-
+    const triggerOpen = (e: MouseEvent, mode: "ui" | "logic") => {
       const target = document.elementFromPoint(e.clientX, e.clientY);
       const inspectable = findInspectableTarget(target, mode) || lastTargetRef.current;
       if (!inspectable) return;
@@ -408,16 +414,23 @@ export default function DevIdeFollower() {
     };
 
     const handleClick = (e: MouseEvent) => {
-      triggerOpen(e);
+      // ONLY intercept if actively pressing Ctrl or Alt/Option!
+      // If neither is pressed, allow normal navigation and interaction with ZERO interference!
+      if (!e.ctrlKey && !e.altKey) return;
+
+      const mode: "ui" | "logic" = e.altKey ? "logic" : "ui";
+      triggerOpen(e, mode);
     };
 
     // Mac Ctrl+Click emits a contextmenu event
     const handleContextMenu = (e: MouseEvent) => {
-      if (e.ctrlKey || e.altKey || activeMode) {
-        e.preventDefault();
-        e.stopPropagation();
-        triggerOpen(e);
-      }
+      // ONLY intercept if actively pressing Ctrl or Alt/Option!
+      if (!e.ctrlKey && !e.altKey) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      const mode: "ui" | "logic" = e.altKey ? "logic" : "ui";
+      triggerOpen(e, mode);
     };
 
     window.addEventListener("mousemove", handleMouseMove, true);
