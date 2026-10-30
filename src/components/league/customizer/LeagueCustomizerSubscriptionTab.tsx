@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { openBillingPortal } from "@/lib/billingClient";
+import { describeAddTeamCost } from "@/lib/leaguePlanCost";
 import type { LeagueSubscriptionInfo } from "@/lib/leagueContext";
 
 export interface SubTeamItem {
@@ -65,6 +66,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
   handleQuickRemoveTeam,
   closeCustomizer,
 }: LeagueCustomizerSubscriptionTabProps) {
+  const addTeamCost = describeAddTeamCost({ subscription, teamsInUse: subTeamsList.length, isDemo: isDemoLeague });
   return (
     <div className="space-y-6">
       {/* Header / Active Subscription Card */}
@@ -193,7 +195,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
               <span>{isComplimentary ? "Adjust Team Capacity" : "Adjust Paid Team Slots"}</span>
             </h4>
             <p className="text-xs text-neutral-400 mt-0.5">
-              {isComplimentary ? "Add or remove team capacity. Adjusts your complimentary team allowance." : "Add or remove team capacity. Adjusts your monthly cost by $20 per team at next renewal."}
+              {isComplimentary ? "Add or remove team capacity. Adjusts your complimentary team allowance." : "Add or remove team capacity at $20 per team per month. Added slots are charged a prorated amount today; removed slots lower your price from the next renewal."}
             </p>
           </div>
 
@@ -270,10 +272,10 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
         <div>
           <h4 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
             <Plus className="w-4 h-4 text-cyan-400" />
-            <span>Add New Team to Subscription {isComplimentary ? "(Complimentary)" : "(+ $20/mo)"}</span>
+            <span>Add New Team {isComplimentary ? "(Complimentary)" : addTeamCost.needsSeat ? "(+ $20/mo)" : "(slot available)"}</span>
           </h4>
           <p className="text-xs text-neutral-400 mt-0.5">
-            {isComplimentary ? "Create a team and add a team slot. No extra charges apply for complimentary organizations." : "Create a team and add a team slot. For paid plans, the monthly total increases by $20 at your next renewal."}
+            {subTeamsList.length} of {addTeamCost.seats} slots in use. {addTeamCost.detail}
           </p>
         </div>
 
@@ -282,7 +284,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
             type="text"
             value={newSubTeamName}
             onChange={(e) => setNewSubTeamName(e.target.value)}
-            placeholder={`e.g. Team ${(subscription?.teamCount ?? 8) + 1} or Thunderbirds`}
+            placeholder={`e.g. Team ${subTeamsList.length + 1} or Thunderbirds`}
             aria-label="New team name"
             className="flex-1 px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-cyan-400 text-white text-xs outline-none transition-colors"
           />
@@ -294,7 +296,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
             className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            <span>{isSubmittingNewTeam ? "Adding..." : isComplimentary ? "Add Team (Complimentary)" : "Add Team to Subscription (+$20/mo)"}</span>
+            <span>{isSubmittingNewTeam ? "Adding..." : addTeamCost.needsSeat && !addTeamCost.free ? "Add Team to Subscription (+$20/mo)" : addTeamCost.label}</span>
           </button>
         </div>
       </div>
@@ -362,7 +364,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
       <div data-tour="settings-subscription-close" className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
         <div className="text-[11px] text-neutral-400 flex items-center gap-2 font-mono">
           <Info className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-          <span>{isComplimentary ? "Complimentary organization: team changes never add charges." : <>Adjusted fees apply at your next billing statement on {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.</>}</span>
+          <span>{isComplimentary ? "Complimentary organization: team changes never add charges." : <>Added slots are charged a prorated amount right away; removed slots lower your bill from {new Date(subscription?.renewsAt || Date.now() + 30 * 86400000).toLocaleDateString(undefined, { month: "short", day: "numeric" })}.</>}</span>
         </div>
         <button
           type="button"

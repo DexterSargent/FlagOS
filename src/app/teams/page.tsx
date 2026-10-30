@@ -16,6 +16,7 @@ import {
 import { createSecureRecord } from "@/lib/secureWrites";
 import { useAuth } from "@/lib/authContext";
 import { useLeague } from "@/lib/leagueContext";
+import { describeAddTeamCost } from "@/lib/leaguePlanCost";
 import { effectiveMaxRoster } from "@/lib/rosterLimits";
 import { renderFlagOS } from "@/components/FlagOSText";
 import { isRealTeam, TeamLogo, getTeamShortcode } from "@/components/TeamAssets";
@@ -23,7 +24,6 @@ import { getReadableTextColor, resolveTeamColorPalette } from "@/lib/teamColors"
 import { usePrivateLeagueAccess } from "@/lib/usePrivateLeagueAccess";
 import {
   getSandboxTeams,
-  addSandboxTeam,
   updateSandboxTeam,
   deleteSandboxTeam,
   getSandboxPlayers,
@@ -366,43 +366,13 @@ export default function TeamsPage() {
 
   const handleAddTeam = async () => {
     if (!newTeamName.trim() || !isLeagueAdmin) return;
-    const currentPaid = subscription?.teamCount ?? 8;
-    const isExpandingSubscription = competitiveTeams.length >= currentPaid;
-
-    if (isExpandingSubscription) {
-      const confirmExpand = window.confirm(
-        `${isDemoLeague ? "DEMO \u2014 nothing is saved or charged.\n\n" : ""}All ${currentPaid} team slots are currently in use.\n\nAdding "${newTeamName.trim()}" will add a team slot${subscription?.paymentMethod === "complimentary" ? " (complimentary, no charge)" : ` and adjust your monthly subscription by +$20/mo (new cost: $${40 + (currentPaid + 1) * 20}/mo starting at your next monthly payment)`}. Proceed?`
-      );
-      if (!confirmExpand) return;
-      try {
-        const { teamId } = await addTeamToSubscription(newTeamName.trim());
-        setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort(compareByName));
-        setNewTeamName("");
-        setIsAddingTeam(false);
-      } catch (e) {
-        console.error(e);
-        alert(e instanceof Error ? e.message : "Could not add team to subscription.");
-      }
-      return;
-    }
-
-    if (isDemoLeague) {
-      const created = addSandboxTeam(newTeamName.trim());
-      setTeams([...teams, created as unknown as Team].sort(compareByName));
-      setNewTeamName("");
-      setIsAddingTeam(false);
-      return;
-    }
+    // One code path for every plan: the context fills an open slot for free, or (for paid plans)
+    // previews the prorated charge and only buys a seat after the manager confirms it.
     try {
-      const teamId = await createSecureRecord("team", {
-        name: newTeamName.trim(),
-        leagueId: activeLeagueId,
-        createdAt: new Date().toISOString()
-      });
+      const { teamId } = await addTeamToSubscription(newTeamName.trim(), { teamsInUse: competitiveTeams.length });
       setTeams([...teams, { id: teamId, name: newTeamName.trim() }].sort(compareByName));
       setNewTeamName("");
       setIsAddingTeam(false);
-      notifyDataChanged(activeLeagueId);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Could not add the team.");
@@ -483,6 +453,8 @@ export default function TeamsPage() {
 
   const teamIdSet = useMemo(() => new Set(teams.map((t) => t.id)), [teams]);
   const competitiveTeams = teams.filter((team) => isRealTeam(team));
+  const addTeamCost = describeAddTeamCost({ subscription, teamsInUse: competitiveTeams.length, isDemo: isDemoLeague });
+  const createTeamCost = describeAddTeamCost({ subscription, teamsInUse: competitiveTeams.length, isDemo: isDemoLeague, verb: "Create Team" });
   const freeAgentPlayers = useMemo(
     () =>
       players.filter(
@@ -743,18 +715,19 @@ export default function TeamsPage() {
           </div>
 
           {!activeTeamId && isLeagueAdmin && (
-            <div className="mt-4 md:mt-0 flex gap-2">
+            <div className="mt-4 md:mt-0 flex flex-col items-start md:items-end gap-2">
               {isAddingTeam ? (
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     placeholder="Team Name" aria-label="New team name"
+                    aria-describedby="add-team-cost"
                     className="bg-neutral-800 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-cyan-400"
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
                     autoFocus
                   />
-                  <button onClick={handleAddTeam} aria-label="Add team" className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
+                  <button onClick={handleAddTeam} aria-label="Add team" title={addTeamCost.label} className="p-2 bg-green-500/20 text-green-500 hover:bg-green-500/30 rounded-lg cursor-pointer">
                     <Check className="w-5 h-5" />
                   </button>
                   <button onClick={() => setIsAddingTeam(false)} aria-label="Cancel adding team" className="p-2 bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-lg cursor-pointer">
@@ -766,9 +739,15 @@ export default function TeamsPage() {
                   onClick={() => setIsAddingTeam(true)}
                   className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 font-bold flex items-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-5 h-5" /> Create Team
+                  <Plus className="w-5 h-5" /> {createTeamCost.label}
                 </button>
               )}
+              <p
+                id="add-team-cost"
+                className={`text-[11px] max-w-xs md:text-right ${addTeamCost.free ? "text-neutral-400" : "text-amber-400 font-semibold"}`}
+              >
+                {addTeamCost.detail}
+              </p>
             </div>
           )}
         </div>
@@ -824,7 +803,7 @@ export default function TeamsPage() {
                 className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>{subscription?.paymentMethod === "complimentary" ? "Add Team Slot" : "Add Team to Subscription (+ $20/mo)"}</span>
+                <span>{addTeamCost.label}</span>
               </button>
 
               <button

@@ -276,6 +276,21 @@ export interface LeagueSubscriptionInfo {
   adminEmails?: string[];
 }
 
+export interface AddTeamOptions {
+  /**
+   * Teams currently occupying seats. When it is below the plan's seat count the new team fills an
+   * open seat for free; otherwise one seat is purchased first. Omit to always purchase a seat.
+   */
+  teamsInUse?: number;
+}
+
+export interface AddTeamResult {
+  teamId: string;
+  newSubscription: LeagueSubscriptionInfo;
+  /** True when the plan grew by one seat to fit this team. */
+  seatAdded: boolean;
+}
+
 export interface UserLeagueSummary {
   id: string;
   name: string;
@@ -399,7 +414,7 @@ interface LeagueContextType {
   }) => Promise<string>;
   subscription: LeagueSubscriptionInfo | null;
   updateSubscriptionTeamCount: (newTeamCount: number) => Promise<LeagueSubscriptionInfo>;
-  addTeamToSubscription: (customName?: string) => Promise<{ teamId: string; newSubscription: LeagueSubscriptionInfo }>;
+  addTeamToSubscription: (customName?: string, options?: AddTeamOptions) => Promise<AddTeamResult>;
   removeTeamFromSubscription: (teamId: string) => Promise<{ newSubscription: LeagueSubscriptionInfo }>;
   isDemoLeague: boolean;
   /** Leagues the signed-in account plays, coaches or commissions in (server-verified); null until known. */
@@ -497,7 +512,7 @@ const LeagueContext = createContext<LeagueContextType>({
   createLeague: async () => "",
   subscription: DEFAULT_LEAGUE_SUBSCRIPTION,
   updateSubscriptionTeamCount: async () => DEFAULT_LEAGUE_SUBSCRIPTION,
-  addTeamToSubscription: async () => ({ teamId: "", newSubscription: DEFAULT_LEAGUE_SUBSCRIPTION }),
+  addTeamToSubscription: async () => ({ teamId: "", newSubscription: DEFAULT_LEAGUE_SUBSCRIPTION, seatAdded: false }),
   removeTeamFromSubscription: async () => ({ newSubscription: DEFAULT_LEAGUE_SUBSCRIPTION }),
   isDemoLeague: true,
   memberLeagueIds: null,
@@ -1260,10 +1275,18 @@ const SelectedLeagueProvider = ({ pathname, routeLeagueId, suspended, children }
     return nextSub;
   };
 
-  const addTeamToSubscription = async (customName?: string): Promise<{ teamId: string; newSubscription: LeagueSubscriptionInfo }> => {
+  const addTeamToSubscription = async (
+    customName?: string,
+    options?: AddTeamOptions,
+  ): Promise<AddTeamResult> => {
     const currentCount = subscription?.teamCount ?? 8;
-    const nextCount = currentCount + 1;
-    const updatedSub = await updateSubscriptionTeamCount(nextCount);
+    // A seat is only purchased when every existing seat is already used. Without a team count the
+    // caller cannot prove a slot is open, so the plan grows (never silently over-filling it).
+    const needsSeat = options?.teamsInUse === undefined || options.teamsInUse >= currentCount;
+    const nextCount = needsSeat ? currentCount + 1 : currentCount;
+    const updatedSub = needsSeat
+      ? await updateSubscriptionTeamCount(nextCount)
+      : (subscription || DEFAULT_LEAGUE_SUBSCRIPTION);
 
     const teamColors = [
       "#3ca505", "#3b82f6", "#ef4444", "#f59e0b",
@@ -1272,24 +1295,26 @@ const SelectedLeagueProvider = ({ pathname, routeLeagueId, suspended, children }
       "#0ea5e9", "#eab308", "#10b981", "#a855f7",
     ];
 
-    const teamName = customName?.trim() || `Team ${nextCount}`;
+    const teamNumber = (options?.teamsInUse ?? currentCount) + 1;
+    const teamName = customName?.trim() || `Team ${teamNumber}`;
     const shortcode = teamName.startsWith("Team ") ? `TM${teamName.replace("Team ", "")}` : teamName.slice(0, 4).toUpperCase();
 
     if (checkIsDemoLeague(activeLeagueId)) {
       const { addSandboxTeam } = await import("./demoSandbox");
       const created = addSandboxTeam(teamName);
-      return { teamId: created.id, newSubscription: updatedSub };
+      return { teamId: created.id, newSubscription: updatedSub, seatAdded: needsSeat };
     }
 
     const teamId = await createSecureRecord("team", {
       name: teamName,
       shortcode,
       leagueId: activeLeagueId,
-      primaryColor: teamColors[(nextCount - 1) % teamColors.length],
+      primaryColor: teamColors[(teamNumber - 1) % teamColors.length],
       createdAt: new Date().toISOString(),
     });
+    notifyDataChanged(activeLeagueId);
 
-    return { teamId, newSubscription: updatedSub };
+    return { teamId, newSubscription: updatedSub, seatAdded: needsSeat };
   };
 
   const removeTeamFromSubscription = async (teamId: string): Promise<{ newSubscription: LeagueSubscriptionInfo }> => {
