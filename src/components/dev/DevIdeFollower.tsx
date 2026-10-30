@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import { Code, Navigation, Crosshair, Check, ChevronDown, ChevronUp, Layers, Cpu } from "lucide-react";
+import { Code, Navigation, Crosshair, Check, ChevronDown, ChevronUp, Layers, Cpu, AlertCircle } from "lucide-react";
 
-interface ClickableTarget {
+interface InspectableTarget {
   element: HTMLElement;
   rect: DOMRect;
   name: string;
   tag: string;
+  className?: string;
   file?: string;
   component?: string;
   href?: string;
@@ -49,92 +50,151 @@ function getComponentName(type: any): string | null {
 }
 
 /**
- * Searches the DOM and React Fiber tree to see if the element is genuinely clickable.
- * Returns the exact interactive container element (button, link, input, or onClick holder).
- * If the element is purely static (header, non-interactive div, static text), returns null.
+ * Searches the DOM and React Fiber tree to determine if there is a clear,
+ * high-confidence path to change the UI (Ctrl) or the Logic (Option).
+ *
+ * If no clear, determinable code segment exists, returns NULL so the element
+ * is NEVER presented or highlighted to the developer.
  */
-function findInteractiveTarget(rawTarget: Element | null): ClickableTarget | null {
+function findInspectableTarget(
+  rawTarget: Element | null,
+  mode: "ui" | "logic"
+): InspectableTarget | null {
   if (!rawTarget || !(rawTarget instanceof HTMLElement)) return null;
   if (rawTarget.closest("#dev-ide-follower-ui")) return null;
 
-  // 1. Check for standard clickable DOM containers
-  const interactiveAncestor = rawTarget.closest(
-    'button, a[href], input:not([type="hidden"]), select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="switch"], [role="checkbox"]'
-  ) as HTMLElement | null;
-
-  // 2. Check for elements with explicit onClick (in React Fiber or HTML attribute)
-  let clickHandlerElement: HTMLElement | null = null;
+  // Walk up ancestors looking for the primary semantic element
   let curr: HTMLElement | null = rawTarget;
-  let depth = 0;
-  while (curr && curr !== document.body && depth < 4) {
-    const fiber = getFiberFromElement(curr);
-    if (fiber?.memoizedProps?.onClick || curr.hasAttribute("onclick")) {
-      clickHandlerElement = curr;
-      break;
-    }
-    curr = curr.parentElement;
-    depth++;
-  }
-
-  // If neither exists, this element CANNOT be clicked — do NOT highlight it!
-  const el = interactiveAncestor || clickHandlerElement;
-  if (!el) return null;
-
-  // Extract core properties from the interactive element
-  const tag = el.tagName.toLowerCase();
-  const rawHref = el.getAttribute("href") || (el as any).href || rawTarget.getAttribute("href");
-  const href = typeof rawHref === "string" ? rawHref : undefined;
-  const dataTour = el.getAttribute("data-tour") || rawTarget.getAttribute("data-tour") || undefined;
-  const ariaLabel = el.getAttribute("aria-label") || rawTarget.getAttribute("aria-label") || undefined;
-  const id = el.id || rawTarget.id || undefined;
-
-  // Distinct visible label
-  const rawText = (el.innerText || rawTarget.innerText || el.textContent || "")
-    .split("\n")[0]
-    ?.trim() || "";
-  const cleanText = rawText.slice(0, 45) || undefined;
-
-  // Analyze React Fiber for handlers, component name, and source file
+  let targetElement: HTMLElement | null = null;
+  let href: string | undefined = undefined;
+  let dataTour: string | undefined = undefined;
+  let ariaLabel: string | undefined = undefined;
+  let id: string | undefined = undefined;
   let onClickText: string | undefined = undefined;
   let compName: string | undefined = undefined;
   let sourceFile: string | undefined = undefined;
 
-  let fiber = getFiberFromElement(el) || getFiberFromElement(rawTarget);
-  let fiberSteps = 0;
-  while (fiber && fiberSteps < 15) {
-    // A. Detect onClick handler or state setter
-    if (!onClickText) {
-      const fn = fiber.memoizedProps?.onClick;
-      if (typeof fn === "function") {
-        if (fn.name && fn.name !== "onClick" && !fn.name.startsWith("bound ")) {
-          onClickText = fn.name;
-        } else {
-          const fnStr = fn.toString();
-          const match = fnStr.match(/(set[A-Z0-9_a-z]+|handle[A-Z0-9_a-z]+|[a-zA-Z0-9_]+Modal)/);
-          if (match) onClickText = match[1];
+  let depth = 0;
+  while (curr && curr !== document.body && depth < 5) {
+    if (!href) {
+      const rawHref = curr.getAttribute("href") || (curr as any).href;
+      if (typeof rawHref === "string" && rawHref) href = rawHref;
+    }
+    if (!dataTour) {
+      const tour = curr.getAttribute("data-tour");
+      if (tour) dataTour = tour;
+    }
+    if (!ariaLabel) {
+      const label = curr.getAttribute("aria-label");
+      if (label) ariaLabel = label;
+    }
+    if (!id && curr.id && !curr.id.startsWith("__")) {
+      id = curr.id;
+    }
+
+    // Inspect React Fiber
+    const fiber = getFiberFromElement(curr);
+    if (fiber) {
+      if (!onClickText) {
+        const fn = fiber.memoizedProps?.onClick;
+        if (typeof fn === "function") {
+          if (fn.name && fn.name !== "onClick" && !fn.name.startsWith("bound ")) {
+            onClickText = fn.name;
+          } else {
+            const fnStr = fn.toString();
+            const match = fnStr.match(/(set[A-Z0-9_a-z]+|handle[A-Z0-9_a-z]+|[a-zA-Z0-9_]+Modal)/);
+            if (match) onClickText = match[1];
+          }
+        }
+      }
+
+      if (!compName) {
+        const name = getComponentName(fiber.type);
+        if (name && name !== "Link" && name !== "NextLink") {
+          compName = name;
+        }
+      }
+
+      if (!sourceFile && fiber._debugStack) {
+        const stackStr = String(fiber._debugStack);
+        const chunkMatch = stackStr.match(/(src_[a-zA-Z0-9_%]+_(?:tsx|ts|jsx|js))/i);
+        if (chunkMatch) {
+          sourceFile = decodeURIComponent(chunkMatch[1]);
         }
       }
     }
 
-    // B. Detect nearest custom React Component name
-    if (!compName) {
-      const name = getComponentName(fiber.type);
-      if (name && name !== "Link" && name !== "NextLink") {
-        compName = name;
-      }
+    // Interactive containers take precedence as the bounding target
+    const tag = curr.tagName.toLowerCase();
+    if (
+      ["button", "a", "input", "select", "textarea", "summary"].includes(tag) ||
+      curr.getAttribute("role") === "button"
+    ) {
+      targetElement = curr;
+      break;
     }
 
-    // C. Detect Turbopack / Next.js source chunk
-    if (!sourceFile && fiber._debugStack) {
-      const stackStr = String(fiber._debugStack);
-      const chunkMatch = stackStr.match(/(src_[a-zA-Z0-9_%]+_(?:tsx|ts|jsx|js))/i);
-      if (chunkMatch) {
-        sourceFile = decodeURIComponent(chunkMatch[1]);
-      }
-    }
+    curr = curr.parentElement;
+    depth++;
+  }
 
-    fiber = fiber.return;
-    fiberSteps++;
+  // Choose the bounding element: either interactive container or raw semantic element
+  const el = targetElement || rawTarget;
+  const tag = el.tagName.toLowerCase();
+  const rawText = (el.innerText || rawTarget.innerText || el.textContent || "")
+    .split("\n")[0]
+    ?.trim() || "";
+  const cleanText = rawText.slice(0, 45) || undefined;
+  const className = el.className && typeof el.className === "string" ? el.className.slice(0, 80) : undefined;
+
+  // =========================================================================
+  // STRICT "CLEAR PATH" VALIDATION:
+  // If we cannot determine a clear path to change the UI or logic, do not present!
+  // =========================================================================
+
+  if (mode === "logic") {
+    // LOGIC MODE: Must have an explicit logic hook
+    // 1. Has an onClick handler/setter
+    // 2. Has an internal route link (navigates to that route's logic)
+    // 3. Is a form control (input, select, textarea, form)
+    // 4. Is a custom React component with logic
+    const hasLogicPath = Boolean(
+      onClickText ||
+      (href && href.startsWith("/")) ||
+      ["input", "select", "textarea", "form"].includes(tag) ||
+      (compName && compName !== "Link")
+    );
+
+    if (!hasLogicPath) {
+      return null; // Pure static UI has no logic path — DO NOT PRESENT!
+    }
+  } else {
+    // UI MODE: Must have a clear, pinpointable selector in JSX
+    // 1. Explicit data-tour, id, aria-label, or href
+    // 2. Custom React component
+    // 3. Direct onClick handler
+    // 4. Semantic element (h1-h6, p, button, a, label, th, td, span) with distinct text (>= 3 chars)
+    const isSemanticTextTag = [
+      "h1", "h2", "h3", "h4", "h5", "h6",
+      "p", "button", "a", "label", "th", "td",
+      "summary", "span", "b", "strong", "em", "li", "header", "nav"
+    ].includes(tag);
+
+    const hasDistinctText = Boolean(cleanText && cleanText.length >= 3 && !/^\d+$/.test(cleanText));
+    const hasUiPath = Boolean(
+      dataTour ||
+      id ||
+      ariaLabel ||
+      href ||
+      compName ||
+      onClickText ||
+      (isSemanticTextTag && hasDistinctText) ||
+      (tag === "div" && (dataTour || id || (hasDistinctText && cleanText && cleanText.length >= 5)))
+    );
+
+    if (!hasUiPath) {
+      return null; // Inert wrapper div / background layout with no identity — DO NOT PRESENT!
+    }
   }
 
   const baseDisplay = compName || (tag === "a" ? "Link" : tag);
@@ -145,6 +205,7 @@ function findInteractiveTarget(rawTarget: Element | null): ClickableTarget | nul
     rect: el.getBoundingClientRect(),
     name,
     tag,
+    className,
     file: sourceFile,
     component: compName,
     href,
@@ -167,13 +228,13 @@ export default function DevIdeFollower() {
   // Ctrl: UI segment mode (Cyan)
   // Option/Alt: Logic / Backend mode (Amber)
   const [activeMode, setActiveMode] = useState<"ui" | "logic" | null>(null);
-  const [hoveredTarget, setHoveredTarget] = useState<ClickableTarget | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [hoveredTarget, setHoveredTarget] = useState<InspectableTarget | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ text: string; error?: boolean } | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const prevPathnameRef = useRef<string>("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastTargetRef = useRef<ClickableTarget | null>(null);
+  const lastTargetRef = useRef<InspectableTarget | null>(null);
 
   useEffect(() => {
     try {
@@ -200,10 +261,10 @@ export default function DevIdeFollower() {
     } catch {}
   };
 
-  const showStatus = useCallback((msg: string) => {
-    setStatusMessage(msg);
+  const showStatus = useCallback((text: string, error = false) => {
+    setStatusMessage({ text, error });
     setTimeout(() => {
-      setStatusMessage((current) => (current === msg ? null : current));
+      setStatusMessage((current) => (current?.text === text ? null : current));
     }, 3500);
   }, []);
 
@@ -221,6 +282,7 @@ export default function DevIdeFollower() {
       dataTour?: string | null;
       id?: string;
       tag?: string;
+      className?: string;
     }) => {
       try {
         const res = await fetch("/api/dev/open-in-editor", {
@@ -229,11 +291,11 @@ export default function DevIdeFollower() {
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-        if (data.ok) {
+        if (data.ok && data.line) {
           const modeTag = payload.mode === "logic" ? "Logic" : "UI";
-          showStatus(`[${modeTag}] ${payload.text || payload.component || payload.tag || "element"} (line ${data.line || 1})`);
+          showStatus(`[${modeTag}] ${payload.text || payload.component || payload.tag || "element"} (line ${data.line})`);
         } else {
-          showStatus(`Could not locate ${payload.component || payload.route}`);
+          showStatus(data.error || "No clear code path found to change this element", true);
         }
       } catch (err) {
         console.warn("[DevIDE] Failed to open in VS Code:", err);
@@ -308,11 +370,11 @@ export default function DevIdeFollower() {
       }
 
       const target = document.elementFromPoint(e.clientX, e.clientY);
-      const interactive = findInteractiveTarget(target);
+      const inspectable = findInspectableTarget(target, mode);
 
-      if (interactive) {
-        lastTargetRef.current = interactive;
-        setHoveredTarget(interactive);
+      if (inspectable) {
+        lastTargetRef.current = inspectable;
+        setHoveredTarget(inspectable);
       } else {
         setHoveredTarget(null);
       }
@@ -323,24 +385,25 @@ export default function DevIdeFollower() {
       if (!mode) return;
 
       const target = document.elementFromPoint(e.clientX, e.clientY);
-      const interactive = findInteractiveTarget(target) || lastTargetRef.current;
-      if (!interactive) return;
+      const inspectable = findInspectableTarget(target, mode) || lastTargetRef.current;
+      if (!inspectable) return;
 
       e.preventDefault();
       e.stopPropagation();
 
       openTarget({
         mode,
-        file: interactive.file,
-        component: interactive.component,
+        file: inspectable.file,
+        component: inspectable.component,
         route: pathname,
-        href: interactive.href,
-        onClickText: interactive.onClickText,
-        text: interactive.text,
-        ariaLabel: interactive.ariaLabel,
-        dataTour: interactive.dataTour,
-        id: interactive.id,
-        tag: interactive.tag,
+        href: inspectable.href,
+        onClickText: inspectable.onClickText,
+        text: inspectable.text,
+        ariaLabel: inspectable.ariaLabel,
+        dataTour: inspectable.dataTour,
+        id: inspectable.id,
+        tag: inspectable.tag,
+        className: inspectable.className,
       });
     };
 
@@ -372,7 +435,7 @@ export default function DevIdeFollower() {
 
   return (
     <>
-      {/* Component Highlighting Rect (ONLY displays when hovering over a valid clickable element) */}
+      {/* Component Highlighting Rect (ONLY displays when a clear path to change UI/Logic exists) */}
       {activeMode && hoveredTarget && (
         <div
           className={`fixed pointer-events-none z-[9999999] transition-all duration-75 border-2 rounded-md ${
@@ -407,9 +470,19 @@ export default function DevIdeFollower() {
 
       {/* Floating Status Notification */}
       {statusMessage && (
-        <div className="fixed bottom-16 right-5 z-[9999999] px-3.5 py-2 bg-slate-950/90 text-white rounded-xl shadow-2xl border border-white/10 backdrop-blur-md flex items-center gap-2.5 text-xs font-mono animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <Check className="w-4 h-4 text-emerald-400" />
-          <span>{statusMessage}</span>
+        <div
+          className={`fixed bottom-16 right-5 z-[9999999] px-3.5 py-2 rounded-xl shadow-2xl border backdrop-blur-md flex items-center gap-2.5 text-xs font-mono animate-in fade-in slide-in-from-bottom-2 duration-200 ${
+            statusMessage.error
+              ? "bg-rose-950/90 text-rose-200 border-rose-500/30"
+              : "bg-slate-950/90 text-white border-white/10"
+          }`}
+        >
+          {statusMessage.error ? (
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          ) : (
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          )}
+          <span>{statusMessage.text}</span>
         </div>
       )}
 

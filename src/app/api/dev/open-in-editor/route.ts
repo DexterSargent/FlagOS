@@ -67,10 +67,11 @@ export async function POST(req: Request) {
       ariaLabel,
       dataTour,
       id,
+      className,
     } = body || {};
 
     let targetFile: string | null = null;
-    let targetLine: number = 1;
+    let targetLine: number | null = null;
 
     // Helper: resolve route pathname to physical page.tsx
     const resolveRouteFile = (pathname: string): string | null => {
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
           if (defIdx !== -1) logicLine = defIdx + 1;
         }
 
-        targetLine = logicLine || 1;
+        targetLine = logicLine || null;
       } else {
         // ========== UI MODE (Ctrl+Click) ==========
         let uiLine: number | null = null;
@@ -320,28 +321,46 @@ export async function POST(req: Request) {
           }
         }
 
-        // 7. Match by component JSX tag
+        // 7. Match by distinctive class tokens (handles dynamic text like {team.name})
+        if (!uiLine && className && typeof className === "string") {
+          const distinctiveTokens = className
+            .split(/\s+/)
+            .filter((t) => t.length > 5 && !t.includes(":") && !["border", "rounded", "flex", "relative", "overflow-hidden"].includes(t));
+          if (distinctiveTokens.length > 0) {
+            const query = distinctiveTokens.slice(0, 2).join(" ");
+            const matchIdx = fileLines.findIndex(
+              (l) => l.includes(query) || (distinctiveTokens.length >= 2 && l.includes(distinctiveTokens[0]) && l.includes(distinctiveTokens[1]))
+            );
+            if (matchIdx !== -1) uiLine = matchIdx + 1;
+          }
+        }
+
+        // 8. Match by component JSX tag
         if (!uiLine && component && typeof component === "string" && component !== "Link") {
           const matchIdx = fileLines.findIndex((l) => l.includes(`<${component}`));
           if (matchIdx !== -1) uiLine = matchIdx + 1;
         }
 
-        // 8. Fallback to main return statement of the component
-        if (!uiLine) {
-          const returnIdx = fileLines.findIndex(
-            (l) => l.trim().startsWith("return (") || l.trim() === "return (" || l.trim() === "return"
-          );
-          if (returnIdx !== -1) uiLine = returnIdx + 1;
-        }
-
-        targetLine = uiLine || 1;
+        targetLine = uiLine || null;
       }
     } catch {
-      targetLine = 1;
+      targetLine = null;
     }
 
+    // If an element was clicked (not just a background route auto-follow),
+    // require a verified, high-confidence targetLine. Never jump blindly to line 1!
+    const isElementClick = Boolean(component || text || onClickText || href || dataTour || id || ariaLabel || className);
+    if (isElementClick && (!targetLine || targetLine <= 0)) {
+      return NextResponse.json(
+        { ok: false, error: "No clear code segment found in source file" },
+        { status: 422 }
+      );
+    }
+
+    const finalLine = targetLine || 1;
+
     // Launch in Visual Studio Code WITHOUT activating or resizing the locked window
-    const targetArg = `${targetFile}:${targetLine}`;
+    const targetArg = `${targetFile}:${finalLine}`;
     const targetUrl = `vscode://file/${targetArg}`;
 
     const vsCodeAppPaths = [
@@ -393,14 +412,14 @@ export async function POST(req: Request) {
     }
 
     const relative = path.relative(PROJECT_ROOT, targetFile);
-    console.log(`[DevIDE] [${mode.toUpperCase()}] Focused in VS Code: ${relative}:${targetLine}`);
+    console.log(`[DevIDE] [${mode.toUpperCase()}] Focused in VS Code: ${relative}:${finalLine}`);
 
     return NextResponse.json({
       ok: true,
       mode,
       file: relative,
       fullPath: targetFile,
-      line: targetLine,
+      line: finalLine,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
