@@ -100,7 +100,7 @@ export default function CreatePlaybookModal({
 
   return (
     <div className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-2xl relative">
+      <div role="dialog" aria-modal="true" aria-labelledby="create-playbook-title" className="max-h-[calc(100dvh-var(--role-switcher-height,0px)-2rem)] overflow-y-auto bg-[#0B0F19] border border-white/10 rounded-3xl w-full max-w-lg p-6 sm:p-8 space-y-6 shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
@@ -113,10 +113,12 @@ export default function CreatePlaybookModal({
               </span>
             </div>
             <PageGuideButton />
-            <h2 className="text-xl font-black uppercase text-white mt-1">Create a Playbook</h2>
+            <h2 id="create-playbook-title" className="text-xl font-black uppercase text-white mt-1">Create a Playbook</h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/5 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -134,9 +136,9 @@ export default function CreatePlaybookModal({
             </div>
           </div>
         ) : (
-          <form data-tour="create-playbook-fields" onSubmit={handleSubmit} className="space-y-5">
+          <form data-tour="create-playbook-fields" onSubmit={handleSubmit} noValidate className="space-y-5">
             {error && (
-              <div className="bg-red-500/15 border border-red-500/40 rounded-2xl p-3 text-xs text-red-300 flex items-center gap-2">
+              <div role="alert" className="bg-red-500/15 border border-red-500/40 rounded-2xl p-3 text-xs text-red-300 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -249,12 +251,14 @@ export default function CreatePlaybookModal({
 
             {/* 3. Playbook Title */}
             <div>
-              <label className="text-xs uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
-                Playbook Title
+              <label htmlFor="create-playbook-title-input" className="text-xs uppercase font-bold text-neutral-300 tracking-wider block mb-1.5">
+                Playbook Title <span className="text-red-400">*</span>
               </label>
               <input
+                id="create-playbook-title-input"
                 type="text"
                 required
+                maxLength={80}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={
@@ -268,11 +272,13 @@ export default function CreatePlaybookModal({
 
             {/* 3. Optional Notes / Description */}
             <div>
-              <label className="text-xs uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
+              <label htmlFor="create-playbook-description-input" className="text-xs uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
                 Description / Philosophy (Optional)
               </label>
               <textarea
+                id="create-playbook-description-input"
                 rows={2}
+                maxLength={400}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g. Fast-paced quick passing attack focusing on open grass..."

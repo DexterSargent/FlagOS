@@ -30,6 +30,7 @@ import { getCachedTeamRecord, loadTeamRecord } from "@/lib/teamRecord";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
 import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 // Date-only strings parse as UTC and display a day early in western time zones.
 function localMatchDate(value: string): Date {
@@ -94,6 +95,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isScheduleModalOpen]);
   const [scheduleError, setScheduleError] = useState("");
+  const [pendingDeleteMatchId, setPendingDeleteMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -104,15 +106,20 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
     }
   }, [canScheduleMatches]);
 
-  const handleDeleteMatch = async (e: React.MouseEvent, matchId: string) => {
+  const handleDeleteMatch = (e: React.MouseEvent, matchId: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (!canDeleteMatch) {
-      alert("Permission Denied: Only the primary team admin (head coach) can delete scheduled games.");
+      setScheduleError("Only the primary team admin (head coach) can delete scheduled games.");
       return;
     }
     if (!canScheduleMatches) return;
-    if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
+    setPendingDeleteMatchId(matchId);
+  };
+
+  const runDeleteMatch = async (matchId: string) => {
+    setPendingDeleteMatchId(null);
+    setScheduleError("");
 
     if (isDemoLeague) {
       if (!sandbox) {
@@ -143,16 +150,27 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
       setMatches((prev) => prev.filter((m) => m.id !== matchId));
     } catch (err) {
       console.error("Failed to delete match:", err);
-      alert("Failed to delete match. Please check permissions.");
+      setScheduleError("The game could not be deleted. You may not have permission, or the connection failed.");
     }
   };
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canScheduleMatches) return;
-    if (!opponentName.trim()) return;
-    setIsScheduling(true);
+    if (!canScheduleMatches || isScheduling) return;
     setScheduleError("");
+    if (!opponentName.trim()) {
+      setScheduleError("Enter the opponent's team name.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(matchDate)) {
+      setScheduleError("Choose a valid game date.");
+      return;
+    }
+    if (!/^\d{2}:\d{2}$/.test(matchTime)) {
+      setScheduleError("Choose a valid kickoff time.");
+      return;
+    }
+    setIsScheduling(true);
     try {
       const oppId = `opponent_${Date.now()}`;
       const newMatchDoc = {
@@ -164,7 +182,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
         awayScore: 0,
         date: matchDate,
         time: matchTime,
-        location: matchLocation || "Field 1",
+        location: matchLocation.trim() || "Field 1",
         week: gameType === "championship" ? "Championship" : gameType === "playoff" ? "Playoffs" : "Regular Season",
         ...(gameType !== "regular"
           ? { isPlayoff: true, playoffRound: gameType === "championship" ? "Championship" : "Playoffs" }
@@ -654,7 +672,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
               </div>
             </div>
 
-            <form data-tour="team-game-opponent" onSubmit={handleCreateMatch} className="space-y-4">
+            <form data-tour="team-game-opponent" onSubmit={handleCreateMatch} noValidate className="space-y-4">
               {scheduleError && <p role="alert" className="text-red-300">{scheduleError}</p>}
               <div>
                 <label htmlFor="exhibition-opponent-name" className="text-xs font-bold text-neutral-300 block mb-1">Opponent Team Name</label>
@@ -662,6 +680,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                   id="exhibition-opponent-name"
                   type="text"
                   required
+                  maxLength={60}
                   value={opponentName}
                   onChange={(e) => setOpponentName(e.target.value)}
                   placeholder="e.g. Gotham Rogues, Eastside Blitz"
@@ -743,6 +762,7 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                 <input
                   id="exhibition-match-location"
                   type="text"
+                  maxLength={120}
                   value={matchLocation}
                   onChange={(e) => setMatchLocation(e.target.value)}
                   placeholder="e.g. Field 2 Turf"
@@ -765,14 +785,25 @@ export default function TeamSchedulePage({ params }: { params: Promise<{ id: str
                 type="submit"
                 data-tour="team-game-save"
                 disabled={isScheduling}
-                className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
+                aria-busy={isScheduling}
+                className="disabled:opacity-60 w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
-                <span>{isScheduling ? "Scheduling..." : "Confirm & Schedule Game"}</span>
+                <span>{isScheduling ? "Scheduling…" : "Confirm & Schedule Game"}</span>
               </button>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteMatchId !== null}
+        title="Delete this game?"
+        description="The game is removed from the team schedule. This cannot be undone."
+        confirmLabel="Delete Game"
+        tone="danger"
+        onConfirm={() => { if (pendingDeleteMatchId) return runDeleteMatch(pendingDeleteMatchId); }}
+        onCancel={() => setPendingDeleteMatchId(null)}
+      />
 
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { memo } from "react";
+import { useDialogKeyboard } from "@/components/ui/useDialogKeyboard";
 import { X, Building2, CreditCard, Upload, ImageIcon } from "lucide-react";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { FLAGOS_LOGO } from "@/lib/brandTokens";
@@ -58,15 +59,18 @@ export const LeagueCheckoutModal = memo(function LeagueCheckoutModal({
   checkoutError,
   handleSubscribeLeague,
 }: LeagueCheckoutModalProps) {
+  const dialogRef = useDialogKeyboard<HTMLDivElement>(isOpen, onClose, { busy: isSubmittingLeague });
   if (!isOpen) return null;
 
   const totalLeagueMonthly = baseLeagueFee + teamCount * perTeamFee;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-      <div role="dialog" aria-modal="true" aria-label="Subscribe League Portal" className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-blue-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto text-neutral-950 dark:text-white">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="league-checkout-title" tabIndex={-1} className="outline-none bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-blue-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto text-neutral-950 dark:text-white">
             <button
+              type="button"
               onClick={() => onClose()}
+              disabled={isSubmittingLeague}
               aria-label="Close"
               className="absolute top-6 right-6 text-neutral-400 hover:text-neutral-950 dark:hover:text-white p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
             >
@@ -79,7 +83,7 @@ export const LeagueCheckoutModal = memo(function LeagueCheckoutModal({
               </div>
               <div>
                 <PageGuideButton className="mb-2" />
-                <h3 className="text-xl font-black uppercase text-neutral-950 dark:text-white">Subscribe League Portal</h3>
+                <h3 id="league-checkout-title" className="text-xl font-black uppercase text-neutral-950 dark:text-white">Subscribe League Portal</h3>
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">Baseline fee + per-team scaling • Includes full team hubs for every team</p>
               </div>
             </div>
@@ -87,10 +91,12 @@ export const LeagueCheckoutModal = memo(function LeagueCheckoutModal({
             <form onSubmit={handleSubscribeLeague} className="space-y-4">
               <div data-tour="subscribe-league-identity" className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">League Name</label>
+                  <label htmlFor="league-checkout-name" className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">League Name</label>
                   <input
+                    id="league-checkout-name"
                     type="text"
                     required
+                    maxLength={80}
                     value={leagueName}
                     onChange={(e) => setLeagueName(e.target.value)}
                     placeholder="e.g. Gotham Flag Football League"
@@ -100,11 +106,15 @@ export const LeagueCheckoutModal = memo(function LeagueCheckoutModal({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Shortcode</label>
+                    <label htmlFor="league-checkout-shortcode" className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Shortcode</label>
                     <input
+                      id="league-checkout-shortcode"
                       type="text"
                       required
+                      minLength={2}
                       maxLength={6}
+                      pattern="[A-Za-z0-9]{2,6}"
+                      title="2–6 letters or numbers"
                       value={leagueShortcode}
                       onChange={(e) => setLeagueShortcode(e.target.value.toUpperCase())}
                       placeholder="e.g. GFFL"
@@ -112,13 +122,20 @@ export const LeagueCheckoutModal = memo(function LeagueCheckoutModal({
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Capacity</label>
+                    <label htmlFor="league-checkout-team-count" className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Capacity</label>
                     <input
+                      id="league-checkout-team-count"
                       type="number"
+                      inputMode="numeric"
                       min={4}
                       max={64}
+                      step={1}
                       value={teamCount}
-                      onChange={(e) => setTeamCount(Number(e.target.value))}
+                      onChange={(e) => {
+                        const next = parseInt(e.target.value, 10);
+                        if (!Number.isNaN(next)) setTeamCount(next);
+                      }}
+                      onBlur={() => setTeamCount(Math.max(4, Math.min(64, Number.isFinite(teamCount) ? teamCount : 4)))}
                       className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-white/10 text-neutral-950 dark:text-white text-sm outline-none focus:border-blue-500 font-mono"
                     />
                   </div>
@@ -152,7 +169,9 @@ export const LeagueCheckoutModal = memo(function LeagueCheckoutModal({
                   </div>
                   <div className="flex-1 space-y-1.5">
                     <input
-                      type="text"
+                      type="url"
+                      inputMode="url"
+                      aria-label="League logo image URL"
                       value={leagueLogoUrl}
                       onChange={(e) => setLeagueLogoUrl(e.target.value)}
                       placeholder="Paste image URL or upload below..."
@@ -302,7 +321,8 @@ export const LeagueCheckoutModal = memo(function LeagueCheckoutModal({
               <button data-tour="subscribe-league-confirm"
                 type="submit"
                 disabled={isSubmittingLeague}
-                className="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
+                aria-busy={isSubmittingLeague}
+                className="disabled:opacity-60 w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />
                 <span>

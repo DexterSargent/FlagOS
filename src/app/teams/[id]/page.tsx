@@ -69,6 +69,9 @@ import { usePageGuide } from "@/lib/pageGuide";
 import { TEAM_HUB_WALKTHROUGH, TEAM_EDIT_WALKTHROUGH, TEAM_STAFF_WALKTHROUGH } from "@/lib/walkthroughData";
 import TeamNavBar from "@/components/team/TeamNavBar";
 import TeamPortalFooter from "@/components/team/TeamPortalFooter";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
+import { isValidHttpUrl } from "@/lib/formValidation";
 
 const TeamStatsCustomizerModal = dynamic(() => import("@/components/team/TeamStatsCustomizerModal"));
 
@@ -156,6 +159,10 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
   const [editSecondaryColor, setEditSecondaryColor] = useState(DEFAULT_TEAM_COLOR_PALETTE.secondary);
   const [editTertiaryColor, setEditTertiaryColor] = useState(DEFAULT_TEAM_COLOR_PALETTE.tertiary);
   const [saving, setSaving] = useState(false);
+  const [editNotice, setEditNotice] = useState<FormNoticeState | null>(null);
+  const [hubNotice, setHubNotice] = useState<FormNoticeState | null>(null);
+  const [pendingStaffRemoval, setPendingStaffRemoval] = useState<TeamAdminAccount | null>(null);
+  const [pendingSeasonToggle, setPendingSeasonToggle] = useState<"archive" | "reopen" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Coaches & Team Admins Modal State
@@ -194,9 +201,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 3 * 1024 * 1024) {
-        alert("Please choose an image file under 3MB.");
+        setEditNotice({ tone: "error", message: "Choose an image file under 3 MB." });
+        e.target.value = "";
         return;
       }
+      setEditNotice(null);
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
@@ -260,11 +269,12 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       setStaffActionError("The primary admin cannot be removed here.");
       return;
     }
-    const currentList = getTeamAdminEmails(team);
-    if (!window.confirm(`Remove ${account.name} and all their listed emails from team administration?`)) {
-      return;
-    }
+    setPendingStaffRemoval(account);
+  };
 
+  const confirmRemoveStaff = async (account: TeamAdminAccount) => {
+    setPendingStaffRemoval(null);
+    const currentList = getTeamAdminEmails(team);
     setSavingStaff(true);
     setStaffActionError("");
     const nextList = currentList.filter((email) => !account.emails.includes(email));
@@ -464,17 +474,18 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       setTeam((prev: any) => ({ ...prev, ...updatePayload }));
     } catch (e) {
       console.error("Error updating team stats display:", e);
-      alert("The stats display could not be saved to the server. Please retry.");
-      throw e;
+      throw e instanceof Error ? e : new Error("The stats display could not be saved. Please retry.");
     }
   };
 
-  const handleToggleSeasonArchive = async () => {
+  const handleToggleSeasonArchive = () => {
+    setPendingSeasonToggle(teamSeasonArchived ? "reopen" : "archive");
+  };
+
+  const runToggleSeasonArchive = async () => {
     const archive = !teamSeasonArchived;
-    const message = archive
-      ? "Conclude and archive this season?\n\nThe roster, schedule, and game stats become read-only. You can reopen the season at any time."
-      : "Reopen this season?\n\nThe roster, schedule, and games become editable again.";
-    if (!window.confirm(message)) return;
+    setPendingSeasonToggle(null);
+    setHubNotice(null);
     const updatePayload = {
       isArchived: archive,
       seasonStatus: archive ? "archived" : "active",
@@ -491,7 +502,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       setTeam((prev: any) => ({ ...prev, ...updatePayload }));
     } catch (e) {
       console.error("Error updating season archive state:", e);
-      alert("The season status could not be saved. Please retry.");
+      setHubNotice({ tone: "error", message: "The season status could not be saved. Please retry." });
     } finally {
       setArchivingSeason(false);
     }
@@ -499,9 +510,23 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
 
   const handleSaveTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editName.trim()) return;
+    if (saving) return;
+    setEditNotice(null);
+    if (!editName.trim()) {
+      setEditNotice({ tone: "error", message: "Enter a team name." });
+      return;
+    }
+    if (editShortcode.trim() && !/^[A-Za-z0-9]{1,5}$/.test(editShortcode.trim())) {
+      setEditNotice({ tone: "error", message: "Shortcode must be 1–5 letters or numbers." });
+      return;
+    }
     if (![editPrimaryColor, editSecondaryColor, editTertiaryColor].every((color) => /^#[0-9A-Fa-f]{6}$/.test(color))) {
-      alert("Enter a valid six-digit hex color for each team color.");
+      setEditNotice({ tone: "error", message: "Enter a valid six-digit hex color for each team color." });
+      return;
+    }
+    const logoUrl = editLogoUrl.trim();
+    if (logoUrl && !logoUrl.startsWith("data:image/") && !logoUrl.startsWith("/") && !isValidHttpUrl(logoUrl)) {
+      setEditNotice({ tone: "error", message: "Logo URL must start with https://, http://, or / for a site image." });
       return;
     }
 
@@ -539,7 +564,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
       setIsEditModalOpen(false);
     } catch (e) {
       console.error("Error updating team:", e);
-      alert("Failed to update team details.");
+      setEditNotice({ tone: "error", message: "The team details could not be saved. Check your connection and try again." });
     }
     setSaving(false);
   };
@@ -816,7 +841,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                       try {
                         await openBillingPortal("team", teamId);
                       } catch (e) {
-                        alert(e instanceof Error ? e.message : "Could not open billing.");
+                        setHubNotice({ tone: "error", message: e instanceof Error && e.message ? e.message : "Billing could not be opened. Please try again." });
                         setOpeningBilling(false);
                       }
                     }}
@@ -840,6 +865,11 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         </div>
 
         {/* Team Season Stats Banner (Customizable by Team Admin) */}
+        {hubNotice ? (
+          <div className="w-full max-w-6xl mb-4">
+            <FormNotice notice={hubNotice} onDismiss={() => setHubNotice(null)} />
+          </div>
+        ) : null}
         {statsError && <div role="alert" className="w-full max-w-6xl mb-4 text-red-300">
           {statsError} <button data-tour="team-stats-retry" type="button" className="underline" onClick={() => setStatsReloadKey((key) => key + 1)}>Retry</button>
         </div>}
@@ -1139,16 +1169,18 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
               <button
                 type="button"
                 onClick={() => setIsEditModalOpen(false)}
-                aria-label="Close"
-                className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+                disabled={saving}
+                aria-label="Close edit team dialog"
+                className="text-neutral-400 hover:text-white p-2 rounded-xl hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
                 title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form data-tour="team-edit-names" onSubmit={handleSaveTeam} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <form data-tour="team-edit-names" onSubmit={handleSaveTeam} noValidate className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0">
+                <FormNotice notice={editNotice} onDismiss={() => setEditNotice(null)} />
                 <div>
                   <label htmlFor="team-edit-name" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                     Team Name
@@ -1157,6 +1189,7 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     id="team-edit-name"
                     type="text"
                     required
+                    maxLength={60}
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-cyan-400 transition-colors"
@@ -1287,7 +1320,8 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                     <label htmlFor="team-edit-logo-url" className="block text-[11px] text-neutral-400 mb-1">Or Paste Image URL (Optional)</label>
                     <input
                       id="team-edit-logo-url"
-                      type="text"
+                      type="url"
+                      inputMode="url"
                       value={editLogoUrl}
                       onChange={(e) => setEditLogoUrl(e.target.value)}
                       className="w-full bg-neutral-900 border border-white/10 rounded-xl px-4 py-2 text-white text-xs outline-none focus:border-cyan-400 transition-colors font-mono"
@@ -1355,18 +1389,20 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold transition-colors cursor-pointer"
+                  disabled={saving}
+                  className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
+                  aria-busy={saving}
                   className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500  text-xs font-bold transition-all shadow-[0_0_20px_rgba(var(--league-primary-rgb),0.3)] disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                   style={{ backgroundColor: palette.primary, color: getReadableTextColor(palette.primary, "#FFFFFF") }}
                 >
                   <Check className="w-4 h-4" />
-                  <span>{saving ? "Saving..." : "Save Changes"}</span>
+                  <span>{saving ? "Saving…" : "Save Changes"}</span>
                 </button>
               </div>
             </form>
@@ -1526,6 +1562,27 @@ export default function TeamPortalHome({ params }: { params: Promise<{ id: strin
         primaryColor={palette.primary}
         secondaryColor={palette.secondary}
       />}
+
+      <ConfirmDialog
+        open={pendingStaffRemoval !== null}
+        title={pendingStaffRemoval ? `Remove ${pendingStaffRemoval.name}?` : "Remove admin?"}
+        description="All of their listed emails lose team administration access. They can be re-invited later."
+        confirmLabel="Remove Admin"
+        tone="danger"
+        onConfirm={() => { if (pendingStaffRemoval) return confirmRemoveStaff(pendingStaffRemoval); }}
+        onCancel={() => setPendingStaffRemoval(null)}
+      />
+      <ConfirmDialog
+        open={pendingSeasonToggle !== null}
+        title={pendingSeasonToggle === "archive" ? "Conclude and archive this season?" : "Reopen this season?"}
+        description={pendingSeasonToggle === "archive"
+          ? "The roster, schedule, and game stats become read-only. You can reopen the season at any time."
+          : "The roster, schedule, and games become editable again."}
+        confirmLabel={pendingSeasonToggle === "archive" ? "Archive Season" : "Reopen Season"}
+        tone={pendingSeasonToggle === "archive" ? "danger" : "default"}
+        onConfirm={runToggleSeasonArchive}
+        onCancel={() => setPendingSeasonToggle(null)}
+      />
 
       {/* Standalone / Paid Team Portal Footer with subtle Powered by FlagOS Disclaimer */}
       <TeamPortalFooter section={team.tagline ? team.tagline : isStandaloneOrPaidTeam ? "Independent Team Portal" : "Team Portal"} />

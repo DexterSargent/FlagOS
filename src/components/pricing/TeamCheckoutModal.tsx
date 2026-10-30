@@ -1,6 +1,7 @@
 "use client";
 
 import React, { memo } from "react";
+import { useDialogKeyboard } from "@/components/ui/useDialogKeyboard";
 import { X, Users, CreditCard, Upload, ImageIcon } from "lucide-react";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { FLAGOS_LOGO } from "@/lib/brandTokens";
@@ -52,13 +53,16 @@ export const TeamCheckoutModal = memo(function TeamCheckoutModal({
   checkoutError,
   handleSubscribeTeam,
 }: TeamCheckoutModalProps) {
+  const dialogRef = useDialogKeyboard<HTMLDivElement>(isOpen, onClose, { busy: isSubmittingTeam });
   if (!isOpen) return null;
 
   return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div role="dialog" aria-modal="true" aria-label="Subscribe Team Portal" className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-emerald-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto text-neutral-950 dark:text-white">
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="team-checkout-title" tabIndex={-1} className="outline-none bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-emerald-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto text-neutral-950 dark:text-white">
             <button
+              type="button"
               onClick={() => onClose()}
+              disabled={isSubmittingTeam}
               aria-label="Close"
               className="absolute top-6 right-6 text-neutral-400 hover:text-neutral-950 dark:hover:text-white p-2 rounded-full hover:bg-neutral-100 dark:hover:bg-white/5 cursor-pointer"
             >
@@ -71,7 +75,7 @@ export const TeamCheckoutModal = memo(function TeamCheckoutModal({
               </div>
               <div>
                 <PageGuideButton className="mb-2" />
-                <h3 className="text-xl font-black uppercase text-neutral-950 dark:text-white">Subscribe Team Portal</h3>
+                <h3 id="team-checkout-title" className="text-xl font-black uppercase text-neutral-950 dark:text-white">Subscribe Team Portal</h3>
                 <p className="text-xs text-neutral-600 dark:text-neutral-400">Single monthly fee • Full stats tracking, roster hub &amp; up to 5 playbooks</p>
               </div>
             </div>
@@ -79,10 +83,12 @@ export const TeamCheckoutModal = memo(function TeamCheckoutModal({
             <form onSubmit={handleSubscribeTeam} className="space-y-4">
               <div data-tour="subscribe-team-identity" className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team / Club Name</label>
+                  <label htmlFor="team-checkout-name" className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team / Club Name</label>
                   <input
+                    id="team-checkout-name"
                     type="text"
                     required
+                    maxLength={60}
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     placeholder="e.g. Apex Predators"
@@ -91,10 +97,13 @@ export const TeamCheckoutModal = memo(function TeamCheckoutModal({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Shortcode</label>
+                  <label htmlFor="team-checkout-shortcode" className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">Team Shortcode</label>
                   <input
+                    id="team-checkout-shortcode"
                     type="text"
                     maxLength={5}
+                    pattern="[A-Za-z0-9]{0,5}"
+                    title="Up to 5 letters or numbers"
                     value={teamShortcode}
                     onChange={(e) => setTeamShortcode(e.target.value.toUpperCase())}
                     placeholder="e.g. APX"
@@ -130,7 +139,9 @@ export const TeamCheckoutModal = memo(function TeamCheckoutModal({
                   </div>
                   <div className="flex-1 space-y-1.5">
                     <input
-                      type="text"
+                      type="url"
+                      inputMode="url"
+                      aria-label="Team logo image URL"
                       value={teamLogoUrl}
                       onChange={(e) => setTeamLogoUrl(e.target.value)}
                       placeholder="Paste image URL or upload below..."
@@ -293,6 +304,7 @@ export const TeamCheckoutModal = memo(function TeamCheckoutModal({
               <button data-tour="subscribe-team-confirm"
                 type="submit"
                 disabled={isSubmittingTeam}
+                aria-busy={isSubmittingTeam}
                 className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer mt-4"
               >
                 <CreditCard className="w-4 h-4" />

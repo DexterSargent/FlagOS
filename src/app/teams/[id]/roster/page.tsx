@@ -5,6 +5,9 @@ import { effectiveMaxRoster } from "@/lib/rosterLimits";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import { use, useEffect, useState, useRef } from "react";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { splitEmails, parseIntInRange } from "@/lib/formValidation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -98,6 +101,10 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const [newPlayerPositions, setNewPlayerPositions] = useState<string[]>(["ATH"]);
   const [newPlayerExperience, setNewPlayerExperience] = useState("");
   const [addingPlayer, setAddingPlayer] = useState(false);
+  const [addPlayerNotice, setAddPlayerNotice] = useState<FormNoticeState | null>(null);
+  const [editPlayerNotice, setEditPlayerNotice] = useState<FormNoticeState | null>(null);
+  const [rosterNotice, setRosterNotice] = useState<FormNoticeState | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Edit Player State
   const [editingPlayer, setEditingPlayer] = useState<any | null>(null);
@@ -334,29 +341,57 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const isRosterFull = players.length >= maxRosterSize;
   const isRosterUnderMin = players.length < minRosterSize;
 
+  /** Shared add/edit validation. Returns an error message or the cleaned values. */
+  const validatePlayerInput = (
+    name: string,
+    number: string,
+    emailsText: string,
+    excludePlayerId?: string,
+  ): { error: string } | { emails: string[]; number: string } => {
+    if (!name.trim()) return { error: "Enter the player's name." };
+    if (name.trim().length > 80) return { error: "Player names must be 80 characters or fewer." };
+    const trimmedNumber = number.trim();
+    if (trimmedNumber && parseIntInRange(trimmedNumber, 0, 99) === null) {
+      return { error: "Jersey number must be a whole number from 0 to 99, or left blank." };
+    }
+    if (trimmedNumber) {
+      const clash = players.find(
+        (p) => p.id !== excludePlayerId && String(p.number ?? p.jerseyNumber ?? "").trim() === String(Number(trimmedNumber)),
+      );
+      if (clash) return { error: `#${Number(trimmedNumber)} is already worn by ${clash.playerName || "another player"}.` };
+    }
+    const { valid, invalid } = splitEmails(emailsText);
+    if (invalid.length) return { error: `Check these email addresses: ${invalid.join(", ")}` };
+    return { emails: valid, number: trimmedNumber ? String(Number(trimmedNumber)) : "" };
+  };
+
   // Handler: Add Player
   const handleAddPlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPlayerName.trim()) return;
+    setAddPlayerNotice(null);
 
     if (players.length >= maxRosterSize) {
-      alert(`Cannot add player: this team is at the league's roster limit of ${maxRosterSize} players.`);
+      setAddPlayerNotice({ tone: "error", message: `This team is at the league's roster limit of ${maxRosterSize} players.` });
       return;
     }
 
+    const checked = validatePlayerInput(newPlayerName, newPlayerNumber, newPlayerEmails);
+    if ("error" in checked) {
+      setAddPlayerNotice({ tone: "error", message: checked.error });
+      return;
+    }
+    const parsedEmails = checked.emails;
+    const cleanNumber = checked.number;
+
     setAddingPlayer(true);
     try {
-      const parsedEmails = newPlayerEmails
-        .split(",")
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
 
       if (isDemoLeague) {
         if (!sandbox) throw new Error("The demo is not loaded.");
         const newPlayerObj = sandbox.addSandboxPlayer({
           playerName: newPlayerName.trim(),
           teamId: teamId,
-          number: newPlayerNumber.trim(),
+          number: cleanNumber,
           position: newPlayerPositions[0],
           positions: newPlayerPositions,
           experience: newPlayerExperience.trim(),
@@ -376,7 +411,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       const docId = await createSecureRecord("player", {
           playerName: newPlayerName.trim(),
           teamId: teamId,
-          number: newPlayerNumber.trim(),
+          number: cleanNumber,
           position: newPlayerPositions[0],
           positions: newPlayerPositions,
           experience: newPlayerExperience.trim(),
@@ -389,7 +424,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         id: docId,
         playerName: newPlayerName.trim(),
         teamId: teamId,
-        number: newPlayerNumber.trim(),
+        number: cleanNumber,
         position: newPlayerPositions[0],
         positions: newPlayerPositions,
         experience: newPlayerExperience.trim(),
@@ -406,7 +441,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       setIsAddModalOpen(false);
     } catch (e) {
       console.error("Error adding player:", e);
-      alert("Failed to add player.");
+      setAddPlayerNotice({ tone: "error", message: "The player could not be added. Check your connection and try again." });
     }
     setAddingPlayer(false);
   };
@@ -432,18 +467,20 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   // Handler: Save Edit Player
   const handleSavePlayer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPlayer || !editPlayerName.trim()) return;
+    if (!editingPlayer) return;
+    setEditPlayerNotice(null);
+    const checked = validatePlayerInput(editPlayerName, editPlayerNumber, editPlayerEmails, editingPlayer.id);
+    if ("error" in checked) {
+      setEditPlayerNotice({ tone: "error", message: checked.error });
+      return;
+    }
+    const parsedEmails = checked.emails;
 
     setSavingPlayer(true);
     try {
-      const parsedEmails = editPlayerEmails
-        .split(",")
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean);
-
       const updatedFields = {
         playerName: editPlayerName.trim(),
-        number: editPlayerNumber.trim(),
+        number: checked.number,
         position: editPlayerPositions[0],
         positions: editPlayerPositions,
         depthChartPositions: keepDepthChartPositions(editingPlayer.depthChartPositions, editPlayerPositions),
@@ -474,7 +511,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       setEditingPlayer(null);
     } catch (e) {
       console.error("Error updating player:", e);
-      alert("Failed to update player.");
+      setEditPlayerNotice({ tone: "error", message: "The changes could not be saved. Check your connection and try again." });
     }
     setSavingPlayer(false);
   };
@@ -484,13 +521,17 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
   const canDeletePlayer = isPrimaryTeamAdmin(user?.email, team, isDexter) || isLeagueAdmin || (isDemoLeague && isTeamOrLeagueAdmin);
 
   // Handler: Delete Player
-  const handleDeletePlayer = async (playerId: string, playerName: string) => {
+  const handleDeletePlayer = (playerId: string, playerName: string) => {
     if (!canDeletePlayer) {
-      alert("Permission Denied: Only the primary team admin (head coach) can delete players from the roster.");
+      setRosterNotice({ tone: "error", message: "Only the head coach or a league admin can remove players from the roster." });
       return;
     }
-    if (!confirm(`Are you sure you want to remove "${playerName}" from the roster?`)) return;
+    setPendingDelete({ id: playerId, name: playerName });
+  };
 
+  const confirmDeletePlayer = async () => {
+    if (!pendingDelete) return;
+    const playerId = pendingDelete.id;
     try {
       if (isDemoLeague) {
         if (!sandbox) throw new Error("The demo is not loaded.");
@@ -510,7 +551,9 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
       }
     } catch (e) {
       console.error("Error deleting player:", e);
-      alert("Failed to delete player.");
+      throw new Error("The player could not be removed. Check your connection and try again.");
+    } finally {
+      setPendingDelete(null);
     }
   };
 
@@ -590,6 +633,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8 relative z-10 flex-1 w-full px-4 py-6 sm:p-6 md:p-12">
         {loadError && <p role="alert" className="text-red-300">{loadError}</p>}
+        <FormNotice notice={rosterNotice} onDismiss={() => setRosterNotice(null)} />
         {statsLoading && <p role="status" className="text-neutral-400">Loading season statistics...</p>}
 
         {/* Header & Add Player Button */}
@@ -630,11 +674,13 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
             {hasEditAccess && (
               <button
                 data-tour="add-player-btn"
+                type="button"
                 onClick={() => {
                   if (isRosterFull) {
-                    alert(`Cannot add player: Maximum roster capacity (${maxRosterSize} players) reached under league rules.`);
+                    setRosterNotice({ tone: "info", message: `The roster is at the league maximum of ${maxRosterSize} players.` });
                     return;
                   }
+                  setAddPlayerNotice(null);
                   setIsAddModalOpen(true);
                 }}
                 disabled={isRosterFull}
@@ -879,7 +925,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Add Player Modal (Team Admin & League Admin) */}
       {isAddModalOpen && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div role="dialog" aria-modal="true" aria-labelledby="add-player-modal-title" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full max-h-full overflow-y-auto p-6 md:p-8 shadow-2xl relative">
             <button
               aria-label="Close add player"
@@ -895,12 +941,13 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
               <div>
                 <PageGuideButton className="mb-2" />
-                <h2 className="text-xl font-black uppercase tracking-tight">Add Player to Roster</h2>
+                <h2 id="add-player-modal-title" className="text-xl font-black uppercase tracking-tight">Add Player to Roster</h2>
                 <p className="text-xs text-neutral-400">Add player details for {teamName}.</p>
               </div>
             </div>
 
-            <form data-tour="team-add-player-identity" onSubmit={handleAddPlayer} className="space-y-4">
+            <form data-tour="team-add-player-identity" onSubmit={handleAddPlayer} noValidate className="space-y-4">
+              <FormNotice notice={addPlayerNotice} onDismiss={() => setAddPlayerNotice(null)} />
               <div>
                 <label htmlFor="add-player-name" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Player Name *
@@ -909,6 +956,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                   id="add-player-name"
                   type="text"
                   required
+                  maxLength={80}
                   value={newPlayerName}
                   onChange={(e) => setNewPlayerName(e.target.value)}
                   className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-cyan-400"
@@ -924,6 +972,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 <input
                   id="add-player-jersey"
                   type="text"
+                  inputMode="numeric"
+                  maxLength={2}
                   value={newPlayerNumber}
                   onChange={(e) => setNewPlayerNumber(e.target.value)}
                   className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-cyan-400"
@@ -939,6 +989,8 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
                 <input
                   id="add-player-emails"
                   type="text"
+                  inputMode="email"
+                  autoComplete="off"
                   value={newPlayerEmails}
                   onChange={(e) => setNewPlayerEmails(e.target.value)}
                   className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs outline-none focus:border-cyan-400 font-mono"
@@ -997,7 +1049,7 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
 
       {/* Edit Player Modal (Team Admin & League Admin) */}
       {editingPlayer && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div role="dialog" aria-modal="true" aria-labelledby="edit-player-modal-title" className="fixed inset-0 top-[var(--role-switcher-height,0px)] z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl max-w-md w-full max-h-full overflow-y-auto p-6 md:p-8 shadow-2xl relative">
             <button
               onClick={() => setEditingPlayer(null)}
@@ -1012,19 +1064,22 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
               <div>
                 <PageGuideButton className="mb-2" />
-                <h2 className="text-xl font-black uppercase tracking-tight">Edit Player Details</h2>
+                <h2 id="edit-player-modal-title" className="text-xl font-black uppercase tracking-tight">Edit Player Details</h2>
                 <p className="text-xs text-neutral-400">Update player name, jersey number, linked emails, and QB status.</p>
               </div>
             </div>
 
-            <form data-tour="team-edit-player-identity" onSubmit={handleSavePlayer} className="space-y-4">
+            <form data-tour="team-edit-player-identity" onSubmit={handleSavePlayer} noValidate className="space-y-4">
+              <FormNotice notice={editPlayerNotice} onDismiss={() => setEditPlayerNotice(null)} />
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                <label htmlFor="edit-player-name" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Player Name *
                 </label>
                 <input
+                  id="edit-player-name"
                   type="text"
                   required
+                  maxLength={80}
                   value={editPlayerName}
                   onChange={(e) => setEditPlayerName(e.target.value)}
                   className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-blue-500"
@@ -1032,11 +1087,14 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
+                <label htmlFor="edit-player-jersey" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5">
                   Jersey Number
                 </label>
                 <input
+                  id="edit-player-jersey"
                   type="text"
+                  inputMode="numeric"
+                  maxLength={2}
                   value={editPlayerNumber}
                   onChange={(e) => setEditPlayerNumber(e.target.value)}
                   className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-blue-500"
@@ -1044,12 +1102,15 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
               </div>
 
               <div data-tour="team-edit-player-access">
-                <label className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
+                <label htmlFor="edit-player-emails" className="block text-xs font-bold uppercase tracking-wider text-neutral-300 mb-1.5 flex items-center justify-between">
                   <span>Player Emails</span>
                   <span className="text-[10px] text-neutral-400 normal-case tracking-normal">Optional · comma-separated</span>
                 </label>
                 <input
+                  id="edit-player-emails"
                   type="text"
+                  inputMode="email"
+                  autoComplete="off"
                   value={editPlayerEmails}
                   onChange={(e) => setEditPlayerEmails(e.target.value)}
                   className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-white text-xs outline-none focus:border-blue-500 font-mono"
@@ -1204,6 +1265,15 @@ export default function TeamRosterPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Remove ${pendingDelete?.name ?? "player"} from the roster?`}
+        description="Their profile, stats history and sign-in link will no longer be attached to this team. This cannot be undone."
+        confirmLabel="Remove player"
+        tone="danger"
+        onConfirm={confirmDeletePlayer}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

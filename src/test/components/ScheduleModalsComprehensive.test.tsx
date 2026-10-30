@@ -79,8 +79,7 @@ describe("Schedule Modals Comprehensive Suite", () => {
       expect(onClose).toHaveBeenCalled();
     });
 
-    it("alerts when fewer than 2 teams are present", async () => {
-      const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    it("shows an inline error when fewer than 2 teams are present", async () => {
       render(
         <PageGuideProvider>
           <AutomatedScheduleBuilderModal
@@ -96,8 +95,7 @@ describe("Schedule Modals Comprehensive Suite", () => {
       const generateBtn = screen.getByRole("button", { name: /Build Season Schedule/i });
       fireEvent.click(generateBtn);
 
-      expect(alertSpy).toHaveBeenCalledWith("At least 2 active teams are required to build a schedule.");
-      alertSpy.mockRestore();
+      expect(screen.getByRole("alert")).toHaveTextContent("Add at least two active teams before building a schedule.");
     });
 
     it("manages venues, kickoff times, weeks stepper, and playoff options", () => {

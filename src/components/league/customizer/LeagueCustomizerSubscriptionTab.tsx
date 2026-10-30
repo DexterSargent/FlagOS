@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import {
   CreditCard,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   Plus,
   Shield,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { getReadableTextColor } from "@/lib/teamColors";
 import { openBillingPortal } from "@/lib/billingClient";
@@ -30,6 +31,7 @@ export interface LeagueCustomizerSubscriptionTabProps {
   isOpeningBilling: boolean;
   setIsOpeningBilling: (val: boolean) => void;
   subSuccessMsg: string;
+  subErrorMsg?: string;
   targetTeamCount: number;
   setTargetTeamCount: React.Dispatch<React.SetStateAction<number>>;
   isUpdatingSub: boolean;
@@ -52,6 +54,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
   isOpeningBilling,
   setIsOpeningBilling,
   subSuccessMsg,
+  subErrorMsg = "",
   targetTeamCount,
   setTargetTeamCount,
   isUpdatingSub,
@@ -65,6 +68,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
   handleQuickRemoveTeam,
   closeCustomizer,
 }: LeagueCustomizerSubscriptionTabProps) {
+  const [billingError, setBillingError] = useState("");
   return (
     <div className="space-y-6">
       {/* Header / Active Subscription Card */}
@@ -95,7 +99,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
                   try {
                     await openBillingPortal("league", activeLeagueId);
                   } catch (e) {
-                    alert(e instanceof Error ? e.message : "Could not open billing.");
+                    setBillingError(e instanceof Error ? e.message : "The billing portal could not be opened. Please try again.");
                     setIsOpeningBilling(false);
                   }
                 }}
@@ -112,9 +116,18 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
         </div>
 
         {subSuccessMsg && (
-          <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-2 animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+          <div role="status" className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-medium flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" aria-hidden="true" />
             <span>{subSuccessMsg}</span>
+          </div>
+        )}
+        {(subErrorMsg || billingError) && (
+          <div role="alert" className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-200 text-xs font-medium flex items-start gap-2 animate-in fade-in">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" aria-hidden="true" />
+            <span className="flex-1">{subErrorMsg || billingError}</span>
+            {billingError && (
+              <button type="button" onClick={() => setBillingError("")} className="font-bold underline cursor-pointer">Dismiss</button>
+            )}
           </div>
         )}
 
@@ -211,6 +224,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
               onClick={() => setTargetTeamCount((prev) => Math.max(2, prev - 1))}
               className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-lg transition-colors cursor-pointer"
               title="Decrease team slot"
+              aria-label="Decrease team capacity"
             >
               <Minus className="w-4 h-4" />
             </button>
@@ -228,6 +242,7 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
               onClick={() => setTargetTeamCount((prev) => Math.min(32, prev + 1))}
               className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed text-white flex items-center justify-center font-bold text-lg transition-colors cursor-pointer"
               title="Increase team slot"
+              aria-label="Increase team capacity"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -281,7 +296,15 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
           <input
             type="text"
             value={newSubTeamName}
+            maxLength={60}
+            required
             onChange={(e) => setNewSubTeamName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !isSubmittingNewTeam) {
+                e.preventDefault();
+                handleQuickAddTeam();
+              }
+            }}
             placeholder={`e.g. Team ${(subscription?.teamCount ?? 8) + 1} or Thunderbirds`}
             aria-label="New team name"
             className="flex-1 px-3.5 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-cyan-400 text-white text-xs outline-none transition-colors"
@@ -290,8 +313,9 @@ export const LeagueCustomizerSubscriptionTab = memo(function LeagueCustomizerSub
           <button
             type="button"
             disabled={isSubmittingNewTeam}
+            aria-busy={isSubmittingNewTeam}
             onClick={handleQuickAddTeam}
-            className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2"
+            className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Plus className="w-4 h-4" />
             <span>{isSubmittingNewTeam ? "Adding..." : isComplimentary ? "Add Team (Complimentary)" : "Add Team to Subscription (+$20/mo)"}</span>

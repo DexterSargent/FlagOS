@@ -4,6 +4,7 @@ import { PLAY_QUESTIONS_WALKTHROUGH } from "@/lib/walkthroughData";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 
 import React, { useState, useEffect } from "react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { PlayDiagram, PlayQuestion, PlayQuestionAnswer } from "@/lib/playbookTypes";
 import {
   MessageSquare,
@@ -47,6 +48,7 @@ export default function PlayQuestionsModal({
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   usePageGuide(isOpen ? PLAY_QUESTIONS_WALKTHROUGH : null, 2);
 
@@ -114,9 +116,13 @@ export default function PlayQuestionsModal({
   };
 
   const handleDeleteQuestion = (questionId: string) => {
-    if (!confirm("Are you sure you want to remove this question?")) return;
-    const updated = questions.filter((q) => q.id !== questionId);
-    onUpdateQuestions(updated);
+    setPendingDeleteId(questionId);
+  };
+
+  const confirmDeleteQuestion = () => {
+    if (!pendingDeleteId) return;
+    onUpdateQuestions(questions.filter((q) => q.id !== pendingDeleteId));
+    setPendingDeleteId(null);
   };
 
   const formatTimestamp = (isoString: string) => {
@@ -416,6 +422,15 @@ export default function PlayQuestionsModal({
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        title="Remove this question?"
+        description="The question and any reply are removed from this play."
+        confirmLabel="Remove Question"
+        tone="danger"
+        onConfirm={confirmDeleteQuestion}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }

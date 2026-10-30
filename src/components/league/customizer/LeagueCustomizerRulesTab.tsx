@@ -501,16 +501,23 @@ export const LeagueCustomizerRulesTab = memo(function LeagueCustomizerRulesTab({
                   </div>
                   {isLeagueAdmin && (
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[10px] text-neutral-500">Custom minutes:</span>
+                      <label htmlFor="lc-period-minutes" className="text-[10px] text-neutral-500">Custom minutes (5–60):</label>
                       <input
+                        id="lc-period-minutes"
                         type="number"
+                        inputMode="numeric"
                         min={5}
                         max={60}
+                        step={1}
                         value={rules.periodDurationMinutes}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value, 10);
+                          if (Number.isFinite(n)) setRules((prev) => ({ ...prev, periodDurationMinutes: n }));
+                        }}
+                        onBlur={() =>
                           setRules((prev) => ({
                             ...prev,
-                            periodDurationMinutes: Math.max(1, parseInt(e.target.value) || 20),
+                            periodDurationMinutes: Math.min(60, Math.max(5, prev.periodDurationMinutes || 20)),
                           }))
                         }
                         className="w-16 px-2 py-1 rounded-lg bg-black/60 border border-white/10 text-white font-mono text-xs text-center"
@@ -808,10 +815,16 @@ export const LeagueCustomizerRulesTab = memo(function LeagueCustomizerRulesTab({
                       min={rules.playersOnField}
                       max={30}
                       value={rules.minRosterSize}
-                      onChange={(e) =>
+                      aria-label="Minimum roster size"
+                      inputMode="numeric"
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        if (Number.isFinite(n)) setRules((prev) => ({ ...prev, minRosterSize: n }));
+                      }}
+                      onBlur={() =>
                         setRules((prev) => ({
                           ...prev,
-                          minRosterSize: Math.max(prev.playersOnField, parseInt(e.target.value) || prev.playersOnField),
+                          minRosterSize: Math.min(30, Math.max(prev.playersOnField, prev.minRosterSize || prev.playersOnField)),
                         }))
                       }
                       className="w-20 px-3 py-2 rounded-xl bg-black/80 border border-white/10 text-white font-mono font-bold text-center text-sm disabled:opacity-80"
@@ -837,10 +850,16 @@ export const LeagueCustomizerRulesTab = memo(function LeagueCustomizerRulesTab({
                       min={rules.minRosterSize}
                       max={rosterHardCap(rules.playersOnField)}
                       value={rules.maxRosterSize}
-                      onChange={(e) =>
+                      aria-label="Maximum roster size"
+                      inputMode="numeric"
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10);
+                        if (Number.isFinite(n)) setRules((prev) => ({ ...prev, maxRosterSize: n }));
+                      }}
+                      onBlur={() =>
                         setRules((prev) => ({
                           ...prev,
-                          maxRosterSize: Math.min(rosterHardCap(prev.playersOnField), Math.max(prev.minRosterSize, parseInt(e.target.value) || prev.minRosterSize)),
+                          maxRosterSize: Math.min(rosterHardCap(prev.playersOnField), Math.max(prev.minRosterSize, prev.maxRosterSize || prev.minRosterSize)),
                         }))
                       }
                       className="w-20 px-3 py-2 rounded-xl bg-black/80 border border-white/10 text-white font-mono font-bold text-center text-sm disabled:opacity-80"

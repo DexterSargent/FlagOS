@@ -317,9 +317,9 @@ describe("TeamsPage Comprehensive Suite", () => {
     });
 
     // Test deleting team
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const deleteTeamBtn = screen.getByRole("button", { name: /Delete Team/i });
     fireEvent.click(deleteTeamBtn);
+    fireEvent.click(await screen.findByRole("button", { name: /Delete and release the slot/i }));
 
     await waitFor(() => {
       expect(mockRemoveTeamFromSubscription).toHaveBeenCalledWith("team_apex");
@@ -327,7 +327,6 @@ describe("TeamsPage Comprehensive Suite", () => {
   });
 
   it("allows league admin to delete a free agent", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     await renderPage();
 
     await waitFor(() => {
@@ -336,6 +335,7 @@ describe("TeamsPage Comprehensive Suite", () => {
 
     const deleteButtons = screen.getAllByTitle("Delete Free Agent");
     fireEvent.click(deleteButtons[0]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Delete player$/i }));
 
     await waitFor(() => {
       expect(mockCreateSecureRecord).toHaveBeenCalledWith(

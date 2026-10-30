@@ -22,3 +22,17 @@ export function parseLocalDate(value: string): Date {
   if (!match) return new Date(value);
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
+
+/** Normalizes "10:00 AM" / "7:05pm" / "18:00" into the 24-hour "HH:MM" accepted by <input type="time">. */
+export function toTimeInputValue(value: string | null | undefined): string {
+  if (!value) return "";
+  const m = /^(\d{1,2}):(\d{2})\s*([AaPp][Mm])?$/.exec(value.trim());
+  if (!m) return "";
+  let hours = Number(m[1]);
+  const minutes = m[2];
+  const meridiem = m[3]?.toUpperCase();
+  if (meridiem === "PM" && hours < 12) hours += 12;
+  if (meridiem === "AM" && hours === 12) hours = 0;
+  if (hours > 23 || Number(minutes) > 59) return "";
+  return `${String(hours).padStart(2, "0")}:${minutes}`;
+}

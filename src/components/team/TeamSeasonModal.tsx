@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDialogKeyboard } from "@/components/ui/useDialogKeyboard";
 import {
   Calendar,
   Archive,
@@ -32,7 +33,7 @@ interface TeamSeasonModalProps {
   seasons: TeamSeason[];
   currentSeasonId: string;
   onSeasonStarted: (newSeasonId: string, title: string) => void;
-  onArchiveToggled: () => Promise<void>;
+  onArchiveToggled: () => void | Promise<void>;
   archivingSeason: boolean;
 }
 
@@ -56,6 +57,7 @@ export function TeamSeasonModal({
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const dialogRef = useDialogKeyboard<HTMLDivElement>(isOpen, onClose, { busy: submitting });
 
   const currentSeason = seasons.find((s) => s.id === currentSeasonId) || seasons[seasons.length - 1];
 
@@ -145,7 +147,7 @@ export function TeamSeasonModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-      <div className="w-full max-w-lg rounded-3xl bg-slate-900 border border-slate-700 p-6 text-white shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="team-season-modal-title" tabIndex={-1} className="w-full max-w-lg rounded-3xl bg-slate-900 border border-slate-700 p-6 text-white shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto outline-none">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -153,14 +155,16 @@ export function TeamSeasonModal({
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-black uppercase tracking-tight">Season Management</h3>
+              <h3 id="team-season-modal-title" className="text-base font-black uppercase tracking-tight">Season Management</h3>
               <p className="text-xs text-neutral-400">{teamName} Continuity</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+            disabled={submitting}
+            aria-label="Close season management"
+            className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>

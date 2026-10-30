@@ -300,6 +300,7 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
                   <input
                     type="text"
                     readOnly
+                    aria-label="League portal link"
                     value={typeof window !== "undefined" ? `${window.location.origin}/league/${activeLeagueId}` : `/league/${activeLeagueId}`}
                     className="min-w-0 flex-1 bg-neutral-900 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-neutral-300 select-all"
                   />
@@ -344,14 +345,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-league-name" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>League Full Name *</span>
                     <FieldHelpTooltip
                       title="League Name"
                       content="The primary official organization title displayed on schedules, standings, game summaries, and public promotional pages."
                     />
                   </label>
-                  <input
+                  <input id="lc-league-name" maxLength={80}
                     type="text"
                     required
                     value={leagueName}
@@ -362,14 +363,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-league-shortcode" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>League Shortcode</span>
                     <FieldHelpTooltip
                       title="Shortcode"
                       content="A 2 to 6 character acronym used in compact badges, box scores, and breadcrumb navigation (e.g. MFL, AFFL, NFL)."
                     />
                   </label>
-                  <input
+                  <input id="lc-league-shortcode"
                     type="text"
                     maxLength={6}
                     value={shortcode}
@@ -382,14 +383,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-season-title" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>Season Title / Edition</span>
                     <FieldHelpTooltip
                       title="Season Edition"
                       content="The active competition cycle or campaign name (e.g. 2026 Spring Championship, Fall Invitational)."
                     />
                   </label>
-                  <input
+                  <input id="lc-season-title" maxLength={60}
                     type="text"
                     value={seasonTitle}
                     onChange={(e) => setSeasonTitle(e.target.value)}
@@ -399,14 +400,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-league-tagline" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>Tagline / Motto</span>
                     <FieldHelpTooltip
                       title="Tagline"
                       content="A descriptive slogan or division tier indicator shown below the league title across headers and cards."
                     />
                   </label>
-                  <input
+                  <input id="lc-league-tagline" maxLength={120}
                     type="text"
                     value={tagline}
                     onChange={(e) => setTagline(e.target.value)}
@@ -417,14 +418,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
               </div>
 
               <div>
-                <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                <label htmlFor="lc-league-logo-url" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                   <span>League Crest / Logo URL</span>
                   <FieldHelpTooltip
                     title="League Crest"
                     content="Direct image link for your official league emblem. If left empty, default FlagOS brand styling is displayed."
                   />
                 </label>
-                <input
+                <input id="lc-league-logo-url" maxLength={500}
                   type="text"
                   inputMode="url"
                   value={logoUrl}
@@ -461,14 +462,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-default-location" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>Default Game Field / Complex</span>
                     <FieldHelpTooltip
                       title="Default Venue"
                       content="The primary sports complex or home turf used when games don't specify a custom location."
                     />
                   </label>
-                  <input
+                  <input id="lc-default-location" maxLength={80}
                     type="text"
                     value={defaultLocation}
                     onChange={(e) => setDefaultLocation(e.target.value)}
@@ -478,14 +479,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-rulebook-title" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>Rulebook Title</span>
                     <FieldHelpTooltip
                       title="Rulebook Title"
                       content="Title shown on the public rulebook link and document download button."
                     />
                   </label>
-                  <input
+                  <input id="lc-rulebook-title" maxLength={80}
                     type="text"
                     value={rulebookTitle}
                     onChange={(e) => setRulebookTitle(e.target.value)}
@@ -495,15 +496,15 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-rulebook-url" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>Rulebook Link (URL)</span>
                     <FieldHelpTooltip
                       title="Rulebook Link"
                       content="Direct URL pointing to an official PDF or web page with your league's complete rules and constitution."
                     />
                   </label>
-                  <input
-                    type="href"
+                  <input id="lc-rulebook-url" maxLength={500}
+                    type="url"
                     value={rulebookUrl}
                     onChange={(e) => setRulebookUrl(e.target.value)}
                     placeholder="e.g. https://example.com/rules.pdf"
@@ -512,14 +513,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
                 </div>
 
                 <div>
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                  <label htmlFor="lc-contact-email" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                     <span>Commissioner Contact Email</span>
                     <FieldHelpTooltip
                       title="Contact Email"
                       content="Public contact address for team managers, coaches, and athletes with inquiries."
                     />
                   </label>
-                  <input
+                  <input id="lc-contact-email" maxLength={120} autoComplete="email"
                     type="email"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
@@ -530,14 +531,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
               </div>
 
               <div>
-                <label className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
+                <label htmlFor="lc-announcement" className="text-[11px] uppercase font-bold text-neutral-300 tracking-wider flex items-center gap-1.5 mb-1.5">
                   <span>Site-Wide Announcement Banner (Optional)</span>
                   <FieldHelpTooltip
                     title="Announcement Banner"
                     content="A notice shown prominently across the dashboard (e.g. weather alerts, playoff seedings, registration deadlines)."
                   />
                 </label>
-                <input
+                <input id="lc-announcement" maxLength={240}
                   type="text"
                   value={announcement}
                   onChange={(e) => setAnnouncement(e.target.value)}
@@ -707,14 +708,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                  <label htmlFor="lc-team-fee" className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
                     <span>Team Registration Fee ($)</span>
                     <FieldHelpTooltip
                       title="Team Registration Fee"
                       content="Optional total cost for a full team registration. If not entered, the directory displays 'Contact commissioner for more details'."
                     />
                   </label>
-                  <input
+                  <input id="lc-team-fee" inputMode="decimal"
                     type="number"
                     min="0"
                     step="1"
@@ -726,14 +727,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
-                  <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                  <label htmlFor="lc-individual-fee" className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
                     <span>Free Agent / Individual Fee ($)</span>
                     <FieldHelpTooltip
                       title="Individual Entry Fee"
                       content="Optional registration fee per solo player / free agent. If not entered, the directory displays 'Contact commissioner for more details'."
                     />
                   </label>
-                  <input
+                  <input id="lc-individual-fee" inputMode="decimal"
                     type="number"
                     min="0"
                     step="1"
@@ -746,14 +747,14 @@ export const LeagueCustomizerBrandingTab = memo(function LeagueCustomizerBrandin
               </div>
 
               <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
-                <label className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
+                <label htmlFor="lc-amenities" className="text-[11px] uppercase font-bold text-neutral-300 flex items-center gap-1.5">
                   <span>Included Features & Perks (Comma-Separated)</span>
                   <FieldHelpTooltip
                     title="Included Amenities"
                     content="Enter features included with registration, separated by commas (e.g. 'Certified Referees, Custom Jerseys, HD Highlights, Live Stats'). If empty, defaults to 'Contact commissioner for more details'."
                   />
                 </label>
-                <input
+                <input id="lc-amenities" maxLength={400}
                   type="text"
                   value={amenitiesText}
                   onChange={(e) => setAmenitiesText(e.target.value)}

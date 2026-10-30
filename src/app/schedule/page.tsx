@@ -69,7 +69,11 @@ import { getGameDisplayState, useNow } from "@/lib/gameLiveState";
 import { usePageGuide } from "@/lib/pageGuide";
 import { SCHEDULE_WALKTHROUGH, SCHEDULE_EVENT_MODAL_WALKTHROUGH, PLAYOFF_FORMAT_MODAL_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import PageGuideButton from "@/components/walkthrough/PageGuideButton";
-import { toLocalDateString } from "@/lib/formatMatchTime";
+import { toLocalDateString, toTimeInputValue } from "@/lib/formatMatchTime";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
+import { useDialogKeyboard } from "@/components/ui/useDialogKeyboard";
+import { parseIntInRange } from "@/lib/formValidation";
 
 interface Match {
   id: string;
@@ -112,16 +116,20 @@ export default function Calendar() {
   }, [awaitingLeague, activeLeagueId]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [simulatingMatchId, setSimulatingMatchId] = useState<string | null>(null);
+  const [pendingSimulate, setPendingSimulate] = useState<{ matchId: string; homeTeamName: string; awayTeamName: string } | null>(null);
+  const [pendingDeleteMatchId, setPendingDeleteMatchId] = useState<string | null>(null);
+  const [pageNotice, setPageNotice] = useState<FormNoticeState | null>(null);
+  const [isSavingMatch, setIsSavingMatch] = useState(false);
+  const [isDeletingMatch, setIsDeletingMatch] = useState(false);
 
-  const handleSimulateMatch = async (matchId: string, homeTeamName: string, awayTeamName: string) => {
+  const handleSimulateMatch = (matchId: string, homeTeamName: string, awayTeamName: string) => {
     if (!isPlatformAdmin) return;
-    if (
-      !window.confirm(
-        `⚡ Simulate Full Game?\n\nThis will randomly generate a complete, realistic game of play-by-play (passes, runs, TDs, 1/2pt conversions, flags, PBUs, sacks) between ${homeTeamName} and ${awayTeamName}.\n\nAll events and scores will calculate into official team standings and player stat leaderboards.`
-      )
-    ) {
-      return;
-    }
+    setPendingSimulate({ matchId, homeTeamName, awayTeamName });
+  };
+
+  const runSimulateMatch = async (matchId: string) => {
+    setPendingSimulate(null);
+    setPageNotice(null);
     setSimulatingMatchId(matchId);
     try {
       const res = await simulateFullGame(matchId, {
@@ -142,11 +150,11 @@ export default function Calendar() {
           )
         );
       } else {
-        alert(res.error || "Failed to simulate match.");
+        setPageNotice({ tone: "error", message: res.error || "The game could not be simulated." });
       }
     } catch (err: any) {
       console.error("Simulation error:", err);
-      alert(err.message || "Failed to simulate match.");
+      setPageNotice({ tone: "error", message: err?.message || "The game could not be simulated." });
     } finally {
       setSimulatingMatchId(null);
     }
@@ -482,9 +490,41 @@ export default function Calendar() {
     setDraggedMatchId(null);
   };
 
+  const closeMatchModal = () => {
+    if (isSavingMatch || isDeletingMatch) return;
+    setIsModalOpen(false);
+    setMatchSaveError(null);
+  };
+  const matchDialogRef = useDialogKeyboard<HTMLDivElement>(isModalOpen, closeMatchModal, { busy: isSavingMatch || isDeletingMatch });
+
   const handleSaveMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingMatch) return;
+    if (!editingMatch || isSavingMatch) return;
+    setMatchSaveError(null);
+
+    if (!String(editingMatch.week || "").trim()) {
+      setMatchSaveError("Enter a week or round label.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(editingMatch.date || ""))) {
+      setMatchSaveError("Choose a valid game date.");
+      return;
+    }
+    const normalizedTime = toTimeInputValue(editingMatch.time);
+    if (!normalizedTime) {
+      setMatchSaveError("Choose a valid kickoff time.");
+      return;
+    }
+    if (editingMatch.homeTeamId && editingMatch.homeTeamId === editingMatch.awayTeamId) {
+      setMatchSaveError("Home and away must be different teams.");
+      return;
+    }
+    const homeScore = parseIntInRange(editingMatch.homeScore ?? 0, 0, 200);
+    const awayScore = parseIntInRange(editingMatch.awayScore ?? 0, 0, 200);
+    if (editingMatch.id && (homeScore === null || awayScore === null)) {
+      setMatchSaveError("Scores must be whole numbers from 0 to 200.");
+      return;
+    }
 
     const homeT = teams.find((t) => t.id === editingMatch.homeTeamId);
     const awayT = teams.find((t) => t.id === editingMatch.awayTeamId);
@@ -493,6 +533,9 @@ export default function Calendar() {
 
     const matchDataToSave = {
       ...editingMatch,
+      ...(editingMatch.id ? { homeScore: homeScore ?? 0, awayScore: awayScore ?? 0 } : {}),
+      time: normalizedTime,
+      location: String(editingMatch.location || "").trim(),
       homeTeamName: homeT?.name || (isPlayoffGame && !editingMatch.homeTeamId ? originalMatch?.homeTeamName || "TBD" : ""),
       awayTeamName: awayT?.name || (isPlayoffGame && !editingMatch.awayTeamId ? originalMatch?.awayTeamName || "TBD" : ""),
       matchdayIndex: isPlayoffGame && typeof editingMatch.matchdayIndex === "number"
@@ -500,7 +543,6 @@ export default function Calendar() {
         : parseInt(editingMatch.week?.replace(/\D/g, "") || "0", 10),
       status: editingMatch.status || "upcoming",
     };
-    setMatchSaveError(null);
 
     if (isDemoLeague || isEmbedded) {
       if (editingMatch.id) {
@@ -512,6 +554,7 @@ export default function Calendar() {
       return;
     }
 
+    setIsSavingMatch(true);
     try {
       if (editingMatch.id) {
         const teamsChanged = !originalMatch ||
@@ -544,14 +587,19 @@ export default function Calendar() {
     } catch (e) {
       console.error(e);
       setMatchSaveError(e instanceof Error ? e.message : "Could not save this game. Please try again.");
+    } finally {
+      setIsSavingMatch(false);
     }
   };
 
-  const handleDeleteSingleMatch = async (matchId: string) => {
+  const handleDeleteSingleMatch = (matchId: string) => {
     if (!canManageSchedule) return;
-    if (!window.confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) {
-      return;
-    }
+    setPendingDeleteMatchId(matchId);
+  };
+
+  const runDeleteSingleMatch = async (matchId: string) => {
+    setPendingDeleteMatchId(null);
+    setPageNotice(null);
 
     if (isDemoLeague || isEmbedded) {
       deleteSandboxPlaysForMatch(matchId);
@@ -564,6 +612,7 @@ export default function Calendar() {
       return;
     }
 
+    setIsDeletingMatch(true);
     try {
       await deleteDoc(doc(db, "matches", matchId));
       setMatches((prev) => prev.filter((m) => m.id !== matchId));
@@ -573,7 +622,11 @@ export default function Calendar() {
       }
     } catch (err) {
       console.error("Failed to delete match:", err);
-      alert("Failed to delete match. Please check permissions.");
+      const message = "The game could not be deleted. You may not have permission, or the connection failed.";
+      if (editingMatch?.id === matchId) setMatchSaveError(message);
+      else setPageNotice({ tone: "error", message });
+    } finally {
+      setIsDeletingMatch(false);
     }
   };
 
@@ -776,7 +829,7 @@ export default function Calendar() {
                         ? `Week ${parseInt(regularSeasonWeeks[regularSeasonWeeks.length - 1].replace(/\D/g, "") || "0", 10) + 1}`
                         : "Week 1"),
                     date: toLocalDateString(new Date()),
-                    time: "10:00 AM",
+                    time: "10:00",
                     location: settings.defaultLocation || "Turf Field 1",
                   });
                   setIsModalOpen(true);
@@ -800,6 +853,7 @@ export default function Calendar() {
           )}
         </div>
 
+        <FormNotice notice={pageNotice} onDismiss={() => setPageNotice(null)} />
         {scheduleActionError && (
           <div role="alert" className="rounded-2xl border border-rose-300 dark:border-rose-500/40 bg-rose-50 dark:bg-rose-950/40 p-4 flex items-start justify-between gap-4 text-sm text-rose-900 dark:text-rose-200">
             <span>{scheduleActionError}</span>
@@ -1194,14 +1248,15 @@ export default function Calendar() {
       {/* Manual Edit/Create Match Modal */}
       {isModalOpen && editingMatch && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div role="dialog" aria-modal="true" aria-labelledby="schedule-match-modal-title" className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+          <div ref={matchDialogRef} role="dialog" aria-modal="true" aria-labelledby="schedule-match-modal-title" tabIndex={-1} className="bg-neutral-900 border border-white/10 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh] outline-none">
             <div className="flex justify-between items-center mb-6">
               <h2 id="schedule-match-modal-title" className="text-2xl font-bold">{editingMatch.id ? "Edit Game" : "Schedule Game"}</h2>
               <div className="flex items-center gap-2">
               <PageGuideButton />
               <button
-                onClick={() => { setIsModalOpen(false); setMatchSaveError(null); }}
-                aria-label="Close"
+                type="button"
+                onClick={closeMatchModal}
+                aria-label="Close game dialog"
                 className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-neutral-400"
               >
                 <X className="w-5 h-5" />
@@ -1209,7 +1264,7 @@ export default function Calendar() {
               </div>
             </div>
 
-            <form onSubmit={handleSaveMatch} className="space-y-4">
+            <form onSubmit={handleSaveMatch} noValidate className="space-y-4">
               <div data-tour="schedule-event-basics" className="space-y-4">
               <div>
                 <label htmlFor="schedule-week-input" className="flex items-center gap-1.5 text-sm font-semibold text-neutral-400 mb-1">
@@ -1293,17 +1348,16 @@ export default function Calendar() {
                     <span>Date</span>
                     <FieldHelpTooltip
                       title="Game Date"
-                      content="Calendar date scheduled for kickoff in YYYY-MM-DD or readable format (e.g. 2026-10-18)."
+                      content="Calendar date scheduled for kickoff."
                     />
                   </label>
                   <input
                     id="schedule-date-input"
-                    type="text"
+                    type="date"
                     required
                     value={editingMatch.date || ""}
                     onChange={(e) => setEditingMatch({ ...editingMatch, date: e.target.value })}
-                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white"
-                    placeholder="e.g. '2026-10-18'"
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white [color-scheme:dark]"
                   />
                 </div>
                 <div>
@@ -1311,17 +1365,16 @@ export default function Calendar() {
                     <span>Time</span>
                     <FieldHelpTooltip
                       title="Kickoff Time"
-                      content="Scheduled match start time (e.g. 8:30 PM, 6:00 PM)."
+                      content="Scheduled kickoff time."
                     />
                   </label>
                   <input
                     id="schedule-time-input"
-                    type="text"
+                    type="time"
                     required
-                    value={editingMatch.time || ""}
+                    value={toTimeInputValue(editingMatch.time) || editingMatch.time || ""}
                     onChange={(e) => setEditingMatch({ ...editingMatch, time: e.target.value })}
-                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white"
-                    placeholder="e.g. '8:30 PM'"
+                    className="w-full bg-black border border-white/10 rounded-xl p-3 focus:outline-none focus:border-cyan-400 text-white [color-scheme:dark]"
                   />
                 </div>
               </div>
@@ -1351,7 +1404,7 @@ export default function Calendar() {
               {editingMatch.id && (
                 <div data-tour="schedule-event-score" className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
+                    <label htmlFor="schedule-home-score" className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
                       <span>Home Score</span>
                       <FieldHelpTooltip
                         title="Home Score"
@@ -1359,14 +1412,19 @@ export default function Calendar() {
                       />
                     </label>
                     <input
+                      id="schedule-home-score"
                       type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={200}
+                      step={1}
                       value={editingMatch.homeScore ?? 0}
-                      onChange={(e) => setEditingMatch({ ...editingMatch, homeScore: parseInt(e.target.value, 10) || 0 })}
+                      onChange={(e) => setEditingMatch({ ...editingMatch, homeScore: e.target.value as any })}
                       className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
                     />
                   </div>
                   <div>
-                    <label className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
+                    <label htmlFor="schedule-away-score" className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
                       <span>Away Score</span>
                       <FieldHelpTooltip
                         title="Away Score"
@@ -1374,14 +1432,19 @@ export default function Calendar() {
                       />
                     </label>
                     <input
+                      id="schedule-away-score"
                       type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={200}
+                      step={1}
                       value={editingMatch.awayScore ?? 0}
-                      onChange={(e) => setEditingMatch({ ...editingMatch, awayScore: parseInt(e.target.value, 10) || 0 })}
+                      onChange={(e) => setEditingMatch({ ...editingMatch, awayScore: e.target.value as any })}
                       className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white font-mono text-sm"
                     />
                   </div>
                   <div>
-                    <label className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
+                    <label htmlFor="schedule-status-select" className="flex items-center gap-1 text-xs font-semibold text-neutral-400 mb-1">
                       <span>Status</span>
                       <FieldHelpTooltip
                         title="Game Status"
@@ -1389,6 +1452,7 @@ export default function Calendar() {
                       />
                     </label>
                     <select
+                      id="schedule-status-select"
                       value={editingMatch.status || "scheduled"}
                       onChange={(e) => setEditingMatch({ ...editingMatch, status: e.target.value as any })}
                       className="w-full bg-black border border-white/10 rounded-xl p-2.5 focus:outline-none focus:border-cyan-400 text-white text-sm"
@@ -1411,25 +1475,30 @@ export default function Calendar() {
                   <button
                     type="button"
                     onClick={() => handleDeleteSingleMatch(editingMatch.id!)}
-                    className="px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 font-semibold rounded-xl transition-all flex items-center gap-2 text-xs cursor-pointer"
+                    disabled={isSavingMatch || isDeletingMatch}
+                    aria-busy={isDeletingMatch}
+                    className="disabled:opacity-50 px-4 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 font-semibold rounded-xl transition-all flex items-center gap-2 text-xs cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>Delete Event</span>
+                    <span>{isDeletingMatch ? "Deleting…" : "Delete Event"}</span>
                   </button>
                 ) : <div />}
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => { setIsModalOpen(false); setMatchSaveError(null); }}
-                    className="px-5 py-3 font-semibold text-neutral-400 hover:text-white text-xs cursor-pointer"
+                    onClick={closeMatchModal}
+                    disabled={isSavingMatch || isDeletingMatch}
+                    className="px-5 py-3 font-semibold text-neutral-400 hover:text-white text-xs cursor-pointer disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer"
+                    disabled={isSavingMatch || isDeletingMatch}
+                    aria-busy={isSavingMatch}
+                    className="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/30 text-xs cursor-pointer disabled:opacity-60"
                   >
-                    {editingMatch.id ? "Save Changes" : "Schedule Game"}
+                    {isSavingMatch ? "Saving…" : editingMatch.id ? "Save Changes" : "Schedule Game"}
                   </button>
                 </div>
               </div>
@@ -1492,6 +1561,24 @@ export default function Calendar() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingSimulate !== null}
+        title="Simulate full game?"
+        description={pendingSimulate ? `This generates a complete, realistic play-by-play between ${pendingSimulate.homeTeamName} and ${pendingSimulate.awayTeamName}. All events and scores count toward official standings and player stats.` : undefined}
+        confirmLabel="Simulate Game"
+        onConfirm={() => { if (pendingSimulate) return runSimulateMatch(pendingSimulate.matchId); }}
+        onCancel={() => setPendingSimulate(null)}
+      />
+      <ConfirmDialog
+        open={pendingDeleteMatchId !== null}
+        title="Delete this game permanently?"
+        description="This removes the game and any recorded plays. This cannot be undone."
+        confirmLabel="Delete Game"
+        tone="danger"
+        onConfirm={() => { if (pendingDeleteMatchId) return runDeleteSingleMatch(pendingDeleteMatchId); }}
+        onCancel={() => setPendingDeleteMatchId(null)}
+      />
 
     </div>
   );

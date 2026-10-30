@@ -26,6 +26,7 @@ import PageGuideButton from "@/components/walkthrough/PageGuideButton";
 import { usePageGuide } from "@/lib/pageGuide";
 import { SCHEDULE_BUILDER_WALKTHROUGH } from "@/lib/walkthroughs/league";
 import { parseLocalDate, toLocalDateString } from "@/lib/formatMatchTime";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
 
 interface AutomatedScheduleBuilderModalProps {
   isOpen: boolean;
@@ -88,6 +89,7 @@ export default function AutomatedScheduleBuilderModal({
   usePageGuide(isOpen ? SCHEDULE_BUILDER_WALKTHROUGH : null, 1);
   // Phase: "form" | "building" | "completed"
   const [phase, setPhase] = useState<"form" | "building" | "completed">("form");
+  const [formNotice, setFormNotice] = useState<FormNoticeState | null>(null);
   const [unplacedGames, setUnplacedGames] = useState<string[]>([]);
 
   // Form State
@@ -175,8 +177,14 @@ export default function AutomatedScheduleBuilderModal({
   if (!isOpen) return null;
 
   const handleAddVenue = () => {
-    if (!newVenueInput.trim()) return;
-    setVenues([...venues, newVenueInput.trim()]);
+    const next = newVenueInput.trim();
+    if (!next) return;
+    if (venues.some((v) => v.toLowerCase() === next.toLowerCase())) {
+      setFormNotice({ tone: "error", message: `"${next}" is already in the field list.` });
+      return;
+    }
+    setFormNotice(null);
+    setVenues([...venues, next]);
     setNewVenueInput("");
   };
 
@@ -186,8 +194,20 @@ export default function AutomatedScheduleBuilderModal({
   };
 
   const handleAddTime = () => {
-    if (!newTimeInput.trim()) return;
-    setTimeSlots([...timeSlots, newTimeInput.trim()]);
+    const raw = newTimeInput.trim();
+    if (!raw) return;
+    const match = /^(\d{1,2}):(\d{2})\s*([AaPp][Mm])?$/.exec(raw);
+    if (!match || Number(match[1]) > 23 || Number(match[2]) > 59 || (match[3] && Number(match[1]) > 12)) {
+      setFormNotice({ tone: "error", message: "Enter a time like 3:15 PM or 15:15." });
+      return;
+    }
+    const next = `${Number(match[1])}:${match[2]}${match[3] ? ` ${match[3].toUpperCase()}` : ""}`;
+    if (timeSlots.includes(next)) {
+      setFormNotice({ tone: "error", message: `${next} is already a kickoff slot.` });
+      return;
+    }
+    setFormNotice(null);
+    setTimeSlots([...timeSlots, next]);
     setNewTimeInput("");
   };
 
@@ -198,9 +218,14 @@ export default function AutomatedScheduleBuilderModal({
 
   const handleStartBuilding = async () => {
     if (eligibleTeams.length < 2) {
-      alert("At least 2 active teams are required to build a schedule.");
+      setFormNotice({ tone: "error", message: "Add at least two active teams before building a schedule." });
       return;
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+      setFormNotice({ tone: "error", message: "Choose a valid season start date." });
+      return;
+    }
+    setFormNotice(null);
 
     writeBuilderPrefs({ weeksCount, gameDays, venues, timeSlots });
     setPhase("building");
@@ -355,9 +380,17 @@ export default function AutomatedScheduleBuilderModal({
     await new Promise((r) => setTimeout(r, 500));
 
     setUnplacedGames(unplaced);
-    // Save
-    await onApplySchedule(createdMatches, finalFormat, clearExisting);
-    setPhase("completed");
+    try {
+      await onApplySchedule(createdMatches, finalFormat, clearExisting);
+      setPhase("completed");
+    } catch (err) {
+      console.error("Failed to apply generated schedule:", err);
+      setPhase("form");
+      setFormNotice({
+        tone: "error",
+        message: err instanceof Error && err.message ? err.message : "The schedule was generated but could not be saved. Check your connection and try again.",
+      });
+    }
   };
 
   return (
@@ -443,6 +476,7 @@ export default function AutomatedScheduleBuilderModal({
                       min={1}
                       max={24}
                       value={weeksCount}
+                      aria-label="Number of regular-season weeks"
                       onChange={(e) => {
                         const val = parseInt(e.target.value, 10);
                         if (!isNaN(val)) {
@@ -689,6 +723,8 @@ export default function AutomatedScheduleBuilderModal({
                 <div className="flex items-center gap-2 pt-1">
                   <input
                     type="text"
+                    maxLength={60}
+                    aria-label="New field or venue name"
                     value={newVenueInput}
                     onChange={(e) => setNewVenueInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddVenue())}
@@ -738,6 +774,8 @@ export default function AutomatedScheduleBuilderModal({
                 <div className="flex items-center gap-2 pt-1">
                   <input
                     type="text"
+                    maxLength={8}
+                    aria-label="New kickoff time"
                     value={newTimeInput}
                     onChange={(e) => setNewTimeInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTime())}
@@ -891,6 +929,11 @@ export default function AutomatedScheduleBuilderModal({
         </div>
 
         {/* Modal Footer Controls */}
+        {phase === "form" && formNotice ? (
+          <div className="px-6 pt-4">
+            <FormNotice notice={formNotice} onDismiss={() => setFormNotice(null)} />
+          </div>
+        ) : null}
         <div data-tour="builder-actions" className="p-6 border-t border-white/10 bg-white/[0.02] flex items-center justify-between gap-4">
           {phase === "form" ? (
             <>

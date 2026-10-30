@@ -6,6 +6,7 @@ import { TEAM_STATS_CUSTOMIZER_WALKTHROUGH } from "@/lib/walkthroughData";
 
 import { getReadableTextColor } from "@/lib/teamColors";
 import React, { useState, useEffect } from "react";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
 import {
   X,
   Check,
@@ -93,6 +94,7 @@ export default function TeamStatsCustomizerModal({
   usePageGuide(isOpen ? TEAM_STATS_CUSTOMIZER_WALKTHROUGH : null, 2);
   const [selectedIds, setSelectedIds] = useState<string[]>(initialVisibleStats);
   const [saving, setSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<FormNoticeState | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
 
   useEffect(() => {
@@ -132,11 +134,13 @@ export default function TeamStatsCustomizerModal({
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveNotice(null);
     try {
       await onSave(selectedIds);
       onClose();
     } catch (e) {
       console.error("Failed to save custom stats display:", e);
+      setSaveNotice({ tone: "error", message: e instanceof Error && e.message ? e.message : "The stats display could not be saved. Please retry." });
     } finally {
       setSaving(false);
     }
@@ -352,13 +356,18 @@ export default function TeamStatsCustomizerModal({
           )}
         </div>
 
+        {saveNotice ? (
+          <div className="px-4 md:px-5 pt-3">
+            <FormNotice notice={saveNotice} onDismiss={() => setSaveNotice(null)} />
+          </div>
+        ) : null}
         {/* Sticky Footer with Save / Cancel */}
         <div data-tour="team-stats-customizer-save" className="p-4 md:p-5 gap-3 flex-wrap border-t border-white/10 bg-neutral-950/90 backdrop-blur-md flex items-center justify-between shrink-0">
           <div className="text-xs text-neutral-400 flex items-center gap-1.5">
             <Info className="w-4 h-4 text-[var(--team-ink)]" />
             <span>
               {selectedIds.length === 0
-                ? "No stats selected ? the stats banner will be hidden"
+                ? "No stats selected — the stats banner will be hidden"
                 : `${selectedIds.length} stats will appear on your team page`}
             </span>
           </div>

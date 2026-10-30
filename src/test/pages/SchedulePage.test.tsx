@@ -303,6 +303,7 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
     expect(deleteBtns.length).toBeGreaterThan(0);
 
     fireEvent.click(deleteBtns[0]);
+    fireEvent.click(await screen.findByRole("button", { name: /^Delete Game$/i }));
     expect(mockDeleteSandboxMatch).toHaveBeenCalledWith("match_w1_1");
   });
 
@@ -538,6 +539,7 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
       const deleteBtns = await screen.findAllByTitle("Delete Event");
       expect(deleteBtns.length).toBeGreaterThan(0);
       fireEvent.click(deleteBtns[0]);
+      fireEvent.click(await screen.findByRole("button", { name: /^Delete Game$/i }));
 
       await waitFor(() => {
         expect(mockDeleteDoc).toHaveBeenCalled();
@@ -573,7 +575,7 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
       if (homeSelect) fireEvent.change(homeSelect, { target: { value: "team_apex" } });
       if (awaySelect) fireEvent.change(awaySelect, { target: { value: "team_cyber" } });
       if (dateInput) fireEvent.change(dateInput, { target: { value: "2026-10-15" } });
-      if (timeInput) fireEvent.change(timeInput, { target: { value: "3:00 PM" } });
+      if (timeInput) fireEvent.change(timeInput, { target: { value: "15:00" } });
       if (locInput) fireEvent.change(locInput, { target: { value: "Field 3" } });
 
       const dialog = screen.getByRole("dialog");
@@ -658,6 +660,7 @@ describe("Schedule Operations & Playoff Generator Suite (SchedulePage)", () => {
 
     const simBtn = await screen.findByRole("button", { name: /Simulate/i });
     fireEvent.click(simBtn);
+    fireEvent.click(await screen.findByRole("button", { name: /^Simulate Game$/i }));
 
     await waitFor(() => {
       expect(mockSimulateFullGame).toHaveBeenCalledWith(

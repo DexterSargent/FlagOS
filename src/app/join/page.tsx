@@ -16,6 +16,8 @@ import { getSandboxPlayers, addSandboxPlayer } from "@/lib/demoSandbox";
 import { isDemoExplicitlyRequested } from "@/lib/demoSandboxRuntime";
 import NoLeagueSelected from "@/components/league/NoLeagueSelected";
 import { compareNatural } from "@/lib/sortUtils";
+import FormNotice, { type FormNoticeState } from "@/components/ui/FormNotice";
+import { isValidEmail } from "@/lib/formValidation";
 
 const POSITIONS = ["QB", "WR", "RB", "C", "DB", "RUSH", "LB", "ATH"];
 
@@ -45,6 +47,7 @@ export default function JoinLeague() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const [submitNotice, setSubmitNotice] = useState<FormNoticeState | null>(null);
 
   // Form State
   const [name, setName] = useState("");
@@ -110,7 +113,16 @@ export default function JoinLeague() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (submitting) return;
+    setSubmitNotice(null);
+    if (!name.trim()) {
+      setSubmitNotice({ tone: "error", message: "Enter your full name." });
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setSubmitNotice({ tone: "error", message: "Enter a valid email address so you can log in and see your stats." });
+      return;
+    }
     setSubmitting(true);
 
     if (isDemoLeague) {
@@ -153,7 +165,7 @@ export default function JoinLeague() {
       setRegistered(true);
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setSubmitNotice({ tone: "error", message: err instanceof Error && err.message ? err.message : "Registration could not be submitted. Check your connection and try again." });
       setSubmitting(false);
     }
   };
@@ -335,7 +347,8 @@ export default function JoinLeague() {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
+          <form onSubmit={handleSubmit} noValidate className="p-6 sm:p-8 space-y-6">
+            <FormNotice notice={submitNotice} onDismiss={() => setSubmitNotice(null)} />
             <div className="space-y-5">
               <div data-tour="join-identity" className="space-y-5">
                 <div>
@@ -345,6 +358,8 @@ export default function JoinLeague() {
                   <input
                     id="join-full-name"
                     required
+                    maxLength={80}
+                    autoComplete="name"
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -362,6 +377,9 @@ export default function JoinLeague() {
                       id="join-email-address"
                       type="email"
                       required
+                      maxLength={254}
+                      autoComplete="email"
+                      inputMode="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="athlete@example.com"
@@ -497,7 +515,7 @@ export default function JoinLeague() {
                 disabled={submitting || !name.trim()}
                 className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-sm uppercase tracking-wider transition-all shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] cursor-pointer"
               >
-                {submitting ? "Registering Free Agent..." : "Submit Registration"}
+                {submitting ? "Submitting…" : "Submit Registration"}
                 {!submitting && <ArrowRight className="w-4 h-4" />}
               </button>
             </div>
