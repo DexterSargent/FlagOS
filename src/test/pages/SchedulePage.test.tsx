@@ -82,6 +82,11 @@ vi.mock("@/lib/leagueContext", async (importOriginal) => {
       },
       updateSettings: mockUpdateSettings,
       isDemoLeague: mockIsDemoLeague,
+      currentSeasonId: "season-1",
+      seasons: [{ id: "season-1", title: "2026 Season", status: "active", number: 1 }],
+      viewingSeasonId: "season-1",
+      setViewingSeasonId: vi.fn(),
+      isViewingArchivedSeason: false,
     }),
   };
 });

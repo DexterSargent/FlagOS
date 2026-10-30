@@ -97,17 +97,29 @@ const TEAM_ARCHIVE_GUARDED_ENTITIES = new Set<Entity>([
   "player", "player_update", "delete_player", "match", "play", "play_batch",
 ]);
 
-/** League games and plays are editable only while their season is the league's current season. */
+/**
+ * Games and plays are editable only while their season is current: the league's season for league
+ * games, the managing team's season for independent games.
+ */
 async function assertCurrentSeason(
   transaction: Transaction,
   leagueId: unknown,
   matchData: FirebaseFirestore.DocumentData,
 ): Promise<string> {
-  if (!isDocumentId(leagueId)) return matchSeasonId(matchData);
-  const league = await transaction.get(adminDb.doc(`leagues/${leagueId}`));
   const seasonId = matchSeasonId(matchData);
-  if (league.exists && getCurrentSeasonId(league.data()) !== seasonId) {
-    fail("This game belongs to a completed season and is read-only.", 409);
+  if (isDocumentId(leagueId)) {
+    const league = await transaction.get(adminDb.doc(`leagues/${leagueId}`));
+    if (league.exists && getCurrentSeasonId(league.data()) !== seasonId) {
+      fail("This game belongs to a completed season and is read-only.", 409);
+    }
+    return seasonId;
+  }
+  // Legacy independent games were never stamped with a season, so only stamped games are guarded.
+  if (typeof matchData.seasonId === "string" && matchData.seasonId && isDocumentId(matchData.managingTeamId)) {
+    const team = await transaction.get(adminDb.doc(`teams/${matchData.managingTeamId}`));
+    if (team.exists && getCurrentTeamSeasonId(team.data()) !== seasonId) {
+      fail("This game belongs to a completed season and is read-only.", 409);
+    }
   }
   return seasonId;
 }
@@ -258,7 +270,7 @@ async function isTeamAdmin(
   transaction: Transaction,
   teamId: string,
   token: DecodedIdToken,
-): Promise<{ allowed: boolean; leagueId: string; exists: boolean; standalone: boolean }> {
+): Promise<{ allowed: boolean; leagueId: string; exists: boolean; standalone: boolean; currentSeasonId: string }> {
   const team = await transaction.get(adminDb.doc(`teams/${teamId}`));
   const data = team.data();
   const privateTeam = await transaction.get(adminDb.doc(`team_private/${teamId}`));
@@ -268,6 +280,7 @@ async function isTeamAdmin(
     leagueId: typeof data?.leagueId === "string" ? data.leagueId : "",
     exists: team.exists,
     standalone: data?.isStandalone === true,
+    currentSeasonId: getCurrentTeamSeasonId(data),
   };
 }
 
@@ -450,7 +463,8 @@ async function authorizeWrite(
           const league = await transaction.get(adminDb.doc(`leagues/${manager.leagueId}`));
           data.seasonId = getCurrentSeasonId(league.data());
         } else {
-          delete data.seasonId;
+          // Independent teams run their own seasons; stamping the game lets rollover partition it.
+          data.seasonId = manager.currentSeasonId;
         }
         return;
       }
@@ -1139,6 +1153,8 @@ async function startTeamSeason(token: DecodedIdToken, data: Record<string, unkno
 
     transaction.create(adminDb.doc(`${TEAM_SEASON_SNAPSHOT_COLLECTION}/${teamSeasonSnapshotDocId(teamId, currentId)}`), {
       ...withoutUndefined({ ...snapshot }),
+      // Mirrors the team's league so security rules can grant league members read access.
+      leagueId: typeof teamData.leagueId === "string" ? teamData.leagueId : "",
       createdAt: FieldValue.serverTimestamp(),
     });
 
